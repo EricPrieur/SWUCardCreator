@@ -68,8 +68,8 @@ const stats = [
   { kind: 'hp', label: 'HP' },
 ] as const
 
-// The editor opens on a blank neutral unit
-const blankDraft: Draft = { frameId: 'unit-neutral', name: '', trait: '', text: '' }
+// The editor opens on a blank Command and Heroism ground unit
+const blankDraft: Draft = { frameId: 'unit-command-heroism', name: '', trait: '', text: '' }
 
 // A Leader side has no power or HP icon, but prints both numbers in its Epic Action box
 const hasStat = (frame: Frame, kind: (typeof stats)[number]['kind']) =>
@@ -121,12 +121,89 @@ function CardFace(props: { card: Draft; back?: boolean }) {
   )
 }
 
-function ShowroomCard(props: { card: Card; onEdit: () => void; onRemove: () => void }) {
-  const { card, onEdit, onRemove } = props
+const imageFormats = [
+  { value: 'png', label: 'PNG', type: 'image/png' },
+  // Far smaller, at the price of a little detail. It has no see-through, so the
+  // corners outside the card's rounding are black.
+  { value: 'jpg', label: 'JPG', type: 'image/jpeg' },
+] as const
+type ImageFormat = (typeof imageFormats)[number]['value']
+const FORMAT_KEY = 'dune-unlimited.export-format'
+
+function loadFormat(): ImageFormat {
+  try {
+    return localStorage.getItem(FORMAT_KEY) === 'jpg' ? 'jpg' : 'png'
+  } catch {
+    return 'png'
+  }
+}
+
+// A card on the page is art, a frame and text laid over each other, not a picture.
+// This draws what is shown into an image, twice the size of the frame's own image
+// so the text stays sharp. In a PNG the corners outside the card's rounding are see-through.
+async function cardImage(card: HTMLElement, frame: Frame, format: ImageFormat) {
+  const { toCanvas } = await import('html-to-image')
+  const canvas = await toCanvas(card, {
+    pixelRatio: (frame.width * 2) / card.clientWidth,
+    backgroundColor: format === 'jpg' ? '#000' : undefined,
+  })
+  const type = imageFormats.find(({ value }) => value === format)!.type
+  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, type, 0.92))
+  if (!blob) throw new Error('The card could not be drawn')
+  return blob
+}
+
+function ShowroomCard(props: {
+  card: Card
+  format: ImageFormat
+  onFormat: (format: ImageFormat) => void
+  onEdit: () => void
+  onRemove: () => void
+}) {
+  const { card, format, onFormat, onEdit, onRemove } = props
   const [back, setBack] = useState(false)
+  // Remove asks once more before it does anything
+  const [removing, setRemoving] = useState(false)
+  // What the image buttons are up to, shown in place of their labels
+  const [busy, setBusy] = useState<'save' | 'copy' | null>(null)
+  const [note, setNote] = useState<string | null>(null)
+  const ref = useRef<HTMLDivElement>(null)
+  const side = cardSide(card, back)
+
+  // Saves the image, copies it, or shows it in a tab opened for it beforehand: a
+  // tab opened only once the image is ready would be stopped as a pop-up
+  const image = async (action: 'save' | 'copy', tab?: Window | null) => {
+    const el = ref.current?.querySelector<HTMLElement>('.card')
+    if (!el || busy) return tab?.close()
+    setBusy(action)
+    setNote(null)
+    try {
+      // The clipboard only takes PNG
+      const blob = await cardImage(el, side.frame, action === 'copy' ? 'png' : format)
+      if (action === 'copy') {
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])
+        setNote('Copied')
+      } else if (tab) {
+        tab.location.href = URL.createObjectURL(blob)
+      } else {
+        const link = document.createElement('a')
+        link.href = URL.createObjectURL(blob)
+        link.download = `${side.name.trim() || 'card'}${side.isBack ? ' (unit)' : ''}.${format}`
+        link.click()
+        URL.revokeObjectURL(link.href)
+      }
+    } catch {
+      tab?.close()
+      setNote('Could not make the image')
+    }
+    setBusy(null)
+  }
+
   return (
     <li>
-      <CardFace card={card} back={back} />
+      <div ref={ref}>
+        <CardFace card={card} back={back} />
+      </div>
       <div className="showroom-actions">
         {findFrame(card.frameId).backId && (
           <button className="button" onClick={() => setBack(!back)}>
@@ -136,10 +213,50 @@ function ShowroomCard(props: { card: Card; onEdit: () => void; onRemove: () => v
         <button className="button" onClick={onEdit}>
           Edit
         </button>
-        <button className="button" onClick={onRemove}>
-          Remove
+        {removing ? (
+          <span className="confirm">
+            Remove?
+            <button className="button button-primary" onClick={onRemove}>
+              Yes
+            </button>
+            <button className="button" onClick={() => setRemoving(false)}>
+              No
+            </button>
+          </span>
+        ) : (
+          <button className="button" onClick={() => setRemoving(true)}>
+            Remove
+          </button>
+        )}
+        <span className="split-button">
+          <button
+            className="button"
+            disabled={busy !== null}
+            title="Click to save the image; middle-click to open it in a new tab"
+            onClick={() => image('save')}
+            // A middle click shows the image in a new tab instead of scrolling the page
+            onMouseDown={(event) => event.button === 1 && event.preventDefault()}
+            onAuxClick={(event) => event.button === 1 && image('save', window.open('', '_blank'))}
+          >
+            {busy === 'save' ? 'Drawing…' : 'Save'}
+          </button>
+          <select
+            aria-label="Image format"
+            value={format}
+            onChange={(event) => onFormat(event.target.value as ImageFormat)}
+          >
+            {imageFormats.map(({ value, label }) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </span>
+        <button className="button" disabled={busy !== null} onClick={() => image('copy')}>
+          {busy === 'copy' ? 'Drawing…' : 'Copy'}
         </button>
       </div>
+      {note && <p className="saved-note showroom-note">{note}</p>}
     </li>
   )
 }
@@ -251,6 +368,16 @@ function Showroom(props: { cards: Card[]; onEdit: (card: Card) => void; onRemove
   const [picked, setPicked] = useState<Aspect[]>([])
   const [sort, setSort] = useState<SortKey>('saved')
   const [descending, setDescending] = useState(false)
+  // One choice of image format for every card, kept for next time
+  const [format, setFormat] = useState<ImageFormat>(loadFormat)
+  const changeFormat = (next: ImageFormat) => {
+    setFormat(next)
+    try {
+      localStorage.setItem(FORMAT_KEY, next)
+    } catch {
+      // Not kept, then
+    }
+  }
 
   if (cards.length === 0) {
     return (
@@ -382,7 +509,14 @@ function Showroom(props: { cards: Card[]; onEdit: (card: Card) => void; onRemove
       ) : (
         <ul className="showroom-grid">
           {sorted.map(({ card }) => (
-            <ShowroomCard key={card.id} card={card} onEdit={() => onEdit(card)} onRemove={() => onRemove(card)} />
+            <ShowroomCard
+              key={card.id}
+              card={card}
+              format={format}
+              onFormat={changeFormat}
+              onEdit={() => onEdit(card)}
+              onRemove={() => onRemove(card)}
+            />
           ))}
         </ul>
       )}

@@ -506,9 +506,48 @@
 
 .showroom-actions {
   display: flex;
+  flex-wrap: wrap;
   justify-content: center;
   gap: 0.6rem;
   margin-top: 0.9rem;
+}
+
+.showroom-actions .button {
+  padding: 0.45rem 0.8rem;
+}
+
+/* Remove's second question, in place of the button */
+.confirm {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+}
+
+/* Save, joined to the choice of image format */
+.split-button {
+  display: inline-flex;
+}
+
+.split-button .button {
+  border-radius: 6px 0 0 6px;
+}
+
+.split-button select {
+  padding: 0 0.35rem;
+  border: 1px solid rgb(232 215 181 / 0.25);
+  border-left: 0;
+  border-radius: 0 6px 6px 0;
+  background: rgb(0 0 0 / 0.3);
+  font: inherit;
+  font-size: 0.8rem;
+  color: var(--sand);
+  cursor: pointer;
+}
+
+.showroom-note {
+  margin-top: 0.5rem;
+  text-align: center;
 }
 
 .empty-note {
