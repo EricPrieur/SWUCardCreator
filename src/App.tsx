@@ -3,8 +3,29 @@ import artFiles from 'virtual:art-list'
 import { asset } from './asset'
 import './App.css'
 import { CardView } from './CardView'
-import { defaultLook, loadCards, readArtFile, storeCards, type Art, type Card, type Look } from './cards'
-import { aspects, canBeUnique, frames, type Arena, type Aspect, type FrameType } from './frames'
+import {
+  defaultLook,
+  loadCards,
+  loadDraft,
+  readArtFile,
+  storeCards,
+  storeDraft,
+  type Art,
+  type Card,
+  type Draft,
+  type Look,
+} from './cards'
+import {
+  aspects,
+  canBeUnique,
+  epicText,
+  frames,
+  isUnique,
+  type Arena,
+  type Aspect,
+  type Frame,
+  type FrameType,
+} from './frames'
 
 const tabs = [
   { id: 'creator', label: 'Card Creator' },
@@ -13,11 +34,9 @@ const tabs = [
 
 type TabId = (typeof tabs)[number]['id']
 
-// The card being edited; it has an id once it has been saved to the showroom
-type Draft = Omit<Card, 'id'> & { id?: string }
-
 const typeFilters: { label: string; value: FrameType }[] = [
   { label: 'Units', value: 'Unit' },
+  { label: 'Leaders', value: 'Leader' },
   { label: 'Events', value: 'Event' },
   { label: 'Tokens', value: 'Token' },
   { label: 'Upgrades', value: 'Upgrade' },
@@ -52,8 +71,77 @@ const stats = [
 // The editor opens on a blank neutral unit
 const blankDraft: Draft = { frameId: 'unit-neutral', name: '', trait: '', text: '' }
 
+// A Leader side has no power or HP icon, but prints both numbers in its Epic Action box
+const hasStat = (frame: Frame, kind: (typeof stats)[number]['kind']) =>
+  frame[kind] !== undefined || (kind !== 'cost' && frame.stats !== undefined)
+
 function findFrame(frameId: string) {
   return frames.find((frame) => frame.id === frameId) ?? frames[0]
+}
+
+// A leader is one card with two sides, which share everything but the frame, the
+// game text and where the art sits. Every other card only has a front.
+function cardSide(card: Draft, back: boolean) {
+  const front = findFrame(card.frameId)
+  const shared = { name: card.name, subtitle: card.subtitle, trait: card.trait }
+  if (!front.backId) return { ...shared, frame: front, text: card.text, art: card.art, isBack: false }
+  // A side with no art of its own shows the other side's image, not yet placed
+  const borrowed = (art?: Art): Art | undefined => art && { src: art.src, zoom: 1, x: 0, y: 0 }
+  if (!back) return { ...shared, frame: front, text: card.text, art: card.art ?? borrowed(card.backArt), isBack: false }
+  return {
+    // The Leader Unit side says what the Leader side says, unless it was given its own
+    name: card.backName ?? card.name,
+    subtitle: card.backSubtitle ?? card.subtitle,
+    trait: card.backTrait ?? card.trait,
+    frame: findFrame(card.backFrameId ?? front.backId + (card.backArena === 'Space' ? '-space' : '')),
+    text: card.backText ?? '',
+    art: card.backArt ?? borrowed(card.art),
+    isBack: true,
+  }
+}
+
+function CardFace(props: { card: Draft; back?: boolean }) {
+  const { card } = props
+  const { frame, name, subtitle, trait, text, art } = cardSide(card, props.back === true)
+  return (
+    <CardView
+      frame={frame}
+      name={name}
+      trait={trait}
+      text={text}
+      unique={card.unique}
+      subtitle={subtitle}
+      epic={card.epic}
+      cost={card.cost}
+      power={card.power}
+      hp={card.hp}
+      art={art}
+      look={card.look}
+    />
+  )
+}
+
+function ShowroomCard(props: { card: Card; onEdit: () => void; onRemove: () => void }) {
+  const { card, onEdit, onRemove } = props
+  const [back, setBack] = useState(false)
+  return (
+    <li>
+      <CardFace card={card} back={back} />
+      <div className="showroom-actions">
+        {findFrame(card.frameId).backId && (
+          <button className="button" onClick={() => setBack(!back)}>
+            Flip
+          </button>
+        )}
+        <button className="button" onClick={onEdit}>
+          Edit
+        </button>
+        <button className="button" onClick={onRemove}>
+          Remove
+        </button>
+      </div>
+    </li>
+  )
 }
 
 function tabFromHash(): TabId {
@@ -61,8 +149,109 @@ function tabFromHash(): TabId {
   return tabs.find((tab) => tab.id === id)?.id ?? 'creator'
 }
 
+// A dropdown of checkboxes: a button that opens a list, any number of which can be ticked
+function CheckDropdown<T extends string | number>(props: {
+  label: string
+  options: { label: string; value: T }[]
+  selected: T[]
+  onChange: (selected: T[]) => void
+}) {
+  const { label, options, selected, onChange } = props
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const onPointerDown = (event: PointerEvent) => {
+      if (!ref.current?.contains(event.target as Node)) setOpen(false)
+    }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('pointerdown', onPointerDown)
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown)
+      document.removeEventListener('keydown', onKeyDown)
+    }
+  }, [open])
+
+  return (
+    <div className="check-dropdown" ref={ref}>
+      <button
+        className="chip"
+        type="button"
+        aria-haspopup="true"
+        aria-expanded={open}
+        aria-pressed={selected.length > 0}
+        disabled={options.length === 0}
+        onClick={() => setOpen(!open)}
+      >
+        {label}
+        {selected.length > 0 && ` (${selected.length})`} ▾
+      </button>
+      {open && (
+        <div className="check-options">
+          {options.map((option) => (
+            <label className="toggle" key={option.value}>
+              <input
+                type="checkbox"
+                checked={selected.includes(option.value)}
+                onChange={(event) =>
+                  onChange(
+                    event.target.checked
+                      ? [...selected, option.value]
+                      : selected.filter((value) => value !== option.value),
+                  )
+                }
+              />
+              {option.label}
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+const splitTraits = (trait?: string) =>
+  (trait ?? '')
+    .split(',')
+    .map((part) => part.trim())
+    .filter(Boolean)
+
+// What a card can be found and sorted by. A leader counts for what either of its sides says.
+function cardFacts(card: Card) {
+  const frame = findFrame(card.frameId)
+  const back = frame.backId ? cardSide(card, true) : undefined
+  return {
+    // A token unit is listed with the tokens
+    type: frame.token ? ('Token' as FrameType) : frame.type,
+    names: [card.name, back?.name ?? ''].map((name) => name.toLowerCase()),
+    traits: [...splitTraits(card.trait), ...splitTraits(back?.trait)].map((trait) => trait.toLowerCase()),
+    aspects: [...frame.aspects, ...(back?.frame.aspects ?? [])],
+    cost: card.cost,
+  }
+}
+
+const sorts = [
+  { value: 'saved', label: 'Order saved' },
+  { value: 'name', label: 'Name' },
+  { value: 'cost', label: 'Cost' },
+  { value: 'type', label: 'Type' },
+] as const
+type SortKey = (typeof sorts)[number]['value']
+
 function Showroom(props: { cards: Card[]; onEdit: (card: Card) => void; onRemove: (card: Card) => void }) {
   const { cards, onEdit, onRemove } = props
+  const [query, setQuery] = useState('')
+  const [types, setTypes] = useState<FrameType[]>([])
+  const [traits, setTraits] = useState<string[]>([])
+  const [costs, setCosts] = useState<number[]>([])
+  const [picked, setPicked] = useState<Aspect[]>([])
+  const [sort, setSort] = useState<SortKey>('saved')
+  const [descending, setDescending] = useState(false)
+
   if (cards.length === 0) {
     return (
       <section className="empty">
@@ -74,35 +263,129 @@ function Showroom(props: { cards: Card[]; onEdit: (card: Card) => void; onRemove
     )
   }
 
+  const listed = cards.map((card, index) => ({ card, index, facts: cardFacts(card) }))
+  // The dropdowns only offer what some card has. Traits keep the spelling first typed.
+  const traitNames = new Map<string, string>()
+  for (const { card } of listed) {
+    for (const trait of [...splitTraits(card.trait), ...splitTraits(card.backTrait)]) {
+      if (!traitNames.has(trait.toLowerCase())) traitNames.set(trait.toLowerCase(), trait)
+    }
+  }
+  const traitOptions = [...traitNames]
+    .map(([value, label]) => ({ value, label }))
+    .sort((a, b) => a.label.localeCompare(b.label))
+  const typeOptions = typeFilters.filter(({ value }) => listed.some(({ facts }) => facts.type === value))
+  const costOptions = [...new Set(listed.flatMap(({ facts }) => (facts.cost === undefined ? [] : [facts.cost])))]
+    .sort((a, b) => a - b)
+    .map((cost) => ({ value: cost, label: String(cost) }))
+
+  const search = query.trim().toLowerCase()
+  // Within Type, Trait and Cost any ticked box will do; every picked aspect must be on the card
+  const found = listed.filter(
+    ({ facts }) =>
+      (search === '' || facts.names.some((name) => name.includes(search))) &&
+      (types.length === 0 || types.includes(facts.type)) &&
+      (traits.length === 0 || traits.some((trait) => facts.traits.includes(trait))) &&
+      (costs.length === 0 || (facts.cost !== undefined && costs.includes(facts.cost))) &&
+      picked.every((aspect) => facts.aspects.includes(aspect)),
+  )
+  const typeOrder = typeFilters.map(({ value }) => value)
+  const compare: Record<SortKey, (a: (typeof found)[number], b: (typeof found)[number]) => number> = {
+    saved: () => 0,
+    name: (a, b) => a.card.name.localeCompare(b.card.name),
+    // Cards without a cost come after the ones with one
+    cost: (a, b) => (a.facts.cost ?? Infinity) - (b.facts.cost ?? Infinity),
+    type: (a, b) => typeOrder.indexOf(a.facts.type) - typeOrder.indexOf(b.facts.type),
+  }
+  const sorted = [...found].sort((a, b) => compare[sort](a, b) || a.index - b.index)
+  if (descending) sorted.reverse()
+  const filtered = search !== '' || types.length + traits.length + costs.length + picked.length > 0
+
   return (
     <section className="showroom">
-      <ul className="showroom-grid">
-        {cards.map((card) => (
-          <li key={card.id}>
-            <CardView
-              frame={findFrame(card.frameId)}
-              name={card.name}
-              trait={card.trait}
-              text={card.text}
-              unique={card.unique}
-              subtitle={card.subtitle}
-              cost={card.cost}
-              power={card.power}
-              hp={card.hp}
-              art={card.art}
-              look={card.look}
-            />
-            <div className="showroom-actions">
-              <button className="button" onClick={() => onEdit(card)}>
-                Edit
-              </button>
-              <button className="button" onClick={() => onRemove(card)}>
-                Remove
-              </button>
-            </div>
-          </li>
-        ))}
-      </ul>
+      <div className="filters showroom-filters">
+        <input
+          className="search"
+          type="search"
+          placeholder="Search by name"
+          aria-label="Search by name"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+        />
+        <div className="filter-group">
+          <CheckDropdown label="Type" options={typeOptions} selected={types} onChange={setTypes} />
+          <CheckDropdown label="Trait" options={traitOptions} selected={traits} onChange={setTraits} />
+          <CheckDropdown label="Cost" options={costOptions} selected={costs} onChange={setCosts} />
+        </div>
+        <div className="filter-group">
+          {aspects.map((aspect) => (
+            <button
+              className="chip aspect-chip"
+              type="button"
+              key={aspect}
+              title={aspect}
+              aria-label={aspect}
+              aria-pressed={picked.includes(aspect)}
+              onClick={() =>
+                setPicked(picked.includes(aspect) ? picked.filter((other) => other !== aspect) : [...picked, aspect])
+              }
+            >
+              <img src={aspectIcon(aspect)} alt="" />
+            </button>
+          ))}
+        </div>
+        <div className="filter-group">
+          <label className="filter-label" htmlFor="showroom-sort">
+            Sort
+          </label>
+          <select id="showroom-sort" value={sort} onChange={(event) => setSort(event.target.value as SortKey)}>
+            {sorts.map(({ value, label }) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+          <button
+            className="chip"
+            type="button"
+            title={descending ? 'Descending' : 'Ascending'}
+            aria-label={descending ? 'Descending' : 'Ascending'}
+            onClick={() => setDescending(!descending)}
+          >
+            {descending ? '↓' : '↑'}
+          </button>
+        </div>
+        <div className="filter-group">
+          <span className="filter-label">
+            {sorted.length === cards.length ? `${cards.length} cards` : `${sorted.length} of ${cards.length} cards`}
+          </span>
+          {filtered && (
+            <button
+              className="chip"
+              type="button"
+              onClick={() => {
+                setQuery('')
+                setTypes([])
+                setTraits([])
+                setCosts([])
+                setPicked([])
+              }}
+            >
+              Clear filters
+            </button>
+          )}
+        </div>
+      </div>
+
+      {sorted.length === 0 ? (
+        <p className="empty-note">No card matches these filters.</p>
+      ) : (
+        <ul className="showroom-grid">
+          {sorted.map(({ card }) => (
+            <ShowroomCard key={card.id} card={card} onEdit={() => onEdit(card)} onRemove={() => onRemove(card)} />
+          ))}
+        </ul>
+      )}
     </section>
   )
 }
@@ -151,9 +434,42 @@ function CardCreator(props: {
   // 'Neutral' asks for frames with no aspect icons; otherwise frames carrying every
   // picked aspect, as many times as it was picked
   const [picked, setPicked] = useState<Aspect[] | 'Neutral'>([])
-  const frame = findFrame(draft.frameId)
+  // Which side of a leader is being edited
+  const [back, setBack] = useState(false)
+  const front = findFrame(draft.frameId)
+  const side = cardSide(draft, back)
+  const { frame } = side
+  const bothSides = front.backId ? [front, cardSide(draft, true).frame] : [front]
+  // Each side of a leader has its own art. Changing it changes that side alone; a
+  // side that has never been given art shows the other side's (see cardSide).
+  const setArt = (art?: Art) => onChange(side.isBack ? { ...draft, backArt: art } : { ...draft, art })
+  // Name, subtitle and trait: typed on the Leader Unit side, they are kept for that
+  // side only, and typed back to what the Leader side says, they follow it again
+  const setShared = (key: 'name' | 'subtitle' | 'trait', value: string) => {
+    if (!side.isBack) return onChange({ ...draft, [key]: value })
+    const backKey = ({ name: 'backName', subtitle: 'backSubtitle', trait: 'backTrait' } as const)[key]
+    onChange({ ...draft, [backKey]: value === (draft[key] ?? '') ? undefined : value })
+  }
+  // Each side of a leader has its own frame. The Leader Unit side's is the one
+  // matching the Leader side until another is picked for it, which leaves the
+  // Leader side as it is.
+  const pickFrame = (candidate: Frame) => {
+    if (!candidate.backOf) return onChange({ ...draft, frameId: candidate.id })
+    setBack(true)
+    // Picked for a card that is not a leader yet, it brings its Leader side along
+    const frameId = front.backId ? draft.frameId : candidate.backOf
+    onChange({
+      ...draft,
+      frameId,
+      backFrameId: candidate.id === findFrame(frameId).backId ? undefined : candidate.id,
+      backArena: undefined,
+    })
+  }
   const shown = frames.filter(
     (candidate) =>
+      // Leader Unit frames are offered while that side is being edited, in place of
+      // the Leader side ones, and whenever an arena is asked for
+      (candidate.backOf ? side.isBack || arena !== null : !(side.isBack && candidate.backId)) &&
       (type === null || candidate.type === type || (type === 'Token' && candidate.token === true)) &&
       (arena === null || candidate.arena === arena) &&
       (picked === 'Neutral'
@@ -166,7 +482,7 @@ function CardCreator(props: {
       <section className="editor">
         <div className="editor-fields editor-side">
           <h2>Art</h2>
-          <ArtControls art={draft.art} onChange={(art) => onChange({ ...draft, art })} />
+          <ArtControls art={side.art} onChange={setArt} />
           <h2>Frame &amp; text</h2>
           <LookControls look={draft.look ?? defaultLook} onChange={(look) => onChange({ ...draft, look })} />
           <div className="editor-actions">
@@ -185,28 +501,32 @@ function CardCreator(props: {
           )}
         </div>
 
-        <div className="editor-preview">
-          <CardView
-            frame={frame}
-            name={draft.name}
-            trait={draft.trait}
-            text={draft.text}
-            unique={draft.unique}
-            subtitle={draft.subtitle}
-            cost={draft.cost}
-            power={draft.power}
-            hp={draft.hp}
-            art={draft.art}
-            look={draft.look}
-          />
-        </div>
+        <ArtDrag art={side.art} onChange={setArt}>
+          <CardFace card={draft} back={back} />
+        </ArtDrag>
 
         <div className="editor-fields">
           <h2>{frame.name}</h2>
+          {front.backId && (
+            <div className="side-toggle">
+              <button className="chip" type="button" aria-pressed={!side.isBack} onClick={() => setBack(false)}>
+                Leader side
+              </button>
+              <button className="chip" type="button" aria-pressed={side.isBack} onClick={() => setBack(true)}>
+                Leader Unit side
+              </button>
+            </div>
+          )}
+          {side.isBack && (
+            <p className="empty-note">
+              Name, subtitle, trait and art are the Leader side's until you change them here. Pick a frame below
+              to change this side's frame alone: a Space one, or other aspects.
+            </p>
+          )}
           <div className="name-row">
             <label>
               Name
-              <input value={draft.name} onChange={(event) => onChange({ ...draft, name: event.target.value })} />
+              <input value={side.name} onChange={(event) => setShared('name', event.target.value)} />
             </label>
             {canBeUnique(frame) && (
               <label className="toggle">
@@ -219,20 +539,20 @@ function CardCreator(props: {
               </label>
             )}
           </div>
-          {frame.subtitle && draft.unique && (
+          {frame.subtitle && isUnique(frame, draft.unique) && (
             <label>
               Subtitle
               <input
-                value={draft.subtitle ?? ''}
-                onChange={(event) => onChange({ ...draft, subtitle: event.target.value })}
+                value={side.subtitle ?? ''}
+                onChange={(event) => setShared('subtitle', event.target.value)}
               />
             </label>
           )}
-          {stats.some(({ kind }) => frame[kind]) && (
+          {stats.some(({ kind }) => bothSides.some((each) => hasStat(each, kind))) && (
             <div className="stats">
               {stats.map(
                 ({ kind, label }) =>
-                  frame[kind] && (
+                  bothSides.some((each) => hasStat(each, kind)) && (
                     <NumberPicker
                       key={kind}
                       label={label}
@@ -247,7 +567,7 @@ function CardCreator(props: {
           )}
           <label>
             {frame.type === 'Base' ? 'Location' : 'Trait'}
-            <input value={draft.trait} onChange={(event) => onChange({ ...draft, trait: event.target.value })} />
+            <input value={side.trait} onChange={(event) => setShared('trait', event.target.value)} />
             {frame.type !== 'Base' && <span>Separate several traits with commas: Trooper, Atreides</span>}
           </label>
           {frame.textBox ? (
@@ -255,13 +575,39 @@ function CardCreator(props: {
               Game text
               <textarea
                 rows={7}
-                value={draft.text}
-                onChange={(event) => onChange({ ...draft, text: event.target.value })}
+                value={side.text}
+                onChange={(event) =>
+                  onChange({ ...draft, [side.isBack ? 'backText' : 'text']: event.target.value })
+                }
               />
-              <span>In brackets: [Hidden] or [Raid 2] prints a keyword in red, [1] the cost icon, anything else bold.</span>
+              <span>
+                In brackets: [Hidden] or [Raid 2] prints a keyword in red, [3] a cost on the yellow icon, [#3] a cost as
+                a number alone, [+1/+0] a change to power and HP, [Arrow] the exhaust arrow, anything else bold. Doubled brackets print
+                the brackets too: {"[Action [[Arrow]]:]"} or {"[Action [[1, Arrow]]:]"}.
+                In curly brackets, text is italic: {"{reminder text}"}, or {"[{Imperial}]"} for bold italic. A line
+                between {"< >"} gets Sentinel's red box, between {"<< >>"} the tinted one; a line that is only
+                [Sentinel] gets it by itself.
+              </span>
             </label>
           ) : (
             <p className="empty-note">This frame has no game text box.</p>
+          )}
+          {frame.epicBox && (
+            <label>
+              Epic Action
+              <textarea
+                rows={3}
+                value={draft.epic ?? epicText(draft.cost)}
+                onChange={(event) =>
+                  // Text left as the usual one is not kept, so its number goes on following the cost
+                  onChange({
+                    ...draft,
+                    epic: event.target.value === epicText(draft.cost) ? undefined : event.target.value,
+                  })
+                }
+              />
+              <span>Until you change it, the number of resources follows the cost.</span>
+            </label>
           )}
         </div>
       </section>
@@ -283,7 +629,7 @@ function CardCreator(props: {
                 <button
                   className="frame-option"
                   aria-pressed={candidate.id === frame.id}
-                  onClick={() => onChange({ ...draft, frameId: candidate.id })}
+                  onClick={() => pickFrame(candidate)}
                 >
                   <CardView frame={candidate} thumb />
                   <span className="card-caption">
@@ -304,6 +650,71 @@ function CardCreator(props: {
           </ul>
         )}
       </section>
+    </div>
+  )
+}
+
+const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
+
+// The card being edited. Over it, the art can be dragged into place with the mouse
+// or a finger, zoomed with the scroll wheel, and turned with Shift and the wheel;
+// the sliders do the same more finely.
+function ArtDrag(props: { art?: Art; onChange: (art: Art) => void; children: React.ReactNode }) {
+  const { art, onChange, children } = props
+  const ref = useRef<HTMLDivElement>(null)
+  // Where the drag started, and where the art was then
+  const start = useRef<{ x: number; y: number; art: Art }>(null)
+  // The wheel listener is attached once, so it reads the latest art from here
+  const latest = useRef({ art, onChange })
+  useEffect(() => {
+    latest.current = { art, onChange }
+  })
+
+  // React's own wheel handler cannot stop the page scrolling under the card
+  const hasArt = art !== undefined
+  useEffect(() => {
+    const el = ref.current
+    if (!el || !hasArt) return
+    const onWheel = (event: WheelEvent) => {
+      const { art, onChange } = latest.current
+      if (!art) return
+      event.preventDefault()
+      // With Shift held, some browsers report the wheel as sideways scrolling
+      const steps = (event.deltaY || event.deltaX) / 100
+      if (event.shiftKey) {
+        onChange({ ...art, rotate: clamp(Math.round((art.rotate ?? 0) + steps * 2), -180, 180) })
+      } else {
+        onChange({ ...art, zoom: clamp(Math.round((art.zoom - steps * 0.05) * 100) / 100, 0.5, 3) })
+      }
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [hasArt])
+
+  if (!art) return <div className="editor-preview">{children}</div>
+  return (
+    <div
+      ref={ref}
+      className="editor-preview art-drag"
+      title="Drag to move the art, scroll to zoom, Shift + scroll to turn"
+      onPointerDown={(event) => {
+        event.currentTarget.setPointerCapture(event.pointerId)
+        start.current = { x: event.clientX, y: event.clientY, art }
+      }}
+      onPointerMove={(event) => {
+        const from = start.current
+        if (!from) return
+        const card = event.currentTarget.getBoundingClientRect()
+        onChange({
+          ...art,
+          x: clamp(Math.round(from.art.x + ((event.clientX - from.x) / card.width) * 100), -100, 100),
+          y: clamp(Math.round(from.art.y + ((event.clientY - from.y) / card.height) * 100), -100, 100),
+        })
+      }}
+      onPointerUp={() => (start.current = null)}
+      onPointerCancel={() => (start.current = null)}
+    >
+      {children}
     </div>
   )
 }
@@ -503,10 +914,17 @@ function LookControls(props: { look: Look; onChange: (look: Look) => void }) {
 
 function ArtControls(props: { art?: Art; onChange: (art?: Art) => void }) {
   const { art, onChange } = props
+  // The dev server sends the new list when an image is added to or removed from public/art
+  const [files, setFiles] = useState(artFiles)
+  useEffect(() => {
+    import.meta.hot?.on('art-list', setFiles)
+    return () => import.meta.hot?.off('art-list', setFiles)
+  }, [])
   const sliders = [
     { label: 'Zoom', key: 'zoom', min: 0.5, max: 3, step: 0.01 },
     { label: 'Left / right', key: 'x', min: -100, max: 100, step: 1 },
     { label: 'Up / down', key: 'y', min: -100, max: 100, step: 1 },
+    { label: 'Turn', key: 'rotate', min: -180, max: 180, step: 1 },
   ] as const
 
   return (
@@ -514,7 +932,7 @@ function ArtControls(props: { art?: Art; onChange: (art?: Art) => void }) {
       {/* Images in public/art: picking one stores only its path, not a copy.
           New art starts filling the whole card. */}
       <ul className="art-folder">
-        {artFiles.map((src) => (
+        {files.map((src) => (
           <li key={src}>
             <button
               type="button"
@@ -546,11 +964,21 @@ function ArtControls(props: { art?: Art; onChange: (art?: Art) => void }) {
           </button>
         )}
         {art && (
-          <button className="button" type="button" onClick={() => onChange({ ...art, zoom: 1, x: 0, y: 0 })}>
+          <button className="button" type="button" onClick={() => onChange({ ...art, zoom: 1, x: 0, y: 0, rotate: 0 })}>
             Reset position
           </button>
         )}
       </div>
+      {art && (
+        <label className="toggle">
+          <input
+            type="checkbox"
+            checked={art.fill !== false}
+            onChange={(event) => onChange({ ...art, fill: event.target.checked })}
+          />
+          Fill gaps around the art
+        </label>
+      )}
       {art &&
         sliders.map(({ label, key, min, max, step }) => (
           <Slider
@@ -559,7 +987,8 @@ function ArtControls(props: { art?: Art; onChange: (art?: Art) => void }) {
             min={min}
             max={max}
             step={step}
-            value={art[key]}
+            value={art[key] ?? 0}
+            display={key === 'rotate' ? `${art.rotate ?? 0}°` : undefined}
             onChange={(value) => onChange({ ...art, [key]: value })}
           />
         ))}
@@ -570,7 +999,7 @@ function ArtControls(props: { art?: Art; onChange: (art?: Art) => void }) {
 function App() {
   const [tab, setTab] = useState<TabId>(tabFromHash)
   const [cards, setCards] = useState<Card[]>(loadCards)
-  const [draft, setDraft] = useState<Draft>(blankDraft)
+  const [draft, setDraft] = useState<Draft>(() => loadDraft() ?? blankDraft)
   const [saved, setSaved] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
 
@@ -579,6 +1008,12 @@ function App() {
     window.addEventListener('hashchange', onHashChange)
     return () => window.removeEventListener('hashchange', onHashChange)
   }, [])
+
+  // Kept shortly after the last change rather than on every keystroke: art can be large
+  useEffect(() => {
+    const timer = setTimeout(() => storeDraft(draft), 300)
+    return () => clearTimeout(timer)
+  }, [draft])
 
   const updateCards = (next: Card[]) => {
     if (!storeCards(next)) return false
@@ -613,6 +1048,8 @@ function App() {
   const editCard = (card: Card) => {
     changeDraft(card)
     window.location.hash = 'creator'
+    // The showroom may have been scrolled a long way down
+    window.scrollTo(0, 0)
   }
 
   return (

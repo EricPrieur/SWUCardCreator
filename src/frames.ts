@@ -1,6 +1,6 @@
 import { generatedFrames } from './generatedFrames'
 
-export type FrameType = 'Unit' | 'Event' | 'Upgrade' | 'Fortification' | 'Token' | 'Base'
+export type FrameType = 'Unit' | 'Event' | 'Upgrade' | 'Fortification' | 'Token' | 'Base' | 'Leader'
 export const aspects = ['Vigilance', 'Command', 'Aggression', 'Cunning', 'Heroism', 'Villainy'] as const
 export type Aspect = (typeof aspects)[number]
 export type Arena = 'Ground' | 'Space'
@@ -41,8 +41,19 @@ export type Frame = {
   cost?: Spot
   power?: Spot
   hp?: Spot
-  // The bar a unique unit has under its name: an overlay image, and where its text goes
-  subtitle?: { src: string; box: TextBox }
+  // The bar a unique unit has under its name: an overlay image, and where its text goes.
+  // Leaders are always unique, so their frames have the bar already and need no overlay.
+  subtitle?: { src?: string; box: TextBox }
+  // A Leader side's Epic Action box, with its own text
+  epicBox?: TextBox
+  // A leader is one card with two sides. The Leader side names its Leader Unit
+  // frame (the Ground one; the Space one's id ends in -space), and those name the
+  // Leader side they are the back of.
+  backId?: string
+  backOf?: string
+  // A Leader side prints power and HP small, as 4/7, in the Epic Action box:
+  // where that ends on the right, its middle line, and the height of the numbers
+  stats?: Spot
   // Upgrades print power and HP as changes: +2, -1
   modifiers?: boolean
   // Type label printed by the site, for frames whose bar was wiped clean
@@ -53,6 +64,14 @@ export type Frame = {
 // Units and upgrades can be unique, which prints a star before the name
 export const canBeUnique = (frame: Frame) =>
   frame.type === 'Unit' || frame.type === 'Upgrade' || frame.type === 'Fortification'
+// Every leader is unique
+export const isUnique = (frame: Frame, unique?: boolean) =>
+  frame.type === 'Leader' || (unique === true && canBeUnique(frame))
+
+// What nearly every leader's Epic Action box says. The number of resources is the
+// cost printed on the Leader Unit side.
+export const epicText = (cost = 5) =>
+  `[Epic Action:] If you control ${cost} or more resources, deploy this leader.`
 
 const tokenNameBox: TextBox = { x: 78, y: 589, w: 344, h: 29, size: 23 }
 const tokenTraitBox: TextBox = { x: 78, y: 624, w: 344, h: 29, size: 18 }
@@ -383,6 +402,64 @@ const vigilanceFrames: Frame[] = [
   eventFrame('vigilance-villainy', ['Vigilance', 'Villainy'], '#9cc6dc'),
 ]
 
+// Leaders are two-sided: a landscape Leader side, and a portrait Leader Unit side
+// laid out like a unit, with the aspect icons on the right
+const leaderFrames: Frame[] = (
+  [
+    ['vigilance-heroism', ['Vigilance', 'Heroism'], '#f3f3f3'],
+    ['vigilance-villainy', ['Vigilance', 'Villainy'], '#9cc6dc'],
+    ['command-heroism', ['Command', 'Heroism'], '#f3f3f3'],
+    ['command-villainy', ['Command', 'Villainy'], '#b6c9ba'],
+    ['aggression-heroism', ['Aggression', 'Heroism'], '#f3f3f3'],
+    ['aggression-villainy', ['Aggression', 'Villainy'], '#d8bdb2'],
+    ['cunning-heroism', ['Cunning', 'Heroism'], '#f3f3f3'],
+    ['cunning-villainy', ['Cunning', 'Villainy'], '#dfca9f'],
+  ] as [string, Aspect[], string][]
+).flatMap(([key, aspects, paper]): Frame[] => {
+  const [unit] = unitFrames(key, aspects, paper)
+  return [
+    {
+      id: `leader-${key}`,
+      backId: `leader-${key}-unit`,
+      name: 'Leader',
+      type: 'Leader',
+      aspects,
+      src: `/templates/leader/${key}.webp`,
+      width: 1000,
+      height: 718,
+      nameBox: { x: 436, y: 60, w: 436, h: 48, size: 43 },
+      subtitle: { box: { x: 476, y: 113, w: 366, h: 23, size: 19 } },
+      traitBox: { x: 50, y: 589, w: 392, h: 40, size: 27 },
+      textBox: { x: 481, y: 165, w: 392, h: 316, size: 31 },
+      epicBox: { x: 481, y: 506, w: 413, h: 112, size: 31 },
+      stats: { x: 893, y: 599, h: 27 },
+      panels: [
+        { x: 429, y: 60, w: 450, h: 49 },
+        { x: 468, y: 113, w: 382, h: 23 },
+        { x: 465, y: 157, w: 446, h: 472 },
+        { x: 44, y: 589, w: 404, h: 40 },
+      ],
+      paper,
+    },
+    // The Leader Unit side, as a Ground unit and as a Space unit
+    ...(['Ground', 'Space'] as const).map(
+      (arena): Frame => ({
+        ...unit,
+        id: `leader-${key}-unit${arena === 'Space' ? '-space' : ''}`,
+        backOf: `leader-${key}`,
+        name: 'Leader Unit',
+        type: 'Leader',
+        arena,
+        src: `/templates/leader/${key}-unit${arena === 'Space' ? '-space' : ''}.webp`,
+        // The name panel stops short of the aspect icon on its right
+        nameBox: { x: 121, y: 57, w: 474, h: 50, size: 43 },
+        subtitle: { box: { x: 152, y: 112, w: 408, h: 23, size: 19 } },
+        panels: [{ x: 117, y: 57, w: 482, h: 51 }, { x: 149, y: 112, w: 415, h: 23 }, ...unit.panels.slice(1)],
+      }),
+    ),
+  ]
+})
+
 // Combinations no extracted card has, composed from the frames above by tools/compose_frames.py
 const composedFrames: Frame[] = generatedFrames.flatMap(({ type, key, aspects, paper }) => {
   const made =
@@ -592,6 +669,7 @@ const allFrames: Frame[] = [
   ...singleFrames,
   ...upgradeFrames,
   ...fortificationFrames,
+  ...leaderFrames,
   ...composedFrames,
   ...baseFrames,
 ]

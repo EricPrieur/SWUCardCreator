@@ -6,6 +6,10 @@ export type Art = {
   zoom: number
   x: number
   y: number
+  // Degrees clockwise; left out, the art is upright
+  rotate?: number
+  // Where the art does not reach the card's edge, continue it to fill the gap. On unless false.
+  fill?: boolean
 }
 
 // How see-through the frame is, and what keeps the text readable over the art.
@@ -34,12 +38,41 @@ export type Card = {
   unique?: boolean
   // Unique units only: the line under the name
   subtitle?: string
+  // Leader side only: the Epic Action box's text, when it is not the usual one
+  epic?: string
+  // A leader's other side, the Leader Unit. It has its own game text, and its own
+  // art or placing of the art. Its name, subtitle and trait are the Leader side's
+  // unless given here: Grand Moff Tarkin deploys as The Death Star, a Space unit.
+  backText?: string
+  backArt?: Art
+  backName?: string
+  backSubtitle?: string
+  backTrait?: string
+  // The Leader Unit side's frame, when it is not the Ground one matching the Leader side
+  backFrameId?: string
+  // How a Space Leader Unit was first recorded; backFrameId has replaced it
+  backArena?: 'Ground' | 'Space'
   // 0 to 15 each, on frames that have the matching icon
   cost?: number
   power?: number
   hp?: number
   art?: Art
   look?: Look
+}
+
+// Leader Unit sides were once cards of their own. Such a card becomes a leader
+// with that side as its back, and the same art, not yet placed, on its front.
+function withBothSides<T extends { frameId: string; text: string; art?: Art }>(card: T) {
+  const front = /^(leader-.+)-unit$/.exec(card.frameId)?.[1]
+  if (!front) return card
+  return {
+    ...card,
+    frameId: front,
+    text: '',
+    art: card.art && { src: card.art.src, zoom: 1, x: 0, y: 0 },
+    backText: card.text,
+    backArt: card.art,
+  }
 }
 
 // Saved cards live in this browser only, until the site has a shared store.
@@ -50,11 +83,34 @@ export function loadCards(): Card[] {
     const cards = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]')
     if (!Array.isArray(cards)) return []
     // Cards saved before the other look settings existed only had a frame opacity
-    return cards.map(({ frameOpacity, ...card }) =>
-      frameOpacity === undefined ? card : { ...card, look: { ...defaultLook, frameOpacity } },
-    )
+    return cards
+      .map(({ frameOpacity, ...card }) =>
+        frameOpacity === undefined ? card : { ...card, look: { ...defaultLook, frameOpacity } },
+      )
+      .map(withBothSides)
   } catch {
     return []
+  }
+}
+
+// The card in the editor is kept as it is typed, so a reload does not lose it
+const DRAFT_KEY = 'dune-unlimited.draft'
+export type Draft = Omit<Card, 'id'> & { id?: string }
+
+export function loadDraft(): Draft | undefined {
+  try {
+    const draft = JSON.parse(localStorage.getItem(DRAFT_KEY) ?? 'null')
+    return draft && typeof draft.frameId === 'string' ? withBothSides(draft) : undefined
+  } catch {
+    return undefined
+  }
+}
+
+export function storeDraft(draft: Draft) {
+  try {
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(draft))
+  } catch {
+    // Out of storage: the draft just is not kept
   }
 }
 

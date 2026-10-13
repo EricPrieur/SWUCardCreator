@@ -139,7 +139,7 @@ def publish():
 
 def thumbnails():
     count = 0
-    for kind in ("unit", "event", "upgrade", "fortification", "token", "base"):
+    for kind in ("unit", "event", "upgrade", "fortification", "leader", "token", "base"):
         (OUT / "thumb" / kind).mkdir(parents=True, exist_ok=True)
         for path in sorted((OUT / kind).iterdir()):
             if path.suffix != ".webp" or path.stem.endswith("-subtitle"):

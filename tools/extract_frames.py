@@ -1224,6 +1224,111 @@ def extract_token_text_units():
         print("wrote", key, "paper #%02x%02x%02x" % tuple(int(v) for v in paper))
 
 
+# ---- Leaders: a landscape Leader side and a portrait Leader Unit side. Every
+# aspect pair has two cards, too few to compare on their own, but the frame has
+# the same shape in each of Heroism and Villainy. key: the pair's two leaders
+LEADERS = {
+    "vigilance-heroism": ("Chewbacca", "Chirrut Îmwe"),
+    "vigilance-villainy": ("Director Krennic", "Iden Versio"),
+    "command-heroism": ("Hera Syndulla", "Leia Organa"),
+    "command-villainy": ("Emperor Palpatine", "Grand Moff Tarkin"),
+    "aggression-heroism": ("Cassian Andor", "Sabine Wren"),
+    "aggression-villainy": ("Grand Inquisitor", "IG-88"),
+    "cunning-heroism": ("Han Solo", "Jyn Erso"),
+    # Thrawn's long text leaves him a shorter Epic Action box: Boba Fett has the usual one
+    "cunning-villainy": ("Boba Fett", "Grand Admiral Thrawn"),
+}
+# The frame ends at `cut`, but for the sparkles that hang up to `tail` rows below it.
+# Panels are inset from their borders: name, subtitle, then the rest.
+LEADER_SIDES = {
+    # ... game text beside and below the second aspect icon, Epic Action box, trait
+    "": dict(card="", cut=662, tail=12,
+             panels=[(433, 63, 874, 105), (472, 115, 846, 134), (469, 161, 876, 486), (874, 248, 907, 486), (481, 505, 896, 617),
+                     (48, 592, 443, 625)]),
+    # ... trait, game text
+    "-unit": dict(card=" Back", cut=946, tail=12,
+                  panels=[(121, 62, 595, 105), (152, 114, 560, 133), (120, 639, 589, 674), (45, 695, 670, 914)]),
+}
+# The only Space leader unit, a narrower scan, and the half of its bar that says SPACE
+LEADER_SPACE = ("Grand Moff Tarkin (Death Star) Back", (334, 28, 598, 52))
+LEADER_STAMP = (468, 656, 532, 700)  # the foil stamp, which covers the lower edge of the Leader side's bottom bar
+
+
+def fill_leftover_text(rgb, panel):
+    """Where a line of text ran the whole width of a panel there was no paper to
+    clone from beside it: cover what is left with the nearest paper above or below."""
+    x0, y0, x1, y1 = panel
+    area = rgb[y0:y1, x0:x1]
+    lum = area.mean(-1)
+    text = dilate(np.abs(lum - np.median(lum)) > 15, 2)
+    for x in np.nonzero(text.any(0))[0]:
+        clean = np.nonzero(~text[:, x])[0]
+        if len(clean):
+            for y in np.nonzero(text[:, x])[0]:
+                area[y, x] = area[clean[np.abs(clean - y).argmin()], x]
+
+
+def extract_leaders():
+    space = None
+    for suffix, side in LEADER_SIDES.items():
+        cards = {key: np.stack([np.array(Image.open(SRC / "leaders" / (name + side["card"] + ".png")).convert("RGBA"))
+                                .astype(np.float32) for name in pair]) for key, pair in LEADERS.items()}
+        cut, tail = side["cut"], side["tail"]
+        outlines = {}
+        for allegiance in ("heroism", "villainy"):
+            # A pixel is frame when a pair's two cards agree there, in all pairs but at most one
+            group = [st for key, st in cards.items() if key.endswith(allegiance)]
+            d = np.sort([np.abs(st[0, ..., :3] - st[1, ..., :3]).max(-1) for st in group], 0)[-2]
+            card = group[0][0, ..., 3] > 128
+            lab, sizes = components((d >= T1) & card)
+            art = lab == sizes.argmax()
+            lab, sizes = components(card & ~art)
+            solid = np.isin(lab, np.nonzero(sizes >= MIN_PIECE)[0])
+            outlines[allegiance] = np.where(solid, 1.0, np.clip((T2 - d) / (T2 - T1), 0, 1) * (dilate(solid) & ~solid))
+        # Under the frame the cards share their dark footer too. The sparkles are
+        # what both allegiances have there; the footer's leftovers differ.
+        below = np.minimum(outlines["heroism"], outlines["villainy"])[cut:cut + tail]
+        for alpha in outlines.values():
+            alpha[cut:cut + tail] = below
+            alpha[cut + tail:] = 0
+        for key, st in cards.items():
+            alpha = outlines[key.split("-")[1]].copy()
+            rgb = st[0, ..., :3].copy()
+            panels = dict(panels=[(panel, [0, 1]) for panel in side["panels"]])
+            clear_panel_text(st, rgb, panels)
+            # A second pass on the result alone clones paper over whatever the first left behind
+            clear_panel_text(rgb[None].copy(), rgb, dict(panels=[(panel, [0]) for panel in side["panels"]]))
+            for panel in side["panels"]:
+                fill_leftover_text(rgb, panel)
+            if suffix:
+                copy_empty_icons(rgb, "unit/command-villainy", [POWER_MID, HP_MID], cost=True)
+            else:  # the bar's bottom edge under the stamp is repeated from beside it
+                x0, y0, x1, y1 = LEADER_STAMP
+                rgb[y0:cut, x0:x1] = rgb[y0:cut, x0 - 70:x1 - 70]
+                alpha[cut:y1, x0:x1] = 0
+            out = np.dstack([rgb, alpha * 255]).round().astype(np.uint8)
+            path = OUT / "leader" / (key + suffix + ".png")
+            path.parent.mkdir(parents=True, exist_ok=True)
+            Image.fromarray(out, "RGBA").save(path)
+            x0, y0, x1, y1 = side["panels"][0]
+            paper = np.median(rgb[y0:y1, x0:x1].reshape(-1, 3), 0)
+            print("wrote leader", key + suffix, "paper #%02x%02x%02x" % tuple(int(v) for v in paper))
+            if suffix:  # the same frame for a Space unit: the bar reads the same in every colour
+                if space is None:
+                    card, _ = LEADER_SPACE
+                    space = load_upgrade(card, st[0, ..., :3], "leaders",
+                                         [(110, 48, 680, 62), (110, 100, 680, 114), (30, 905, 690, 944)])
+                x0, y0, x1, y1 = LEADER_SPACE[1]
+                out[y0:y1, x0:x1, :3] = space[y0:y1, x0:x1].round().astype(np.uint8)
+                # The bar runs on a little behind the aspect icon, whose colour differs:
+                # each row's run of the Ground bar's cream takes the Space bar's last column
+                tip = out[y0:y1, x1:x1 + 40, :3]
+                cream = np.abs(tip.astype(np.float32) - (235, 225, 176)).max(-1) < 45
+                for y, run in enumerate(cream):
+                    tip[y, :len(run) if run.all() else run.argmin()] = out[y0 + y, x1 - 2, :3]
+                Image.fromarray(out, "RGBA").save(OUT / "leader" / (key + suffix + "-space.png"))
+
+
 def extract_cost_icon():
     """Cut the inline "pay 1 less" cost icon out of the Credit token's game text."""
     im = np.array(Image.open(SRC / "token-credit" / "Credit.webp").convert("RGB")).astype(np.float32)
@@ -1240,6 +1345,42 @@ def extract_cost_icon():
     path.parent.mkdir(parents=True, exist_ok=True)
     big.save(path)
     print("wrote", path)
+    # The same icon with its 1 taken out, for the site to print any number on: across
+    # each row of the yellow face, what is not yellow is the number, and takes the
+    # yellow on either side of it
+    face = gold(icon)
+    number = np.zeros_like(face)
+    for y in range(icon.shape[0]):
+        xs = np.nonzero(face[y])[0]
+        if len(xs):
+            number[y, xs.min():xs.max() + 1] = ~face[y, xs.min():xs.max() + 1]
+    number = dilate(number, 2)  # with the soft, paler yellow around the number
+    for y in range(icon.shape[0]):
+        xs = np.nonzero(face[y] & ~number[y])[0]
+        gap = np.nonzero(number[y])[0]
+        if len(xs) >= 2 and len(gap):
+            for channel in range(3):
+                icon[y, gap, channel] = np.interp(gap, xs, icon[y, xs, channel])
+    out = np.dstack([icon, np.where(outside, 0, 255)]).round().astype(np.uint8)
+    big = Image.fromarray(out, "RGBA").resize((out.shape[1] * 4, out.shape[0] * 4), Image.LANCZOS)
+    big.save(ROOT / "public" / "icons" / "cost-blank.png")
+    print("wrote the blank cost icon")
+
+
+def extract_exhaust_icon():
+    """Cut the arrow that stands for exhausting a card out of an Action's cost, as a dark shape with soft edges."""
+    im = np.array(Image.open(SRC / "icons" / "Bail Organa.png").convert("RGB")).astype(np.float32)
+    x0, y0, x1, y1 = 166, 766, 206, 806  # between the square brackets after "Action"
+    lum = im[y0:y1, x0:x1].mean(-1)
+    paper, ink = np.median(lum), lum.min()
+    alpha = np.clip((paper - 8 - lum) / (paper - 8 - ink), 0, 1)
+    ys, xs = np.nonzero(alpha > 0.5)
+    alpha = alpha[ys.min() - 1:ys.max() + 2, xs.min() - 1:xs.max() + 2]
+    out = np.dstack([np.full(alpha.shape + (3,), (23, 20, 26)), alpha * 255]).round().astype(np.uint8)
+    big = Image.fromarray(out, "RGBA").resize((out.shape[1] * 4, out.shape[0] * 4), Image.LANCZOS)
+    path = ROOT / "public" / "icons" / "exhaust.png"
+    big.save(path)
+    print("wrote", path, "from a", out.shape[1], "x", out.shape[0], "px arrow")
 
 
 if __name__ == "__main__":
@@ -1247,7 +1388,8 @@ if __name__ == "__main__":
               "icons/aspects": extract_aspects, "icons/signs": extract_signs, "base": extract_bases,
               "upgrade": extract_upgrades, "unit/derived-subtitles": extract_derived_subtitles,
               "fortification": extract_fortifications, "unit/token-text": extract_token_text_units,
-              "fortification/derived": extract_derived_fortifications}
+              "fortification/derived": extract_derived_fortifications,
+              "leader": extract_leaders, "icons/exhaust": extract_exhaust_icon}
     for subtitle in SUBTITLES:
         extras[subtitle] = lambda subtitle=subtitle: extract_subtitle(subtitle)
     for frame in sys.argv[1:] or list(FRAMES) + list(extras):
