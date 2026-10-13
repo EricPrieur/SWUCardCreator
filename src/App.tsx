@@ -582,7 +582,7 @@ function CardCreator(props: {
               />
               <span>
                 In brackets: [Hidden] or [Raid 2] prints a keyword in red, [3] a cost on the yellow icon, [#3] a cost as
-                a number alone, [+1/+0] a change to power and HP, [Arrow] the exhaust arrow, anything else bold. Doubled brackets print
+                a number alone, [+1/+0] a change to power and HP, [Arrow] the exhaust arrow, [Villainy] or another aspect its icon, anything else bold. Doubled brackets print
                 the brackets too: {"[Action [[Arrow]]:]"} or {"[Action [[1, Arrow]]:]"}.
                 In curly brackets, text is italic: {"{reminder text}"}, or {"[{Imperial}]"} for bold italic. A line
                 between {"< >"} gets Sentinel's red box, between {"<< >>"} the tinted one; a line that is only

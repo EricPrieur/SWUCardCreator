@@ -805,6 +805,15 @@
   filter: var(--icon-filter);
 }
 
+/* An aspect's icon in a line of text, a little taller than a capital */
+.aspect-icon {
+  display: inline-block;
+  width: auto;
+  height: 1.05em;
+  margin: 0 0.05em;
+  vertical-align: -0.2em;
+}
+
 /* An Action's cost, printed in its square brackets */
 .action-cost {
   white-space: nowrap;

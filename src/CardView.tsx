@@ -1,7 +1,7 @@
 import { memo, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
 import { asset } from './asset'
 import { defaultLook, type Art, type Look } from './cards'
-import { epicText, isUnique, type Frame, type Spot, type TextBox } from './frames'
+import { aspects, epicText, isUnique, type Frame, type Spot, type TextBox } from './frames'
 
 // One line of card text, placed on the frame and squeezed to fit its box.
 function CardText(props: { frame: Frame; box: TextBox; className: string; text: string; unique?: boolean }) {
@@ -165,6 +165,11 @@ function Bracketed(props: { text: string }) {
   const change = /^([+-]\d{1,2})\/([+-]\d{1,2})$/.exec(text)
   if (change) return <InlineChange power={change[1]} hp={change[2]} />
   if (isArrow(text)) return <ExhaustIcon />
+  // An aspect's name prints its icon: "a [Villainy] card"
+  const aspect = aspects.find((name) => name.toLowerCase() === text.trim().toLowerCase())
+  if (aspect) {
+    return <img className="aspect-icon" src={asset(`/icons/aspect/${aspect.toLowerCase()}.png`)} alt={aspect} />
+  }
   if (isKeyword(text)) {
     return (
       <strong className="keyword">
@@ -214,7 +219,8 @@ function Bracketed(props: { text: string }) {
 
 // Game text markup. In square brackets: [Hidden] or [Raid 2] prints a keyword in red,
 // [1] prints a cost icon and [#1] a cost as a number, [+1/+0] a change to power and
-// HP in their red and blue numbers, [Arrow] the exhaust arrow, and anything else,
+// HP in their red and blue numbers, [Arrow] the exhaust arrow, [Villainy] or another
+// aspect's name its icon, and anything else,
 // like [Action:], prints in bold. Bold text can hold any of those: [Action [[Arrow]]:].
 // In curly brackets, text prints in italics, also inside bold: [{Imperial}] is a
 // trait's bold italics.
