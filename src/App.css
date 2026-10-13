@@ -1,0 +1,646 @@
+.page {
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem;
+  padding: 2.5rem 1rem 3rem;
+}
+
+.page-header {
+  text-align: center;
+}
+
+.page-header h1 {
+  margin: 0;
+  font-size: clamp(2rem, 6vw, 3.25rem);
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--spice);
+}
+
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.25rem 1.75rem;
+  margin-top: 1.25rem;
+}
+
+.tabs a {
+  padding: 0.4rem 0.1rem;
+  border-bottom: 2px solid transparent;
+  font-size: 0.8rem;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--sand-dim);
+}
+
+.tabs a:hover {
+  color: var(--sand);
+}
+
+.tabs a[aria-current='page'] {
+  border-bottom-color: var(--spice);
+  color: var(--sand);
+}
+
+.page h2 {
+  margin: 0 0 1rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--sand-dim);
+}
+
+.empty {
+  margin-top: 4rem;
+  text-align: center;
+  color: var(--sand-dim);
+}
+
+.empty p {
+  margin: 0;
+}
+
+.creator {
+  display: flex;
+  flex-direction: column;
+  gap: 3rem;
+  width: 100%;
+  max-width: 1200px;
+}
+
+/* Art and saving on the left, the card in the middle, the card's text on the right */
+.editor {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 380px) minmax(0, 1fr);
+  align-items: start;
+  gap: 2rem 2.5rem;
+}
+
+@media (max-width: 900px) {
+  .editor {
+    grid-template-columns: minmax(0, 380px);
+    justify-content: center;
+  }
+
+  .editor-preview {
+    order: -1;
+  }
+}
+
+.editor-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.editor-fields h2 {
+  margin: 0;
+}
+
+.editor-fields h2:not(:first-child) {
+  margin-top: 0.75rem;
+}
+
+.editor-fields label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  color: var(--sand-dim);
+}
+
+.editor-fields input,
+.editor-fields textarea {
+  padding: 0.55rem 0.75rem;
+  border: 1px solid rgb(232 215 181 / 0.25);
+  border-radius: 6px;
+  background: rgb(0 0 0 / 0.3);
+  font: inherit;
+  font-size: 1rem;
+  color: var(--sand);
+}
+
+.editor-fields textarea {
+  resize: vertical;
+}
+
+.editor-fields input:focus,
+.editor-fields textarea:focus {
+  outline: 2px solid var(--spice);
+  outline-offset: 1px;
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 2.5rem;
+  margin-bottom: 1.75rem;
+}
+
+.filter-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.filter-label {
+  margin-right: 0.25rem;
+  font-size: 0.85rem;
+  color: var(--sand-dim);
+}
+
+.chip {
+  padding: 0.35rem 0.9rem;
+  border: 1px solid rgb(232 215 181 / 0.25);
+  border-radius: 999px;
+  background: none;
+  font: inherit;
+  font-size: 0.85rem;
+  color: var(--sand);
+  cursor: pointer;
+}
+
+.chip img {
+  width: 1.35rem;
+  height: 1.35rem;
+  margin: -0.2rem 0.35rem -0.3rem -0.3rem;
+  object-fit: contain;
+}
+
+.chip:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.chip:hover {
+  border-color: var(--sand-dim);
+}
+
+.chip[aria-pressed='true'] {
+  border-color: var(--spice);
+  background: var(--spice);
+  color: var(--night);
+}
+
+.editor-fields .stats {
+  display: flex;
+  gap: 1rem;
+}
+
+.picker {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  color: var(--sand-dim);
+}
+
+.picker-button {
+  width: 4rem;
+  padding: 0.45rem 0;
+  border: 1px solid rgb(232 215 181 / 0.25);
+  border-radius: 6px;
+  background: rgb(0 0 0 / 0.3);
+  font: inherit;
+  font-size: 1.05rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--sand);
+  cursor: pointer;
+}
+
+.picker-button:hover,
+.picker-button[aria-expanded='true'] {
+  border-color: var(--spice);
+}
+
+.picker-options {
+  position: absolute;
+  top: calc(100% + 0.4rem);
+  left: 0;
+  z-index: 10;
+  display: grid;
+  grid-template-columns: repeat(6, 2.5rem);
+  gap: 0.25rem;
+  padding: 0.5rem;
+  border: 1px solid rgb(232 215 181 / 0.25);
+  border-radius: 8px;
+  background: #1d1610;
+  box-shadow: 0 12px 30px rgb(0 0 0 / 0.6);
+}
+
+.picker-options button {
+  height: 2.2rem;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: none;
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--sand);
+  cursor: pointer;
+}
+
+.picker-options button:hover {
+  border-color: var(--sand-dim);
+}
+
+.picker-options button[aria-selected='true'] {
+  background: var(--spice);
+  color: var(--night);
+}
+
+.editor-fields .name-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 1rem;
+}
+
+.name-row > label:first-child {
+  flex: 1;
+}
+
+.editor-fields .toggle {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: pointer;
+}
+
+.name-row .toggle {
+  padding-bottom: 0.6rem;
+}
+
+.toggle input {
+  width: 1.05rem;
+  height: 1.05rem;
+  padding: 0;
+  accent-color: var(--spice);
+}
+
+.art-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.art-controls > span {
+  font-size: 0.85rem;
+  color: var(--sand-dim);
+}
+
+.art-controls input[type='file'] {
+  display: none;
+}
+
+.art-folder {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+  gap: 0.5rem;
+}
+
+.art-folder button {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 6px;
+  overflow: hidden;
+  background: none;
+  cursor: pointer;
+}
+
+.art-folder button[aria-pressed='true'] {
+  border-color: var(--spice);
+}
+
+.art-folder img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.editor-fields .slider {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.slider span {
+  width: 6.25rem;
+}
+
+.slider output {
+  width: 2.75rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.slider input {
+  flex: 1;
+  padding: 0;
+  accent-color: var(--spice);
+}
+
+.error-note {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #f08a6c;
+}
+
+.editor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.button {
+  padding: 0.55rem 1.1rem;
+  border: 1px solid rgb(232 215 181 / 0.25);
+  border-radius: 6px;
+  background: none;
+  font: inherit;
+  font-size: 0.9rem;
+  color: var(--sand);
+  cursor: pointer;
+}
+
+.button:hover {
+  border-color: var(--sand-dim);
+}
+
+.button-primary {
+  border-color: var(--spice);
+  background: var(--spice);
+  font-weight: 600;
+  color: var(--night);
+}
+
+.button-primary:hover {
+  border-color: var(--sand);
+}
+
+.saved-note {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--sand-dim);
+}
+
+.saved-note a {
+  color: var(--spice);
+}
+
+.showroom {
+  width: 100%;
+  max-width: 1100px;
+}
+
+.showroom-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 2.5rem 2rem;
+}
+
+.showroom-actions {
+  display: flex;
+  justify-content: center;
+  gap: 0.6rem;
+  margin-top: 0.9rem;
+}
+
+.empty-note {
+  color: var(--sand-dim);
+}
+
+.frame-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 1.25rem;
+}
+
+.frame-option {
+  display: block;
+  width: 100%;
+  padding: 0.6rem;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: none;
+  font: inherit;
+  text-align: left;
+  color: var(--sand);
+  cursor: pointer;
+}
+
+.frame-option:hover {
+  border-color: rgb(232 215 181 / 0.25);
+}
+
+.frame-option[aria-pressed='true'] {
+  border-color: var(--spice);
+  background: rgb(224 138 44 / 0.1);
+}
+
+/* SWU cards are 63 x 88 mm */
+.card {
+  position: relative;
+  container-type: inline-size;
+  /* The glow is stacked so it reads as a halo rather than a faint blur */
+  --text-glow: 0 0 0.5cqw var(--glow), 0 0 1cqw var(--glow), 0 0 1.8cqw var(--glow);
+  overflow: hidden;
+  border-radius: 4.5% / 3.1%;
+  box-shadow:
+    0 0 0 1px rgb(255 255 255 / 0.06),
+    0 16px 40px rgb(0 0 0 / 0.6);
+}
+
+.card-frame {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.card-art,
+.card-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Backing behind a text panel, between the art and the frame */
+.card-panel {
+  position: absolute;
+}
+
+.card-art-placeholder {
+  background: linear-gradient(170deg, #f2c27a 0%, #d9813a 45%, #7a3b1c 100%);
+}
+
+/* Text printed on the card; position and font size come from the frame's layout */
+.card-text {
+  position: absolute;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--ink);
+  text-shadow: var(--text-glow);
+}
+
+.card-name {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 800;
+  font-variant-caps: small-caps;
+}
+
+.unique-icon {
+  display: inline-block;
+  filter: var(--icon-filter);
+  width: auto;
+  height: 0.62em;
+  margin-right: 0.04em;
+  vertical-align: 0.02em;
+}
+
+.card-subtitle {
+  font-family: 'Barlow', sans-serif;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.card-trait {
+  font-family: 'Barlow Semi Condensed', sans-serif;
+  font-weight: 700;
+  font-style: italic;
+  text-transform: uppercase;
+}
+
+.card-label {
+  font-family: 'Archivo Variable', sans-serif;
+  font-weight: 800;
+  font-stretch: 125%;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--label-ink);
+}
+
+.card-number {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  transform: translate(-50%, -50%);
+}
+
+.card-number img {
+  width: auto;
+  height: 100%;
+}
+
+/* Digits set side by side overlap a little, like the printed two-digit numbers */
+.card-number img + img:not(.card-sign) {
+  margin-left: -5%;
+}
+
+/* The + or - before an upgrade's number is smaller and sits a little low */
+.card-number .card-sign {
+  height: 62%;
+  margin-top: 12%;
+  margin-right: -4%;
+}
+
+.card-rules {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  font-family: 'Barlow', sans-serif;
+  line-height: 1.2;
+  color: var(--ink);
+  text-shadow: var(--text-glow);
+}
+
+.card-rules p {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+/* A keyword: bold red capitals with a taller first letter, as printed on the cards */
+.keyword {
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  color: var(--keyword, #e4705c);
+}
+
+.keyword small {
+  font-size: 0.84em;
+}
+
+.card .keyword {
+  color: var(--keyword-ink);
+}
+
+.cost-icon {
+  display: inline-block;
+  width: auto;
+  height: 1.15em;
+  vertical-align: -0.22em;
+}
+
+.card-caption {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.1rem 0.75rem;
+  margin: 0.7rem 0 0;
+  font-weight: 600;
+}
+
+.card-caption img {
+  width: 1.1rem;
+  height: 1.1rem;
+  margin-left: 0.2rem;
+  object-fit: contain;
+  vertical-align: -0.2rem;
+}
+
+.card-caption span {
+  font-size: 0.7rem;
+  font-weight: 400;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--sand-dim);
+}
+
+.card-notes {
+  display: block;
+  margin: 0.25rem 0 0;
+  font-size: 0.85rem;
+  color: var(--sand-dim);
+}

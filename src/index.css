@@ -1,0 +1,29 @@
+:root {
+  --night: #14100c;
+  --dune: #2a1f15;
+  --sand: #e8d7b5;
+  --sand-dim: #a8946f;
+  --spice: #e08a2c;
+
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  color: var(--sand);
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background-color: var(--night);
+}
+
+/* A fixed layer instead of a fixed background, which repaints the whole page on every change */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: radial-gradient(ellipse at 50% 0%, var(--dune), var(--night) 70%);
+}
