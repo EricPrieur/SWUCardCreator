@@ -824,12 +824,16 @@
   white-space: nowrap;
 }
 
+/* The box sits on the line by its first image, the sign, which is shorter than
+   the numbers and centred on them: raising it by the gap under the sign puts the
+   numbers' feet on the line, a touch below it for their outline */
 .stat-change {
+  --height: 0.86em;
   display: inline-flex;
   align-items: center;
-  height: 0.86em;
+  height: var(--height);
   margin: 0 0.03em;
-  vertical-align: -0.09em;
+  vertical-align: calc(var(--height) * 0.21 - 0.05em);
 }
 
 .stat-change img {
