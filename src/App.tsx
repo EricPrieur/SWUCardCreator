@@ -7,8 +7,8 @@ import { defaultLook, loadCards, readArtFile, storeCards, type Art, type Card, t
 import { aspects, canBeUnique, frames, type Arena, type Aspect, type FrameType } from './frames'
 
 const tabs = [
-  { id: 'showroom', label: 'Showroom' },
   { id: 'creator', label: 'Card Creator' },
+  { id: 'showroom', label: 'Showroom' },
 ] as const
 
 type TabId = (typeof tabs)[number]['id']
@@ -58,7 +58,7 @@ function findFrame(frameId: string) {
 
 function tabFromHash(): TabId {
   const id = window.location.hash.slice(1)
-  return tabs.find((tab) => tab.id === id)?.id ?? 'showroom'
+  return tabs.find((tab) => tab.id === id)?.id ?? 'creator'
 }
 
 function Showroom(props: { cards: Card[]; onEdit: (card: Card) => void; onRemove: (card: Card) => void }) {
