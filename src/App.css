@@ -417,6 +417,21 @@
   border-color: var(--sand);
 }
 
+/* Asked before a save that would replace or double a card */
+.save-question {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--spice);
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+
+.save-question p {
+  margin: 0;
+}
+
 .saved-note {
   margin: 0;
   font-size: 0.85rem;
@@ -872,6 +887,11 @@
   align-items: center;
   height: var(--height);
   margin: 0 0.03em;
+  /* A number alone sits on the line by its own foot */
+  vertical-align: -0.05em;
+}
+
+.stat-signed {
   vertical-align: calc(var(--height) * 0.21 - 0.05em);
 }
 

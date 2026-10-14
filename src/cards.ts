@@ -126,14 +126,34 @@ export function storeCards(cards: Card[]) {
 
 const MAX_ART_SIDE = 1400
 
+// An image file as something a canvas can draw. Some browsers cannot read every
+// kind of photo this way (Safari and iPhone photos, at times): they get the slower route.
+async function decodeImage(file: File): Promise<{ image: CanvasImageSource; width: number; height: number }> {
+  try {
+    const bitmap = await createImageBitmap(file)
+    return { image: bitmap, width: bitmap.width, height: bitmap.height }
+  } catch {
+    const image = new Image()
+    image.src = URL.createObjectURL(file)
+    try {
+      await image.decode()
+      return { image, width: image.naturalWidth, height: image.naturalHeight }
+    } finally {
+      URL.revokeObjectURL(image.src)
+    }
+  }
+}
+
 // Uploaded art is shrunk and re-encoded so several cards fit in browser storage
 export async function readArtFile(file: File): Promise<string> {
-  const bitmap = await createImageBitmap(file)
-  const scale = Math.min(1, MAX_ART_SIDE / Math.max(bitmap.width, bitmap.height))
+  const { image, width, height } = await decodeImage(file)
+  const scale = Math.min(1, MAX_ART_SIDE / Math.max(width, height))
   const canvas = document.createElement('canvas')
-  canvas.width = Math.round(bitmap.width * scale)
-  canvas.height = Math.round(bitmap.height * scale)
-  canvas.getContext('2d')!.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
-  bitmap.close()
-  return canvas.toDataURL('image/webp', 0.85)
+  canvas.width = Math.round(width * scale)
+  canvas.height = Math.round(height * scale)
+  canvas.getContext('2d')!.drawImage(image, 0, 0, canvas.width, canvas.height)
+  if (image instanceof ImageBitmap) image.close()
+  // Safari cannot write WebP and hands back a PNG, many times bigger: JPEG instead
+  const webp = canvas.toDataURL('image/webp', 0.85)
+  return webp.startsWith('data:image/webp') ? webp : canvas.toDataURL('image/jpeg', 0.85)
 }

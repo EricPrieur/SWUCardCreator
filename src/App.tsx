@@ -75,6 +75,11 @@ const blankDraft: Draft = { frameId: 'unit-command-heroism', name: '', trait: ''
 const hasStat = (frame: Frame, kind: (typeof stats)[number]['kind']) =>
   frame[kind] !== undefined || (kind !== 'cost' && frame.stats !== undefined)
 
+// What tells one card from another: its name and subtitle together
+const cardTitle = (card: Draft) => `${card.name.trim()}|${(card.subtitle ?? '').trim()}`.toLowerCase()
+const cardLabel = (card: Draft) =>
+  [card.name.trim() || 'Unnamed card', (card.subtitle ?? '').trim()].filter(Boolean).join(', ')
+
 function findFrame(frameId: string) {
   return frames.find((frame) => frame.id === frameId) ?? frames[0]
 }
@@ -141,12 +146,22 @@ function loadFormat(): ImageFormat {
 // A card on the page is art, a frame and text laid over each other, not a picture.
 // This draws what is shown into an image, twice the size of the frame's own image
 // so the text stays sharp. In a PNG the corners outside the card's rounding are see-through.
+// Safari, and every browser on an iPhone or iPad, which all run on Safari's engine
+const webKit = /AppleWebKit/.test(navigator.userAgent) && !/(Chrome|Chromium|Edg)\//.test(navigator.userAgent)
+
 async function cardImage(card: HTMLElement, frame: Frame, format: ImageFormat) {
   const { toCanvas } = await import('html-to-image')
-  const canvas = await toCanvas(card, {
+  const options = {
     pixelRatio: (frame.width * 2) / card.clientWidth,
     backgroundColor: format === 'jpg' ? '#000' : undefined,
-  })
+  }
+  // Safari draws the card before its pictures have loaded, leaving the art and the
+  // frame out and only the text. Drawn again, the pictures are ready and come out.
+  if (webKit) {
+    await toCanvas(card, options)
+    await toCanvas(card, options)
+  }
+  const canvas = await toCanvas(card, options)
   const type = imageFormats.find(({ value }) => value === format)!.type
   const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, type, 0.92))
   if (!blob) throw new Error('The card could not be drawn')
@@ -178,11 +193,13 @@ function ShowroomCard(props: {
     setBusy(action)
     setNote(null)
     try {
-      // The clipboard only takes PNG
-      const blob = await cardImage(el, side.frame, action === 'copy' ? 'png' : format)
+      // Browsers' clipboards take PNG and, most of them, nothing else: the chosen
+      // format is copied where the browser allows it, and PNG where it does not
+      const copied = format !== 'png' && !ClipboardItem.supports?.('image/jpeg') ? 'png' : format
+      const blob = await cardImage(el, side.frame, action === 'copy' ? copied : format)
       if (action === 'copy') {
-        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])
-        setNote('Copied')
+        await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })])
+        setNote(copied === format ? 'Copied' : 'Copied as PNG: this browser cannot copy a JPG')
       } else if (tab) {
         tab.location.href = URL.createObjectURL(blob)
       } else {
@@ -558,11 +575,33 @@ function CardCreator(props: {
   saved: boolean
   // Why the last save failed, if it did
   saveError: string | null
+  // The showroom's cards, to warn before one is replaced or doubled
+  cards: Card[]
   onChange: (draft: Draft) => void
-  onSave: () => void
+  // As a new card, or in place of the saved card being edited
+  onSave: (asNew: boolean) => void
   onNew: () => void
 }) {
-  const { draft, saved, saveError, onChange, onSave, onNew } = props
+  const { draft, saved, saveError, cards, onChange, onSave, onNew } = props
+  // A question put before saving, which only stands while the card is left as it was
+  const [asked, setAsked] = useState<{ about: 'replace' | 'twin'; asNew: boolean; draft: Draft } | null>(null)
+  const question = asked?.draft === draft ? asked : null
+  // The saved card being edited, if any. Saving over it as another kind of card, a
+  // leader as a unit say, loses what the old kind had: that is asked about first.
+  // A new name or subtitle is not, as that is how a card is renamed.
+  const original = cards.find((card) => card.id === draft.id)
+  const replaces = original !== undefined && findFrame(original.frameId).type !== findFrame(draft.frameId).type
+  // Name and subtitle together tell cards apart: another card with both the same
+  const twinOf = (asNew: boolean) =>
+    draft.name.trim() === ''
+      ? undefined
+      : cards.find((card) => (asNew || card.id !== draft.id) && cardTitle(card) === cardTitle(draft))
+  const save = (asNew: boolean, sure = false) => {
+    if (!sure && !asNew && replaces) return setAsked({ about: 'replace', asNew, draft })
+    if (!sure && twinOf(asNew)) return setAsked({ about: 'twin', asNew, draft })
+    setAsked(null)
+    onSave(asNew)
+  }
   const [type, setType] = useState<FrameType | null>(null)
   const [arena, setArena] = useState<Arena | null>(null)
   // 'Neutral' asks for frames with no aspect icons; otherwise frames carrying every
@@ -620,13 +659,59 @@ function CardCreator(props: {
           <h2>Frame &amp; text</h2>
           <LookControls look={draft.look ?? defaultLook} onChange={(look) => onChange({ ...draft, look })} />
           <div className="editor-actions">
-            <button className="button button-primary" type="button" onClick={onSave}>
-              {draft.id ? 'Update in Showroom' : 'Save to Showroom'}
+            <button className="button button-primary" type="button" onClick={() => save(!original)}>
+              {original ? 'Update in Showroom' : 'Save to Showroom'}
             </button>
+            {original && (
+              <button className="button" type="button" onClick={() => save(true)}>
+                Save as new card
+              </button>
+            )}
             <button className="button" type="button" onClick={onNew}>
               New card
             </button>
           </div>
+          {original && !question && (
+            <p className="saved-note">
+              Editing <strong>{cardLabel(original)}</strong>. Update changes that card; Save as new card leaves it as
+              it is and adds this one.
+            </p>
+          )}
+          {question?.about === 'replace' && original && (
+            <div className="save-question">
+              <p>
+                <strong>{cardLabel(original)}</strong> is a {findFrame(original.frameId).type.toLowerCase()} in the
+                Showroom. Updating it would turn it into this {findFrame(draft.frameId).type.toLowerCase()}.
+              </p>
+              <div className="editor-actions">
+                <button className="button button-primary" type="button" onClick={() => save(true)}>
+                  Save as new card
+                </button>
+                <button className="button" type="button" onClick={() => save(false, true)}>
+                  Replace it
+                </button>
+                <button className="button" type="button" onClick={() => setAsked(null)}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+          {question?.about === 'twin' && (
+            <div className="save-question">
+              <p>
+                <strong>{cardLabel(draft)}</strong> is already in the Showroom. Name and subtitle together should
+                be one card's alone.
+              </p>
+              <div className="editor-actions">
+                <button className="button" type="button" onClick={() => save(question.asNew, true)}>
+                  Save anyway
+                </button>
+                <button className="button" type="button" onClick={() => setAsked(null)}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
           {saveError && <p className="error-note">{saveError}</p>}
           {saved && (
             <p className="saved-note">
@@ -715,8 +800,8 @@ function CardCreator(props: {
                 }
               />
               <span>
-                In brackets: [Hidden] or [Raid 2] prints a keyword in red, [3] a cost on the yellow icon, [#3] a cost as
-                a number alone, [+1/+0] a change to power and HP, [Arrow] the exhaust arrow, [Villainy] or another aspect its icon, anything else bold. Doubled brackets print
+                In brackets: [Hidden] or [Raid 2] prints a keyword in red, as does [Keywords]; [3] a cost on the yellow icon, [#3] a cost as
+                a number alone, [+1/+0] a change to power and HP, [P3] a power and [H7] an HP alone, [Arrow] the exhaust arrow, [Villainy] or another aspect its icon, anything else bold. Doubled brackets print
                 the brackets too: {"[Action [[Arrow]]:]"} or {"[Action [[1, Arrow]]:]"}.
                 In curly brackets, text is italic: {"{reminder text}"}, or {"[{Imperial}]"} for bold italic. A line
                 between {"< >"} gets Sentinel's red box, between {"<< >>"} the tinted one; a line that is only
@@ -1050,6 +1135,7 @@ function ArtControls(props: { art?: Art; onChange: (art?: Art) => void }) {
   const { art, onChange } = props
   // The dev server sends the new list when an image is added to or removed from public/art
   const [files, setFiles] = useState(artFiles)
+  const [uploadError, setUploadError] = useState<string | null>(null)
   useEffect(() => {
     import.meta.hot?.on('art-list', setFiles)
     return () => import.meta.hot?.off('art-list', setFiles)
@@ -1088,7 +1174,13 @@ function ArtControls(props: { art?: Art; onChange: (art?: Art) => void }) {
             onChange={async (event) => {
               const file = event.target.files?.[0]
               event.target.value = ''
-              if (file) onChange({ src: await readArtFile(file), zoom: 1, x: 0, y: 0 })
+              if (!file) return
+              setUploadError(null)
+              try {
+                onChange({ src: await readArtFile(file), zoom: 1, x: 0, y: 0 })
+              } catch {
+                setUploadError('This browser could not read that image. Try a JPG or PNG.')
+              }
             }}
           />
         </label>
@@ -1103,6 +1195,7 @@ function ArtControls(props: { art?: Art; onChange: (art?: Art) => void }) {
           </button>
         )}
       </div>
+      {uploadError && <p className="error-note">{uploadError}</p>}
       {art && (
         <label className="toggle">
           <input
@@ -1161,8 +1254,8 @@ function App() {
     setSaveError(null)
   }
 
-  const saveDraft = () => {
-    const card: Card = { ...draft, id: draft.id ?? crypto.randomUUID() }
+  const saveDraft = (asNew: boolean) => {
+    const card: Card = { ...draft, id: (asNew ? undefined : draft.id) ?? crypto.randomUUID() }
     const exists = cards.some((saved) => saved.id === card.id)
     const next = exists ? cards.map((saved) => (saved.id === card.id ? card : saved)) : [...cards, card]
     if (!updateCards(next)) {
@@ -1205,6 +1298,7 @@ function App() {
           draft={draft}
           saved={saved}
           saveError={saveError}
+          cards={cards}
           onChange={changeDraft}
           onSave={saveDraft}
           onNew={() => changeDraft({ frameId: draft.frameId, name: '', trait: '', text: '' })}

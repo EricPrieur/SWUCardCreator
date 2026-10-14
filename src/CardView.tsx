@@ -91,28 +91,36 @@ function InlineCost(props: { number: string; plain: boolean }) {
   )
 }
 
-// A change to power and HP written in game text, like [+1/+0] or [-2/-2]: the power
-// in the red-edged numbers, the HP in the blue-edged ones, with a slash between
-function InlineChange(props: { power: string; hp: string }) {
-  const part = (kind: 'power' | 'hp', change: string) => (
-    <span className="stat-change">
-      <img className="stat-sign" src={asset(`/icons/${kind}/${change[0] === '-' ? 'minus' : 'plus'}.png`)} alt={change[0]} />
-      {[...change.slice(1)].map((digit, index) => (
+// A power or HP number in game text, in the red-edged or blue-edged numbers, with
+// its sign if it has one
+function InlineStat(props: { kind: 'power' | 'hp'; number: string }) {
+  const { kind, number } = props
+  const sign = /^[+-]/.test(number) ? number[0] : ''
+  return (
+    <span className={sign ? 'stat-change stat-signed' : 'stat-change'}>
+      {sign && <img className="stat-sign" src={asset(`/icons/${kind}/${sign === '-' ? 'minus' : 'plus'}.png`)} alt={sign} />}
+      {[...number.slice(sign.length)].map((digit, index) => (
         <img key={index} src={asset(`/icons/${kind}/${digit}.png`)} alt={digit} />
       ))}
     </span>
   )
+}
+
+// A change to power and HP written in game text, like [+1/+0] or [-2/-2]: the power
+// in the red-edged numbers, the HP in the blue-edged ones, with a slash between
+function InlineChange(props: { power: string; hp: string }) {
   return (
     <span className="stat-changes">
-      {part('power', props.power)}/{part('hp', props.hp)}
+      <InlineStat kind="power" number={props.power} />/<InlineStat kind="hp" number={props.hp} />
     </span>
   )
 }
 
 // The game's keywords. In game text they print in bold red capitals, with their number if any.
+// So does the word Keywords, which some cards use to mean any of them.
 const keywords = new Set([
   'ambush', 'bounty', 'coordinate', 'exploit', 'grit', 'hidden', 'overwhelm', 'piloting', 'plot', 'raid',
-  'restore', 'saboteur', 'sentinel', 'shielded', 'smuggle', 'support',
+  'restore', 'saboteur', 'sentinel', 'shielded', 'smuggle', 'support', 'keyword', 'keywords',
 ])
 const isKeyword = (text: string) => keywords.has(text.replace(/\s*\d+$/, '').trim().toLowerCase())
 
@@ -164,6 +172,9 @@ function Bracketed(props: { text: string }) {
   if (cost) return <InlineCost number={cost[2]} plain={cost[1] === '#'} />
   const change = /^([+-]\d{1,2})\/([+-]\d{1,2})$/.exec(text)
   if (change) return <InlineChange power={change[1]} hp={change[2]} />
+  // One number alone: [P3] is a power, [H7] an HP
+  const stat = /^([ph])([+-]?\d{1,2})$/i.exec(text)
+  if (stat) return <InlineStat kind={stat[1].toLowerCase() === 'p' ? 'power' : 'hp'} number={stat[2]} />
   if (isArrow(text)) return <ExhaustIcon />
   // An aspect's name prints its icon: "a [Villainy] card"
   const aspect = aspects.find((name) => name.toLowerCase() === text.trim().toLowerCase())
@@ -219,7 +230,7 @@ function Bracketed(props: { text: string }) {
 
 // Game text markup. In square brackets: [Hidden] or [Raid 2] prints a keyword in red,
 // [1] prints a cost icon and [#1] a cost as a number, [+1/+0] a change to power and
-// HP in their red and blue numbers, [Arrow] the exhaust arrow, [Villainy] or another
+// HP in their red and blue numbers, [P3] a power and [H7] an HP alone, [Arrow] the exhaust arrow, [Villainy] or another
 // aspect's name its icon, and anything else,
 // like [Action:], prints in bold. Bold text can hold any of those: [Action [[Arrow]]:].
 // In curly brackets, text prints in italics, also inside bold: [{Imperial}] is a
