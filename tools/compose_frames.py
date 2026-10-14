@@ -137,9 +137,93 @@ def publish():
     return count
 
 
+# ---- Pilots: a unit that can also be played as an upgrade. The top is the unit
+# frame of its aspects, the rest the upgrade frame's text box, name and trait bars
+# and modifier icons, and the unit's power and HP icons sit at the top of the text box.
+PILOT_SPLIT = 460  # rows above come from the unit frame, rows below from the upgrade frame
+PILOT_RAISE = 118  # how much higher the power and HP icons sit than on a unit
+PILOT_ICONS = [(20, 580, 117, 690), (592, 580, 700, 690)]  # power, HP on the unit frame
+
+
+def published(kind, key):
+    """A frame the site serves, as float RGBA in the common 718 px geometry."""
+    master = load(kind, key)
+    if master is not None:
+        return master
+    path = OUT / kind / (key + ".webp")
+    if not path.exists():
+        return None
+    return np.array(Image.open(path).convert("RGBA")).astype(np.float32)
+
+
+def compose_pilots():
+    (OUT / "pilot").mkdir(parents=True, exist_ok=True)
+    count = 0
+    for path in sorted((OUT / "unit").glob("*.webp")):
+        key = path.stem
+        if key.startswith("token") or key.endswith("-subtitle"):
+            continue
+        base = key[:-len("-space")] if key.endswith("-space") else key
+        unit, upgrade = published("unit", key), published("upgrade", base)
+        if unit is None or upgrade is None:
+            continue
+        frame = upgrade.copy()
+        frame[:PILOT_SPLIT] = unit[:PILOT_SPLIT]
+        for x0, y0, x1, y1 in PILOT_ICONS:
+            icon = unit[y0:y1, x0:x1]
+            shape = icon[..., 3] > 0
+            target = frame[y0 - PILOT_RAISE:y1 - PILOT_RAISE, x0:x1]
+            a = icon[..., 3:4] / 255
+            target[..., :3] = np.where(shape[..., None], icon[..., :3] * a + target[..., :3] * (1 - a), target[..., :3])
+            target[..., 3] = np.maximum(target[..., 3], icon[..., 3])
+        save(frame, "pilot", key)
+        count += 1
+    return count
+
+
+# ---- Leader pilots. The Leader side's Epic Action box is taller, to offer
+# deploying as an upgrade too; the Leader Unit side is laid out like a pilot.
+LEADER_KEYS = [c + "-" + a for c in COLOURS for a in ALLEGIANCES]
+EPIC_COLUMNS = (471, 906)  # the Epic Action box, from its left outline to its right
+EPIC_HEADER = (488, 502)  # the gold band along its top
+EPIC_RAISE = 110  # how much higher the band is on a pilot leader
+EPIC_FILL = (505, 535)  # plain rows of the box, repeated down from the raised band
+
+
+def compose_leader_pilots():
+    count = 0
+    for key in LEADER_KEYS:
+        # A Leader side is landscape: read as it is, not fitted to the portrait geometry
+        front = np.array(Image.open(MASTERS / "leader" / (key + ".png")).convert("RGBA")).astype(np.float32)
+        x0, x1 = EPIC_COLUMNS
+        h0, h1 = EPIC_HEADER
+        top = h0 - EPIC_RAISE
+        frame = front.copy()
+        frame[top:top + h1 - h0, x0:x1] = front[h0:h1, x0:x1]
+        f0, f1 = EPIC_FILL
+        for y in range(top + h1 - h0, h1):
+            frame[y, x0:x1] = front[f0 + (y - top) % (f1 - f0), x0:x1]
+        save(frame, "leader", key + "-pilot")
+        upgrade = published("upgrade", key)
+        for variant in ("", "-space"):
+            unit = load("leader", key + "-unit" + variant)
+            back = upgrade.copy()
+            back[:PILOT_SPLIT] = unit[:PILOT_SPLIT]
+            for ix0, iy0, ix1, iy1 in PILOT_ICONS:
+                icon = unit[iy0:iy1, ix0:ix1]
+                shape = icon[..., 3] > 0
+                target = back[iy0 - PILOT_RAISE:iy1 - PILOT_RAISE, ix0:ix1]
+                a = icon[..., 3:4] / 255
+                target[..., :3] = np.where(shape[..., None], icon[..., :3] * a + target[..., :3] * (1 - a), target[..., :3])
+                target[..., 3] = np.maximum(target[..., 3], icon[..., 3])
+            save(back, "leader", key + "-unit-pilot" + variant)
+        count += 1
+    return count
+
+
 def thumbnails():
     count = 0
-    for kind in ("unit", "event", "upgrade", "fortification", "leader", "token", "base"):
+    for kind in ("unit", "event", "upgrade", "fortification", "leader", "pilot", "token", "base"):
         (OUT / "thumb" / kind).mkdir(parents=True, exist_ok=True)
         for path in sorted((OUT / kind).iterdir()):
             if path.suffix != ".webp" or path.stem.endswith("-subtitle"):
@@ -165,4 +249,5 @@ if __name__ == "__main__":
               .replace('"paper"', "paper").replace('"', "'") + "," for f in made]
     lines += ["] as const", ""]
     (ROOT / "src" / "generatedFrames.ts").write_text("\n".join(lines), encoding="utf-8")
+    print("pilots:", compose_pilots(), "leader pilots:", compose_leader_pilots())
     print("thumbnails:", thumbnails())

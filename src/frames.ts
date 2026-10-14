@@ -1,6 +1,8 @@
 import { generatedFrames } from './generatedFrames'
 
 export type FrameType = 'Unit' | 'Event' | 'Upgrade' | 'Fortification' | 'Token' | 'Base' | 'Leader'
+// What the frame picker and showroom can filter by: the types, and pilots among the units
+export type FrameFilter = FrameType | 'Pilot'
 export const aspects = ['Vigilance', 'Command', 'Aggression', 'Cunning', 'Heroism', 'Villainy'] as const
 export type Aspect = (typeof aspects)[number]
 export type Arena = 'Ground' | 'Space'
@@ -46,6 +48,15 @@ export type Frame = {
   subtitle?: { src?: string; box: TextBox }
   // A Leader side's Epic Action box, with its own text
   epicBox?: TextBox
+  // A pilot leader's Leader side: it can deploy as an upgrade as well, which its
+  // taller Epic Action box says, and it prints what it gives as one after its stats
+  deploysAsUpgrade?: boolean
+  // A pilot: a unit that can also be played as an upgrade. The Piloting box sits at
+  // the bottom of this area and grows upward with its text; above it is the unit's
+  // text. The modifiers it gives as an upgrade print at the bottom, like an upgrade's.
+  pilotBox?: Box
+  upgradePower?: Spot
+  upgradeHp?: Spot
   // A leader is one card with two sides. The Leader side names its Leader Unit
   // frame (the Ground one; the Space one's id ends in -space), and those name the
   // Leader side they are the back of.
@@ -69,9 +80,13 @@ export const isUnique = (frame: Frame, unique?: boolean) =>
   frame.type === 'Leader' || (unique === true && canBeUnique(frame))
 
 // What nearly every leader's Epic Action box says. The number of resources is the
-// cost printed on the Leader Unit side.
-export const epicText = (cost = 5) =>
-  `[Epic Action:] If you control ${cost} or more resources, deploy this leader.`
+// cost printed on the Leader Unit side. A pilot leader can also deploy as an upgrade.
+export const epicText = (cost = 5, pilot = false) =>
+  pilot
+    ? `[Epic Action:] If you control ${cost} or more resources, choose one:\n` +
+      '\u2022 Deploy this leader.\n' +
+      '\u2022 Deploy this leader as an upgrade on a friendly [{VEHICLE}] unit without a [{PILOT}] on it.'
+    : `[Epic Action:] If you control ${cost} or more resources, deploy this leader.`
 
 const tokenNameBox: TextBox = { x: 78, y: 589, w: 344, h: 29, size: 23 }
 const tokenTraitBox: TextBox = { x: 78, y: 624, w: 344, h: 29, size: 18 }
@@ -460,6 +475,47 @@ const leaderFrames: Frame[] = (
   ]
 })
 
+// Pilot leaders, composed by tools/compose_frames.py from the leader frames above:
+// the Leader side with a taller Epic Action box, and a Leader Unit side laid out
+// like a pilot, its own text above and what it gives as an upgrade below
+const pilotLeaderFrames: Frame[] = leaderFrames
+  .filter((frame) => !frame.backOf)
+  .flatMap((leader): Frame[] => {
+    const key = leader.id.slice('leader-'.length)
+    const upgrade = upgradeFrame(key, leader.aspects, leader.paper)
+    const units = leaderFrames.filter((frame) => frame.backOf === leader.id)
+    return [
+      {
+        ...leader,
+        id: `leader-${key}-pilot`,
+        backId: `leader-${key}-unit-pilot`,
+        name: 'Pilot Leader',
+        src: `/templates/leader/${key}-pilot.webp`,
+        textBox: { ...leader.textBox!, h: 206 },
+        epicBox: { x: 481, y: 396, w: 413, h: 222, size: 31 },
+        deploysAsUpgrade: true,
+      },
+      ...units.map(
+        (unit): Frame => ({
+          ...unit,
+          id: `leader-${key}-unit-pilot${unit.arena === 'Space' ? '-space' : ''}`,
+          backOf: `leader-${key}-pilot`,
+          name: 'Pilot Leader Unit',
+          src: `/templates/leader/${key}-unit-pilot${unit.arena === 'Space' ? '-space' : ''}.webp`,
+          power: { x: 73.5, y: 520, h: 52 },
+          hp: { x: 636.5, y: 520, h: 52 },
+          upgradePower: upgrade.power,
+          upgradeHp: upgrade.hp,
+          nameBox2: upgrade.nameBox2,
+          traitBox: upgrade.traitBox,
+          textBox: upgrade.textBox,
+          pilotBox: { x: 31, y: 584, w: 653, h: 250 },
+          panels: [...unit.panels.slice(0, 2), ...upgrade.panels.slice(1)],
+        }),
+      ),
+    ]
+  })
+
 // Combinations no extracted card has, composed from the frames above by tools/compose_frames.py
 const composedFrames: Frame[] = generatedFrames.flatMap(({ type, key, aspects, paper }) => {
   const made =
@@ -670,11 +726,42 @@ const allFrames: Frame[] = [
   ...upgradeFrames,
   ...fortificationFrames,
   ...leaderFrames,
+  ...pilotLeaderFrames,
   ...composedFrames,
   ...baseFrames,
 ]
 
-export const frames: Frame[] = allFrames.map((frame) => ({
+// Pilots, for every unit frame: the unit's top over the upgrade frame of the same
+// aspects, composed by tools/compose_frames.py
+const pilotFrames: Frame[] = allFrames.flatMap((unit) => {
+  const match = /^unit-(.+?)(-space)?$/.exec(unit.id)
+  const upgrade = match && allFrames.find((frame) => frame.id === `upgrade-${match[1]}`)
+  if (!match || !upgrade || unit.token) return []
+  const [key, space = ''] = [match[1], match[2]]
+  const [layout] = unitFrames(key, unit.aspects, unit.paper)
+  return [
+    {
+      ...layout,
+      id: `pilot-${key}${space}`,
+      name: 'Pilot',
+      arena: unit.arena,
+      src: `/templates/pilot/${key}${space}.webp`,
+      // The power and HP icons sit at the top of the text box
+      power: { x: 73.5, y: 520, h: 52 },
+      hp: { x: 636.5, y: 520, h: 52 },
+      upgradePower: upgrade.power,
+      upgradeHp: upgrade.hp,
+      nameBox2: upgrade.nameBox2,
+      traitBox: upgrade.traitBox,
+      textBox: upgrade.textBox,
+      pilotBox: { x: 31, y: 584, w: 653, h: 250 },
+      panels: [layout.panels[0], ...upgrade.panels.slice(1)],
+      notes: 'Composed',
+    },
+  ]
+})
+
+export const frames: Frame[] = [...allFrames, ...pilotFrames].map((frame) => ({
   ...frame,
   thumb: frame.src.replace('/templates/', '/templates/thumb/'),
 }))

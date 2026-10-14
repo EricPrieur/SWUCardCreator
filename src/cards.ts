@@ -40,6 +40,12 @@ export type Card = {
   subtitle?: string
   // Leader side only: the Epic Action box's text, when it is not the usual one
   epic?: string
+  // Pilots only: what playing the card as an upgrade costs, the text of its Piloting
+  // box, and the power and HP it then gives the unit it is attached to
+  pilotCost?: number
+  pilotText?: string
+  upgradePower?: number
+  upgradeHp?: number
   // A leader's other side, the Leader Unit. It has its own game text, and its own
   // art or placing of the art. Its name, subtitle and trait are the Leader side's
   // unless given here: Grand Moff Tarkin deploys as The Death Star, a Space unit.

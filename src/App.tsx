@@ -24,18 +24,20 @@ import {
   type Arena,
   type Aspect,
   type Frame,
-  type FrameType,
+  type FrameFilter,
 } from './frames'
 
 const tabs = [
   { id: 'creator', label: 'Card Creator' },
   { id: 'showroom', label: 'Showroom' },
+  { id: 'projects', label: 'My Other Projects' },
 ] as const
 
 type TabId = (typeof tabs)[number]['id']
 
-const typeFilters: { label: string; value: FrameType }[] = [
+const typeFilters: { label: string; value: FrameFilter }[] = [
   { label: 'Units', value: 'Unit' },
+  { label: 'Pilots', value: 'Pilot' },
   { label: 'Leaders', value: 'Leader' },
   { label: 'Events', value: 'Event' },
   { label: 'Tokens', value: 'Token' },
@@ -120,6 +122,10 @@ function CardFace(props: { card: Draft; back?: boolean }) {
       cost={card.cost}
       power={card.power}
       hp={card.hp}
+      pilotCost={card.pilotCost}
+      pilotText={card.pilotText}
+      upgradePower={card.upgradePower}
+      upgradeHp={card.upgradeHp}
       art={art}
       look={card.look}
     />
@@ -278,6 +284,48 @@ function ShowroomCard(props: {
   )
 }
 
+// The author's other games, and where to support the work
+const projects = [
+  {
+    name: 'The Chrome Grid',
+    url: 'https://thechromegrid.com/',
+    image: '/projects/the-chrome-grid.jpg',
+    text: 'A free Cyberpunk trading card game simulator in your browser. Build decks, call legends like Panam, Goro and Jackie, and play online or against the AI.',
+  },
+  {
+    name: 'CCG Quest',
+    url: 'https://ericprieur.github.io/ccgQuest/',
+    image: '/projects/ccg-quest.jpg',
+    text: 'A collectible card game you can play right in your browser.',
+  },
+]
+
+function Projects() {
+  return (
+    <section className="projects">
+      <ul className="project-grid">
+        {projects.map(({ name, url, image, text }) => (
+          // A screenshot of the game behind its card, darkened where the text sits
+          <li key={url} style={{ backgroundImage: `url("${asset(image)}")` }}>
+            <h2>{name}</h2>
+            <p>{text}</p>
+            <a className="button button-primary" href={url} target="_blank" rel="noopener noreferrer">
+              Open {name}
+            </a>
+          </li>
+        ))}
+      </ul>
+      <div className="support">
+        <h2>Like what you see?</h2>
+        <p>These projects are free. If they have given you some fun, you can buy me a coffee.</p>
+        <a className="button" href="https://ko-fi.com/ericprieur" target="_blank" rel="noopener noreferrer">
+          Support me on Ko-fi
+        </a>
+      </div>
+    </section>
+  )
+}
+
 function tabFromHash(): TabId {
   const id = window.location.hash.slice(1)
   return tabs.find((tab) => tab.id === id)?.id ?? 'creator'
@@ -360,7 +408,7 @@ function cardFacts(card: Card) {
   const back = frame.backId ? cardSide(card, true) : undefined
   return {
     // A token unit is listed with the tokens
-    type: frame.token ? ('Token' as FrameType) : frame.type,
+    type: (frame.token ? 'Token' : frame.pilotBox ? 'Pilot' : frame.type) as FrameFilter,
     names: [card.name, back?.name ?? ''].map((name) => name.toLowerCase()),
     traits: [...splitTraits(card.trait), ...splitTraits(back?.trait)].map((trait) => trait.toLowerCase()),
     aspects: [...frame.aspects, ...(back?.frame.aspects ?? [])],
@@ -379,7 +427,7 @@ type SortKey = (typeof sorts)[number]['value']
 function Showroom(props: { cards: Card[]; onEdit: (card: Card) => void; onRemove: (card: Card) => void }) {
   const { cards, onEdit, onRemove } = props
   const [query, setQuery] = useState('')
-  const [types, setTypes] = useState<FrameType[]>([])
+  const [types, setTypes] = useState<FrameFilter[]>([])
   const [traits, setTraits] = useState<string[]>([])
   const [costs, setCosts] = useState<number[]>([])
   const [picked, setPicked] = useState<Aspect[]>([])
@@ -602,7 +650,7 @@ function CardCreator(props: {
     setAsked(null)
     onSave(asNew)
   }
-  const [type, setType] = useState<FrameType | null>(null)
+  const [type, setType] = useState<FrameFilter | null>(null)
   const [arena, setArena] = useState<Arena | null>(null)
   // 'Neutral' asks for frames with no aspect icons; otherwise frames carrying every
   // picked aspect, as many times as it was picked
@@ -643,7 +691,10 @@ function CardCreator(props: {
       // Leader Unit frames are offered while that side is being edited, in place of
       // the Leader side ones, and whenever an arena is asked for
       (candidate.backOf ? side.isBack || arena !== null : !(side.isBack && candidate.backId)) &&
-      (type === null || candidate.type === type || (type === 'Token' && candidate.token === true)) &&
+      (type === null ||
+        candidate.type === type ||
+        (type === 'Token' && candidate.token === true) ||
+        (type === 'Pilot' && candidate.pilotBox !== undefined)) &&
       (arena === null || candidate.arena === arena) &&
       (picked === 'Neutral'
         ? candidate.aspects.length === 0
@@ -811,17 +862,61 @@ function CardCreator(props: {
           ) : (
             <p className="empty-note">This frame has no game text box.</p>
           )}
+          {bothSides.some((each) => each.pilotBox) && (
+            <>
+              <h3 className="editor-subhead">Played as an upgrade</h3>
+              <div className="stats">
+                {!front.backId && (
+                  <NumberPicker
+                    label="Piloting cost"
+                    value={draft.pilotCost}
+                    options={numbers}
+                    onChange={(pilotCost) => onChange({ ...draft, pilotCost })}
+                  />
+                )}
+                <NumberPicker
+                  label="Power"
+                  value={draft.upgradePower}
+                  options={modifiers}
+                  format={formatModifier}
+                  onChange={(upgradePower) => onChange({ ...draft, upgradePower })}
+                />
+                <NumberPicker
+                  label="HP"
+                  value={draft.upgradeHp}
+                  options={modifiers}
+                  format={formatModifier}
+                  onChange={(upgradeHp) => onChange({ ...draft, upgradeHp })}
+                />
+              </div>
+              <label>
+                Piloting text
+                <textarea
+                  rows={4}
+                  value={draft.pilotText ?? ''}
+                  onChange={(event) => onChange({ ...draft, pilotText: event.target.value })}
+                />
+                <span>
+                  Printed in the Piloting box, under PILOTING and its cost. The box grows with the text, leaving the
+                  game text above the rest of the space.
+                </span>
+              </label>
+            </>
+          )}
           {frame.epicBox && (
             <label>
               Epic Action
               <textarea
                 rows={3}
-                value={draft.epic ?? epicText(draft.cost)}
+                value={draft.epic ?? epicText(draft.cost, front.deploysAsUpgrade)}
                 onChange={(event) =>
                   // Text left as the usual one is not kept, so its number goes on following the cost
                   onChange({
                     ...draft,
-                    epic: event.target.value === epicText(draft.cost) ? undefined : event.target.value,
+                    epic:
+                      event.target.value === epicText(draft.cost, front.deploysAsUpgrade)
+                        ? undefined
+                        : event.target.value,
                   })
                 }
               />
@@ -1293,6 +1388,7 @@ function App() {
       </header>
 
       {tab === 'showroom' && <Showroom cards={cards} onEdit={editCard} onRemove={removeCard} />}
+      {tab === 'projects' && <Projects />}
       {tab === 'creator' && (
         <CardCreator
           draft={draft}

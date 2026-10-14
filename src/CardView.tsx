@@ -242,8 +242,23 @@ export function GameText(props: { text: string }) {
 }
 
 // A Leader side's power and HP, printed small with a slash between them
-function CardStats(props: { frame: Frame; spot: Spot; power?: number; hp?: number }) {
-  const { frame, spot, power, hp } = props
+function CardStats(props: {
+  frame: Frame
+  spot: Spot
+  power?: number
+  hp?: number
+  // A pilot leader adds what it gives as an upgrade: 4/7 (+4/+4)
+  upgradePower?: number
+  upgradeHp?: number
+}) {
+  const { frame, spot, power, hp, upgradePower, upgradeHp } = props
+  const change = (kind: 'power' | 'hp', value?: number) =>
+    value !== undefined && (
+      <>
+        <img className="stat-sign" src={asset(`/icons/${kind}/${value < 0 ? 'minus' : 'plus'}.png`)} alt="" />
+        <img src={asset(`/icons/${kind}/${Math.abs(value)}.png`)} alt={`${kind} ${value}`} />
+      </>
+    )
   const style: CSSProperties = {
     right: `${(1 - spot.x / frame.width) * 100}%`,
     top: `${(spot.y / frame.height) * 100}%`,
@@ -255,6 +270,15 @@ function CardStats(props: { frame: Frame; spot: Spot; power?: number; hp?: numbe
       {power !== undefined && <img src={asset(`/icons/power/${power}.png`)} alt={`power ${power}`} />}
       <span>/</span>
       {hp !== undefined && <img src={asset(`/icons/hp/${hp}.png`)} alt={`hp ${hp}`} />}
+      {(upgradePower !== undefined || upgradeHp !== undefined) && (
+        <>
+          <span className="stats-gap">(</span>
+          {change('power', upgradePower)}
+          <span>/</span>
+          {change('hp', upgradeHp)}
+          <span>)</span>
+        </>
+      )}
     </div>
   )
 }
@@ -264,8 +288,10 @@ function CardStats(props: { frame: Frame; spot: Spot; power?: number; hp?: numbe
 // as on a unit that simply has Sentinel or an upgrade that gives it; between < and >
 // it gets the outline alone, as when Sentinel depends on a condition. A line that
 // is only [Sentinel] gets the filled box without being asked.
-function GameLines(props: { text: string }) {
-  return props.text.split('\n').map((line, index) => {
+// endRoom keeps that much of the last line clear, in em, for what is printed in its corner.
+function GameLines(props: { text: string; endRoom?: number }) {
+  const lines = props.text.split('\n')
+  return lines.map((line, index) => {
     const filled = /^\s*<<(.*)>>\s*$/.exec(line) ?? /^\s*(\[sentinel\])\s*$/i.exec(line)
     const outlined = filled ? null : /^\s*<(.*)>\s*$/.exec(line)
     const text = (filled ?? outlined)?.[1].trim() ?? line
@@ -274,14 +300,17 @@ function GameLines(props: { text: string }) {
       <span className={className} key={index}>
         {/* An empty line still takes up a line */}
         {text === '' ? '\u00a0' : <GameText text={text} />}
+        {index === lines.length - 1 && props.endRoom && (
+          <span className="end-room" style={{ width: `${props.endRoom}em` }} />
+        )}
       </span>
     )
   })
 }
 
 // Game text: wraps inside its box, and the font shrinks until it all fits.
-function CardParagraph(props: { frame: Frame; box: TextBox; text: string; className?: string }) {
-  const { frame, box, text, className = '' } = props
+function CardParagraph(props: { frame: Frame; box: TextBox; text: string; className?: string; endRoom?: number }) {
+  const { frame, box, text, className = '', endRoom } = props
   const ref = useRef<HTMLDivElement>(null)
   const size = (box.size / frame.width) * 100
 
@@ -312,8 +341,83 @@ function CardParagraph(props: { frame: Frame; box: TextBox; text: string; classN
   return (
     <div className={`card-rules ${className}`} style={style} ref={ref}>
       <p>
-        <GameLines text={text} />
+        <GameLines text={text} endRoom={endRoom} />
       </p>
+    </div>
+  )
+}
+
+// A pilot's text box holds two texts: the unit's, at the top, and below it the
+// Piloting box, for when the card is played as an upgrade. That box starts with
+// PILOTING and what it costs to play that way, and grows upward with its text,
+// leaving the unit's text the rest. All of it shrinks together until it fits.
+function PilotArea(props: { frame: Frame; text: string; pilotText: string; pilotCost?: number }) {
+  const { frame, text, pilotText, pilotCost } = props
+  const box = frame.pilotBox!
+  const textBox = frame.textBox!
+  const ref = useRef<HTMLDivElement>(null)
+  const size = (textBox.size / frame.width) * 100
+
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const rules = el.firstElementChild as HTMLElement
+    const fit = () => {
+      for (let scale = 1; scale >= 0.5; scale -= 0.04) {
+        el.style.fontSize = `${size * scale}cqw`
+        if (el.scrollHeight <= el.clientHeight && rules.scrollHeight <= rules.clientHeight) break
+      }
+    }
+    fit()
+    const observer = new ResizeObserver(fit)
+    observer.observe(el)
+    document.fonts.ready.then(fit)
+    return () => observer.disconnect()
+  }, [text, pilotText, pilotCost, size])
+
+  const style: CSSProperties = {
+    left: `${(box.x / frame.width) * 100}%`,
+    top: `${(box.y / frame.height) * 100}%`,
+    width: `${(box.w / frame.width) * 100}%`,
+    height: `${(box.h / frame.height) * 100}%`,
+    fontSize: `${size}cqw`,
+  }
+  // The unit's text keeps the text box's own margins inside the wider Piloting box
+  const inset = {
+    marginLeft: `${((textBox.x - box.x) / box.w) * 100}%`,
+    marginRight: `${((box.x + box.w - textBox.x - textBox.w) / box.w) * 100}%`,
+  }
+  return (
+    <div className="pilot-area" style={style} ref={ref}>
+      <div className="card-rules pilot-unit-text" style={inset}>
+        <p>
+          <GameLines text={text} />
+        </p>
+      </div>
+      <div className="pilot-box" hidden={frame.type === 'Leader' && !pilotText}>
+        <p hidden={frame.type === 'Leader'}>
+          <strong className="keyword">
+            P<small>ILOTING</small>
+          </strong>{' '}
+          <strong className="action-cost">
+            [{pilotCost !== undefined && <InlineCost number={String(pilotCost)} plain={false} />}
+            {frame.aspects.map((aspect, index) => (
+              <img
+                className="aspect-icon"
+                key={index}
+                src={asset(`/icons/aspect/${aspect.toLowerCase()}.png`)}
+                alt={aspect}
+              />
+            ))}
+            ]
+          </strong>
+        </p>
+        {pilotText && (
+          <p>
+            <GameLines text={pilotText} />
+          </p>
+        )}
+      </div>
     </div>
   )
 }
@@ -405,6 +509,11 @@ export const CardView = memo(function CardView(props: {
   cost?: number
   power?: number
   hp?: number
+  // Pilots only
+  pilotCost?: number
+  pilotText?: string
+  upgradePower?: number
+  upgradeHp?: number
   art?: Art
   look?: Look
   // Draw the small copy of the frame: for the frame picker, which shows them all at once
@@ -463,6 +572,13 @@ export const CardView = memo(function CardView(props: {
         const signed = kind !== 'cost' && frame.modifiers === true
         return <CardNumber key={kind} frame={frame} kind={kind} spot={spot} value={value} signed={signed} />
       })}
+      {/* What a pilot gives the unit it is attached to, printed as changes: +2, -1 */}
+      {frame.upgradePower && props.upgradePower !== undefined && (
+        <CardNumber frame={frame} kind="power" spot={frame.upgradePower} value={props.upgradePower} signed />
+      )}
+      {frame.upgradeHp && props.upgradeHp !== undefined && (
+        <CardNumber frame={frame} kind="hp" spot={frame.upgradeHp} value={props.upgradeHp} signed />
+      )}
       {name && (
         <CardText
           frame={frame}
@@ -476,12 +592,30 @@ export const CardView = memo(function CardView(props: {
         <CardText frame={frame} box={frame.nameBox2} className="card-name" text={name} unique={unique} />
       )}
       {trait && <CardText frame={frame} box={frame.traitBox} className="card-trait" text={formatTraits(trait)} />}
-      {text && frame.textBox && <CardParagraph frame={frame} box={frame.textBox} text={text} />}
+      {frame.pilotBox && !props.thumb ? (
+        <PilotArea frame={frame} text={text ?? ''} pilotText={props.pilotText ?? ''} pilotCost={props.pilotCost} />
+      ) : (
+        text && frame.textBox && <CardParagraph frame={frame} box={frame.textBox} text={text} />
+      )}
       {frame.epicBox && !props.thumb && (
-        <CardParagraph frame={frame} box={frame.epicBox} className="card-epic" text={props.epic ?? epicText(props.cost)} />
+        <CardParagraph
+          frame={frame}
+          box={frame.epicBox}
+          className="card-epic"
+          text={props.epic ?? epicText(props.cost, frame.deploysAsUpgrade)}
+          // The last line stops short of the power and HP printed in the box's corner
+          endRoom={frame.deploysAsUpgrade ? 4.6 : 2.4}
+        />
       )}
       {frame.stats && (props.power !== undefined || props.hp !== undefined) && (
-        <CardStats frame={frame} spot={frame.stats} power={props.power} hp={props.hp} />
+        <CardStats
+          frame={frame}
+          spot={frame.stats}
+          power={props.power}
+          hp={props.hp}
+          upgradePower={frame.deploysAsUpgrade ? props.upgradePower : undefined}
+          upgradeHp={frame.deploysAsUpgrade ? props.upgradeHp : undefined}
+        />
       )}
     </div>
   )
