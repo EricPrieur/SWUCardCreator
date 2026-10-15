@@ -583,12 +583,53 @@
 }
 
 .showroom-grid {
+  /* The narrowest a card is drawn; columns share out any room left */
+  --card-min: 260px;
   list-style: none;
   margin: 0;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(var(--card-min), 100%), 1fr));
   gap: 2.5rem 2rem;
+}
+
+.card-size-m {
+  --card-min: 175px;
+  gap: 2rem 1.5rem;
+}
+
+.card-size-s {
+  --card-min: 130px;
+  gap: 1.5rem 1rem;
+}
+
+/* Smaller cards, smaller buttons under them */
+.card-size-m .showroom-actions,
+.card-size-s .showroom-actions {
+  gap: 0.35rem;
+}
+
+.card-size-m .showroom-actions .button,
+.card-size-s .showroom-actions .button {
+  padding: 0.3rem 0.55rem;
+  font-size: 0.78rem;
+}
+
+.card-size-s .showroom-actions .split-button select {
+  font-size: 0.72rem;
+}
+
+/* The large copy of a small card, following the mouse */
+.hover-preview {
+  position: fixed;
+  z-index: 50;
+  pointer-events: none;
+  filter: drop-shadow(0 18px 40px rgb(0 0 0 / 0.7));
+}
+
+.size-chip {
+  min-width: 2.2rem;
+  padding: 0.35rem 0.6rem;
 }
 
 .showroom-actions {
@@ -730,6 +771,16 @@
 .pager .button:disabled {
   opacity: 0.4;
   cursor: default;
+}
+
+/* A Showcase card: its saved image, cornered like the cards on the page */
+.showcase-image {
+  display: block;
+  width: 100%;
+  border-radius: 4.5% / 3.1%;
+  box-shadow:
+    0 0 0 1px rgb(255 255 255 / 0.06),
+    0 16px 40px rgb(0 0 0 / 0.6);
 }
 
 .empty-note {
@@ -945,6 +996,100 @@
 .card-epic {
   align-items: flex-start;
   color: var(--epic-ink);
+}
+
+/* The line along the bottom of a card */
+.card-line {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 0.7em;
+  padding: 0 0.9em;
+  border-radius: 0.6em;
+  background: rgb(0 0 0 / 0.62);
+  font-family: 'Barlow Semi Condensed', 'Barlow', sans-serif;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: #f2efe9;
+}
+
+.card-line-artist {
+  display: flex;
+  align-items: center;
+  gap: 0.4em;
+}
+
+.card-line-artist img {
+  height: 1.15em;
+  width: auto;
+}
+
+/* The block: a letter in a small box, a little left of the middle of the line */
+.card-line-block {
+  position: absolute;
+  left: 43%;
+  transform: translateX(-50%);
+  padding: 0.05em 0.25em;
+  border: 0.1em solid currentColor;
+  border-radius: 0.15em;
+  font-size: 0.9em;
+}
+
+.card-line-gap {
+  flex: 1;
+}
+
+/* The rarity's symbol, cut from the cards */
+.card-line-rarity {
+  width: auto;
+  height: 1.3em;
+}
+
+.card-line-number {
+  min-width: 2.2em;
+  text-align: right;
+}
+
+/* The card line's fields in the editor, side by side */
+.card-line-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.card-line-fields .card-line-wide {
+  flex: 1 1 100%;
+}
+
+.card-line-fields .card-line-short {
+  width: 5.5rem;
+}
+
+.card-line-fields .card-line-tiny {
+  width: 3.5rem;
+}
+
+.card-line-fields input,
+.card-line-fields select {
+  width: 100%;
+  min-width: 0;
+}
+
+.card-line-fields select {
+  padding: 0.55rem 0.4rem;
+  border: 1px solid rgb(232 215 181 / 0.25);
+  border-radius: 6px;
+  background: rgb(0 0 0 / 0.3);
+  font: inherit;
+  color: var(--sand);
+}
+
+.field-note {
+  font-size: 0.8rem;
+  color: var(--sand-dim);
 }
 
 /* Room left at the end of a paragraph's last line */

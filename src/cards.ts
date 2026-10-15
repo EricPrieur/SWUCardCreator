@@ -28,6 +28,41 @@ export type Look = {
 
 export const defaultLook: Look = { frameOpacity: 1, panelFill: 0, panelBlur: 0, textGlow: 0, lightText: false }
 
+// The line along the bottom of a card: who drew it, and where it belongs. It shows
+// as soon as any of it is filled in.
+export type CardLine = {
+  artist?: string
+  // The rotation block, a letter in a small box
+  block?: string
+  setCode?: string
+  language?: string
+  // C, U, R, S or L
+  rarity?: string
+  number?: string
+}
+export const cardLineKeys = ['artist', 'block', 'setCode', 'language', 'rarity', 'number'] as const
+
+// What was last typed in the card line, but the card's number, to start the next card with
+const LINE_KEY = 'dune-unlimited.card-line'
+
+export function loadCardLine(): CardLine {
+  try {
+    const line = JSON.parse(localStorage.getItem(LINE_KEY) ?? '{}')
+    return typeof line === 'object' && line ? line : {}
+  } catch {
+    return {}
+  }
+}
+
+export function storeCardLine(card: CardLine) {
+  const { number: _number, ...line } = Object.fromEntries(cardLineKeys.map((key) => [key, card[key]])) as CardLine
+  try {
+    localStorage.setItem(LINE_KEY, JSON.stringify(line))
+  } catch {
+    // Not kept, then
+  }
+}
+
 export type Card = {
   id: string
   frameId: string
@@ -46,6 +81,7 @@ export type Card = {
   pilotText?: string
   upgradePower?: number
   upgradeHp?: number
+} & CardLine & {
   // A leader's other side, the Leader Unit. It has its own game text, and its own
   // art or placing of the art. Its name, subtitle and trait are the Leader side's
   // unless given here: Grand Moff Tarkin deploys as The Death Star, a Space unit.

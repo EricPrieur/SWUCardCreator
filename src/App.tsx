@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, type RefObject } from 'react'
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
+import { createPortal } from 'react-dom'
 import artFiles from 'virtual:art-list'
 import { asset } from './asset'
 import './App.css'
@@ -10,6 +11,9 @@ import {
   readArtFile,
   storeCards,
   storeDraft,
+  loadCardLine,
+  storeCardLine,
+  type CardLine,
   type Art,
   type Card,
   type Draft,
@@ -126,6 +130,7 @@ function CardFace(props: { card: Draft; back?: boolean }) {
       pilotText={card.pilotText}
       upgradePower={card.upgradePower}
       upgradeHp={card.upgradeHp}
+      line={card}
       art={art}
       look={card.look}
     />
@@ -318,14 +323,52 @@ function ImageButtons(props: {
   )
 }
 
+// With small or medium cards, a large copy of the card under the mouse follows the
+// pointer, beside it and kept inside the window. Touch screens do without.
+const PREVIEW_WIDTH = 345
+const PREVIEW_GAP = 20
+
+function HoverPreview(props: { enabled: boolean; preview: ReactNode; children: ReactNode }) {
+  const { enabled, preview, children } = props
+  const [at, setAt] = useState<{ left: number; top: number } | null>(null)
+  const box = useRef<HTMLDivElement>(null)
+  const place = (x: number, y: number) => {
+    const width = box.current?.offsetWidth ?? PREVIEW_WIDTH
+    const height = box.current?.offsetHeight ?? PREVIEW_WIDTH * 1.4
+    // Right of the pointer, or left of it near the window's right edge
+    const left = x + PREVIEW_GAP + width < window.innerWidth ? x + PREVIEW_GAP : x - PREVIEW_GAP - width
+    const top = Math.max(PREVIEW_GAP / 2, Math.min(y - height / 2, window.innerHeight - height - PREVIEW_GAP / 2))
+    return { left: Math.max(PREVIEW_GAP / 2, left), top }
+  }
+  return (
+    <div
+      onPointerMove={(event) => enabled && event.pointerType === 'mouse' && setAt(place(event.clientX, event.clientY))}
+      onPointerLeave={() => setAt(null)}
+      onPointerDown={() => setAt(null)}
+    >
+      {children}
+      {enabled &&
+        at &&
+        createPortal(
+          <div className="hover-preview" ref={box} style={{ width: PREVIEW_WIDTH, ...at }}>
+            {preview}
+          </div>,
+          document.body,
+        )}
+    </div>
+  )
+}
+
 function ShowroomCard(props: {
   card: Card
+  // Show a large copy of the card while the mouse is over it
+  preview: boolean
   format: ImageFormat
   onFormat: (format: ImageFormat) => void
   onEdit: () => void
   onRemove: () => void
 }) {
-  const { card, format, onFormat, onEdit, onRemove } = props
+  const { card, preview, format, onFormat, onEdit, onRemove } = props
   const [back, setBack] = useState(false)
   // Remove asks once more before it does anything
   const [removing, setRemoving] = useState(false)
@@ -335,9 +378,11 @@ function ShowroomCard(props: {
 
   return (
     <li>
-      <div ref={ref}>
-        <CardFace card={card} back={back} />
-      </div>
+      <HoverPreview enabled={preview} preview={<CardFace card={card} back={back} />}>
+        <div ref={ref}>
+          <CardFace card={card} back={back} />
+        </div>
+      </HoverPreview>
       <div className="showroom-actions">
         {findFrame(card.frameId).backId && (
           <button className="button" onClick={() => setBack(!back)}>
@@ -365,7 +410,7 @@ function ShowroomCard(props: {
         <ImageButtons
           holder={ref}
           frame={side.frame}
-          fileName={`${side.name.trim() || 'card'}${side.isBack ? ' (unit)' : ''}`}
+          fileName={cardFileName(card, back)}
           format={format}
           onFormat={onFormat}
           onNote={setNote}
@@ -421,6 +466,14 @@ function Projects() {
 function tabFromHash(): TabId {
   const id = window.location.hash.slice(1)
   return tabs.find((tab) => tab.id === id)?.id ?? 'creator'
+}
+
+// Showcases on the site that no menu links to: the address's name, and its folder in public/showcase
+const showcases: Record<string, string> = { DuneSWU: 'DuneSWU' }
+// A slash at the end, or other capitals, still find it: #DuneSWU/, #duneswu
+const showcaseFromHash = () => {
+  const asked = window.location.hash.slice(1).replace(/\/+$/, '').toLowerCase()
+  return Object.entries(showcases).find(([name]) => name.toLowerCase() === asked)?.[1]
 }
 
 // A dropdown of checkboxes: a button that opens a list, any number of which can be ticked
@@ -494,17 +547,62 @@ const splitTraits = (trait?: string) =>
     .map((part) => part.trim())
     .filter(Boolean)
 
-// What a card can be found and sorted by. A leader counts for what either of its sides says.
-function cardFacts(card: Card) {
+// Game text without its markup, for searching: brackets and the like taken out
+const plainText = (...texts: (string | undefined)[]) =>
+  texts
+    .filter(Boolean)
+    .join(' ')
+    .replace(/[[\]{}<>]/g, '')
+    .toLowerCase()
+
+// What a card can be found and sorted by
+type Facts = {
+  name: string
+  type: FrameFilter
+  // Lower-case, for matching
+  names: string[]
+  traits: string[]
+  // As first typed, for the Trait dropdown
+  traitLabels: string[]
+  text: string
+  aspects: Aspect[]
+  cost?: number
+}
+
+// A saved card's facts. A leader counts for what either of its sides says.
+function cardFacts(card: Card): Facts {
   const frame = findFrame(card.frameId)
   const back = frame.backId ? cardSide(card, true) : undefined
+  const traitLabels = [...splitTraits(card.trait), ...splitTraits(back?.trait)]
   return {
+    name: card.name,
     // A token unit is listed with the tokens
     type: (frame.token ? 'Token' : frame.pilotBox ? 'Pilot' : frame.type) as FrameFilter,
     names: [card.name, back?.name ?? ''].map((name) => name.toLowerCase()),
-    traits: [...splitTraits(card.trait), ...splitTraits(back?.trait)].map((trait) => trait.toLowerCase()),
+    traits: traitLabels.map((trait) => trait.toLowerCase()),
+    traitLabels,
+    text: plainText(card.text, card.backText, card.pilotText, card.epic),
     aspects: [...frame.aspects, ...(back?.frame.aspects ?? [])],
     cost: card.cost,
+  }
+}
+
+// How big the cards are drawn: large is the full width a card can have, medium two
+// thirds of it, small half. Kept for next time.
+const cardSizes = [
+  { value: 's', label: 'S', title: 'Small cards' },
+  { value: 'm', label: 'M', title: 'Medium cards' },
+  { value: 'l', label: 'L', title: 'Large cards' },
+] as const
+type CardSize = (typeof cardSizes)[number]['value']
+const SIZE_KEY = 'dune-unlimited.card-size'
+
+function loadCardSize(): CardSize {
+  try {
+    const saved = localStorage.getItem(SIZE_KEY)
+    return cardSizes.find(({ value }) => value === saved)?.value ?? 'm'
+  } catch {
+    return 'm'
   }
 }
 
@@ -516,8 +614,9 @@ const sorts = [
 ] as const
 type SortKey = (typeof sorts)[number]['value']
 
-function Showroom(props: { cards: Card[]; onEdit: (card: Card) => void; onRemove: (card: Card) => void }) {
-  const { cards, onEdit, onRemove } = props
+// Search, filters and sort over a list of cards, as the Showroom and a Showcase
+// show them: the bar to put above the cards, and the cards it lets through, in order.
+function useCardFilters<T>(items: { item: T; facts: Facts }[], firstSort = 'Order saved') {
   const [query, setQuery] = useState('')
   const [types, setTypes] = useState<FrameFilter[]>([])
   const [traits, setTraits] = useState<string[]>([])
@@ -525,25 +624,21 @@ function Showroom(props: { cards: Card[]; onEdit: (card: Card) => void; onRemove
   const [picked, setPicked] = useState<Aspect[]>([])
   const [sort, setSort] = useState<SortKey>('saved')
   const [descending, setDescending] = useState(false)
-  // One choice of image format for every card
-  const [format, changeFormat] = useImageFormat()
-
-  if (cards.length === 0) {
-    return (
-      <section className="empty">
-        <h2>No cards yet</h2>
-        <p>
-          Cards saved from the <a href="#creator">Card Creator</a> are displayed here.
-        </p>
-      </section>
-    )
+  const [size, setSize] = useState<CardSize>(loadCardSize)
+  const changeSize = (next: CardSize) => {
+    setSize(next)
+    try {
+      localStorage.setItem(SIZE_KEY, next)
+    } catch {
+      // Not kept, then
+    }
   }
 
-  const listed = cards.map((card, index) => ({ card, index, facts: cardFacts(card) }))
+  const listed = items.map((entry, index) => ({ ...entry, index }))
   // The dropdowns only offer what some card has. Traits keep the spelling first typed.
   const traitNames = new Map<string, string>()
-  for (const { card } of listed) {
-    for (const trait of [...splitTraits(card.trait), ...splitTraits(card.backTrait)]) {
+  for (const { facts } of listed) {
+    for (const trait of facts.traitLabels) {
       if (!traitNames.has(trait.toLowerCase())) traitNames.set(trait.toLowerCase(), trait)
     }
   }
@@ -559,7 +654,7 @@ function Showroom(props: { cards: Card[]; onEdit: (card: Card) => void; onRemove
   // Within Type, Trait and Cost any ticked box will do; every picked aspect must be on the card
   const found = listed.filter(
     ({ facts }) =>
-      (search === '' || facts.names.some((name) => name.includes(search))) &&
+      (search === '' || facts.names.some((name) => name.includes(search)) || facts.text.includes(search)) &&
       (types.length === 0 || types.includes(facts.type)) &&
       (traits.length === 0 || traits.some((trait) => facts.traits.includes(trait))) &&
       (costs.length === 0 || (facts.cost !== undefined && costs.includes(facts.cost))) &&
@@ -568,104 +663,261 @@ function Showroom(props: { cards: Card[]; onEdit: (card: Card) => void; onRemove
   const typeOrder = typeFilters.map(({ value }) => value)
   const compare: Record<SortKey, (a: (typeof found)[number], b: (typeof found)[number]) => number> = {
     saved: () => 0,
-    name: (a, b) => a.card.name.localeCompare(b.card.name),
+    name: (a, b) => a.facts.name.localeCompare(b.facts.name),
     // Cards without a cost come after the ones with one
     cost: (a, b) => (a.facts.cost ?? Infinity) - (b.facts.cost ?? Infinity),
     type: (a, b) => typeOrder.indexOf(a.facts.type) - typeOrder.indexOf(b.facts.type),
   }
-  const sorted = [...found].sort((a, b) => compare[sort](a, b) || a.index - b.index)
-  if (descending) sorted.reverse()
+  const shown = [...found].sort((a, b) => compare[sort](a, b) || a.index - b.index)
+  if (descending) shown.reverse()
   const filtered = search !== '' || types.length + traits.length + costs.length + picked.length > 0
 
-  return (
-    <section className="showroom">
-      <div className="filters showroom-filters">
-        <input
-          className="search"
-          type="search"
-          placeholder="Search by name"
-          aria-label="Search by name"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-        />
-        <div className="filter-group">
-          <CheckDropdown label="Type" options={typeOptions} selected={types} onChange={setTypes} />
-          <CheckDropdown label="Trait" options={traitOptions} selected={traits} onChange={setTraits} />
-          <CheckDropdown label="Cost" options={costOptions} selected={costs} onChange={setCosts} />
-        </div>
-        <div className="filter-group">
-          {aspects.map((aspect) => (
-            <button
-              className="chip aspect-chip"
-              type="button"
-              key={aspect}
-              title={aspect}
-              aria-label={aspect}
-              aria-pressed={picked.includes(aspect)}
-              onClick={() =>
-                setPicked(picked.includes(aspect) ? picked.filter((other) => other !== aspect) : [...picked, aspect])
-              }
-            >
-              <img src={aspectIcon(aspect)} alt="" />
-            </button>
+  const bar = (
+    <div className="filters showroom-filters">
+      <input
+        className="search"
+        type="search"
+        placeholder="Search by name or text"
+        aria-label="Search by name or text"
+        value={query}
+        onChange={(event) => setQuery(event.target.value)}
+      />
+      <div className="filter-group">
+        <CheckDropdown label="Type" options={typeOptions} selected={types} onChange={setTypes} />
+        <CheckDropdown label="Trait" options={traitOptions} selected={traits} onChange={setTraits} />
+        <CheckDropdown label="Cost" options={costOptions} selected={costs} onChange={setCosts} />
+      </div>
+      <div className="filter-group">
+        {aspects.map((aspect) => (
+          <button
+            className="chip aspect-chip"
+            type="button"
+            key={aspect}
+            title={aspect}
+            aria-label={aspect}
+            aria-pressed={picked.includes(aspect)}
+            onClick={() =>
+              setPicked(picked.includes(aspect) ? picked.filter((other) => other !== aspect) : [...picked, aspect])
+            }
+          >
+            <img src={aspectIcon(aspect)} alt="" />
+          </button>
+        ))}
+      </div>
+      <div className="filter-group">
+        <label className="filter-label" htmlFor="card-sort">
+          Sort
+        </label>
+        <select id="card-sort" value={sort} onChange={(event) => setSort(event.target.value as SortKey)}>
+          {sorts.map(({ value, label }) => (
+            <option key={value} value={value}>
+              {value === 'saved' ? firstSort : label}
+            </option>
           ))}
-        </div>
-        <div className="filter-group">
-          <label className="filter-label" htmlFor="showroom-sort">
-            Sort
-          </label>
-          <select id="showroom-sort" value={sort} onChange={(event) => setSort(event.target.value as SortKey)}>
-            {sorts.map(({ value, label }) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
+        </select>
+        <button
+          className="chip"
+          type="button"
+          title={descending ? 'Descending' : 'Ascending'}
+          aria-label={descending ? 'Descending' : 'Ascending'}
+          onClick={() => setDescending(!descending)}
+        >
+          {descending ? '↓' : '↑'}
+        </button>
+      </div>
+      <div className="filter-group">
+        <span className="filter-label">Size</span>
+        {cardSizes.map(({ value, label, title }) => (
+          <button
+            className="chip size-chip"
+            type="button"
+            key={value}
+            title={title}
+            aria-pressed={size === value}
+            onClick={() => changeSize(value)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      <div className="filter-group">
+        <span className="filter-label">
+          {shown.length === items.length ? `${items.length} cards` : `${shown.length} of ${items.length} cards`}
+        </span>
+        {filtered && (
           <button
             className="chip"
             type="button"
-            title={descending ? 'Descending' : 'Ascending'}
-            aria-label={descending ? 'Descending' : 'Ascending'}
-            onClick={() => setDescending(!descending)}
+            onClick={() => {
+              setQuery('')
+              setTypes([])
+              setTraits([])
+              setCosts([])
+              setPicked([])
+            }}
           >
-            {descending ? '↓' : '↑'}
+            Clear filters
           </button>
-        </div>
-        <div className="filter-group">
-          <span className="filter-label">
-            {sorted.length === cards.length ? `${cards.length} cards` : `${sorted.length} of ${cards.length} cards`}
-          </span>
-          {filtered && (
-            <button
-              className="chip"
-              type="button"
-              onClick={() => {
-                setQuery('')
-                setTypes([])
-                setTraits([])
-                setCosts([])
-                setPicked([])
-              }}
-            >
-              Clear filters
-            </button>
-          )}
-        </div>
+        )}
       </div>
+    </div>
+  )
+  // The class for the grid of cards, which sets their size
+  return { bar, shown, grid: `showroom-grid card-size-${size}`, preview: size !== 'l' }
+}
 
-      {sorted.length === 0 ? (
+// The name a card's image is saved under: its name and subtitle, and "(unit)" for a
+// leader's other side, without the characters file names cannot have
+function cardFileName(card: Draft, back: boolean) {
+  const side = cardSide(card, back)
+  const subtitle = side.subtitle?.trim()
+  const name = `${side.name.trim() || 'card'}${subtitle ? ` - ${subtitle}` : ''}${side.isBack ? ' (unit)' : ''}`
+  return name.replace(/[\\/:*?"<>|]/g, '')
+}
+
+// A Showcase's list of cards, kept as showcase.json beside the cards' images, which
+// are saved from the Showroom as JPG under the names given here.
+type ShowcaseCard = {
+  image: string
+  back?: string
+  name: string
+  backName?: string
+  subtitle?: string
+  type: FrameFilter
+  aspects: Aspect[]
+  cost?: number
+  traits: string[]
+  text?: string
+}
+type ShowcaseList = { title: string; cards: ShowcaseCard[] }
+
+function Showroom(props: { cards: Card[]; onEdit: (card: Card) => void; onRemove: (card: Card) => void }) {
+  const { cards, onEdit, onRemove } = props
+  const { bar, shown, grid, preview } = useCardFilters(cards.map((card) => ({ item: card, facts: cardFacts(card) })))
+  // One choice of image format for every card
+  const [format, changeFormat] = useImageFormat()
+
+  if (cards.length === 0) {
+    return (
+      <section className="empty">
+        <h2>No cards yet</h2>
+        <p>
+          Cards saved from the <a href="#creator">Card Creator</a> are displayed here.
+        </p>
+      </section>
+    )
+  }
+
+  return (
+    <section className="showroom">
+      {bar}
+
+      {shown.length === 0 ? (
         <p className="empty-note">No card matches these filters.</p>
       ) : (
-        <ul className="showroom-grid">
-          {sorted.map(({ card }) => (
+        <ul className={grid}>
+          {shown.map(({ item: card }) => (
             <ShowroomCard
               key={card.id}
               card={card}
+              preview={preview}
               format={format}
               onFormat={changeFormat}
               onEdit={() => onEdit(card)}
               onRemove={() => onRemove(card)}
             />
+          ))}
+        </ul>
+      )}
+    </section>
+  )
+}
+
+// One card of a Showcase: its image, and Flip for a leader's other side
+function ShowcaseItem(props: { folder: string; card: ShowcaseCard; preview: boolean }) {
+  const { folder, card, preview } = props
+  const [back, setBack] = useState(false)
+  const file = back && card.back ? card.back : card.image
+  const src = asset(`${folder}/${encodeURIComponent(file)}.jpg`)
+  return (
+    <li>
+      <HoverPreview enabled={preview} preview={<img className="showcase-image" src={src} alt="" />}>
+      <a href={src} target="_blank" rel="noopener noreferrer" title="Open the full image">
+        <img
+          className="showcase-image"
+          src={src}
+          alt={back && card.backName ? card.backName : card.name}
+          loading="lazy"
+          // A PNG saved in place of the JPG
+          onError={(event) => {
+            const img = event.currentTarget
+            if (img.src.endsWith('.jpg')) img.src = img.src.replace(/\.jpg$/, '.png')
+          }}
+        />
+      </a>
+      </HoverPreview>
+      {card.back && (
+        <div className="showroom-actions">
+          <button className="button" type="button" onClick={() => setBack(!back)}>
+            Flip
+          </button>
+        </div>
+      )}
+    </li>
+  )
+}
+
+// A set of cards shown as images, at an address only those given it know:
+// #showcase/<folder>, the folder being public/showcase/<folder> with showcase.json in it
+function Showcase(props: { folder: string }) {
+  const folder = `/showcase/${props.folder}`
+  const [list, setList] = useState<ShowcaseList | null>(null)
+  const [missing, setMissing] = useState(false)
+  useEffect(() => {
+    fetch(asset(`${folder}/showcase.json`))
+      .then((response) => (response.ok ? response.json() : Promise.reject(new Error(String(response.status)))))
+      .then((data: ShowcaseList) => setList(data))
+      .catch(() => setMissing(true))
+  }, [folder])
+  useEffect(() => {
+    // Kept out of search engines
+    const robots = document.createElement('meta')
+    robots.name = 'robots'
+    robots.content = 'noindex'
+    document.head.append(robots)
+    return () => robots.remove()
+  }, [])
+  const { bar, shown, grid, preview } = useCardFilters(
+    (list?.cards ?? []).map((card) => ({
+      item: card,
+      facts: {
+        name: card.name,
+        type: card.type,
+        names: [card.name, card.backName ?? ''].map((name) => name.toLowerCase()),
+        traits: card.traits.map((trait) => trait.toLowerCase()),
+        traitLabels: card.traits,
+        text: card.text ?? '',
+        aspects: card.aspects,
+        cost: card.cost,
+      },
+    })),
+    'Showcase order',
+  )
+  useEffect(() => {
+    if (list) document.title = list.title
+  }, [list])
+
+  if (missing) return <p className="empty-note">There is no showcase here.</p>
+  if (!list) return <p className="empty-note">Loading…</p>
+  return (
+    <section className="showroom">
+      {bar}
+      {shown.length === 0 ? (
+        <p className="empty-note">No card matches these filters.</p>
+      ) : (
+        <ul className={grid}>
+          {shown.map(({ item: card }) => (
+            <ShowcaseItem key={card.image} folder={folder} card={card} preview={preview} />
           ))}
         </ul>
       )}
@@ -777,6 +1029,12 @@ function CardCreator(props: {
       backArena: undefined,
     })
   }
+  // The card line is remembered for the next card as it is typed
+  const setLine = (key: keyof CardLine, value: string) => {
+    const next = { ...draft, [key]: value }
+    storeCardLine(next)
+    onChange(next)
+  }
   const shown = frames.filter(
     (candidate) =>
       // Leader Unit frames are offered while that side is being edited, in place of
@@ -820,7 +1078,7 @@ function CardCreator(props: {
             <ImageButtons
               holder={preview}
               frame={frame}
-              fileName={`${side.name.trim() || 'card'}${side.isBack ? ' (unit)' : ''}`}
+              fileName={cardFileName(draft, back)}
               format={format}
               onFormat={changeFormat}
               onNote={setImageNote}
@@ -1037,6 +1295,42 @@ function CardCreator(props: {
               <span>Until you change it, the number of resources follows the cost.</span>
             </label>
           )}
+          <h3 className="editor-subhead">Card line</h3>
+          <div className="card-line-fields">
+            {(
+              [
+                ['artist', 'Artist', 'wide'],
+                ['block', 'Block', 'tiny'],
+                ['setCode', 'Set', 'short'],
+                ['language', 'Language', 'short'],
+                ['number', 'Number', 'short'],
+              ] as const
+            ).map(([key, label, width]) => (
+              <label key={key} className={`card-line-${width}`}>
+                {label}
+                <input
+                  value={draft[key] ?? ''}
+                  maxLength={key === 'block' ? 1 : undefined}
+                  onChange={(event) => setLine(key, event.target.value)}
+                />
+              </label>
+            ))}
+            <label className="card-line-short">
+              Rarity
+              <select value={draft.rarity ?? ''} onChange={(event) => setLine('rarity', event.target.value)}>
+                <option value="">–</option>
+                <option value="C">Common</option>
+                <option value="U">Uncommon</option>
+                <option value="R">Rare</option>
+                <option value="S">Special</option>
+                <option value="L">Legendary</option>
+              </select>
+            </label>
+          </div>
+          <span className="field-note">
+            The line along the bottom shows once any of it is filled in. A new card starts with what was typed
+            here last, all but the number.
+          </span>
         </div>
       </section>
 
@@ -1454,13 +1748,17 @@ function ArtControls(props: { art?: Art; onChange: (art?: Art) => void }) {
 
 function App() {
   const [tab, setTab] = useState<TabId>(tabFromHash)
+  const [showcase, setShowcase] = useState(showcaseFromHash)
   const [cards, setCards] = useState<Card[]>(loadCards)
-  const [draft, setDraft] = useState<Draft>(() => loadDraft() ?? blankDraft)
+  const [draft, setDraft] = useState<Draft>(() => loadDraft() ?? { ...blankDraft, ...loadCardLine() })
   const [saved, setSaved] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
 
   useEffect(() => {
-    const onHashChange = () => setTab(tabFromHash())
+    const onHashChange = () => {
+      setTab(tabFromHash())
+      setShowcase(showcaseFromHash())
+    }
     window.addEventListener('hashchange', onHashChange)
     return () => window.removeEventListener('hashchange', onHashChange)
   }, [])
@@ -1508,6 +1806,17 @@ function App() {
     window.scrollTo(0, 0)
   }
 
+  if (showcase) {
+    return (
+      <main className="page">
+        <header className="page-header">
+          <h1>Dune SWU</h1>
+        </header>
+        <Showcase folder={showcase} />
+      </main>
+    )
+  }
+
   return (
     <main className="page">
       <header className="page-header">
@@ -1531,7 +1840,8 @@ function App() {
           cards={cards}
           onChange={changeDraft}
           onSave={saveDraft}
-          onNew={() => changeDraft({ frameId: draft.frameId, name: '', trait: '', text: '' })}
+          // A new card starts with the card line last typed, but for its number
+          onNew={() => changeDraft({ frameId: draft.frameId, name: '', trait: '', text: '', ...loadCardLine() })}
         />
       )}
     </main>

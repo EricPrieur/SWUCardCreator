@@ -1,6 +1,6 @@
 import { memo, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
 import { asset } from './asset'
-import { defaultLook, type Art, type Look } from './cards'
+import { cardLineKeys, defaultLook, type Art, type CardLine, type Look } from './cards'
 import { aspects, epicText, isUnique, type Frame, type Spot, type TextBox } from './frames'
 
 // One line of card text, placed on the frame and squeezed to fit its box.
@@ -423,6 +423,56 @@ function PilotArea(props: { frame: Frame; text: string; pilotText: string; pilot
   )
 }
 
+// The line along the bottom of a card, on a dark band across the art: the artist,
+// the block (a little left of the middle, as printed), the set and language, the
+// rarity's symbol and the card's number
+const rarityNames: Record<string, string> = { C: 'Common', U: 'Uncommon', R: 'Rare', S: 'Special', L: 'Legendary' }
+
+function CardLine(props: { frame: Frame; line: CardLine }) {
+  const { frame, line } = props
+  const landscape = frame.width > frame.height
+  // Where the band sits, as on the printed cards
+  const box = landscape
+    ? { x: 30 / 1000, y: 660 / 718, w: 940 / 1000, h: 31 / 718 }
+    : { x: 32 / 718, y: 937 / 1000, w: 651 / 718, h: 35 / 1000 }
+  // The text is the same size on every card, measured on its short side
+  const shortSide = Math.min(frame.width, frame.height)
+  const style: CSSProperties = {
+    left: `${box.x * 100}%`,
+    top: `${box.y * 100}%`,
+    width: `${box.w * 100}%`,
+    height: `${box.h * 100}%`,
+    fontSize: `${(17 / shortSide) * (shortSide / frame.width) * 100}cqw`,
+  }
+  const value = (key: keyof CardLine) => line[key]?.trim() ?? ''
+  const where = [value('setCode'), value('language')].filter(Boolean).join(' \u2022 ')
+  const rarity = value('rarity').toUpperCase().slice(0, 1)
+  return (
+    <div className="card-line" style={style}>
+      <span className="card-line-artist">
+        {value('artist') && (
+          <>
+            <img src={asset('/icons/artist.png')} alt="Artist" />
+            {value('artist')}
+          </>
+        )}
+      </span>
+      {value('block') && <span className="card-line-block">{value('block').slice(0, 1)}</span>}
+      <span className="card-line-gap" />
+      {where && <span>{where}</span>}
+      {rarityNames[rarity] && (
+        <img
+          className="card-line-rarity"
+          src={asset(`/icons/rarity/${rarity.toLowerCase()}.png`)}
+          alt={rarityNames[rarity]}
+          title={rarityNames[rarity]}
+        />
+      )}
+      <span className="card-line-number">{value('number')}</span>
+    </div>
+  )
+}
+
 // The picture mirrored across each of its edges and corners, to continue it past them
 const mirrors = [-1, 0, 1].flatMap((dy) => [-1, 0, 1].map((dx) => ({ dx, dy })))
 
@@ -515,6 +565,8 @@ export const CardView = memo(function CardView(props: {
   pilotText?: string
   upgradePower?: number
   upgradeHp?: number
+  // The line along the bottom
+  line?: CardLine
   art?: Art
   look?: Look
   // Draw the small copy of the frame: for the frame picker, which shows them all at once
@@ -566,6 +618,9 @@ export const CardView = memo(function CardView(props: {
         <CardText frame={frame} box={frame.subtitle.box} className="card-subtitle" text={props.subtitle} />
       )}
       {frame.label && <CardText frame={frame} box={frame.label.box} className="card-label" text={frame.label.text} />}
+      {props.line && !props.thumb && cardLineKeys.some((key) => props.line?.[key]?.trim()) && (
+        <CardLine frame={frame} line={props.line} />
+      )}
       {numberKinds.map((kind) => {
         const spot = frame[kind]
         const value = props[kind]

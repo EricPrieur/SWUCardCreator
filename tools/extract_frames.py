@@ -1383,13 +1383,65 @@ def extract_exhaust_icon():
     print("wrote", path, "from a", out.shape[1], "x", out.shape[0], "px arrow")
 
 
+def extract_artist_icon():
+    """Cut the brush printed before the artist's name on the card's bottom line, as a white shape."""
+    im = np.array(Image.open(SRC / "pilots" / "Clone Pilot.png").convert("RGB")).astype(np.float32)
+    lum = im[944:972, 40:72].mean(-1)  # the brush, white on the dark line
+    alpha = np.clip((lum - 30) / (240 - 30), 0, 1)
+    lab, sizes = components(alpha > 0.4)
+    keep = dilate(np.isin(lab, np.nonzero(sizes >= 20)[0]), 1)  # the brush, not specks of art
+    alpha = alpha * keep
+    ys, xs = np.nonzero(alpha > 0.4)
+    alpha = alpha[ys.min() - 1:ys.max() + 2, xs.min() - 1:xs.max() + 2]
+    out = np.dstack([np.full(alpha.shape + (3,), 255), alpha * 255]).round().astype(np.uint8)
+    big = Image.fromarray(out, "RGBA").resize((out.shape[1] * 4, out.shape[0] * 4), Image.LANCZOS)
+    path = ROOT / "public" / "icons" / "artist.png"
+    big.save(path)
+    print("wrote", path, "from a", out.shape[1], "x", out.shape[0], "px brush")
+
+
+# The rarity symbol near the right end of a card's bottom line: (card, how far right
+# of the 718 px wide cards the symbol sits on that card)
+RARITY_SOURCES = {
+    "c": ("aggression/Cantina Braggart.png", 0),
+    "u": ("aggression/Admiral Ozzel.png", 0),
+    "r": ("aggression/Fallen Lightsaber.png", 0),
+    "l": ("aggression/Black One.png", 0),
+    "s": ("pilots/Bossk.png", 0),
+}
+RARITY_BOX = (589, 945, 628, 974)
+
+
+def extract_rarity_icons():
+    """Cut the five rarity symbols. They are light shapes on the dark line; the dark
+    letter inside some of them is left see-through, so the line shows through it."""
+    for rarity, (card, dx) in RARITY_SOURCES.items():
+        im = np.array(Image.open(SRC / card).convert("RGB")).astype(np.float32)
+        x0, y0, x1, y1 = RARITY_BOX
+        reg = im[y0:y1, x0 + dx:x1 + dx]
+        light = reg.max(-1)
+        lab, sizes = components(light > 100)
+        shape = dilate(lab == sizes.argmax(), 2)
+        alpha = np.clip((light - 60) / 90, 0, 1) * shape
+        ys, xs = np.nonzero(alpha > 0.3)
+        alpha = alpha[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
+        rgb = reg[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
+        out = np.dstack([rgb, alpha * 255]).round().astype(np.uint8)
+        big = Image.fromarray(out, "RGBA").resize((out.shape[1] * 4, out.shape[0] * 4), Image.LANCZOS)
+        path = ROOT / "public" / "icons" / "rarity" / (rarity + ".png")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        big.save(path)
+    print("wrote rarities", sorted(RARITY_SOURCES))
+
+
 if __name__ == "__main__":
     extras = {"icons/cost-1": extract_cost_icon, "icons/numbers": extract_numbers, "icons/unique": extract_unique_icon,
               "icons/aspects": extract_aspects, "icons/signs": extract_signs, "base": extract_bases,
               "upgrade": extract_upgrades, "unit/derived-subtitles": extract_derived_subtitles,
               "fortification": extract_fortifications, "unit/token-text": extract_token_text_units,
               "fortification/derived": extract_derived_fortifications,
-              "leader": extract_leaders, "icons/exhaust": extract_exhaust_icon}
+              "leader": extract_leaders, "icons/exhaust": extract_exhaust_icon,
+              "icons/artist": extract_artist_icon, "icons/rarity": extract_rarity_icons}
     for subtitle in SUBTITLES:
         extras[subtitle] = lambda subtitle=subtitle: extract_subtitle(subtitle)
     for frame in sys.argv[1:] or list(FRAMES) + list(extras):
