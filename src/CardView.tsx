@@ -120,7 +120,8 @@ function InlineChange(props: { power: string; hp: string }) {
 // So does the word Keywords, which some cards use to mean any of them.
 const keywords = new Set([
   'ambush', 'bounty', 'coordinate', 'exploit', 'grit', 'hidden', 'overwhelm', 'piloting', 'plot', 'raid',
-  'restore', 'saboteur', 'sentinel', 'shielded', 'smuggle', 'support', 'keyword', 'keywords',
+  'restore', 'saboteur', 'sentinel', 'shielded', 'smuggle', 'support', 'fortify',
+  'keyword', 'keywords',
 ])
 const isKeyword = (text: string) => keywords.has(text.replace(/\s*\d+$/, '').trim().toLowerCase())
 

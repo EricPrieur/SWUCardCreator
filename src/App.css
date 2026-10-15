@@ -88,7 +88,7 @@
     justify-content: center;
   }
 
-  .editor-preview {
+  .editor-preview-column {
     order: -1;
   }
 }
@@ -106,6 +106,26 @@
 
 .art-drag img {
   -webkit-user-drag: none;
+}
+
+/* The card being edited, and under it what can be done with it */
+.editor-preview-column {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.preview-actions {
+  justify-content: center;
+}
+
+.editor-preview-column > .editor-actions {
+  justify-content: center;
+}
+
+.editor-preview-column > .saved-note,
+.editor-preview-column > .error-note {
+  text-align: center;
 }
 
 .editor-fields {

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type RefObject } from 'react'
 import artFiles from 'virtual:art-list'
 import { asset } from './asset'
 import './App.css'
@@ -137,13 +137,18 @@ const imageFormats = [
   // Far smaller, at the price of a little detail. It has no see-through, so the
   // corners outside the card's rounding are black.
   { value: 'jpg', label: 'JPG', type: 'image/jpeg' },
+  // Ready for a print service such as MakePlayingCards: see printImage
+  { value: 'print', label: 'Print', type: 'image/png' },
 ] as const
 type ImageFormat = (typeof imageFormats)[number]['value']
+// The file name ending for each format
+const extensions: Record<ImageFormat, string> = { png: 'png', jpg: 'jpg', print: 'png' }
 const FORMAT_KEY = 'dune-unlimited.export-format'
 
 function loadFormat(): ImageFormat {
   try {
-    return localStorage.getItem(FORMAT_KEY) === 'jpg' ? 'jpg' : 'png'
+    const saved = localStorage.getItem(FORMAT_KEY)
+    return imageFormats.find(({ value }) => value === saved)?.value ?? 'png'
   } catch {
     return 'png'
   }
@@ -155,11 +160,53 @@ function loadFormat(): ImageFormat {
 // Safari, and every browser on an iPhone or iPad, which all run on Safari's engine
 const webKit = /AppleWebKit/.test(navigator.userAgent) && !/(Chrome|Chromium|Edg)\//.test(navigator.userAgent)
 
+// A print-ready card, sized for poker-size cards (2.5 by 3.5 inches) at 300 dpi as
+// MakePlayingCards and similar services take them: the card fills 750 by 1050
+// pixels, and a bleed of 1/8 inch (36 pixels) runs around it, so a cut that lands a
+// little off still shows card rather than white. The bleed is the card's own edge
+// mirrored outward. Corners are square: the service rounds them when it cuts.
+const PRINT = { width: 750, height: 1050, bleed: 36 }
+
+function printImage(card: HTMLCanvasElement, landscape: boolean) {
+  const [w, h] = landscape ? [PRINT.height, PRINT.width] : [PRINT.width, PRINT.height]
+  const b = PRINT.bleed
+  const inner = document.createElement('canvas')
+  inner.width = w
+  inner.height = h
+  const fit = inner.getContext('2d')!
+  fit.imageSmoothingQuality = 'high'
+  fit.drawImage(card, 0, 0, w, h)
+  const out = document.createElement('canvas')
+  out.width = w + 2 * b
+  out.height = h + 2 * b
+  const ctx = out.getContext('2d')!
+  ctx.drawImage(inner, b, b)
+  // Each strip of bleed is the strip of card next to it, flipped across the cut line
+  const strip = (sx: number, sy: number, sw: number, sh: number, dx: number, dy: number, flipX: boolean, flipY: boolean) => {
+    ctx.save()
+    ctx.translate(dx + (flipX ? sw : 0), dy + (flipY ? sh : 0))
+    ctx.scale(flipX ? -1 : 1, flipY ? -1 : 1)
+    ctx.drawImage(inner, sx, sy, sw, sh, 0, 0, sw, sh)
+    ctx.restore()
+  }
+  strip(0, 0, w, b, b, 0, false, true) // top
+  strip(0, h - b, w, b, b, h + b, false, true) // bottom
+  strip(0, 0, b, h, 0, b, true, false) // left
+  strip(w - b, 0, b, h, w + b, b, true, false) // right
+  strip(0, 0, b, b, 0, 0, true, true) // corners
+  strip(w - b, 0, b, b, w + b, 0, true, true)
+  strip(0, h - b, b, b, 0, h + b, true, true)
+  strip(w - b, h - b, b, b, w + b, h + b, true, true)
+  return out
+}
+
 async function cardImage(card: HTMLElement, frame: Frame, format: ImageFormat) {
   const { toCanvas } = await import('html-to-image')
   const options = {
     pixelRatio: (frame.width * 2) / card.clientWidth,
     backgroundColor: format === 'jpg' ? '#000' : undefined,
+    // For print the corners are square; the art and frame already reach them
+    style: format === 'print' ? { borderRadius: '0', boxShadow: 'none' } : undefined,
   }
   // Safari draws the card before its pictures have loaded, leaving the art and the
   // frame out and only the text. Drawn again, the pictures are ready and come out.
@@ -167,11 +214,108 @@ async function cardImage(card: HTMLElement, frame: Frame, format: ImageFormat) {
     await toCanvas(card, options)
     await toCanvas(card, options)
   }
-  const canvas = await toCanvas(card, options)
+  const drawn = await toCanvas(card, options)
+  const canvas = format === 'print' ? printImage(drawn, frame.width > frame.height) : drawn
   const type = imageFormats.find(({ value }) => value === format)!.type
   const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, type, 0.92))
   if (!blob) throw new Error('The card could not be drawn')
   return blob
+}
+
+// The image format picked last, kept for next time, wherever images are saved
+function useImageFormat() {
+  const [format, setFormat] = useState<ImageFormat>(loadFormat)
+  const change = (next: ImageFormat) => {
+    setFormat(next)
+    try {
+      localStorage.setItem(FORMAT_KEY, next)
+    } catch {
+      // Not kept, then
+    }
+  }
+  return [format, change] as const
+}
+
+// Save (with its choice of format) and Copy, for a card shown on the page. A middle
+// click on Save opens the image in a new tab instead.
+function ImageButtons(props: {
+  // Holds the card to draw
+  holder: RefObject<HTMLElement | null>
+  frame: Frame
+  fileName: string
+  format: ImageFormat
+  onFormat: (format: ImageFormat) => void
+  // What came of the last click, to show near the buttons
+  onNote: (note: string | null) => void
+}) {
+  const { holder, frame, fileName, format, onFormat, onNote } = props
+  // What the buttons are up to, shown in place of their labels
+  const [busy, setBusy] = useState<'save' | 'copy' | null>(null)
+
+  // Saves the image, copies it, or shows it in a tab opened for it beforehand: a
+  // tab opened only once the image is ready would be stopped as a pop-up
+  const image = async (action: 'save' | 'copy', tab?: Window | null) => {
+    const el = holder.current?.querySelector<HTMLElement>('.card')
+    if (!el || busy) return tab?.close()
+    setBusy(action)
+    onNote(null)
+    try {
+      // Browsers' clipboards take PNG and, most of them, nothing else: the chosen
+      // format is copied where the browser allows it, and PNG where it does not
+      const copied = format === 'jpg' && !ClipboardItem.supports?.('image/jpeg') ? 'png' : format
+      const blob = await cardImage(el, frame, action === 'copy' ? copied : format)
+      if (action === 'copy') {
+        await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })])
+        onNote(copied === format ? 'Copied' : 'Copied as PNG: this browser cannot copy a JPG')
+      } else if (tab) {
+        tab.location.href = URL.createObjectURL(blob)
+      } else {
+        const link = document.createElement('a')
+        link.href = URL.createObjectURL(blob)
+        link.download = `${fileName}${format === 'print' ? ' (print)' : ''}.${extensions[format]}`
+        link.click()
+        URL.revokeObjectURL(link.href)
+      }
+    } catch {
+      tab?.close()
+      onNote('Could not make the image')
+    }
+    setBusy(null)
+  }
+
+  return (
+    <>
+      <span className="split-button">
+        <button
+          className="button"
+          type="button"
+          disabled={busy !== null}
+          title="Click to save the image; middle-click to open it in a new tab"
+          onClick={() => image('save')}
+          // A middle click shows the image in a new tab instead of scrolling the page
+          onMouseDown={(event) => event.button === 1 && event.preventDefault()}
+          onAuxClick={(event) => event.button === 1 && image('save', window.open('', '_blank'))}
+        >
+          {busy === 'save' ? 'Drawing…' : 'Save'}
+        </button>
+        <select
+          aria-label="Image format"
+          title="Print: 822 × 1122 px with a mirrored bleed edge and square corners, for MakePlayingCards and similar services"
+          value={format}
+          onChange={(event) => onFormat(event.target.value as ImageFormat)}
+        >
+          {imageFormats.map(({ value, label }) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </select>
+      </span>
+      <button className="button" type="button" disabled={busy !== null} onClick={() => image('copy')}>
+        {busy === 'copy' ? 'Drawing…' : 'Copy'}
+      </button>
+    </>
+  )
 }
 
 function ShowroomCard(props: {
@@ -185,42 +329,9 @@ function ShowroomCard(props: {
   const [back, setBack] = useState(false)
   // Remove asks once more before it does anything
   const [removing, setRemoving] = useState(false)
-  // What the image buttons are up to, shown in place of their labels
-  const [busy, setBusy] = useState<'save' | 'copy' | null>(null)
   const [note, setNote] = useState<string | null>(null)
   const ref = useRef<HTMLDivElement>(null)
   const side = cardSide(card, back)
-
-  // Saves the image, copies it, or shows it in a tab opened for it beforehand: a
-  // tab opened only once the image is ready would be stopped as a pop-up
-  const image = async (action: 'save' | 'copy', tab?: Window | null) => {
-    const el = ref.current?.querySelector<HTMLElement>('.card')
-    if (!el || busy) return tab?.close()
-    setBusy(action)
-    setNote(null)
-    try {
-      // Browsers' clipboards take PNG and, most of them, nothing else: the chosen
-      // format is copied where the browser allows it, and PNG where it does not
-      const copied = format !== 'png' && !ClipboardItem.supports?.('image/jpeg') ? 'png' : format
-      const blob = await cardImage(el, side.frame, action === 'copy' ? copied : format)
-      if (action === 'copy') {
-        await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })])
-        setNote(copied === format ? 'Copied' : 'Copied as PNG: this browser cannot copy a JPG')
-      } else if (tab) {
-        tab.location.href = URL.createObjectURL(blob)
-      } else {
-        const link = document.createElement('a')
-        link.href = URL.createObjectURL(blob)
-        link.download = `${side.name.trim() || 'card'}${side.isBack ? ' (unit)' : ''}.${format}`
-        link.click()
-        URL.revokeObjectURL(link.href)
-      }
-    } catch {
-      tab?.close()
-      setNote('Could not make the image')
-    }
-    setBusy(null)
-  }
 
   return (
     <li>
@@ -251,33 +362,14 @@ function ShowroomCard(props: {
             Remove
           </button>
         )}
-        <span className="split-button">
-          <button
-            className="button"
-            disabled={busy !== null}
-            title="Click to save the image; middle-click to open it in a new tab"
-            onClick={() => image('save')}
-            // A middle click shows the image in a new tab instead of scrolling the page
-            onMouseDown={(event) => event.button === 1 && event.preventDefault()}
-            onAuxClick={(event) => event.button === 1 && image('save', window.open('', '_blank'))}
-          >
-            {busy === 'save' ? 'Drawing…' : 'Save'}
-          </button>
-          <select
-            aria-label="Image format"
-            value={format}
-            onChange={(event) => onFormat(event.target.value as ImageFormat)}
-          >
-            {imageFormats.map(({ value, label }) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </span>
-        <button className="button" disabled={busy !== null} onClick={() => image('copy')}>
-          {busy === 'copy' ? 'Drawing…' : 'Copy'}
-        </button>
+        <ImageButtons
+          holder={ref}
+          frame={side.frame}
+          fileName={`${side.name.trim() || 'card'}${side.isBack ? ' (unit)' : ''}`}
+          format={format}
+          onFormat={onFormat}
+          onNote={setNote}
+        />
       </div>
       {note && <p className="saved-note showroom-note">{note}</p>}
     </li>
@@ -433,16 +525,8 @@ function Showroom(props: { cards: Card[]; onEdit: (card: Card) => void; onRemove
   const [picked, setPicked] = useState<Aspect[]>([])
   const [sort, setSort] = useState<SortKey>('saved')
   const [descending, setDescending] = useState(false)
-  // One choice of image format for every card, kept for next time
-  const [format, setFormat] = useState<ImageFormat>(loadFormat)
-  const changeFormat = (next: ImageFormat) => {
-    setFormat(next)
-    try {
-      localStorage.setItem(FORMAT_KEY, next)
-    } catch {
-      // Not kept, then
-    }
-  }
+  // One choice of image format for every card
+  const [format, changeFormat] = useImageFormat()
 
   if (cards.length === 0) {
     return (
@@ -631,6 +715,10 @@ function CardCreator(props: {
   onNew: () => void
 }) {
   const { draft, saved, saveError, cards, onChange, onSave, onNew } = props
+  // The preview, for Save and Copy
+  const preview = useRef<HTMLDivElement>(null)
+  const [format, changeFormat] = useImageFormat()
+  const [imageNote, setImageNote] = useState<string | null>(null)
   // A question put before saving, which only stands while the card is left as it was
   const [asked, setAsked] = useState<{ about: 'replace' | 'twin'; asNew: boolean; draft: Draft } | null>(null)
   const question = asked?.draft === draft ? asked : null
@@ -709,71 +797,86 @@ function CardCreator(props: {
           <ArtControls art={side.art} onChange={setArt} />
           <h2>Frame &amp; text</h2>
           <LookControls look={draft.look ?? defaultLook} onChange={(look) => onChange({ ...draft, look })} />
-          <div className="editor-actions">
-            <button className="button button-primary" type="button" onClick={() => save(!original)}>
-              {original ? 'Update in Showroom' : 'Save to Showroom'}
-            </button>
-            {original && (
-              <button className="button" type="button" onClick={() => save(true)}>
-                Save as new card
-              </button>
-            )}
-            <button className="button" type="button" onClick={onNew}>
-              New card
-            </button>
-          </div>
-          {original && !question && (
-            <p className="saved-note">
-              Editing <strong>{cardLabel(original)}</strong>. Update changes that card; Save as new card leaves it as
-              it is and adds this one.
-            </p>
-          )}
-          {question?.about === 'replace' && original && (
-            <div className="save-question">
-              <p>
-                <strong>{cardLabel(original)}</strong> is a {findFrame(original.frameId).type.toLowerCase()} in the
-                Showroom. Updating it would turn it into this {findFrame(draft.frameId).type.toLowerCase()}.
-              </p>
-              <div className="editor-actions">
-                <button className="button button-primary" type="button" onClick={() => save(true)}>
-                  Save as new card
-                </button>
-                <button className="button" type="button" onClick={() => save(false, true)}>
-                  Replace it
-                </button>
-                <button className="button" type="button" onClick={() => setAsked(null)}>
-                  Cancel
-                </button>
-              </div>
-            </div>
-          )}
-          {question?.about === 'twin' && (
-            <div className="save-question">
-              <p>
-                <strong>{cardLabel(draft)}</strong> is already in the Showroom. Name and subtitle together should
-                be one card's alone.
-              </p>
-              <div className="editor-actions">
-                <button className="button" type="button" onClick={() => save(question.asNew, true)}>
-                  Save anyway
-                </button>
-                <button className="button" type="button" onClick={() => setAsked(null)}>
-                  Cancel
-                </button>
-              </div>
-            </div>
-          )}
-          {saveError && <p className="error-note">{saveError}</p>}
-          {saved && (
-            <p className="saved-note">
-              Saved. <a href="#showroom">See it in the Showroom</a>
-            </p>
-          )}
         </div>
 
-        <ArtDrag art={side.art} onChange={setArt}>
-          <CardFace card={draft} back={back} />
-        </ArtDrag>
+        <div className="editor-preview-column">
+          <div ref={preview}>
+            <ArtDrag art={side.art} onChange={setArt}>
+              <CardFace card={draft} back={back} />
+            </ArtDrag>
+          </div>
+          <div className="editor-actions preview-actions">
+            <ImageButtons
+              holder={preview}
+              frame={frame}
+              fileName={`${side.name.trim() || 'card'}${side.isBack ? ' (unit)' : ''}`}
+              format={format}
+              onFormat={changeFormat}
+              onNote={setImageNote}
+            />
+          </div>
+          {imageNote && <p className="saved-note">{imageNote}</p>}
+            <div className="editor-actions">
+              <button className="button button-primary" type="button" onClick={() => save(!original)}>
+                {original ? 'Update in Showroom' : 'Save to Showroom'}
+              </button>
+              {original && (
+                <button className="button" type="button" onClick={() => save(true)}>
+                  Save as new card
+                </button>
+              )}
+              <button className="button" type="button" onClick={onNew}>
+                New card
+              </button>
+            </div>
+            {original && !question && (
+              <p className="saved-note">
+                Editing <strong>{cardLabel(original)}</strong>. Update changes that card; Save as new card leaves it as
+                it is and adds this one.
+              </p>
+            )}
+            {question?.about === 'replace' && original && (
+              <div className="save-question">
+                <p>
+                  <strong>{cardLabel(original)}</strong> is a {findFrame(original.frameId).type.toLowerCase()} in the
+                  Showroom. Updating it would turn it into this {findFrame(draft.frameId).type.toLowerCase()}.
+                </p>
+                <div className="editor-actions">
+                  <button className="button button-primary" type="button" onClick={() => save(true)}>
+                    Save as new card
+                  </button>
+                  <button className="button" type="button" onClick={() => save(false, true)}>
+                    Replace it
+                  </button>
+                  <button className="button" type="button" onClick={() => setAsked(null)}>
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+            {question?.about === 'twin' && (
+              <div className="save-question">
+                <p>
+                  <strong>{cardLabel(draft)}</strong> is already in the Showroom. Name and subtitle together should
+                  be one card's alone.
+                </p>
+                <div className="editor-actions">
+                  <button className="button" type="button" onClick={() => save(question.asNew, true)}>
+                    Save anyway
+                  </button>
+                  <button className="button" type="button" onClick={() => setAsked(null)}>
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+            {saveError && <p className="error-note">{saveError}</p>}
+            {saved && (
+              <p className="saved-note">
+                Saved. <a href="#showroom">See it in the Showroom</a>
+              </p>
+            )}
+        </div>
 
         <div className="editor-fields">
           <h2>{frame.name}</h2>
