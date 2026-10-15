@@ -716,6 +716,22 @@
   text-align: center;
 }
 
+/* Previous and Next under the frame picker */
+.pager {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1.5rem;
+  font-size: 0.9rem;
+  color: var(--sand-dim);
+}
+
+.pager .button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
 .empty-note {
   color: var(--sand-dim);
 }

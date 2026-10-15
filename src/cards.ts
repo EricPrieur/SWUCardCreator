@@ -81,6 +81,15 @@ function withBothSides<T extends { frameId: string; text: string; art?: Art }>(c
   }
 }
 
+// The art in public/art is kept as JPG. A card saved while it was PNG names the
+// PNG: it gets the JPG of the same name instead.
+const asJpg = (art?: Art) =>
+  art && /^\/art\/.+\.(png|webp|jpeg)$/i.test(art.src) ? { ...art, src: art.src.replace(/\.\w+$/, '.jpg') } : art
+
+function withCurrentArt<T extends { art?: Art; backArt?: Art }>(card: T): T {
+  return { ...card, art: asJpg(card.art), backArt: asJpg(card.backArt) }
+}
+
 // Saved cards live in this browser only, until the site has a shared store.
 const STORAGE_KEY = 'dune-unlimited.cards'
 
@@ -94,6 +103,7 @@ export function loadCards(): Card[] {
         frameOpacity === undefined ? card : { ...card, look: { ...defaultLook, frameOpacity } },
       )
       .map(withBothSides)
+      .map(withCurrentArt)
   } catch {
     return []
   }
@@ -106,7 +116,7 @@ export type Draft = Omit<Card, 'id'> & { id?: string }
 export function loadDraft(): Draft | undefined {
   try {
     const draft = JSON.parse(localStorage.getItem(DRAFT_KEY) ?? 'null')
-    return draft && typeof draft.frameId === 'string' ? withBothSides(draft) : undefined
+    return draft && typeof draft.frameId === 'string' ? withCurrentArt(withBothSides(draft)) : undefined
   } catch {
     return undefined
   }

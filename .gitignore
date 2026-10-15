@@ -26,3 +26,6 @@ dist-ssr
 # Scans of official cards, used only to cut the frames from
 source-cards
 __pycache__
+
+# Full-size card art; the site gets JPG copies in public/art (tools/convert_art.py)
+art-source

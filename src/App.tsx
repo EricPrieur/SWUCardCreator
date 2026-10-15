@@ -743,6 +743,9 @@ function CardCreator(props: {
   // 'Neutral' asks for frames with no aspect icons; otherwise frames carrying every
   // picked aspect, as many times as it was picked
   const [picked, setPicked] = useState<Aspect[] | 'Neutral'>([])
+  // The frame picker shows a page of frames at a time: drawing them all is slow, and
+  // the filters are the quicker way to the right one
+  const [page, setPage] = useState(0)
   // Which side of a leader is being edited
   const [back, setBack] = useState(false)
   const front = findFrame(draft.frameId)
@@ -788,6 +791,14 @@ function CardCreator(props: {
         ? candidate.aspects.length === 0
         : picked.every((aspect) => countOf(candidate.aspects, aspect) >= countOf(picked, aspect))),
   )
+  const pages = Math.ceil(shown.length / FRAMES_PER_PAGE)
+  // New filters start again from the first page
+  const filter = <T,>(set: (value: T) => void, value: T) => {
+    set(value)
+    setPage(0)
+  }
+  // A change of filters can leave fewer pages than the one shown
+  const onPage = Math.min(page, Math.max(0, pages - 1))
 
   return (
     <div className="creator">
@@ -1032,16 +1043,16 @@ function CardCreator(props: {
       <section>
         <h2>Frame</h2>
         <div className="filters">
-          <FilterGroup label="Type" options={typeFilters} selected={type} onSelect={setType} />
-          <FilterGroup label="Arena" options={arenaFilters} selected={arena} onSelect={setArena} />
-          <AspectFilter picked={picked} onPick={setPicked} />
+          <FilterGroup label="Type" options={typeFilters} selected={type} onSelect={(next) => filter(setType, next)} />
+          <FilterGroup label="Arena" options={arenaFilters} selected={arena} onSelect={(next) => filter(setArena, next)} />
+          <AspectFilter picked={picked} onPick={(next) => filter(setPicked, next)} />
         </div>
 
         {shown.length === 0 ? (
           <p className="empty-note">No frame for this combination yet.</p>
         ) : (
           <ul className="frame-grid">
-            {shown.map((candidate) => (
+            {shown.slice(onPage * FRAMES_PER_PAGE, (onPage + 1) * FRAMES_PER_PAGE).map((candidate) => (
               <li key={candidate.id}>
                 <button
                   className="frame-option"
@@ -1066,10 +1077,30 @@ function CardCreator(props: {
             ))}
           </ul>
         )}
+        {pages > 1 && (
+          <div className="pager">
+            <button className="button" type="button" disabled={onPage === 0} onClick={() => setPage(onPage - 1)}>
+              Previous
+            </button>
+            <span>
+              Page {onPage + 1} of {pages} · {shown.length} frames
+            </span>
+            <button
+              className="button"
+              type="button"
+              disabled={onPage === pages - 1}
+              onClick={() => setPage(onPage + 1)}
+            >
+              Next
+            </button>
+          </div>
+        )}
       </section>
     </div>
   )
 }
+
+const FRAMES_PER_PAGE = 20
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
 
