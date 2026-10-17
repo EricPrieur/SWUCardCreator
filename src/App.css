@@ -300,6 +300,39 @@
   color: var(--night);
 }
 
+/* The rarity picker: as wide as its space, the list one rarity per row */
+.rarity-picker {
+  font-size: 0.78rem;
+  gap: 0.2rem;
+}
+
+.rarity-picker .picker-button {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+  padding: 0.3rem 0.5rem;
+  font-size: 0.95rem;
+}
+
+.rarity-options {
+  grid-template-columns: 1fr;
+  min-width: 10rem;
+}
+
+.rarity-options button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0 0.6rem;
+  text-align: left;
+}
+
+.rarity-symbol {
+  width: auto;
+  height: 1.25em;
+}
+
 .editor-fields .name-row {
   display: flex;
   align-items: flex-end;
@@ -1052,6 +1085,16 @@
   font-size: 0.9em;
 }
 
+/* The holographic stamp: an oval in the middle of the line, a little taller than it */
+.card-line-foil {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  height: 2.35em;
+  width: auto;
+  transform: translate(-50%, -44%);
+}
+
 .card-line-gap {
   flex: 1;
 }
@@ -1068,22 +1111,44 @@
 }
 
 /* The card line's fields in the editor, side by side */
+/* Two rows: artist, block and number; then set, language, rarity and the foil stamp */
 .card-line-fields {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) 2.6rem 4.4rem;
+  grid-template-areas:
+    'artist artist artist block number'
+    'set language rarity rarity foil';
+  gap: 0.5rem 0.5rem;
 }
 
-.card-line-fields .card-line-wide {
-  flex: 1 1 100%;
+.card-line-fields input[maxlength='1'] {
+  text-align: center;
 }
 
-.card-line-fields .card-line-short {
-  width: 5.5rem;
+.card-line-fields label {
+  gap: 0.2rem;
+  font-size: 0.78rem;
 }
 
-.card-line-fields .card-line-tiny {
-  width: 3.5rem;
+.card-line-fields input {
+  padding: 0.4rem 0.55rem;
+  font-size: 0.92rem;
+}
+
+.card-line-fields .card-line-foil-toggle {
+  grid-area: foil;
+  flex-direction: row;
+  align-self: end;
+  align-items: center;
+  gap: 0.35rem;
+  padding-bottom: 0.45rem;
+  font-size: 0.78rem;
+  line-height: 1.1;
+}
+
+.card-line-fields .card-line-foil-toggle input {
+  width: 1.05rem;
+  padding: 0;
 }
 
 .card-line-fields input,
@@ -1093,11 +1158,12 @@
 }
 
 .card-line-fields select {
-  padding: 0.55rem 0.4rem;
+  padding: 0.4rem 0.3rem;
   border: 1px solid rgb(232 215 181 / 0.25);
   border-radius: 6px;
   background: rgb(0 0 0 / 0.3);
   font: inherit;
+  font-size: 0.92rem;
   color: var(--sand);
 }
 

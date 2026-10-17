@@ -49,6 +49,8 @@ export type CardLine = {
   // C, U, R, S or L
   rarity?: string
   number?: string
+  // Rare and legendary cards carry a holographic stamp on the line; false leaves it off
+  foil?: boolean
 }
 export const cardLineKeys = ['artist', 'block', 'setCode', 'language', 'rarity', 'number'] as const
 

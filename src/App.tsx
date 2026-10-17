@@ -1292,14 +1292,14 @@ function CardCreator(props: {
           <div className="card-line-fields">
             {(
               [
-                ['artist', 'Artist', 'wide'],
-                ['block', 'Block', 'tiny'],
-                ['setCode', 'Set', 'short'],
-                ['language', 'Language', 'short'],
-                ['number', 'Number', 'short'],
+                ['artist', 'Artist', 'artist'],
+                ['block', 'Block', 'block'],
+                ['number', 'Number', 'number'],
+                ['setCode', 'Set', 'set'],
+                ['language', 'Lang.', 'language'],
               ] as const
-            ).map(([key, label, width]) => (
-              <label key={key} className={`card-line-${width}`}>
+            ).map(([key, label, area]) => (
+              <label key={key} style={{ gridArea: area }}>
                 {label}
                 <input
                   value={draft[key] ?? ''}
@@ -1308,22 +1308,20 @@ function CardCreator(props: {
                 />
               </label>
             ))}
-            <label className="card-line-short">
-              Rarity
-              <select value={draft.rarity ?? ''} onChange={(event) => setLine('rarity', event.target.value)}>
-                <option value="">–</option>
-                <option value="C">Common</option>
-                <option value="U">Uncommon</option>
-                <option value="R">Rare</option>
-                <option value="S">Special</option>
-                <option value="L">Legendary</option>
-              </select>
-            </label>
+            <div style={{ gridArea: 'rarity' }}>
+              <RarityPicker value={draft.rarity} onChange={(rarity) => setLine('rarity', rarity)} />
+            </div>
+            {(draft.rarity === 'R' || draft.rarity === 'L') && (
+              <label className="toggle card-line-foil-toggle" title="The holographic stamp of rare and legendary cards">
+                <input
+                  type="checkbox"
+                  checked={draft.foil !== false}
+                  onChange={(event) => onChange({ ...draft, foil: event.target.checked })}
+                />
+                Foil
+              </label>
+            )}
           </div>
-          <span className="field-note">
-            The line along the bottom shows once any of it is filled in. A new card starts with what was typed
-            here last, all but the number.
-          </span>
         </div>
       </section>
 
@@ -1508,6 +1506,88 @@ function AspectFilter(props: { picked: Aspect[] | 'Neutral'; onPick: (picked: As
           </button>
         )
       })}
+    </div>
+  )
+}
+
+const rarities = [
+  { value: 'C', label: 'Common' },
+  { value: 'U', label: 'Uncommon' },
+  { value: 'R', label: 'Rare' },
+  { value: 'S', label: 'Special' },
+  { value: 'L', label: 'Legendary' },
+]
+
+// The rarity, picked like the numbers: a button that opens a list, each with its symbol
+function RarityPicker(props: { value?: string; onChange: (value: string) => void }) {
+  const { value, onChange } = props
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const onPointerDown = (event: PointerEvent) => {
+      if (!ref.current?.contains(event.target as Node)) setOpen(false)
+    }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('pointerdown', onPointerDown)
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown)
+      document.removeEventListener('keydown', onKeyDown)
+    }
+  }, [open])
+
+  const current = rarities.find((rarity) => rarity.value === value)
+  const choose = (next: string) => {
+    onChange(next)
+    setOpen(false)
+  }
+  const symbol = (rarity: string) => (
+    <img className="rarity-symbol" src={asset(`/icons/rarity/${rarity.toLowerCase()}.png`)} alt="" />
+  )
+
+  return (
+    <div className="picker rarity-picker" ref={ref}>
+      <span>Rarity</span>
+      <button
+        className="picker-button"
+        type="button"
+        aria-label="Rarity"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => setOpen(!open)}
+      >
+        {current ? (
+          <>
+            {symbol(current.value)}
+            {current.label}
+          </>
+        ) : (
+          '–'
+        )}
+      </button>
+      {open && (
+        <div className="picker-options rarity-options" role="listbox" aria-label="Rarity">
+          <button type="button" role="option" aria-selected={!current} onClick={() => choose('')}>
+            –
+          </button>
+          {rarities.map((rarity) => (
+            <button
+              type="button"
+              role="option"
+              key={rarity.value}
+              aria-selected={rarity.value === value}
+              onClick={() => choose(rarity.value)}
+            >
+              {symbol(rarity.value)}
+              {rarity.label}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

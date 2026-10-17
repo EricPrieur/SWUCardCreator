@@ -1435,6 +1435,23 @@ def extract_rarity_icons():
     print("wrote rarities", sorted(RARITY_SOURCES))
 
 
+def extract_foil_stamp():
+    """Cut the holographic oval printed on the bottom line of rare and legendary cards.
+    It is opaque, so its outline is an ellipse; its pixels come from the card."""
+    im = Image.open(SRC / "aggression" / "Black One.png").convert("RGB")
+    cx, cy, rx, ry = 359, 959.5, 29, 19.5  # its middle and half-sizes, on the card
+    box = (int(cx - rx) - 2, int(cy - ry) - 2, int(cx + rx) + 3, int(cy + ry) + 3)
+    k = 4  # drawn larger, for a smooth outline
+    crop = im.crop(box).resize(((box[2] - box[0]) * k, (box[3] - box[1]) * k), Image.LANCZOS)
+    mask = Image.new("L", crop.size, 0)
+    ox, oy = (cx - box[0]) * k, (cy - box[1]) * k
+    ImageDraw.Draw(mask).ellipse((ox - rx * k, oy - ry * k, ox + rx * k, oy + ry * k), fill=255)
+    crop.putalpha(mask)
+    path = ROOT / "public" / "icons" / "foil.png"
+    crop.save(path)
+    print("wrote", path)
+
+
 # The words in the bar along the top of a card, cut out as masks, so the site can
 # keep them solid while the rest of the frame fades: (frame sampled, left word's
 # columns, right word's columns and whether it is light or dark on its bar)
@@ -1510,7 +1527,7 @@ if __name__ == "__main__":
               "fortification/derived": extract_derived_fortifications,
               "leader": extract_leaders, "icons/exhaust": extract_exhaust_icon,
               "icons/artist": extract_artist_icon, "icons/rarity": extract_rarity_icons,
-              "icons/labels": extract_label_masks, "upgrade/unstreak": unstreak_upgrades}
+              "icons/labels": extract_label_masks, "icons/foil": extract_foil_stamp, "upgrade/unstreak": unstreak_upgrades}
     for subtitle in SUBTITLES:
         extras[subtitle] = lambda subtitle=subtitle: extract_subtitle(subtitle)
     for frame in sys.argv[1:] or list(FRAMES) + list(extras):

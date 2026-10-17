@@ -586,11 +586,14 @@ function CardLine(props: { frame: Frame; line: CardLine }) {
     height: `${box.h * 100}%`,
     fontSize: `${(17 / shortSide) * (shortSide / frame.width) * 100}cqw`,
   }
-  const value = (key: keyof CardLine) => line[key]?.trim() ?? ''
+  const value = (key: (typeof cardLineKeys)[number]) => line[key]?.trim() ?? ''
   const where = [value('setCode'), value('language')].filter(Boolean).join(' \u2022 ')
   const rarity = value('rarity').toUpperCase().slice(0, 1)
+  const foil = (rarity === 'R' || rarity === 'L') && line.foil !== false
   return (
     <div className="card-line" style={style}>
+      {/* The holographic stamp of rare and legendary cards, in the middle of the line */}
+      {foil && <img className="card-line-foil" src={asset('/icons/foil.png')} alt="" />}
       <span className="card-line-artist">
         {value('artist') && (
           <>
