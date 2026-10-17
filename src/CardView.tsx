@@ -182,11 +182,15 @@ function Bracketed(props: { text: string }) {
   if (aspect) {
     return <img className="aspect-icon" src={asset(`/icons/aspect/${aspect.toLowerCase()}.png`)} alt={aspect} />
   }
-  if (isKeyword(text)) {
+  // A keyword of your own: # before it, as in [#Elusive] or [#Elusive 2]. A number
+  // alone after # is a cost, above.
+  const own = /^#\s*(\S.*)$/.exec(text)
+  const keyword = own ? own[1] : isKeyword(text) ? text : null
+  if (keyword) {
     return (
       <strong className="keyword">
         {/* All capitals, with each word's first letter taller */}
-        {text.toUpperCase().split(/(\s+)/).map((word, at) =>
+        {keyword.toUpperCase().split(/(\s+)/).map((word, at) =>
           /^[A-Z]/.test(word) ? (
             <span key={at}>
               {word[0]}
@@ -199,25 +203,33 @@ function Bracketed(props: { text: string }) {
       </strong>
     )
   }
-  // Doubled brackets print the brackets themselves, around an Action's cost:
-  // [[Arrow]] is the arrow in brackets, [[1, Arrow]] a resource and the arrow
+  // Doubled brackets print the brackets themselves, around a cost: [[Arrow]] is the
+  // arrow in brackets, [[1, Arrow]] a resource and the arrow, and [[2 Command Villainy]]
+  // a resource and two aspect icons, as after PILOTING. A comma prints as a comma; a
+  // space between two icons leaves a small gap, as on the cards.
   const inner = splitBrackets(text)
   if (inner.length === 1 && inner[0].bracketed) {
+    const parts = inner[0].text.trim().split(/(\s*,\s*|\s+)/)
     return (
       <strong className="action-cost">
         [
-        {inner[0].text.split(',').map((item, index) => (
-          <span key={index}>
-            {index > 0 && ', '}
-            {/^\d{1,3}$/.test(item.trim()) ? (
-              <InlineCost number={item.trim()} plain={false} />
-            ) : isArrow(item) ? (
-              <ExhaustIcon />
-            ) : (
-              item.trim()
-            )}
-          </span>
-        ))}
+        {parts.map((part, index) => {
+          if (index % 2 === 1) return part.includes(',') ? ', ' : ' '
+          const aspect = aspects.find((name) => name.toLowerCase() === part.toLowerCase())
+          if (/^\d{1,3}$/.test(part)) return <InlineCost key={index} number={part} plain={false} />
+          if (isArrow(part)) return <ExhaustIcon key={index} />
+          if (aspect) {
+            return (
+              <img
+                className="aspect-icon"
+                key={index}
+                src={asset(`/icons/aspect/${aspect.toLowerCase()}.png`)}
+                alt={aspect}
+              />
+            )
+          }
+          return part
+        })}
         ]
       </strong>
     )
@@ -349,11 +361,12 @@ function CardParagraph(props: { frame: Frame; box: TextBox; text: string; classN
 }
 
 // A pilot's text box holds two texts: the unit's, at the top, and below it the
-// Piloting box, for when the card is played as an upgrade. That box starts with
-// PILOTING and what it costs to play that way, and grows upward with its text,
-// leaving the unit's text the rest. All of it shrinks together until it fits.
-function PilotArea(props: { frame: Frame; text: string; pilotText: string; pilotCost?: number }) {
-  const { frame, text, pilotText, pilotCost } = props
+// Piloting box, for when the card is played as an upgrade. That box prints what is
+// typed for it, which starts with [Piloting] and its cost: [Piloting] [[2 Command]].
+// It grows upward with its text, leaving the unit's text the rest. All of it shrinks
+// together until it fits.
+function PilotArea(props: { frame: Frame; text: string; pilotText: string }) {
+  const { frame, text, pilotText } = props
   const box = frame.pilotBox!
   const textBox = frame.textBox!
   const ref = useRef<HTMLDivElement>(null)
@@ -374,7 +387,7 @@ function PilotArea(props: { frame: Frame; text: string; pilotText: string; pilot
     observer.observe(el)
     document.fonts.ready.then(fit)
     return () => observer.disconnect()
-  }, [text, pilotText, pilotCost, size])
+  }, [text, pilotText, size])
 
   const style: CSSProperties = {
     left: `${(box.x / frame.width) * 100}%`,
@@ -396,31 +409,160 @@ function PilotArea(props: { frame: Frame; text: string; pilotText: string; pilot
         </p>
       </div>
       <div className="pilot-box" hidden={frame.type === 'Leader' && !pilotText}>
-        <p hidden={frame.type === 'Leader'}>
-          <strong className="keyword">
-            P<small>ILOTING</small>
-          </strong>{' '}
-          <strong className="action-cost">
-            [{pilotCost !== undefined && <InlineCost number={String(pilotCost)} plain={false} />}
-            {frame.aspects.map((aspect, index) => (
-              <img
-                className="aspect-icon"
-                key={index}
-                src={asset(`/icons/aspect/${aspect.toLowerCase()}.png`)}
-                alt={aspect}
-              />
-            ))}
-            ]
-          </strong>
-        </p>
-        {pilotText && (
-          <p>
-            <GameLines text={pilotText} />
-          </p>
-        )}
+        <p>{pilotText ? <GameLines text={pilotText} /> : '\u00a0'}</p>
       </div>
     </div>
   )
+}
+
+// The frame can be faded in parts: the top, down to the power and HP icons, and the
+// rest below; and what the card says can be kept solid. Each part is the frame
+// again, cut to its shape, at its own opacity. Undefined when the whole frame is one
+// opacity.
+// How solid each part of the frame is: the top, down to the power and HP icons, and
+// the rest below
+function fadeLevels(look: Look) {
+  return {
+    top: look.fadeTop === false ? 1 : look.frameOpacity,
+    bottom: look.fadeBottom === false ? 1 : look.frameOpacity,
+  }
+}
+
+// The mask of the words in the bar along the top of the frame, cut from the frames by
+// tools/extract_frames.py; undefined for frames whose bar has other words, or none
+function labelMask(frame: Frame) {
+  const arena = frame.arena === 'Space' ? 'space' : 'ground'
+  const name =
+    frame.token || frame.type === 'Base' || frame.type === 'Token'
+      ? undefined
+      : frame.type === 'Leader'
+        ? frame.width > frame.height
+          ? 'leader'
+          : `leader-unit-${arena}`
+        : frame.type === 'Unit'
+          ? `unit-${arena}`
+          : frame.type === 'Event'
+            ? 'event'
+            : 'upgrade'
+  return name && asset(`/icons/labels/${name}.png`)
+}
+
+function frameParts(frame: Frame, look: Look) {
+  const { top, bottom } = fadeLevels(look)
+  const areas = solidAreas(frame, look.solidText === true, look.solidIcons === true)
+  // Only worth drawing again where something is faded
+  const keep = (areas.length > 0 || (look.solidIcons === true && labelMask(frame) !== undefined)) && (top < 1 || bottom < 1)
+  if (top === bottom && !keep) return undefined
+  // Where the top ends: just above the power and HP icons, which reach about a number's
+  // height above their middle, or above the text box on a card without them
+  const box = frame.textBox
+  const stat = frame.power ?? frame.hp
+  const split = stat ? stat.y - stat.h - 6 : box ? box.y - 15 : frame.height * 0.6
+  const pct = (value: number, of: number) => `${(Math.max(0, Math.min(of, value)) / of) * 100}%`
+  const shape = (x: number, y: number, w: number, h: number) =>
+    `polygon(${[
+      [x, y],
+      [x + w, y],
+      [x + w, y + h],
+      [x, y + h],
+    ]
+      .map(([px, py]) => `${pct(px, frame.width)} ${pct(py, frame.height)}`)
+      .join(', ')})`
+  const parts: { clip?: string; mask?: string; opacity: number }[] = [
+    { clip: shape(0, 0, frame.width, split), opacity: top },
+    { clip: shape(0, split, frame.width, frame.height - split), opacity: bottom },
+  ]
+  // Kept solid, drawn again over the faded frame
+  const solid: typeof parts = areas.map((clip) => ({ clip, opacity: 1 }))
+  // The words along the top, UNIT and GROUND and so on, cut out letter by letter
+  const label = look.solidIcons ? labelMask(frame) : undefined
+  if (label && (top < 1 || bottom < 1)) solid.push({ mask: label, opacity: 1 })
+  return keep || solid.length ? [...parts, ...solid] : parts
+}
+
+// What stays solid while the frame fades, as clip-path shapes. Text boxes: the game
+// text box (on a pilot, the Piloting box with it), and the name and subtitle bars.
+// Icons: cost, aspects, power and HP, the upgrade's modifiers among them, each cut
+// to the icon's own outline, measured on the frames. (The words in the bar along the
+// top go with the icons too: see labelMask.)
+function solidAreas(frame: Frame, text: boolean, icons: boolean): string[] {
+  const areas: string[] = []
+  const px = (x: number) => `${(x / frame.width) * 100}%`
+  const py = (y: number) => `${(y / frame.height) * 100}%`
+  const polygon = (points: [number, number][]) => `polygon(${points.map(([x, y]) => `${px(x)} ${py(y)}`).join(', ')})`
+  const rect = (b: { x: number; y: number; w: number; h: number }, by = 0) =>
+    polygon([
+      [b.x - by, b.y - by],
+      [b.x + b.w + by, b.y - by],
+      [b.x + b.w + by, b.y + b.h + by],
+      [b.x - by, b.y + b.h + by],
+    ])
+  // A hexagon standing on a point, as the cost and aspect icons are
+  const hexagon = (x0: number, y0: number, x1: number, y1: number) => {
+    const cx = (x0 + x1) / 2
+    const corner = (y1 - y0) * 0.24
+    return polygon([
+      [cx, y0],
+      [x1, y0 + corner],
+      [x1, y1 - corner],
+      [cx, y1],
+      [x0, y1 - corner],
+      [x0, y0 + corner],
+    ])
+  }
+  // The power icon: a gem standing on a point, its spiky shoulders a little above
+  // its middle and its lower corners a little below
+  const gem = (x: number, y: number) =>
+    polygon([
+      [x, y - 60],
+      [x + 42, y - 40],
+      [x + 42, y + 30],
+      [x, y + 52],
+      [x - 43, y + 30],
+      [x - 43, y - 40],
+    ])
+  // The HP icon: round
+  const round = (x0: number, y0: number, x1: number, y1: number) =>
+    `ellipse(${(((x1 - x0) / 2 / frame.width) * 100).toFixed(3)}% ${(((y1 - y0) / 2 / frame.height) * 100).toFixed(3)}% at ${px((x0 + x1) / 2)} ${py((y0 + y1) / 2)})`
+
+  const box = frame.textBox
+  if (text) {
+    if (frame.pilotBox) {
+      areas.push(rect({ ...frame.pilotBox, y: frame.pilotBox.y - 18, h: frame.pilotBox.h + 18 }))
+    } else if (box) {
+      const middle = { x: box.x + box.w / 2, y: box.y + box.h / 2 }
+      const panel = frame.panels.find(
+        (p) => p.x <= middle.x && middle.x <= p.x + p.w && p.y <= middle.y && middle.y <= p.y + p.h,
+      )
+      areas.push(panel ? rect(panel, 6) : rect(box, 12))
+    }
+    for (const name of [frame.nameBox, frame.nameBox2]) if (name) areas.push(rect(name, 9))
+    if (frame.subtitle) areas.push(rect(frame.subtitle.box, 8))
+  }
+  if (icons) {
+    // Each icon's outline around where its number is printed, as measured on the frames
+    if (frame.cost) {
+      const { x, y } = frame.cost
+      areas.push(hexagon(x - 43, y - 38, x + 42, y + 43))
+    }
+    for (const spot of [frame.power, frame.upgradePower]) {
+      if (spot) areas.push(gem(spot.x, spot.y))
+    }
+    for (const spot of [frame.hp, frame.upgradeHp]) {
+      if (spot) areas.push(round(spot.x - 44, spot.y - 48, spot.x + 45, spot.y + 49))
+    }
+    // The aspect icons: under the cost on most cards, one under another; down the
+    // right side on a leader
+    frame.aspects.forEach((_, index) => {
+      if (frame.type === 'Leader') {
+        const x0 = frame.width > frame.height ? 878 : 598
+        areas.push(hexagon(x0, 28 + index * 111, x0 + 90, 126 + index * 111))
+      } else {
+        areas.push(hexagon(29, 111 + index * 72, 117, 189 + index * 72))
+      }
+    })
+  }
+  return areas
 }
 
 // The line along the bottom of a card, on a dark band across the art: the artist,
@@ -561,7 +703,6 @@ export const CardView = memo(function CardView(props: {
   power?: number
   hp?: number
   // Pilots only
-  pilotCost?: number
   pilotText?: string
   upgradePower?: number
   upgradeHp?: number
@@ -575,7 +716,10 @@ export const CardView = memo(function CardView(props: {
   const { frame, name, trait, text, art } = props
   const look = props.look ?? defaultLook
   const unique = isUnique(frame, props.unique)
+  const parts = props.thumb ? undefined : frameParts(frame, look)
   const backed = look.panelFill > 0 || look.panelBlur > 0
+  // The subtitle bar's inside, around its text
+  const subtitlePanel = (box: TextBox) => ({ x: box.x - 4, y: box.y - 2, w: box.w + 8, h: box.h + 4 })
   const cardStyle = {
     '--ink': look.lightText ? '#f6f1e7' : '#17141a',
     '--label-ink': look.lightText ? '#f6f1e7' : '#46464a',
@@ -583,13 +727,19 @@ export const CardView = memo(function CardView(props: {
     '--icon-filter': look.lightText ? 'invert(1)' : 'none',
     '--keyword-ink': look.lightText ? '#ff9c8a' : '#8f1714',
     '--epic-ink': look.lightText ? '#f3d27a' : '#7d5a0c',
+    // The Piloting box is part of the game text: it fades with the bottom of the frame,
+    // unless the game text is kept solid
+    '--pilot-box-opacity': look.solidText ? 1 : Math.max(fadeLevels(look).bottom, look.panelFill),
+    // With light text the Piloting box turns dark, as the backing behind the panels does
+    '--pilot-paper': look.lightText ? '28 23 18' : '226 236 240',
+    '--pilot-rim': look.lightText ? '64 56 47' : '243 247 249',
   } as CSSProperties
   return (
     // Without art, the backdrop stands in for it behind the transparent frame
     <div className="card card-art-placeholder" style={cardStyle}>
       {art && <CardArt frame={frame} art={art} />}
       {backed &&
-        frame.panels.map((panel, index) => (
+        [...frame.panels, ...(unique && frame.subtitle && props.subtitle ? [subtitlePanel(frame.subtitle.box)] : [])].map((panel, index) => (
           <div
             className="card-panel"
             key={index}
@@ -605,14 +755,34 @@ export const CardView = memo(function CardView(props: {
         ))}
       <img
         className="card-frame"
-        style={{ opacity: look.frameOpacity }}
+        // Faded in parts, the frame is drawn once more for each part over this copy,
+        // which is then only there to give the card its size
+        style={{ opacity: parts ? 0 : fadeLevels(look).top }}
         src={asset(props.thumb && frame.thumb ? frame.thumb : frame.src)}
         alt={`${frame.name} frame`}
         width={frame.width}
         height={frame.height}
       />
+      {parts?.map(({ clip, mask, opacity }, index) => (
+        <img
+          className="card-overlay"
+          key={index}
+          style={{
+            opacity,
+            clipPath: clip,
+            ...(mask && { maskImage: `url("${mask}")`, maskSize: '100% 100%', WebkitMaskImage: `url("${mask}")`, WebkitMaskSize: '100% 100%' }),
+          }}
+          src={asset(frame.src)}
+          alt=""
+        />
+      ))}
       {unique && frame.subtitle?.src && (
-        <img className="card-overlay" style={{ opacity: look.frameOpacity }} src={asset(frame.subtitle.src)} alt="" />
+        <img
+          className="card-overlay"
+          style={{ opacity: look.solidText ? 1 : fadeLevels(look).top }}
+          src={asset(frame.subtitle.src)}
+          alt=""
+        />
       )}
       {unique && frame.subtitle && props.subtitle && (
         <CardText frame={frame} box={frame.subtitle.box} className="card-subtitle" text={props.subtitle} />
@@ -649,7 +819,7 @@ export const CardView = memo(function CardView(props: {
       )}
       {trait && <CardText frame={frame} box={frame.traitBox} className="card-trait" text={formatTraits(trait)} />}
       {frame.pilotBox && !props.thumb ? (
-        <PilotArea frame={frame} text={text ?? ''} pilotText={props.pilotText ?? ''} pilotCost={props.pilotCost} />
+        <PilotArea frame={frame} text={text ?? ''} pilotText={props.pilotText ?? ''} />
       ) : (
         text && frame.textBox && <CardParagraph frame={frame} box={frame.textBox} text={text} />
       )}

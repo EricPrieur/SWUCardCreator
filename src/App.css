@@ -458,11 +458,12 @@
 .pilot-box {
   flex: none;
   padding: 0.35em 0.75em 0.45em;
-  border: 0.32cqw solid #17161b;
+  border: 0.32cqw solid rgb(23 22 27 / var(--pilot-box-opacity, 1));
   border-radius: 1.3cqw;
-  background: #e2ecf0;
-  box-shadow: inset 0 0 0 0.45cqw #f3f7f9;
-  color: #17141a;
+  background: rgb(var(--pilot-paper, 226 236 240) / var(--pilot-box-opacity, 1));
+  box-shadow: inset 0 0 0 0.45cqw rgb(var(--pilot-rim, 243 247 249) / var(--pilot-box-opacity, 1));
+  color: var(--ink);
+  text-shadow: var(--text-glow);
 }
 
 .pilot-box p {
@@ -475,7 +476,7 @@
 }
 
 .pilot-box .keyword {
-  color: #8f1714;
+  color: var(--keyword-ink);
 }
 
 .pilot-box .action-cost .aspect-icon {
@@ -617,6 +618,19 @@
 
 .card-size-s .showroom-actions .split-button select {
   font-size: 0.72rem;
+}
+
+/* Frame opacity's choice of which parts of the frame it fades */
+.fade-parts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.4rem;
+}
+
+.fade-parts .chip {
+  padding: 0.25rem 0.75rem;
 }
 
 /* The large copy of a small card, following the mouse */

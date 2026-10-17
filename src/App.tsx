@@ -126,7 +126,6 @@ function CardFace(props: { card: Draft; back?: boolean }) {
       cost={card.cost}
       power={card.power}
       hp={card.hp}
-      pilotCost={card.pilotCost}
       pilotText={card.pilotText}
       upgradePower={card.upgradePower}
       upgradeHp={card.upgradeHp}
@@ -1223,7 +1222,8 @@ function CardCreator(props: {
                 }
               />
               <span>
-                In brackets: [Hidden] or [Raid 2] prints a keyword in red, as does [Keywords]; [3] a cost on the yellow icon, [#3] a cost as
+                In brackets: [Hidden] or [Raid 2] prints a keyword in red, as does [Keywords], and so does a keyword of
+                your own with # before it, [#Elusive]; [3] a cost on the yellow icon, [#3] a cost as
                 a number alone, [+1/+0] a change to power and HP, [P3] a power and [H7] an HP alone, [Arrow] the exhaust arrow, [Villainy] or another aspect its icon, anything else bold. Doubled brackets print
                 the brackets too: {"[Action [[Arrow]]:]"} or {"[Action [[1, Arrow]]:]"}.
                 In curly brackets, text is italic: {"{reminder text}"}, or {"[{Imperial}]"} for bold italic. A line
@@ -1238,14 +1238,6 @@ function CardCreator(props: {
             <>
               <h3 className="editor-subhead">Played as an upgrade</h3>
               <div className="stats">
-                {!front.backId && (
-                  <NumberPicker
-                    label="Piloting cost"
-                    value={draft.pilotCost}
-                    options={numbers}
-                    onChange={(pilotCost) => onChange({ ...draft, pilotCost })}
-                  />
-                )}
                 <NumberPicker
                   label="Power"
                   value={draft.upgradePower}
@@ -1266,11 +1258,12 @@ function CardCreator(props: {
                 <textarea
                   rows={4}
                   value={draft.pilotText ?? ''}
+                  placeholder={'[Piloting] [[2 Command Villainy]]'}
                   onChange={(event) => onChange({ ...draft, pilotText: event.target.value })}
                 />
                 <span>
-                  Printed in the Piloting box, under PILOTING and its cost. The box grows with the text, leaving the
-                  game text above the rest of the space.
+                  Printed in the Piloting box, which grows with it, leaving the game text above the rest of the space.
+                  Start it with PILOTING and its cost and aspects: {"[Piloting] [[2 Command Villainy]]"}.
                 </span>
               </label>
             </>
@@ -1626,16 +1619,56 @@ function LookControls(props: { look: Look; onChange: (look: Look) => void }) {
   return (
     <div className="art-controls">
       {sliders.map(({ label, key, min, max }) => (
-        <Slider
-          key={key}
-          label={label}
-          min={min}
-          max={max}
-          step={0.01}
-          value={look[key]}
-          display={`${Math.round(look[key] * 100)}%`}
-          onChange={(value) => onChange({ ...look, [key]: value })}
-        />
+        <div className="look-row" key={key}>
+          <Slider
+            label={label}
+            min={min}
+            max={max}
+            step={0.01}
+            value={look[key]}
+            display={`${Math.round(look[key] * 100)}%`}
+            onChange={(value) => onChange({ ...look, [key]: value })}
+          />
+          {/* Which parts of the frame its opacity applies to */}
+          {key === 'frameOpacity' && (
+            <div className="fade-parts">
+              <button
+                className="chip"
+                type="button"
+                title="Fade the top of the frame, down to the power and HP icons"
+                aria-pressed={look.fadeTop !== false}
+                onClick={() => onChange({ ...look, fadeTop: look.fadeTop === false })}
+              >
+                Top
+              </button>
+              <button
+                className="chip"
+                type="button"
+                title="Fade the bottom of the frame, from the power and HP icons down"
+                aria-pressed={look.fadeBottom !== false}
+                onClick={() => onChange({ ...look, fadeBottom: look.fadeBottom === false })}
+              >
+                Bottom
+              </button>
+              <label className="toggle" title="The game text box, the name bar and the subtitle bar">
+                <input
+                  type="checkbox"
+                  checked={look.solidText === true}
+                  onChange={(event) => onChange({ ...look, solidText: event.target.checked })}
+                />
+                Solid text boxes
+              </label>
+              <label className="toggle" title="Cost, aspects, power and HP, and the bar saying the type and arena">
+                <input
+                  type="checkbox"
+                  checked={look.solidIcons === true}
+                  onChange={(event) => onChange({ ...look, solidIcons: event.target.checked })}
+                />
+                Solid icons
+              </label>
+            </div>
+          )}
+        </div>
       ))}
       <label className="toggle">
         <input

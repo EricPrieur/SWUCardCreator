@@ -1054,6 +1054,7 @@ def extract_upgrades(only=None):
         Image.fromarray(out, "RGBA").save(path)
         px0, py0, px1, py1 = UPGRADE_PANELS[0]
         paper = np.median(rgb[py0:py1, px0:px1].reshape(-1, 3), 0)
+        unstreak(path)
         print("wrote upgrade", key, "paper #%02x%02x%02x" % tuple(int(v) for v in paper))
 
 
@@ -1434,6 +1435,73 @@ def extract_rarity_icons():
     print("wrote rarities", sorted(RARITY_SOURCES))
 
 
+# The words in the bar along the top of a card, cut out as masks, so the site can
+# keep them solid while the rest of the frame fades: (frame sampled, left word's
+# columns, right word's columns and whether it is light or dark on its bar)
+LABELS = {
+    "unit-ground": ("unit/command-heroism", (115, 280), (310, 625, "dark")),
+    "unit-space": ("unit/command-heroism-space", (115, 280), (310, 625, "light")),
+    "event": ("event/command", (115, 300), None),
+    "upgrade": ("upgrade/command", (115, 300), None),
+    "leader-unit-ground": ("leader/command-heroism-unit", (115, 315), (395, 590, "dark")),
+    "leader-unit-space": ("leader/command-heroism-unit-space", (115, 315), (395, 590, "light")),
+    "leader": ("leader/command-heroism", (105, 330), None),
+}
+LABEL_ROWS = (31, 52)
+
+
+def extract_label_masks():
+    for name, (frame, left, right) in LABELS.items():
+        f = np.array(Image.open(OUT / (frame + ".png")).convert("RGB")).astype(np.float32)
+        y0, y1 = LABEL_ROWS
+        words = np.zeros(f.shape[:2], bool)
+        x0, x1 = left
+        words[y0:y1, x0:x1] = f[y0:y1, x0:x1].min(-1) > 185
+        if right:
+            x0, x1, tone = right
+            band = f[y0:y1, x0:x1]
+            words[y0:y1, x0:x1] = band.min(-1) > 185 if tone == "light" else band.mean(-1) < 140
+        # Letters, not specks, nor the bar's edges and pegs, which are long or tall
+        lab, sizes = components(words)
+        keep = []
+        for n in np.nonzero(sizes >= 6)[0]:
+            ys, xs = np.nonzero(lab == n)
+            if xs.max() - xs.min() < 40 and ys.max() - ys.min() < 17:
+                keep.append(n)
+        words = np.isin(lab, keep)
+        mask = dilate(words, 2)  # with the letters' dark outline
+        out = np.zeros(f.shape[:2] + (4,), np.uint8)
+        out[..., :3] = 255
+        out[..., 3] = mask * 255
+        path = ROOT / "public" / "icons" / "labels" / (name + ".png")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        Image.fromarray(out, "RGBA").save(path, optimize=True)
+    print("wrote label masks", sorted(LABELS))
+
+
+def unstreak(path):
+    """Paint over the thin white dash left near the top of an upgrade's power icon, a
+    remnant of the sign printed on the card it came from, with the colours above and below it."""
+    im = np.array(Image.open(path).convert("RGBA")).astype(np.float32)
+    x0, y0, x1, y1 = 60, 858, 115, 872
+    reg = im[y0:y1, x0:x1]
+    dash = dilate(reg[..., :3].min(-1) > 225, 1)
+    for x in range(reg.shape[1]):
+        bad = np.nonzero(dash[:, x])[0]
+        good = np.nonzero(~dash[:, x])[0]
+        if len(bad) and len(good):
+            for c in range(3):
+                reg[bad, x, c] = np.interp(bad, good, reg[good, x, c])
+    Image.fromarray(im.round().astype(np.uint8), "RGBA").save(path)
+
+
+def unstreak_upgrades():
+    paths = [OUT / "token" / "upgrade.png", *sorted((OUT / "upgrade").glob("*.png"))]
+    for path in paths:
+        unstreak(path)
+    print("cleaned the power icon on", len(paths), "frames")
+
+
 if __name__ == "__main__":
     extras = {"icons/cost-1": extract_cost_icon, "icons/numbers": extract_numbers, "icons/unique": extract_unique_icon,
               "icons/aspects": extract_aspects, "icons/signs": extract_signs, "base": extract_bases,
@@ -1441,7 +1509,8 @@ if __name__ == "__main__":
               "fortification": extract_fortifications, "unit/token-text": extract_token_text_units,
               "fortification/derived": extract_derived_fortifications,
               "leader": extract_leaders, "icons/exhaust": extract_exhaust_icon,
-              "icons/artist": extract_artist_icon, "icons/rarity": extract_rarity_icons}
+              "icons/artist": extract_artist_icon, "icons/rarity": extract_rarity_icons,
+              "icons/labels": extract_label_masks, "upgrade/unstreak": unstreak_upgrades}
     for subtitle in SUBTITLES:
         extras[subtitle] = lambda subtitle=subtitle: extract_subtitle(subtitle)
     for frame in sys.argv[1:] or list(FRAMES) + list(extras):

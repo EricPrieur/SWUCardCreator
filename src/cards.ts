@@ -1,3 +1,5 @@
+import { frames } from './frames'
+
 // Card art and how it is placed behind the frame
 export type Art = {
   // A file under public/, or an uploaded image stored as a data URL
@@ -17,6 +19,14 @@ export type Art = {
 export type Look = {
   // 1 is a solid frame; lower lets the art show through it
   frameOpacity: number
+  // Which parts of the frame that applies to: the top, down to the power and HP
+  // icons, and the rest below. Both, unless turned off.
+  fadeTop?: boolean
+  fadeBottom?: boolean
+  // Leave solid, whatever the rest does: the text boxes (game text, name, subtitle),
+  // and the icons (cost, aspects, power, HP). The letters themselves never fade.
+  solidText?: boolean
+  solidIcons?: boolean
   // A flat backing behind the text panels
   panelFill: number
   // Blurs the art behind the text panels, like frosted glass
@@ -75,8 +85,8 @@ export type Card = {
   subtitle?: string
   // Leader side only: the Epic Action box's text, when it is not the usual one
   epic?: string
-  // Pilots only: what playing the card as an upgrade costs, the text of its Piloting
-  // box, and the power and HP it then gives the unit it is attached to
+  // Pilots only: the text of the Piloting box, and the power and HP the card gives
+  // the unit it is attached to. pilotCost is how the Piloting cost was once kept.
   pilotCost?: number
   pilotText?: string
   upgradePower?: number
@@ -126,6 +136,16 @@ function withCurrentArt<T extends { art?: Art; backArt?: Art }>(card: T): T {
   return { ...card, art: asJpg(card.art), backArt: asJpg(card.backArt) }
 }
 
+// Pilots once had their Piloting cost as a number, the line printed from it and the
+// card's aspects. That line is now typed with the Piloting text: it is written there.
+function withPilotingLine<T extends { frameId: string; pilotCost?: number; pilotText?: string }>(card: T): T {
+  if (card.pilotCost === undefined) return card
+  const { pilotCost, ...rest } = card
+  const icons = frames.find((frame) => frame.id === card.frameId)?.aspects ?? []
+  const line = `[Piloting] [[${[pilotCost, ...icons].join(' ')}]]`
+  return { ...rest, pilotText: card.pilotText ? `${line}\n${card.pilotText}` : line } as T
+}
+
 // Saved cards live in this browser only, until the site has a shared store.
 const STORAGE_KEY = 'dune-unlimited.cards'
 
@@ -140,6 +160,7 @@ export function loadCards(): Card[] {
       )
       .map(withBothSides)
       .map(withCurrentArt)
+      .map(withPilotingLine)
   } catch {
     return []
   }
@@ -152,7 +173,7 @@ export type Draft = Omit<Card, 'id'> & { id?: string }
 export function loadDraft(): Draft | undefined {
   try {
     const draft = JSON.parse(localStorage.getItem(DRAFT_KEY) ?? 'null')
-    return draft && typeof draft.frameId === 'string' ? withCurrentArt(withBothSides(draft)) : undefined
+    return draft && typeof draft.frameId === 'string' ? withPilotingLine(withCurrentArt(withBothSides(draft))) : undefined
   } catch {
     return undefined
   }

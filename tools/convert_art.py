@@ -2,7 +2,8 @@
 images in art-source/, which stays on this computer (it is not uploaded).
 
 An image dropped straight into public/art as a PNG or WebP is moved to art-source
-first, so either folder can be used to add art.
+first, so either folder can be used to add art. One saved without an extension is
+first given the right one.
 
 Usage: python tools/convert_art.py
 """
@@ -17,6 +18,13 @@ KINDS = {".png", ".webp", ".jpeg", ".jpg"}
 
 SOURCE.mkdir(exist_ok=True)
 for path in SITE.iterdir():
+    if path.is_file() and not path.suffix:
+        # Saved without an extension: named after what it really is
+        try:
+            kind = Image.open(path).format
+        except OSError:
+            continue
+        path = path.replace(path.with_suffix("." + {"JPEG": "jpg"}.get(kind, kind.lower())))
     if path.suffix.lower() in KINDS and path.suffix.lower() != ".jpg":
         path.replace(SOURCE / path.name)
 for path in sorted(SOURCE.iterdir()):
