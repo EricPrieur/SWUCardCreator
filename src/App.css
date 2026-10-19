@@ -470,6 +470,17 @@
   border-color: var(--sand);
 }
 
+/* Changes not in the Showroom yet: the save button glows until they are */
+.button-pending {
+  animation: pending 1.8s ease-in-out infinite;
+}
+
+@keyframes pending {
+  50% {
+    box-shadow: 0 0 0 4px rgb(224 138 44 / 0.35);
+  }
+}
+
 /* A pilot's text box: the unit's text, then the Piloting box under it */
 .pilot-area {
   position: absolute;
@@ -614,6 +625,36 @@
   border-radius: 8px;
   background: #1d1610;
   box-shadow: 0 12px 30px rgb(0 0 0 / 0.6);
+}
+
+/* A list to pick one choice from: one per row, the choice marked */
+.choice-options {
+  gap: 0.15rem;
+  padding: 0.4rem;
+  min-width: 9.5rem;
+}
+
+.choice-options button {
+  padding: 0.45rem 0.7rem;
+  border: 0;
+  border-radius: 5px;
+  background: none;
+  font: inherit;
+  font-size: 0.9rem;
+  text-align: left;
+  white-space: nowrap;
+  color: var(--sand);
+  cursor: pointer;
+}
+
+.choice-options button:hover {
+  background: rgb(232 215 181 / 0.08);
+}
+
+.choice-options button[aria-selected='true'] {
+  background: var(--spice);
+  font-weight: 600;
+  color: var(--night);
 }
 
 .showroom-grid {
@@ -818,6 +859,23 @@
 .pager .button:disabled {
   opacity: 0.4;
   cursor: default;
+}
+
+/* The dev-only Publish button under the Showroom's filters */
+.publish-sets {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin: -0.75rem 0 1.75rem;
+}
+
+/* Where a card is drawn for publishing: off the page, at the editor's size */
+.publish-stage {
+  position: fixed;
+  left: -10000px;
+  top: 0;
+  width: 380px;
 }
 
 /* A Showcase card: its saved image, cornered like the cards on the page */
@@ -1170,6 +1228,17 @@
 .field-note {
   font-size: 0.8rem;
   color: var(--sand-dim);
+}
+
+/* A choice in a list, after its dot, its lines lined up under its first word */
+.rule-choice {
+  padding-left: 0.85em;
+}
+
+.rule-dot {
+  display: inline-block;
+  width: 0.85em;
+  margin-left: -0.85em;
 }
 
 /* Room left at the end of a paragraph's last line */

@@ -129,15 +129,6 @@ function withBothSides<T extends { frameId: string; text: string; art?: Art }>(c
   }
 }
 
-// The art in public/art is kept as JPG. A card saved while it was PNG names the
-// PNG: it gets the JPG of the same name instead.
-const asJpg = (art?: Art) =>
-  art && /^\/art\/.+\.(png|webp|jpeg)$/i.test(art.src) ? { ...art, src: art.src.replace(/\.\w+$/, '.jpg') } : art
-
-function withCurrentArt<T extends { art?: Art; backArt?: Art }>(card: T): T {
-  return { ...card, art: asJpg(card.art), backArt: asJpg(card.backArt) }
-}
-
 // Pilots once had their Piloting cost as a number, the line printed from it and the
 // card's aspects. That line is now typed with the Piloting text: it is written there.
 function withPilotingLine<T extends { frameId: string; pilotCost?: number; pilotText?: string }>(card: T): T {
@@ -161,7 +152,6 @@ export function loadCards(): Card[] {
         frameOpacity === undefined ? card : { ...card, look: { ...defaultLook, frameOpacity } },
       )
       .map(withBothSides)
-      .map(withCurrentArt)
       .map(withPilotingLine)
   } catch {
     return []
@@ -175,7 +165,7 @@ export type Draft = Omit<Card, 'id'> & { id?: string }
 export function loadDraft(): Draft | undefined {
   try {
     const draft = JSON.parse(localStorage.getItem(DRAFT_KEY) ?? 'null')
-    return draft && typeof draft.frameId === 'string' ? withPilotingLine(withCurrentArt(withBothSides(draft))) : undefined
+    return draft && typeof draft.frameId === 'string' ? withPilotingLine(withBothSides(draft)) : undefined
   } catch {
     return undefined
   }

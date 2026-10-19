@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
-import { createPortal } from 'react-dom'
+import { createPortal, flushSync } from 'react-dom'
 import artFiles from 'virtual:art-list'
 import { asset } from './asset'
 import './App.css'
@@ -80,6 +80,23 @@ const blankDraft: Draft = { frameId: 'unit-command-heroism', name: '', trait: ''
 // A Leader side has no power or HP icon, but prints both numbers in its Epic Action box
 const hasStat = (frame: Frame, kind: (typeof stats)[number]['kind']) =>
   frame[kind] !== undefined || (kind !== 'cost' && frame.stats !== undefined)
+
+// Whether two versions of a card say the same, whatever order their fields are in
+// and leaving out fields that are not set
+function sameCard(a: Draft, b: Draft) {
+  const plain = (value: unknown): unknown =>
+    Array.isArray(value)
+      ? value.map(plain)
+      : value && typeof value === 'object'
+        ? Object.fromEntries(
+            Object.entries(value)
+              .filter(([, field]) => field !== undefined)
+              .sort(([x], [y]) => x.localeCompare(y))
+              .map(([key, field]) => [key, plain(field)]),
+          )
+        : value
+  return JSON.stringify(plain(a)) === JSON.stringify(plain(b))
+}
 
 // What tells one card from another: its name and subtitle together
 const cardTitle = (card: Draft) => `${card.name.trim()}|${(card.subtitle ?? '').trim()}`.toLowerCase()
@@ -204,10 +221,11 @@ function printImage(card: HTMLCanvasElement, landscape: boolean) {
   return out
 }
 
-async function cardImage(card: HTMLElement, frame: Frame, format: ImageFormat) {
+// scale: how many times the frame's own size; 2 keeps the text sharp in print
+async function cardImage(card: HTMLElement, frame: Frame, format: ImageFormat, scale = 2) {
   const { toCanvas } = await import('html-to-image')
   const options = {
-    pixelRatio: (frame.width * 2) / card.clientWidth,
+    pixelRatio: (frame.width * scale) / card.clientWidth,
     backgroundColor: format === 'jpg' ? '#000' : undefined,
     // For print the corners are square; the art and frame already reach them
     style: format === 'print' ? { borderRadius: '0', boxShadow: 'none' } : undefined,
@@ -468,11 +486,14 @@ function tabFromHash(): TabId {
 }
 
 // Showcases on the site that no menu links to: the address's name, and its folder in public/showcase
-const showcases: Record<string, string> = { DuneSWU: 'DuneSWU' }
-// A slash at the end, or other capitals, still find it: #DuneSWU/, #duneswu
+// A published set is at #set/<SET>; some also have a name of their own
+const showcases: Record<string, string> = { DuneSWU: 'DUNE' }
+// A slash at the end, or other capitals, still find it: #DuneSWU/, #duneswu, #set/dune
 const showcaseFromHash = () => {
-  const asked = window.location.hash.slice(1).replace(/\/+$/, '').toLowerCase()
-  return Object.entries(showcases).find(([name]) => name.toLowerCase() === asked)?.[1]
+  const asked = window.location.hash.slice(1).replace(/\/+$/, '')
+  const set = /^set\/([A-Za-z0-9_-]+)$/.exec(asked)?.[1]
+  if (set) return set.toUpperCase()
+  return Object.entries(showcases).find(([name]) => name.toLowerCase() === asked.toLowerCase())?.[1]
 }
 
 // A dropdown of checkboxes: a button that opens a list, any number of which can be ticked
@@ -540,6 +561,68 @@ function CheckDropdown<T extends string | number>(props: {
   )
 }
 
+// A dropdown to pick one of a few choices, in the look of the filter dropdowns: the
+// button shows the choice, the list opens under it with the choice marked
+function ChoiceDropdown<T extends string>(props: {
+  label: string
+  options: { label: string; value: T }[]
+  selected: T
+  onChange: (value: T) => void
+}) {
+  const { label, options, selected, onChange } = props
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const onPointerDown = (event: PointerEvent) => {
+      if (!ref.current?.contains(event.target as Node)) setOpen(false)
+    }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('pointerdown', onPointerDown)
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown)
+      document.removeEventListener('keydown', onKeyDown)
+    }
+  }, [open])
+
+  return (
+    <div className="check-dropdown" ref={ref}>
+      <button
+        className="chip"
+        type="button"
+        aria-label={label}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => setOpen(!open)}
+      >
+        {options.find((option) => option.value === selected)?.label} ▾
+      </button>
+      {open && (
+        <div className="check-options choice-options" role="listbox" aria-label={label}>
+          {options.map((option) => (
+            <button
+              type="button"
+              role="option"
+              key={option.value}
+              aria-selected={option.value === selected}
+              onClick={() => {
+                onChange(option.value)
+                setOpen(false)
+              }}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 const splitTraits = (trait?: string) =>
   (trait ?? '')
     .split(',')
@@ -566,6 +649,8 @@ type Facts = {
   text: string
   aspects: Aspect[]
   cost?: number
+  // The set code from the card line, as typed; empty when the card has none
+  set: string
 }
 
 // A saved card's facts. A leader counts for what either of its sides says.
@@ -583,6 +668,7 @@ function cardFacts(card: Card): Facts {
     text: plainText(card.text, card.backText, card.pilotText, card.epic),
     aspects: [...frame.aspects, ...(back?.frame.aspects ?? [])],
     cost: card.cost,
+    set: card.setCode?.trim() ?? '',
   }
 }
 
@@ -605,6 +691,9 @@ function loadCardSize(): CardSize {
   }
 }
 
+// The Set filter's choice for the cards whose card line has no set
+const NO_SET = '\u0000none'
+
 const sorts = [
   { value: 'saved', label: 'Order saved' },
   { value: 'name', label: 'Name' },
@@ -613,16 +702,42 @@ const sorts = [
 ] as const
 type SortKey = (typeof sorts)[number]['value']
 
+// A setting remembered in this browser under a name: it is the same after going to
+// another tab, or coming back another day
+function useRemembered<T>(name: string, first: T) {
+  const key = `dune-unlimited.remember.${name}`
+  const [value, setValue] = useState<T>(() => {
+    try {
+      const saved = localStorage.getItem(key)
+      return saved === null ? first : (JSON.parse(saved) as T)
+    } catch {
+      return first
+    }
+  })
+  const change = (next: T) => {
+    setValue(next)
+    try {
+      localStorage.setItem(key, JSON.stringify(next))
+    } catch {
+      // Not remembered, then
+    }
+  }
+  return [value, change] as const
+}
+
 // Search, filters and sort over a list of cards, as the Showroom and a Showcase
 // show them: the bar to put above the cards, and the cards it lets through, in order.
-function useCardFilters<T>(items: { item: T; facts: Facts }[], firstSort = 'Order saved') {
-  const [query, setQuery] = useState('')
-  const [types, setTypes] = useState<FrameFilter[]>([])
-  const [traits, setTraits] = useState<string[]>([])
-  const [costs, setCosts] = useState<number[]>([])
-  const [picked, setPicked] = useState<Aspect[]>([])
-  const [sort, setSort] = useState<SortKey>('saved')
-  const [descending, setDescending] = useState(false)
+// Each list remembers its own choices under its name.
+function useCardFilters<T>(name: string, items: { item: T; facts: Facts }[], firstSort = 'Order saved') {
+  const [query, setQuery] = useRemembered(`${name}.search`, '')
+  const [types, setTypes] = useRemembered<FrameFilter[]>(`${name}.types`, [])
+  const [traits, setTraits] = useRemembered<string[]>(`${name}.traits`, [])
+  const [costs, setCosts] = useRemembered<number[]>(`${name}.costs`, [])
+  // Set codes ticked; NO_SET stands for the cards with none
+  const [sets, setSets] = useRemembered<string[]>(`${name}.sets`, [])
+  const [picked, setPicked] = useRemembered<Aspect[]>(`${name}.aspects`, [])
+  const [sort, setSort] = useRemembered<SortKey>(`${name}.sort`, 'saved')
+  const [descending, setDescending] = useRemembered(`${name}.descending`, false)
   const [size, setSize] = useState<CardSize>(loadCardSize)
   const changeSize = (next: CardSize) => {
     setSize(next)
@@ -648,6 +763,17 @@ function useCardFilters<T>(items: { item: T; facts: Facts }[], firstSort = 'Orde
   const costOptions = [...new Set(listed.flatMap(({ facts }) => (facts.cost === undefined ? [] : [facts.cost])))]
     .sort((a, b) => a - b)
     .map((cost) => ({ value: cost, label: String(cost) }))
+  // Each set some card is in, compared without regard to capitals, then the cards in none
+  const setNames = new Map<string, string>()
+  for (const { facts } of listed) {
+    if (facts.set && !setNames.has(facts.set.toUpperCase())) setNames.set(facts.set.toUpperCase(), facts.set)
+  }
+  const setOptions = [
+    ...[...setNames]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([value, label]) => ({ value, label: label.toUpperCase() })),
+    ...(listed.some(({ facts }) => !facts.set) ? [{ value: NO_SET, label: 'No set' }] : []),
+  ]
 
   const search = query.trim().toLowerCase()
   // Within Type, Trait and Cost any ticked box will do; every picked aspect must be on the card
@@ -657,6 +783,7 @@ function useCardFilters<T>(items: { item: T; facts: Facts }[], firstSort = 'Orde
       (types.length === 0 || types.includes(facts.type)) &&
       (traits.length === 0 || traits.some((trait) => facts.traits.includes(trait))) &&
       (costs.length === 0 || (facts.cost !== undefined && costs.includes(facts.cost))) &&
+      (sets.length === 0 || sets.includes(facts.set ? facts.set.toUpperCase() : NO_SET)) &&
       picked.every((aspect) => facts.aspects.includes(aspect)),
   )
   const typeOrder = typeFilters.map(({ value }) => value)
@@ -669,7 +796,7 @@ function useCardFilters<T>(items: { item: T; facts: Facts }[], firstSort = 'Orde
   }
   const shown = [...found].sort((a, b) => compare[sort](a, b) || a.index - b.index)
   if (descending) shown.reverse()
-  const filtered = search !== '' || types.length + traits.length + costs.length + picked.length > 0
+  const filtered = search !== '' || types.length + traits.length + costs.length + sets.length + picked.length > 0
 
   const bar = (
     <div className="filters showroom-filters">
@@ -685,6 +812,7 @@ function useCardFilters<T>(items: { item: T; facts: Facts }[], firstSort = 'Orde
         <CheckDropdown label="Type" options={typeOptions} selected={types} onChange={setTypes} />
         <CheckDropdown label="Trait" options={traitOptions} selected={traits} onChange={setTraits} />
         <CheckDropdown label="Cost" options={costOptions} selected={costs} onChange={setCosts} />
+        <CheckDropdown label="Set" options={setOptions} selected={sets} onChange={setSets} />
       </div>
       <div className="filter-group">
         {aspects.map((aspect) => (
@@ -704,16 +832,13 @@ function useCardFilters<T>(items: { item: T; facts: Facts }[], firstSort = 'Orde
         ))}
       </div>
       <div className="filter-group">
-        <label className="filter-label" htmlFor="card-sort">
-          Sort
-        </label>
-        <select id="card-sort" value={sort} onChange={(event) => setSort(event.target.value as SortKey)}>
-          {sorts.map(({ value, label }) => (
-            <option key={value} value={value}>
-              {value === 'saved' ? firstSort : label}
-            </option>
-          ))}
-        </select>
+        <span className="filter-label">Sort</span>
+        <ChoiceDropdown
+          label="Sort"
+          options={sorts.map(({ value, label }) => ({ value, label: value === 'saved' ? firstSort : label }))}
+          selected={sort}
+          onChange={setSort}
+        />
         <button
           className="chip"
           type="button"
@@ -752,6 +877,7 @@ function useCardFilters<T>(items: { item: T; facts: Facts }[], firstSort = 'Orde
               setTypes([])
               setTraits([])
               setCosts([])
+              setSets([])
               setPicked([])
             }}
           >
@@ -777,6 +903,8 @@ function cardFileName(card: Draft, back: boolean) {
 // A Showcase's list of cards, kept as showcase.json beside the cards' images, which
 // are saved from the Showroom as JPG under the names given here.
 type ShowcaseCard = {
+  // The saved card it was published from, to update it in place when published again
+  id?: string
   image: string
   back?: string
   name: string
@@ -787,12 +915,141 @@ type ShowcaseCard = {
   cost?: number
   traits: string[]
   text?: string
+  set?: string
 }
 type ShowcaseList = { title: string; cards: ShowcaseCard[] }
 
+// A Showcase entry for a saved card: what the showcase page searches and filters
+// by, and the names of its images
+function showcaseEntry(card: Card): ShowcaseCard {
+  const facts = cardFacts(card)
+  const frame = findFrame(card.frameId)
+  const back = frame.backId ? cardSide(card, true) : undefined
+  return {
+    id: card.id,
+    image: cardFileName(card, false),
+    back: back && cardFileName(card, true),
+    name: card.name,
+    backName: back && back.name !== card.name ? back.name : undefined,
+    subtitle: card.subtitle?.trim() || undefined,
+    type: facts.type,
+    aspects: facts.aspects,
+    cost: card.cost,
+    traits: facts.traitLabels,
+    text: facts.text || undefined,
+    set: facts.set || undefined,
+  }
+}
+
+// On this computer only (the dev server): publishes the cards shown, set by set, as
+// showcases. Each card side is drawn as a JPG; the images and the set's list go into
+// public/showcase/<SET>, to be committed to make them part of the site.
+function PublishSets(props: { cards: Card[] }) {
+  const { cards } = props
+  const [status, setStatus] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  // Replace the whole set with the cards shown, rather than update the cards shown in it
+  const [replace, setReplace] = useState(false)
+  // The card side being drawn, off the page
+  const [drawing, setDrawing] = useState<{ card: Card; back: boolean } | null>(null)
+  const stage = useRef<HTMLDivElement>(null)
+  const bySet = new Map<string, Card[]>()
+  for (const card of cards) {
+    const set = card.setCode?.trim().toUpperCase()
+    if (set && /^[A-Z0-9_-]+$/.test(set)) bySet.set(set, [...(bySet.get(set) ?? []), card])
+  }
+  const skipped = cards.length - [...bySet.values()].reduce((count, list) => count + list.length, 0)
+
+  const send = async (set: string, file: string, body: BodyInit, method = 'PUT') => {
+    const response = await fetch(`/__publish/${set}/${encodeURIComponent(file)}`, { method, body })
+    if (!response.ok) throw new Error(await response.text())
+  }
+
+  // Draws one side of a card at the frame's own size, once its pictures have loaded
+  const draw = async (card: Card, back: boolean) => {
+    flushSync(() => setDrawing({ card, back }))
+    const el = stage.current?.querySelector<HTMLElement>('.card')
+    if (!el) throw new Error('Nothing to draw')
+    await document.fonts.ready
+    await Promise.all(
+      [...el.querySelectorAll('img')].map((img) => (img.complete ? null : new Promise((done) => img.addEventListener('load', done, { once: true })))),
+    )
+    await new Promise((done) => setTimeout(done, 150)) // the art's size is worked out once it has loaded
+    return cardImage(el, cardSide(card, back).frame, 'jpg', 1)
+  }
+
+  const publish = async () => {
+    setBusy(true)
+    try {
+      for (const [set, list] of bySet) {
+        // What the set has already: the cards published now update it, the rest stay
+        // as they are, unless the whole set is being replaced
+        let already: ShowcaseCard[] = []
+        if (!replace) {
+          const response = await fetch(`/showcase/${set}/showcase.json`, { cache: 'no-store' })
+          if (response.ok) already = ((await response.json()) as ShowcaseList).cards
+        }
+        let done = 0
+        for (const card of list) {
+          const sides = findFrame(card.frameId).backId ? [false, true] : [false]
+          for (const back of sides) {
+            setStatus(`Publishing ${set}: card ${done + 1} of ${list.length}…`)
+            const file = `${cardFileName(card, back)}.jpg`
+            await send(set, file, await draw(card, back))
+          }
+          done++
+        }
+        // A card published before keeps its place in the set; a new one goes at the end
+        const cards = [...already]
+        for (const entry of list.map(showcaseEntry)) {
+          const at = cards.findIndex((other) => (other.id ? other.id === entry.id : other.image === entry.image))
+          if (at >= 0) cards[at] = entry
+          else cards.push(entry)
+        }
+        const showcase: ShowcaseList = { title: set, cards }
+        await send(set, 'showcase.json', JSON.stringify(showcase, null, 2))
+        // The set's images now, which leaves out those of cards renamed since
+        const files = cards.flatMap((card) => [card.image, ...(card.back ? [card.back] : [])].map((name) => `${name}.jpg`))
+        await send(set, 'finish', JSON.stringify([...files, 'showcase.json']), 'POST')
+      }
+      setStatus(
+        `${replace ? 'Replaced' : 'Updated'} ${[...bySet].map(([set, list]) => `${set} (${list.length})`).join(', ')} in public/showcase.` +
+          (skipped ? ` ${skipped} card${skipped === 1 ? '' : 's'} with no set left out.` : ''),
+      )
+    } catch (error) {
+      setStatus(`Could not publish: ${error instanceof Error ? error.message : error}`)
+    }
+    setDrawing(null)
+    setBusy(false)
+  }
+
+  return (
+    <div className="publish-sets">
+      <button className="chip" type="button" disabled={busy || bySet.size === 0} onClick={publish}>
+        {busy ? 'Publishing…' : `Publish ${bySet.size === 1 ? `set ${[...bySet.keys()][0]}` : `${bySet.size} sets`}`}
+      </button>
+      <label className="toggle filter-label" title="Otherwise the cards shown are added to their set or updated in it">
+        <input type="checkbox" checked={replace} onChange={(event) => setReplace(event.target.checked)} />
+        Replace the whole set
+      </label>
+      <span className="filter-label">
+        {status ?? 'Dev only: the cards shown go into their sets in public/showcase. Commit to put them on the site.'}
+      </span>
+      {drawing && (
+        <div className="publish-stage" ref={stage}>
+          <CardFace card={drawing.card} back={drawing.back} />
+        </div>
+      )}
+    </div>
+  )
+}
+
 function Showroom(props: { cards: Card[]; onEdit: (card: Card) => void; onRemove: (card: Card) => void }) {
   const { cards, onEdit, onRemove } = props
-  const { bar, shown, grid, preview } = useCardFilters(cards.map((card) => ({ item: card, facts: cardFacts(card) })))
+  const { bar, shown, grid, preview } = useCardFilters(
+    'showroom',
+    cards.map((card) => ({ item: card, facts: cardFacts(card) })),
+  )
   // One choice of image format for every card
   const [format, changeFormat] = useImageFormat()
 
@@ -810,6 +1067,7 @@ function Showroom(props: { cards: Card[]; onEdit: (card: Card) => void; onRemove
   return (
     <section className="showroom">
       {bar}
+      {import.meta.env.DEV && <PublishSets cards={shown.map(({ item }) => item)} />}
 
       {shown.length === 0 ? (
         <p className="empty-note">No card matches these filters.</p>
@@ -887,6 +1145,7 @@ function Showcase(props: { folder: string }) {
     return () => robots.remove()
   }, [])
   const { bar, shown, grid, preview } = useCardFilters(
+    `showcase.${props.folder}`,
     (list?.cards ?? []).map((card) => ({
       item: card,
       facts: {
@@ -898,6 +1157,7 @@ function Showcase(props: { folder: string }) {
         text: card.text ?? '',
         aspects: card.aspects,
         cost: card.cost,
+        set: card.set ?? '',
       },
     })),
     'Showcase order',
@@ -977,6 +1237,9 @@ function CardCreator(props: {
   // leader as a unit say, loses what the old kind had: that is asked about first.
   // A new name or subtitle is not, as that is how a card is renamed.
   const original = cards.find((card) => card.id === draft.id)
+  // Whether the card in the editor differs from what the Showroom has: always so for
+  // a card not saved yet, once anything is typed or picked on it
+  const changed = original ? sameCard(original, draft) === false : draft.name.trim() !== '' || draft.art !== undefined
   const replaces = original !== undefined && findFrame(original.frameId).type !== findFrame(draft.frameId).type
   // Name and subtitle together tell cards apart: another card with both the same
   const twinOf = (asNew: boolean) =>
@@ -989,14 +1252,15 @@ function CardCreator(props: {
     setAsked(null)
     onSave(asNew)
   }
-  const [type, setType] = useState<FrameFilter | null>(null)
-  const [arena, setArena] = useState<Arena | null>(null)
+  // The frame picker's filters and page are remembered, like the Showroom's
+  const [type, setType] = useRemembered<FrameFilter | null>('frames.type', null)
+  const [arena, setArena] = useRemembered<Arena | null>('frames.arena', null)
   // 'Neutral' asks for frames with no aspect icons; otherwise frames carrying every
   // picked aspect, as many times as it was picked
-  const [picked, setPicked] = useState<Aspect[] | 'Neutral'>([])
+  const [picked, setPicked] = useRemembered<Aspect[] | 'Neutral'>('frames.aspects', [])
   // The frame picker shows a page of frames at a time: drawing them all is slow, and
   // the filters are the quicker way to the right one
-  const [page, setPage] = useState(0)
+  const [page, setPage] = useRemembered('frames.page', 0)
   // Which side of a leader is being edited
   const [back, setBack] = useState(false)
   const front = findFrame(draft.frameId)
@@ -1085,8 +1349,13 @@ function CardCreator(props: {
           </div>
           {imageNote && <p className="saved-note">{imageNote}</p>}
             <div className="editor-actions">
-              <button className="button button-primary" type="button" onClick={() => save(!original)}>
-                {original ? 'Update in Showroom' : 'Save to Showroom'}
+              <button
+                className={changed ? 'button button-primary button-pending' : 'button'}
+                type="button"
+                title={changed ? 'This card has changes the Showroom does not have yet' : 'The Showroom has this card as it is'}
+                onClick={() => save(!original)}
+              >
+                {original ? (changed ? 'Update in Showroom •' : 'Up to date') : 'Save to Showroom'}
               </button>
               {original && (
                 <button className="button" type="button" onClick={() => save(true)}>
@@ -1228,7 +1497,7 @@ function CardCreator(props: {
                 the brackets too: {"[Action [[Arrow]]:]"} or {"[Action [[1, Arrow]]:]"}.
                 In curly brackets, text is italic: {"{reminder text}"}, or {"[{Imperial}]"} for bold italic. A line
                 between {"< >"} gets Sentinel's red box, between {"<< >>"} the tinted one; a line that is only
-                [Sentinel] gets it by itself.
+                [Sentinel] gets it by itself. A line starting with - prints a dot, for a choice in a list.
               </span>
             </label>
           ) : (
@@ -1785,22 +2054,24 @@ function ArtControls(props: { art?: Art; onChange: (art?: Art) => void }) {
 
   return (
     <div className="art-controls">
-      {/* Images in public/art: picking one stores only its path, not a copy.
-          New art starts filling the whole card. */}
-      <ul className="art-folder">
-        {files.map((src) => (
-          <li key={src}>
-            <button
-              type="button"
-              title={src.slice('/art/'.length)}
-              aria-pressed={art?.src === src}
-              onClick={() => onChange({ src, zoom: 1, x: 0, y: 0 })}
-            >
-              <img src={asset(src)} alt={src.slice('/art/'.length)} />
-            </button>
-          </li>
-        ))}
-      </ul>
+      {/* Images in public/art, on a computer that has the folder: picking one stores
+          only its path, not a copy. New art starts filling the whole card. */}
+      {files.length > 0 && (
+        <ul className="art-folder">
+          {files.map((src) => (
+            <li key={src}>
+              <button
+                type="button"
+                title={src.slice('/art/'.length)}
+                aria-pressed={art?.src === src}
+                onClick={() => onChange({ src, zoom: 1, x: 0, y: 0 })}
+              >
+                <img src={asset(src)} alt={src.slice('/art/'.length)} />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
       <div className="editor-actions">
         <label className="button">
           Upload from computer
@@ -1923,7 +2194,7 @@ function App() {
     return (
       <main className="page">
         <header className="page-header">
-          <h1>Dune SWU</h1>
+          <h1>{showcase === 'DUNE' ? 'Dune SWU' : showcase}</h1>
         </header>
         <Showcase folder={showcase} />
       </main>

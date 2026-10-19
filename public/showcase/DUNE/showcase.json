@@ -1,0 +1,378 @@
+{
+  "title": "DUNE",
+  "cards": [
+    {
+      "id": "631c4fe6-a97d-4e54-bd4c-a75ac91b31e4",
+      "image": "Fremen",
+      "name": "Fremen",
+      "type": "Token",
+      "aspects": [],
+      "cost": 1,
+      "traits": [
+        "Fremen",
+        "Trooper"
+      ],
+      "text": "while you control an arrakis base, this unit gains raid 1.",
+      "set": "DUNE"
+    },
+    {
+      "id": "27bb6ad3-ad8e-4de3-aeb9-0066913132f2",
+      "image": "Harkonnen Heavy 'Thopter",
+      "name": "Harkonnen Heavy 'Thopter",
+      "type": "Unit",
+      "aspects": [
+        "Aggression",
+        "Villainy"
+      ],
+      "cost": 3,
+      "traits": [
+        "Harkonnen",
+        "Vehicle",
+        "Fighter"
+      ],
+      "text": "friendly harkonnen trooper units gain raid 1.",
+      "set": "DUNE"
+    },
+    {
+      "id": "9a4481da-e820-4e55-9ab8-62190c22eb0d",
+      "image": "Scouting 'Thopter",
+      "name": "Scouting 'Thopter",
+      "type": "Unit",
+      "aspects": [],
+      "cost": 1,
+      "traits": [
+        "Vehicle",
+        "Fighter"
+      ],
+      "text": "raid 1\nwhen played/on attack: look at the top card of any player's deck. you may discard it.",
+      "set": "DUNE"
+    },
+    {
+      "id": "2e62adc0-fa78-44fe-8ad8-24eb7397db11",
+      "image": "Strike 'Thopter",
+      "name": "Strike 'Thopter",
+      "type": "Unit",
+      "aspects": [
+        "Command",
+        "Heroism"
+      ],
+      "cost": 2,
+      "traits": [
+        "Atreides",
+        "Vehicle",
+        "Fighter"
+      ],
+      "text": "when played: you may deal 1 damage to a ground unit.",
+      "set": "DUNE"
+    },
+    {
+      "id": "1b21e154-0608-4cf0-a138-2852a9933159",
+      "image": "Earning the Fremen's respect",
+      "name": "Earning the Fremen's respect",
+      "type": "Event",
+      "aspects": [
+        "Command",
+        "Heroism"
+      ],
+      "cost": 3,
+      "traits": [
+        "Atreides"
+      ],
+      "set": "DUNE"
+    },
+    {
+      "id": "76de506d-cc7b-4b78-bd3d-c13a4ac6232f",
+      "image": "Carryall",
+      "name": "Carryall",
+      "type": "Unit",
+      "aspects": [
+        "Command"
+      ],
+      "cost": 5,
+      "traits": [
+        "Vehicle",
+        "Transport"
+      ],
+      "text": "when played/on attack: you may play a ground vehicle unit from your discard pile that was defeated this phase and costs #5 or less for free.",
+      "set": "DUNE"
+    },
+    {
+      "id": "3f4a5f78-4647-438a-b66e-31c29de340b5",
+      "image": "Spice Harvester",
+      "name": "Spice Harvester",
+      "type": "Unit",
+      "aspects": [
+        "Command"
+      ],
+      "cost": 4,
+      "traits": [
+        "Vehicle"
+      ],
+      "text": "when played/on attack: if you control an arrakis base, create a spice token.\n\nwhen the regroup phase starts: you may defeat 3 friendly spice tokens. if you do, put the top card of your deck into play as a resource.",
+      "set": "DUNE"
+    },
+    {
+      "id": "3355841f-28ac-4046-a421-abc2b8b8cfb9",
+      "image": "Gene Manipulation",
+      "name": "Gene Manipulation",
+      "type": "Upgrade",
+      "aspects": [
+        "Vigilance"
+      ],
+      "cost": 1,
+      "traits": [
+        "Bene Gesserit"
+      ],
+      "text": "when played: choose a card in your discard pile that shares a trait with attached unit. attached unit gains a keyword printed on that card.",
+      "set": "DUNE"
+    },
+    {
+      "id": "5a2433e7-2fcb-4dbf-a09c-2069de8348b6",
+      "image": "Personal Shield",
+      "name": "Personal Shield",
+      "type": "Upgrade",
+      "aspects": [
+        "Vigilance"
+      ],
+      "cost": 3,
+      "traits": [],
+      "text": "attach to a friendly unit.\nwhen played: if you control an arrakis base, defeat this unit, otherwise give a shield token to attached unit.\nwhen the regroup phase starts: if attached unit has no shield, give a shield token to it.",
+      "set": "DUNE"
+    },
+    {
+      "id": "f7e4c8c9-97d7-4912-aad4-44aad461cd29",
+      "image": "Bene Gesserit Sister",
+      "name": "Bene Gesserit Sister",
+      "type": "Unit",
+      "aspects": [
+        "Vigilance"
+      ],
+      "cost": 4,
+      "traits": [
+        "Bene Gesserit"
+      ],
+      "text": "when played: choose one:\n- you may deal 2 damage to a unit.\n- the next bene gesserit card you play this phase cost 2 less.",
+      "set": "DUNE"
+    },
+    {
+      "id": "eea02b47-ea14-405e-b123-33bccfd3c546",
+      "image": "The Shield Wall",
+      "name": "The Shield Wall",
+      "type": "Fortification",
+      "aspects": [
+        "Vigilance"
+      ],
+      "cost": 3,
+      "traits": [
+        "Fortification"
+      ],
+      "text": "fortify\nattached base gains: \"enemy ground units get -1/-0 while attacking bases. \nyour units can't be defeated by enemy shai-hulud card abilities.\"",
+      "set": "DUNE"
+    },
+    {
+      "id": "60353644-d070-42b3-b22d-ba4e441f39fb",
+      "image": "Bene Gesserit Initiate",
+      "name": "Bene Gesserit Initiate",
+      "type": "Unit",
+      "aspects": [
+        "Vigilance"
+      ],
+      "cost": 3,
+      "traits": [
+        "Bene Gesserit"
+      ],
+      "text": "when played: each opponent discards a card from their hand.",
+      "set": "DUNE"
+    },
+    {
+      "id": "4a4aba7b-326d-4fdd-a304-565bb32e0652",
+      "image": "Shai-Hulud",
+      "name": "Shai-Hulud",
+      "type": "Unit",
+      "aspects": [],
+      "cost": 8,
+      "traits": [
+        "Creature"
+      ],
+      "text": "overwhelm\nwhen played: while you control an arrakis base, defeat all other non-fremen ground units.\nwhen this unit completes an attack: return it to the bottom of its owner's deck.",
+      "set": "DUNE"
+    },
+    {
+      "id": "f9d41a1c-ed50-4f7e-9f89-a8de4964c490",
+      "image": "Hunter Seeker",
+      "name": "Hunter Seeker",
+      "type": "Unit",
+      "aspects": [
+        "Aggression",
+        "Villainy"
+      ],
+      "cost": 1,
+      "traits": [
+        "Drone"
+      ],
+      "text": "#elusive (can't be chosen as a target for an attack.)\nsaboteur\nwhen a non-leader ground unit enters play: arrow and defeat this unit. if you do, deal 3 damage to that unit.",
+      "set": "DUNE"
+    },
+    {
+      "id": "f4f2b2ec-4914-4a47-bd86-9c4da3697744",
+      "image": "Gom Jabbar",
+      "name": "Gom Jabbar",
+      "type": "Upgrade",
+      "aspects": [
+        "Vigilance",
+        "Villainy"
+      ],
+      "cost": 3,
+      "traits": [
+        "Bene Gesserit"
+      ],
+      "text": "attach to a non-vehicle, non leader unit.\n\nattached unit gains: \"when this unit exhaust, defeat this unit\".",
+      "set": "DUNE"
+    },
+    {
+      "id": "8b5de66c-706d-404e-a66a-956fa1697c88",
+      "image": "Paul Atreides - Haunted by Dreams",
+      "back": "Paul Atreides - Haunted by Dreams (unit)",
+      "name": "Paul Atreides",
+      "subtitle": "Haunted by Dreams",
+      "type": "Leader",
+      "aspects": [
+        "Command",
+        "Heroism",
+        "Command",
+        "Heroism"
+      ],
+      "cost": 5,
+      "traits": [
+        "Atreides",
+        "Atreides"
+      ],
+      "text": "you mean look at the top card of your deck at any time.\n\naction arrow: discard a card from your deck. you may give a unit with the same cost +1/+1 for this phase. on attack: look at the top 3 cards of your deck and discard one. gain the on attack ability of the card or one of its keywords for this phase.",
+      "set": "DUNE"
+    },
+    {
+      "id": "7484d1ed-3110-4f06-aa0d-5090d4e04815",
+      "image": "Crysknife",
+      "name": "Crysknife",
+      "type": "Upgrade",
+      "aspects": [
+        "Aggression"
+      ],
+      "cost": 1,
+      "traits": [
+        "Fremen"
+      ],
+      "text": "attach to a non-vehicle unit.\n\nif attached unit is a fremen it gains saboteur.",
+      "set": "DUNE"
+    },
+    {
+      "id": "f57c0523-7889-45f4-9a85-83c9dbdd8173",
+      "image": "Paul Atreides - Heir to House Atreides",
+      "name": "Paul Atreides",
+      "subtitle": "Heir to House Atreides",
+      "type": "Unit",
+      "aspects": [
+        "Command",
+        "Heroism"
+      ],
+      "cost": 2,
+      "traits": [
+        "Atreides"
+      ],
+      "text": "on attack: discard 1 card from your deck. if its cost is the same as the defender's, deal 1 damage to the defender or to a base. on attack: you may draw 1 card. if you do, discard 1 card",
+      "set": "DUNE"
+    },
+    {
+      "id": "0cd1cd92-e363-4058-8c5c-6dcb216491ad",
+      "image": "Fremen Warrior",
+      "name": "Fremen Warrior",
+      "type": "Unit",
+      "aspects": [
+        "Cunning",
+        "Heroism"
+      ],
+      "cost": 1,
+      "traits": [
+        "Fremen",
+        "Trooper"
+      ],
+      "text": "while you control an arrakis base, this unit gains hidden.",
+      "set": "DUNE"
+    },
+    {
+      "id": "26bb822f-2e58-4918-856a-ff80b4fcef7e",
+      "image": "Lady Jessica",
+      "name": "Lady Jessica",
+      "type": "Unit",
+      "aspects": [
+        "Command",
+        "Heroism"
+      ],
+      "cost": 5,
+      "traits": [
+        "Bene Gesserit",
+        "Atreides"
+      ],
+      "text": "restore 2\nwhen played/on attack: look at an opponent's hand and name a card. this phase, opponents can't play the named cards. draw a card.",
+      "set": "DUNE"
+    },
+    {
+      "id": "ede5069e-07b3-459b-b0ea-035771cda18a",
+      "image": "Imperial Bassin",
+      "name": "Imperial Bassin",
+      "type": "Base",
+      "aspects": [
+        "Cunning"
+      ],
+      "traits": [
+        "Arrakis"
+      ],
+      "text": "you start the game with a spice token.",
+      "set": "DUNE"
+    },
+    {
+      "id": "545c197a-a169-40f8-a066-7bc6a0e02752",
+      "image": "Duncan Idaho",
+      "name": "Duncan Idaho",
+      "type": "Unit",
+      "aspects": [
+        "Command",
+        "Heroism"
+      ],
+      "cost": 3,
+      "traits": [
+        "Trooper",
+        "Atreides"
+      ],
+      "text": "when defeated: you may defeat a unit that dealt combat damage to this unit this phase.",
+      "set": "DUNE"
+    },
+    {
+      "id": "34f61fb8-aa97-4191-a378-82d405e530db",
+      "image": "The Voice",
+      "name": "The Voice",
+      "type": "Event",
+      "aspects": [
+        "Villainy"
+      ],
+      "cost": 2,
+      "traits": [
+        "Bene Gesserit"
+      ],
+      "text": "look at an opponent's hand and name a card. this phase, opponents can't play the named cards. draw a card.",
+      "set": "DUNE"
+    },
+    {
+      "id": "3067ed91-f5ee-4d21-8a22-11e509103391",
+      "image": "Spice",
+      "name": "Spice",
+      "type": "Token",
+      "aspects": [],
+      "traits": [
+        "Supply"
+      ],
+      "text": "action: you may exhaust a friendly unit or leader and defeat this token. if you do, reveal the top 3 cards of your deck, draw 1 and discard the others. the card you drew costs 1 less this phase.",
+      "set": "DUNE"
+    }
+  ]
+}

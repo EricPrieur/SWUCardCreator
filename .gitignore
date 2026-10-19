@@ -29,3 +29,6 @@ __pycache__
 
 # Full-size card art; the site gets JPG copies in public/art (tools/convert_art.py)
 art-source
+
+# Card art lives on this computer only; the site shows art people upload
+public/art

@@ -307,10 +307,17 @@ function GameLines(props: { text: string; endRoom?: number }) {
   return lines.map((line, index) => {
     const filled = /^\s*<<(.*)>>\s*$/.exec(line) ?? /^\s*(\[sentinel\])\s*$/i.exec(line)
     const outlined = filled ? null : /^\s*<(.*)>\s*$/.exec(line)
-    const text = (filled ?? outlined)?.[1].trim() ?? line
-    const className = filled ? 'rule-box rule-box-filled' : outlined ? 'rule-box' : undefined
+    const boxed = (filled ?? outlined)?.[1].trim() ?? line
+    // A choice in a list: a line starting with - or * (or the dot itself) prints the dot
+    // used between traits, with the choice's own lines lined up after it
+    const choice = /^\s*[-*\u2022]\s+(.*)$/.exec(boxed)
+    const text = choice ? choice[1] : boxed
+    const className =
+      [filled ? 'rule-box rule-box-filled' : outlined ? 'rule-box' : '', choice ? 'rule-choice' : ''].join(' ').trim() ||
+      undefined
     return (
       <span className={className} key={index}>
+        {choice && <span className="rule-dot">{'\u2022'}</span>}
         {/* An empty line still takes up a line */}
         {text === '' ? '\u00a0' : <GameText text={text} />}
         {index === lines.length - 1 && props.endRoom && (
@@ -652,7 +659,11 @@ function CardArt(props: { frame: Frame; art: Art }) {
     aspectRatio: ratio,
     transform: `translate(-50%, -50%) rotate(${rotate}deg) scale(${art.zoom})`,
   }
-  const src = asset(art.src)
+  // Art in public/art is kept as JPG, but a picture just dropped in is still a PNG
+  // until tools/convert_art.py has run: a missing one is looked for as the other
+  const [missing, setMissing] = useState<string>()
+  const other = art.src.startsWith('/art/') ? art.src.replace(/\.(png|jpe?g|webp)$/i, (ext) => (ext.toLowerCase() === '.jpg' ? '.png' : '.jpg')) : art.src
+  const src = asset(missing === art.src ? other : art.src)
   return (
     <div className="card-art" style={style}>
       {fill && (
@@ -678,6 +689,7 @@ function CardArt(props: { frame: Frame; art: Art }) {
         onLoad={(event) =>
           setShape({ src: art.src, ratio: event.currentTarget.naturalWidth / event.currentTarget.naturalHeight })
         }
+        onError={() => other !== art.src && missing !== art.src && setMissing(art.src)}
       />
     </div>
   )
