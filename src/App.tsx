@@ -107,6 +107,32 @@ function findFrame(frameId: string) {
   return frames.find((frame) => frame.id === frameId) ?? frames[0]
 }
 
+// The card as its frame prints it. Moving a card to another frame keeps what only
+// the old frame had, a back or a Piloting box, so moving back loses nothing; saving
+// leaves it out, so it is not found by a search or published with the showcase.
+function forFrame(card: Draft): Draft {
+  const front = findFrame(card.frameId)
+  const back = front.backId ? findFrame(card.backFrameId ?? front.backId) : undefined
+  const kept: Draft = { ...card }
+  if (!back) {
+    delete kept.backText
+    delete kept.backArt
+    delete kept.backName
+    delete kept.backSubtitle
+    delete kept.backTrait
+    delete kept.backFrameId
+    delete kept.backArena
+  }
+  if (!front.epicBox) delete kept.epic
+  if (!front.pilotBox && !back?.pilotBox) {
+    delete kept.pilotText
+    delete kept.pilotCost
+    delete kept.upgradePower
+    delete kept.upgradeHp
+  }
+  return kept
+}
+
 // A leader is one card with two sides, which share everything but the frame, the
 // game text and where the art sits. Every other card only has a front.
 function cardSide(card: Draft, back: boolean) {
@@ -665,7 +691,8 @@ function cardFacts(card: Card): Facts {
     names: [card.name, back?.name ?? ''].map((name) => name.toLowerCase()),
     traits: traitLabels.map((trait) => trait.toLowerCase()),
     traitLabels,
-    text: plainText(card.text, card.backText, card.pilotText, card.epic),
+    // A back's text stays saved when a card moves to a one-sided frame, but is not on the card
+    text: plainText(card.text, back && card.backText, card.pilotText, card.epic),
     aspects: [...frame.aspects, ...(back?.frame.aspects ?? [])],
     cost: card.cost,
     set: card.setCode?.trim() ?? '',
@@ -2041,9 +2068,15 @@ function ArtControls(props: { art?: Art; onChange: (art?: Art) => void }) {
   // The dev server sends the new list when an image is added to or removed from public/art
   const [files, setFiles] = useState(artFiles)
   const [uploadError, setUploadError] = useState<string | null>(null)
+  // Newest art comes first, so the list goes back to its top to show what arrived
+  const folder = useRef<HTMLUListElement>(null)
   useEffect(() => {
-    import.meta.hot?.on('art-list', setFiles)
-    return () => import.meta.hot?.off('art-list', setFiles)
+    const update = (list: string[]) => {
+      setFiles(list)
+      folder.current?.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+    import.meta.hot?.on('art-list', update)
+    return () => import.meta.hot?.off('art-list', update)
   }, [])
   const sliders = [
     { label: 'Zoom', key: 'zoom', min: 0.5, max: 3, step: 0.01 },
@@ -2057,7 +2090,7 @@ function ArtControls(props: { art?: Art; onChange: (art?: Art) => void }) {
       {/* Images in public/art, on a computer that has the folder: picking one stores
           only its path, not a copy. New art starts filling the whole card. */}
       {files.length > 0 && (
-        <ul className="art-folder">
+        <ul className="art-folder" ref={folder}>
           {files.map((src) => (
             <li key={src}>
               <button
@@ -2166,7 +2199,7 @@ function App() {
   }
 
   const saveDraft = (asNew: boolean) => {
-    const card: Card = { ...draft, id: (asNew ? undefined : draft.id) ?? crypto.randomUUID() }
+    const card: Card = { ...forFrame(draft), id: (asNew ? undefined : draft.id) ?? crypto.randomUUID() }
     const exists = cards.some((saved) => saved.id === card.id)
     const next = exists ? cards.map((saved) => (saved.id === card.id ? card : saved)) : [...cards, card]
     if (!updateCards(next)) {

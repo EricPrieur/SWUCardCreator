@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import react from '@vitejs/plugin-react'
 import { defineConfig, type Plugin } from 'vite'
@@ -6,13 +6,20 @@ import { defineConfig, type Plugin } from 'vite'
 const artDir = resolve(import.meta.dirname, 'public/art')
 
 // The art folder is this computer's own and is not in git, so the site built on
-// GitHub has none: there, card art is only what people upload in their browser
+// GitHub has none: there, card art is only what people upload in their browser.
+// Newest first. A copied file keeps its old modified time but is created now,
+// so whichever of the two is later counts as when it arrived.
 function artFiles() {
   if (!existsSync(artDir)) return []
+  const added = (file: string) => {
+    const stat = statSync(resolve(artDir, file))
+    return Math.max(stat.birthtimeMs, stat.mtimeMs)
+  }
   return readdirSync(artDir)
     .filter((file) => /\.(png|jpe?g|webp|avif)$/i.test(file))
-    .sort((a, b) => a.localeCompare(b))
-    .map((file) => `/art/${file}`)
+    .map((file) => ({ file, added: added(file) }))
+    .sort((a, b) => b.added - a.added || a.file.localeCompare(b.file))
+    .map(({ file }) => `/art/${file}`)
 }
 
 // Exposes the images in public/art as `virtual:art-list`, so the Card Creator

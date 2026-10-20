@@ -376,19 +376,27 @@
   display: none;
 }
 
+/* Three rows of art at most; the rest is scrolled to */
 .art-folder {
+  --thumb: 64px;
   list-style: none;
   margin: 0;
-  padding: 0;
+  padding: 0 0.25rem 0 0;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+  grid-template-columns: repeat(auto-fill, var(--thumb));
+  grid-auto-rows: var(--thumb);
+  justify-content: space-between;
   gap: 0.5rem;
+  max-height: calc(var(--thumb) * 3 + 0.5rem * 2);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--spice) transparent;
 }
 
 .art-folder button {
   display: block;
   width: 100%;
-  aspect-ratio: 1;
+  height: 100%;
   padding: 0;
   border: 2px solid transparent;
   border-radius: 6px;

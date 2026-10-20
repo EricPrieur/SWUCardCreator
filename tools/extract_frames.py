@@ -1496,6 +1496,27 @@ def extract_label_masks():
     print("wrote label masks", sorted(LABELS))
 
 
+def mend_cost_hexagons():
+    """On some unit frames the cost hexagon came out with part of its outline missing,
+    letting the art show through at its edge. The hexagon is the same on every unit
+    frame, so it is copied, outline and all, from one that came out clean."""
+    clean = np.array(Image.open(OUT / "unit" / "command.png").convert("RGBA")).astype(np.float32)
+    hexagon = dilate(cost_hexagon(clean[..., :3]), 4) & (clean[..., 3] > 0)
+    hexagon[118:] = False  # the aspect icons below are each frame's own
+    hexagon[:, 120:] = False  # and the name bar to the right
+    mended = 0
+    for path in sorted((OUT / "unit").glob("*.png")):
+        if "subtitle" in path.stem or path.stem.startswith("token"):
+            continue
+        frame = np.array(Image.open(path).convert("RGBA")).astype(np.float32)
+        if frame.shape[:2] != clean.shape[:2]:
+            continue  # the narrower double Command scan has its own
+        frame[hexagon] = clean[hexagon]
+        Image.fromarray(frame.round().astype(np.uint8), "RGBA").save(path)
+        mended += 1
+    print("mended the cost hexagon on", mended, "unit frames")
+
+
 def unstreak(path):
     """Paint over the thin white dash left near the top of an upgrade's power icon, a
     remnant of the sign printed on the card it came from, with the colours above and below it."""
@@ -1527,7 +1548,8 @@ if __name__ == "__main__":
               "fortification/derived": extract_derived_fortifications,
               "leader": extract_leaders, "icons/exhaust": extract_exhaust_icon,
               "icons/artist": extract_artist_icon, "icons/rarity": extract_rarity_icons,
-              "icons/labels": extract_label_masks, "icons/foil": extract_foil_stamp, "upgrade/unstreak": unstreak_upgrades}
+              "icons/labels": extract_label_masks, "icons/foil": extract_foil_stamp, "upgrade/unstreak": unstreak_upgrades,
+              "unit/cost-hexagons": mend_cost_hexagons}
     for subtitle in SUBTITLES:
         extras[subtitle] = lambda subtitle=subtitle: extract_subtitle(subtitle)
     for frame in sys.argv[1:] or list(FRAMES) + list(extras):
