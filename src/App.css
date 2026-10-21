@@ -931,6 +931,19 @@
   background: rgb(224 138 44 / 0.1);
 }
 
+/* A card is laid out at a fixed size and shrunk to its room (see CardScale) */
+.card-scale {
+  position: relative;
+  width: 100%;
+}
+
+.card-scale-inner {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: top left;
+}
+
 /* SWU cards are 63 x 88 mm */
 .card {
   position: relative;

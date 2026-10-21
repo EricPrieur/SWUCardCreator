@@ -823,6 +823,8 @@ function useCardFilters<T>(name: string, items: { item: T; facts: Facts }[], fir
   }
   const shown = [...found].sort((a, b) => compare[sort](a, b) || a.index - b.index)
   if (descending) shown.reverse()
+  // Bases and tokens with no cost stay after the others, from high to low cost as well
+  if (sort === 'cost' && descending) shown.sort((a, b) => Number(a.facts.cost === undefined) - Number(b.facts.cost === undefined))
   const filtered = search !== '' || types.length + traits.length + costs.length + sets.length + picked.length > 0
 
   const bar = (

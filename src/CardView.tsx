@@ -1,4 +1,4 @@
-import { memo, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
+import { memo, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { asset } from './asset'
 import { cardLineKeys, defaultLook, type Art, type CardLine, type Look } from './cards'
 import { aspects, epicText, isUnique, type Frame, type Spot, type TextBox } from './frames'
@@ -704,6 +704,33 @@ function formatTraits(trait: string) {
     .join(' • ')
 }
 
+// Browsers draw no text smaller than a set minimum (6px in Chrome), so a card drawn
+// small would have its text pushed back up to that size and spill out of its boxes.
+// The card is laid out at half its frame's size instead, where the text is well above
+// it, and shrunk as a whole to the room it is given. Saved images are drawn from the
+// card as laid out, so they come out the same at any size.
+function CardScale(props: { frame: Frame; children: ReactNode }) {
+  const { frame } = props
+  const ref = useRef<HTMLDivElement>(null)
+  const [scale, setScale] = useState<number | null>(null)
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const measure = () => setScale(el.clientWidth / (frame.width / 2))
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [frame.width])
+  return (
+    <div className="card-scale" ref={ref} style={{ aspectRatio: `${frame.width} / ${frame.height}` }}>
+      <div className="card-scale-inner" style={{ transform: scale === null ? undefined : `scale(${scale})`, visibility: scale === null ? 'hidden' : undefined }}>
+        {props.children}
+      </div>
+    </div>
+  )
+}
+
 // Memoised so typing in the editor only redraws the card being edited
 export const CardView = memo(function CardView(props: {
   frame: Frame
@@ -751,113 +778,115 @@ export const CardView = memo(function CardView(props: {
   } as CSSProperties
   return (
     // Without art, the backdrop stands in for it behind the transparent frame
-    <div className="card card-art-placeholder" style={cardStyle}>
-      {art && <CardArt frame={frame} art={art} />}
-      {backed &&
-        [...frame.panels, ...(unique && frame.subtitle && props.subtitle ? [subtitlePanel(frame.subtitle.box)] : [])].map((panel, index) => (
-          <div
-            className="card-panel"
+    <CardScale frame={frame}>
+      <div className="card card-art-placeholder" style={{ ...cardStyle, width: frame.width / 2 }}>
+        {art && <CardArt frame={frame} art={art} />}
+        {backed &&
+          [...frame.panels, ...(unique && frame.subtitle && props.subtitle ? [subtitlePanel(frame.subtitle.box)] : [])].map((panel, index) => (
+            <div
+              className="card-panel"
+              key={index}
+              style={{
+                left: `${(panel.x / frame.width) * 100}%`,
+                top: `${(panel.y / frame.height) * 100}%`,
+                width: `${(panel.w / frame.width) * 100}%`,
+                height: `${(panel.h / frame.height) * 100}%`,
+                background: `color-mix(in srgb, ${look.lightText ? '#14100c' : frame.paper} ${look.panelFill * 100}%, transparent)`,
+                backdropFilter: look.panelBlur > 0 ? `blur(${look.panelBlur * 3}cqw)` : undefined,
+              }}
+            />
+          ))}
+        <img
+          className="card-frame"
+          // Faded in parts, the frame is drawn once more for each part over this copy,
+          // which is then only there to give the card its size
+          style={{ opacity: parts ? 0 : fadeLevels(look).top }}
+          src={asset(props.thumb && frame.thumb ? frame.thumb : frame.src)}
+          alt={`${frame.name} frame`}
+          width={frame.width}
+          height={frame.height}
+        />
+        {parts?.map(({ clip, mask, opacity }, index) => (
+          <img
+            className="card-overlay"
             key={index}
             style={{
-              left: `${(panel.x / frame.width) * 100}%`,
-              top: `${(panel.y / frame.height) * 100}%`,
-              width: `${(panel.w / frame.width) * 100}%`,
-              height: `${(panel.h / frame.height) * 100}%`,
-              background: `color-mix(in srgb, ${look.lightText ? '#14100c' : frame.paper} ${look.panelFill * 100}%, transparent)`,
-              backdropFilter: look.panelBlur > 0 ? `blur(${look.panelBlur * 3}cqw)` : undefined,
+              opacity,
+              clipPath: clip,
+              ...(mask && { maskImage: `url("${mask}")`, maskSize: '100% 100%', WebkitMaskImage: `url("${mask}")`, WebkitMaskSize: '100% 100%' }),
             }}
+            src={asset(frame.src)}
+            alt=""
           />
         ))}
-      <img
-        className="card-frame"
-        // Faded in parts, the frame is drawn once more for each part over this copy,
-        // which is then only there to give the card its size
-        style={{ opacity: parts ? 0 : fadeLevels(look).top }}
-        src={asset(props.thumb && frame.thumb ? frame.thumb : frame.src)}
-        alt={`${frame.name} frame`}
-        width={frame.width}
-        height={frame.height}
-      />
-      {parts?.map(({ clip, mask, opacity }, index) => (
-        <img
-          className="card-overlay"
-          key={index}
-          style={{
-            opacity,
-            clipPath: clip,
-            ...(mask && { maskImage: `url("${mask}")`, maskSize: '100% 100%', WebkitMaskImage: `url("${mask}")`, WebkitMaskSize: '100% 100%' }),
-          }}
-          src={asset(frame.src)}
-          alt=""
-        />
-      ))}
-      {unique && frame.subtitle?.src && (
-        <img
-          className="card-overlay"
-          style={{ opacity: look.solidText ? 1 : fadeLevels(look).top }}
-          src={asset(frame.subtitle.src)}
-          alt=""
-        />
-      )}
-      {unique && frame.subtitle && props.subtitle && (
-        <CardText frame={frame} box={frame.subtitle.box} className="card-subtitle" text={props.subtitle} />
-      )}
-      {frame.label && <CardText frame={frame} box={frame.label.box} className="card-label" text={frame.label.text} />}
-      {props.line && !props.thumb && cardLineKeys.some((key) => props.line?.[key]?.trim()) && (
-        <CardLine frame={frame} line={props.line} />
-      )}
-      {numberKinds.map((kind) => {
-        const spot = frame[kind]
-        const value = props[kind]
-        if (!spot || value === undefined) return null
-        const signed = kind !== 'cost' && frame.modifiers === true
-        return <CardNumber key={kind} frame={frame} kind={kind} spot={spot} value={value} signed={signed} />
-      })}
-      {/* What a pilot gives the unit it is attached to, printed as changes: +2, -1 */}
-      {frame.upgradePower && props.upgradePower !== undefined && (
-        <CardNumber frame={frame} kind="power" spot={frame.upgradePower} value={props.upgradePower} signed />
-      )}
-      {frame.upgradeHp && props.upgradeHp !== undefined && (
-        <CardNumber frame={frame} kind="hp" spot={frame.upgradeHp} value={props.upgradeHp} signed />
-      )}
-      {name && (
-        <CardText
-          frame={frame}
-          box={frame.nameBox}
-          className="card-name"
-          text={name}
-          unique={unique}
-        />
-      )}
-      {name && frame.nameBox2 && (
-        <CardText frame={frame} box={frame.nameBox2} className="card-name" text={name} unique={unique} />
-      )}
-      {trait && <CardText frame={frame} box={frame.traitBox} className="card-trait" text={formatTraits(trait)} />}
-      {frame.pilotBox && !props.thumb ? (
-        <PilotArea frame={frame} text={text ?? ''} pilotText={props.pilotText ?? ''} />
-      ) : (
-        text && frame.textBox && <CardParagraph frame={frame} box={frame.textBox} text={text} />
-      )}
-      {frame.epicBox && !props.thumb && (
-        <CardParagraph
-          frame={frame}
-          box={frame.epicBox}
-          className="card-epic"
-          text={props.epic ?? epicText(props.cost, frame.deploysAsUpgrade)}
-          // The last line stops short of the power and HP printed in the box's corner
-          endRoom={frame.deploysAsUpgrade ? 4.6 : 2.4}
-        />
-      )}
-      {frame.stats && (props.power !== undefined || props.hp !== undefined) && (
-        <CardStats
-          frame={frame}
-          spot={frame.stats}
-          power={props.power}
-          hp={props.hp}
-          upgradePower={frame.deploysAsUpgrade ? props.upgradePower : undefined}
-          upgradeHp={frame.deploysAsUpgrade ? props.upgradeHp : undefined}
-        />
-      )}
-    </div>
+        {unique && frame.subtitle?.src && (
+          <img
+            className="card-overlay"
+            style={{ opacity: look.solidText ? 1 : fadeLevels(look).top }}
+            src={asset(frame.subtitle.src)}
+            alt=""
+          />
+        )}
+        {unique && frame.subtitle && props.subtitle && (
+          <CardText frame={frame} box={frame.subtitle.box} className="card-subtitle" text={props.subtitle} />
+        )}
+        {frame.label && <CardText frame={frame} box={frame.label.box} className="card-label" text={frame.label.text} />}
+        {props.line && !props.thumb && cardLineKeys.some((key) => props.line?.[key]?.trim()) && (
+          <CardLine frame={frame} line={props.line} />
+        )}
+        {numberKinds.map((kind) => {
+          const spot = frame[kind]
+          const value = props[kind]
+          if (!spot || value === undefined) return null
+          const signed = kind !== 'cost' && frame.modifiers === true
+          return <CardNumber key={kind} frame={frame} kind={kind} spot={spot} value={value} signed={signed} />
+        })}
+        {/* What a pilot gives the unit it is attached to, printed as changes: +2, -1 */}
+        {frame.upgradePower && props.upgradePower !== undefined && (
+          <CardNumber frame={frame} kind="power" spot={frame.upgradePower} value={props.upgradePower} signed />
+        )}
+        {frame.upgradeHp && props.upgradeHp !== undefined && (
+          <CardNumber frame={frame} kind="hp" spot={frame.upgradeHp} value={props.upgradeHp} signed />
+        )}
+        {name && (
+          <CardText
+            frame={frame}
+            box={frame.nameBox}
+            className="card-name"
+            text={name}
+            unique={unique}
+          />
+        )}
+        {name && frame.nameBox2 && (
+          <CardText frame={frame} box={frame.nameBox2} className="card-name" text={name} unique={unique} />
+        )}
+        {trait && <CardText frame={frame} box={frame.traitBox} className="card-trait" text={formatTraits(trait)} />}
+        {frame.pilotBox && !props.thumb ? (
+          <PilotArea frame={frame} text={text ?? ''} pilotText={props.pilotText ?? ''} />
+        ) : (
+          text && frame.textBox && <CardParagraph frame={frame} box={frame.textBox} text={text} />
+        )}
+        {frame.epicBox && !props.thumb && (
+          <CardParagraph
+            frame={frame}
+            box={frame.epicBox}
+            className="card-epic"
+            text={props.epic ?? epicText(props.cost, frame.deploysAsUpgrade)}
+            // The last line stops short of the power and HP printed in the box's corner
+            endRoom={frame.deploysAsUpgrade ? 4.6 : 2.4}
+          />
+        )}
+        {frame.stats && (props.power !== undefined || props.hp !== undefined) && (
+          <CardStats
+            frame={frame}
+            spot={frame.stats}
+            power={props.power}
+            hp={props.hp}
+            upgradePower={frame.deploysAsUpgrade ? props.upgradePower : undefined}
+            upgradeHp={frame.deploysAsUpgrade ? props.upgradeHp : undefined}
+          />
+        )}
+      </div>
+    </CardScale>
   )
 })
