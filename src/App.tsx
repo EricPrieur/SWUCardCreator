@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
+import { useEffect, useRef, useState, type ChangeEvent, type ReactNode, type RefObject } from 'react'
 import { createPortal, flushSync } from 'react-dom'
 import artFiles from 'virtual:art-list'
 import { asset } from './asset'
@@ -132,6 +132,9 @@ function forFrame(card: Draft): Draft {
   }
   return kept
 }
+
+// What both sides of a leader say, unless its Leader Unit side was given its own
+type SharedKey = 'name' | 'subtitle' | 'trait'
 
 // A leader is one card with two sides, which share everything but the frame, the
 // game text and where the art sits. Every other card only has a front.
@@ -1343,12 +1346,26 @@ function CardCreator(props: {
   // side that has never been given art shows the other side's (see cardSide).
   const setArt = (art?: Art) => onChange(side.isBack ? { ...draft, backArt: art } : { ...draft, art })
   // Name, subtitle and trait: typed on the Leader Unit side, they are kept for that
-  // side only, and typed back to what the Leader side says, they follow it again
-  const setShared = (key: 'name' | 'subtitle' | 'trait', value: string) => {
+  // side only, and typed back to what the Leader side says, they follow it again.
+  // A field that was empty on the other side when typing began is typed on both.
+  const backKeys = { name: 'backName', subtitle: 'backSubtitle', trait: 'backTrait' } as const
+  const bothWays = useRef(new Set<SharedKey>())
+  const otherIsEmpty = (key: SharedKey) =>
+    !front.backId ? false : side.isBack ? !draft[key]?.trim() : draft[backKeys[key]]?.trim() === ''
+  const setShared = (key: SharedKey, value: string) => {
+    if (bothWays.current.has(key)) return onChange({ ...draft, [key]: value, [backKeys[key]]: undefined })
     if (!side.isBack) return onChange({ ...draft, [key]: value })
-    const backKey = ({ name: 'backName', subtitle: 'backSubtitle', trait: 'backTrait' } as const)[key]
-    onChange({ ...draft, [backKey]: value === (draft[key] ?? '') ? undefined : value })
+    onChange({ ...draft, [backKeys[key]]: value === (draft[key] ?? '') ? undefined : value })
   }
+  // What the shared fields' inputs need: their value, and noting when typing begins and ends
+  const sharedInput = (key: SharedKey) => ({
+    value: side[key] ?? '',
+    onFocus: () => {
+      if (otherIsEmpty(key)) bothWays.current.add(key)
+    },
+    onBlur: () => bothWays.current.delete(key),
+    onChange: (event: ChangeEvent<HTMLInputElement>) => setShared(key, event.target.value),
+  })
   // Each side of a leader has its own frame. The Leader Unit side's is the one
   // matching the Leader side until another is picked for it, which leaves the
   // Leader side as it is.
@@ -1508,7 +1525,7 @@ function CardCreator(props: {
           <div className="name-row">
             <label>
               Name
-              <input value={side.name} onChange={(event) => setShared('name', event.target.value)} />
+              <input {...sharedInput('name')} />
             </label>
             {canBeUnique(frame) && (
               <label className="toggle">
@@ -1524,10 +1541,7 @@ function CardCreator(props: {
           {frame.subtitle && isUnique(frame, draft.unique) && (
             <label>
               Subtitle
-              <input
-                value={side.subtitle ?? ''}
-                onChange={(event) => setShared('subtitle', event.target.value)}
-              />
+              <input {...sharedInput('subtitle')} />
             </label>
           )}
           {stats.some(({ kind }) => bothSides.some((each) => hasStat(each, kind))) && (
@@ -1549,7 +1563,7 @@ function CardCreator(props: {
           )}
           <label>
             {frame.type === 'Base' ? 'Location' : 'Trait'}
-            <input value={side.trait} onChange={(event) => setShared('trait', event.target.value)} />
+            <input {...sharedInput('trait')} />
             {frame.type !== 'Base' && <span>Separate several traits with commas: Trooper, Atreides</span>}
           </label>
           {frame.textBox ? (
