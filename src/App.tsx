@@ -677,6 +677,10 @@ type Facts = {
   cost?: number
   // The set code from the card line, as typed; empty when the card has none
   set: string
+  // The card's number in its set, as typed (001/100); empty when it has none
+  number: string
+  // Where a unit fights; a leader's is its unit side's. None for the other cards.
+  arena?: Arena
 }
 
 // A saved card's facts. A leader counts for what either of its sides says.
@@ -696,6 +700,8 @@ function cardFacts(card: Card): Facts {
     aspects: [...frame.aspects, ...(back?.frame.aspects ?? [])],
     cost: card.cost,
     set: card.setCode?.trim() ?? '',
+    number: card.number?.trim() ?? '',
+    arena: frame.arena ?? back?.frame.arena,
   }
 }
 
@@ -726,6 +732,7 @@ const sorts = [
   { value: 'name', label: 'Name' },
   { value: 'cost', label: 'Cost' },
   { value: 'type', label: 'Type' },
+  { value: 'number', label: 'Set number' },
 ] as const
 type SortKey = (typeof sorts)[number]['value']
 
@@ -763,6 +770,9 @@ function useCardFilters<T>(name: string, items: { item: T; facts: Facts }[], fir
   // Set codes ticked; NO_SET stands for the cards with none
   const [sets, setSets] = useRemembered<string[]>(`${name}.sets`, [])
   const [picked, setPicked] = useRemembered<Aspect[]>(`${name}.aspects`, [])
+  // Only the cards with no aspect at all; picking an aspect turns it off, and the other way round
+  const [neutral, setNeutral] = useRemembered(`${name}.neutral`, false)
+  const [arenas, setArenas] = useRemembered<Arena[]>(`${name}.arenas`, [])
   const [sort, setSort] = useRemembered<SortKey>(`${name}.sort`, 'saved')
   const [descending, setDescending] = useRemembered(`${name}.descending`, false)
   const [size, setSize] = useState<CardSize>(loadCardSize)
@@ -787,6 +797,7 @@ function useCardFilters<T>(name: string, items: { item: T; facts: Facts }[], fir
     .map(([value, label]) => ({ value, label }))
     .sort((a, b) => a.label.localeCompare(b.label))
   const typeOptions = typeFilters.filter(({ value }) => listed.some(({ facts }) => facts.type === value))
+  const arenaOptions = arenaFilters.filter(({ value }) => listed.some(({ facts }) => facts.arena === value))
   const costOptions = [...new Set(listed.flatMap(({ facts }) => (facts.cost === undefined ? [] : [facts.cost])))]
     .sort((a, b) => a - b)
     .map((cost) => ({ value: cost, label: String(cost) }))
@@ -811,6 +822,8 @@ function useCardFilters<T>(name: string, items: { item: T; facts: Facts }[], fir
       (traits.length === 0 || traits.some((trait) => facts.traits.includes(trait))) &&
       (costs.length === 0 || (facts.cost !== undefined && costs.includes(facts.cost))) &&
       (sets.length === 0 || sets.includes(facts.set ? facts.set.toUpperCase() : NO_SET)) &&
+      (arenas.length === 0 || (facts.arena !== undefined && arenas.includes(facts.arena))) &&
+      (!neutral || facts.aspects.length === 0) &&
       picked.every((aspect) => facts.aspects.includes(aspect)),
   )
   const typeOrder = typeFilters.map(({ value }) => value)
@@ -820,12 +833,19 @@ function useCardFilters<T>(name: string, items: { item: T; facts: Facts }[], fir
     // Cards without a cost come after the ones with one
     cost: (a, b) => (a.facts.cost ?? Infinity) - (b.facts.cost ?? Infinity),
     type: (a, b) => typeOrder.indexOf(a.facts.type) - typeOrder.indexOf(b.facts.type),
+    // Set by set, then by number as a number would count (9 before 10); cards without one come after
+    number: (a, b) =>
+      Number(!a.facts.number) - Number(!b.facts.number) ||
+      a.facts.set.localeCompare(b.facts.set, undefined, { sensitivity: 'base' }) ||
+      a.facts.number.localeCompare(b.facts.number, undefined, { numeric: true }),
   }
   const shown = [...found].sort((a, b) => compare[sort](a, b) || a.index - b.index)
   if (descending) shown.reverse()
-  // Bases and tokens with no cost stay after the others, from high to low cost as well
-  if (sort === 'cost' && descending) shown.sort((a, b) => Number(a.facts.cost === undefined) - Number(b.facts.cost === undefined))
-  const filtered = search !== '' || types.length + traits.length + costs.length + sets.length + picked.length > 0
+  // Cards with no cost (bases, tokens) or no number stay after the others, the other way round as well
+  const missing = (facts: Facts) => (sort === 'cost' ? facts.cost === undefined : sort === 'number' ? !facts.number : false)
+  if (descending) shown.sort((a, b) => Number(missing(a.facts)) - Number(missing(b.facts)))
+  const filtered =
+    search !== '' || neutral || types.length + traits.length + costs.length + sets.length + arenas.length + picked.length > 0
 
   const bar = (
     <div className="filters showroom-filters">
@@ -842,6 +862,7 @@ function useCardFilters<T>(name: string, items: { item: T; facts: Facts }[], fir
         <CheckDropdown label="Trait" options={traitOptions} selected={traits} onChange={setTraits} />
         <CheckDropdown label="Cost" options={costOptions} selected={costs} onChange={setCosts} />
         <CheckDropdown label="Set" options={setOptions} selected={sets} onChange={setSets} />
+        {arenaOptions.length > 0 && <CheckDropdown label="Arena" options={arenaOptions} selected={arenas} onChange={setArenas} />}
       </div>
       <div className="filter-group">
         {aspects.map((aspect) => (
@@ -852,13 +873,27 @@ function useCardFilters<T>(name: string, items: { item: T; facts: Facts }[], fir
             title={aspect}
             aria-label={aspect}
             aria-pressed={picked.includes(aspect)}
-            onClick={() =>
+            onClick={() => {
               setPicked(picked.includes(aspect) ? picked.filter((other) => other !== aspect) : [...picked, aspect])
-            }
+              setNeutral(false)
+            }}
           >
             <img src={aspectIcon(aspect)} alt="" />
           </button>
         ))}
+        <button
+          className="chip aspect-chip"
+          type="button"
+          title="Neutral: no aspect"
+          aria-label="Neutral"
+          aria-pressed={neutral}
+          onClick={() => {
+            setNeutral(!neutral)
+            setPicked([])
+          }}
+        >
+          <span className="aspect-none" />
+        </button>
       </div>
       <div className="filter-group">
         <span className="filter-label">Sort</span>
@@ -907,6 +942,8 @@ function useCardFilters<T>(name: string, items: { item: T; facts: Facts }[], fir
               setTraits([])
               setCosts([])
               setSets([])
+              setArenas([])
+              setNeutral(false)
               setPicked([])
             }}
           >
@@ -945,6 +982,8 @@ type ShowcaseCard = {
   traits: string[]
   text?: string
   set?: string
+  number?: string
+  arena?: Arena
 }
 type ShowcaseList = { title: string; cards: ShowcaseCard[] }
 
@@ -967,6 +1006,8 @@ function showcaseEntry(card: Card): ShowcaseCard {
     traits: facts.traitLabels,
     text: facts.text || undefined,
     set: facts.set || undefined,
+    number: facts.number || undefined,
+    arena: facts.arena,
   }
 }
 
@@ -1187,6 +1228,8 @@ function Showcase(props: { folder: string }) {
         aspects: card.aspects,
         cost: card.cost,
         set: card.set ?? '',
+        number: card.number ?? '',
+        arena: card.arena,
       },
     })),
     'Showcase order',

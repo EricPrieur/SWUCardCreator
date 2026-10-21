@@ -609,8 +609,19 @@
   margin: 0;
 }
 
-.aspect-chip:not([aria-pressed='true']) img {
+.aspect-chip:not([aria-pressed='true']) img,
+.aspect-chip:not([aria-pressed='true']) .aspect-none {
   opacity: 0.55;
+}
+
+/* Neutral, a card with no aspect: an empty aspect circle, as big as the icons */
+.aspect-none {
+  display: block;
+  width: 1.35rem;
+  height: 1.35rem;
+  box-sizing: border-box;
+  border: 2px solid var(--sand);
+  border-radius: 50%;
 }
 
 .check-dropdown {
