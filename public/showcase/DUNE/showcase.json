@@ -2,21 +2,97 @@
   "title": "DUNE",
   "cards": [
     {
-      "id": "b8c8468e-bac1-42e2-abb0-57b317523ad7",
-      "image": "Shadout Mapes - Keeper of the Household",
-      "name": "Shadout Mapes",
-      "subtitle": "Keeper of the Household",
-      "type": "Unit",
-      "aspects": [
-        "Vigilance",
-        "Heroism"
-      ],
-      "cost": 2,
+      "id": "631c4fe6-a97d-4e54-bd4c-a75ac91b31e4",
+      "image": "Fremen",
+      "name": "Fremen",
+      "type": "Token",
+      "aspects": [],
+      "cost": 1,
       "traits": [
-        "Fremen"
+        "Fremen",
+        "Trooper"
       ],
-      "text": "sentinel\nwhen defeated: give an experience token to a friendly unit.",
-      "set": "DUNE"
+      "text": "while you control an arrakis base, this unit gains raid 1.",
+      "set": "DUNE",
+      "number": "251",
+      "arena": "Ground"
+    },
+    {
+      "id": "3067ed91-f5ee-4d21-8a22-11e509103391",
+      "image": "Spice",
+      "name": "Spice",
+      "type": "Token",
+      "aspects": [],
+      "traits": [
+        "Supply"
+      ],
+      "text": "action: defeat this token. look at the top 3 cards of your deck. draw 1 of them. put each of the others on the top or bottom of your deck in any order, or discard it.",
+      "set": "DUNE",
+      "number": "250"
+    },
+    {
+      "id": "15b1004e-4a63-477f-bfb3-ecd3d64810e5",
+      "image": "Guild Navigator",
+      "name": "Guild Navigator",
+      "type": "Unit",
+      "aspects": [],
+      "cost": 3,
+      "traits": [
+        "Spacing Guild",
+        "Vehicle",
+        "Transport"
+      ],
+      "text": "when played: you may defeat a friendly spice token. if you do, look at the top 5 cards of your deck. draw 1 of them, discard any number of them and put the rest on the bottom of your deck in any order.",
+      "set": "DUNE",
+      "number": "203",
+      "arena": "Space"
+    },
+    {
+      "id": "fb6a9b51-2fc4-4a7e-8a4e-2ae98ffe5d2d",
+      "image": "CHOAM Spice Broker",
+      "name": "CHOAM Spice Broker",
+      "type": "Unit",
+      "aspects": [],
+      "cost": 3,
+      "traits": [
+        "CHOAM",
+        "Official"
+      ],
+      "text": "when played: create a spice token. then, you may pay 2. if you do, create another spice token.",
+      "set": "DUNE",
+      "number": "202",
+      "arena": "Ground"
+    },
+    {
+      "id": "9a4481da-e820-4e55-9ab8-62190c22eb0d",
+      "image": "Scouting 'Thopter",
+      "name": "Scouting 'Thopter",
+      "type": "Unit",
+      "aspects": [],
+      "cost": 1,
+      "traits": [
+        "Vehicle",
+        "Fighter"
+      ],
+      "text": "raid 1\nwhen played/on attack: look at the top card of any player's deck. you may discard it.",
+      "set": "DUNE",
+      "number": "201",
+      "arena": "Space"
+    },
+    {
+      "id": "4a4aba7b-326d-4fdd-a304-565bb32e0652",
+      "image": "Shai-Hulud",
+      "name": "Shai-Hulud",
+      "type": "Unit",
+      "aspects": [],
+      "cost": 8,
+      "traits": [
+        "Creature"
+      ],
+      "text": "overwhelm\nwhen played: while you control an arrakis base, defeat all other non-fremen ground units.\nwhen this unit completes an attack: return it to the bottom of its owner's deck.",
+      "set": "DUNE",
+      "number": "200",
+      "arena": "Ground"
     },
     {
       "id": "cfcaca80-9e13-460c-89d3-021a218ff5af",
@@ -35,63 +111,29 @@
         "Fremen"
       ],
       "text": "this unit gains each keyword printed on fremen and bene gesserit units in your discard pile.",
-      "set": "DUNE"
+      "set": "DUNE",
+      "number": "181",
+      "arena": "Ground"
     },
     {
-      "id": "b8a0ba1b-4f51-40f2-8681-59ca4b921de6",
-      "image": "Sietch Sayyadina",
-      "name": "Sietch Sayyadina",
+      "id": "455a5bb1-a533-49c5-8a0e-aea9434c45df",
+      "image": "Liet Kynes - Imperial Planetologist",
+      "name": "Liet Kynes",
+      "subtitle": "Imperial Planetologist",
       "type": "Unit",
       "aspects": [
-        "Cunning",
-        "Heroism"
+        "Command",
+        "Cunning"
       ],
-      "cost": 2,
+      "cost": 4,
       "traits": [
-        "Fremen"
-      ],
-      "text": "restore 1\nwhen played: draw a card. then, discard a card from your hand.",
-      "set": "DUNE"
-    },
-    {
-      "id": "5340e3f4-3941-402c-ae35-7cc97cd0ec57",
-      "image": "Bene Gesserit Operative",
-      "name": "Bene Gesserit Operative",
-      "type": "Unit",
-      "aspects": [
-        "Vigilance"
-      ],
-      "cost": 3,
-      "traits": [
-        "Bene Gesserit",
-        "Spy"
-      ],
-      "text": "saboteur\nhidden\non attack: if this unit is attacking a base, that base's controller discards a card from their hand.",
-      "set": "DUNE"
-    },
-    {
-      "id": "81db9788-0cf6-4614-b6f0-e5757241ae3d",
-      "image": "Lady Jessica - Bene Gesserit",
-      "back": "Lady Jessica - Reverend Mother (unit)",
-      "name": "Lady Jessica",
-      "subtitle": "Bene Gesserit",
-      "type": "Leader",
-      "aspects": [
-        "Vigilance",
-        "Heroism",
-        "Vigilance",
-        "Heroism"
-      ],
-      "cost": 5,
-      "traits": [
-        "Bene Gesserit",
-        "Atreides",
-        "Bene Gesserit",
         "Fremen",
-        "Atreides"
+        "Emperor"
       ],
-      "text": "when you play a bene gesserit card: you may exhaust this leader. if you do, exhaust an enemy non-leader ground unit that costs 4 or less. restore 2\nwhen deployed: return a bene gesserit or fremen unit from your discard pile to your hand.\nwhen a friendly spice token is defeated: heal 2 damage from a unit or base.",
-      "set": "DUNE"
+      "text": "when played/on attack: you may defeat a friendly spice token. if you do, heal 3 damage from your base.\nwhen defeated: create 2 spice tokens.",
+      "set": "DUNE",
+      "number": "180",
+      "arena": "Ground"
     },
     {
       "id": "a94e0500-7d5e-4848-b52a-c62bb03104cd",
@@ -107,7 +149,925 @@
         "Learned"
       ],
       "text": "attached unit can't be defeated by enemy card abilities.",
-      "set": "DUNE"
+      "set": "DUNE",
+      "number": "170"
+    },
+    {
+      "id": "34f61fb8-aa97-4191-a378-82d405e530db",
+      "image": "The Voice",
+      "name": "The Voice",
+      "type": "Event",
+      "aspects": [
+        "Villainy"
+      ],
+      "cost": 2,
+      "traits": [
+        "Bene Gesserit"
+      ],
+      "text": "look at an opponent's hand and name a card. this phase, opponents can't play the named cards. draw a card.",
+      "set": "DUNE",
+      "number": "150"
+    },
+    {
+      "id": "12db351f-b35c-4c9a-a158-ee4acefdddb5",
+      "image": "Worm Signs",
+      "name": "Worm Signs",
+      "type": "Event",
+      "aspects": [
+        "Cunning"
+      ],
+      "cost": 3,
+      "traits": [
+        "Disaster"
+      ],
+      "text": "if you control an arrakis base, choose a non fremen non-leader ground unit. its controller chooses one:\n  - return it to its owner's hand.\n  - defeat it when the next regroup phase starts.",
+      "set": "DUNE",
+      "number": "142"
+    },
+    {
+      "id": "7c85f602-4737-4736-a57c-78b46e362d72",
+      "image": "Spice Smuggler",
+      "name": "Spice Smuggler",
+      "type": "Unit",
+      "aspects": [
+        "Cunning"
+      ],
+      "cost": 2,
+      "traits": [
+        "Underworld"
+      ],
+      "text": "when played: create a spice token.",
+      "set": "DUNE",
+      "number": "141",
+      "arena": "Ground"
+    },
+    {
+      "id": "83566c75-2e6b-4c05-aa73-6b8b58bb2760",
+      "image": "Smuggled Spice",
+      "name": "Smuggled Spice",
+      "type": "Event",
+      "aspects": [
+        "Cunning"
+      ],
+      "cost": 1,
+      "traits": [
+        "Supply",
+        "Trick"
+      ],
+      "text": "create a spice token. if you control an arrakis base or you played this event using smuggle, create another spice token.\nsmuggle 3 cunning",
+      "set": "DUNE",
+      "number": "140"
+    },
+    {
+      "id": "c354b308-81c7-4dc7-9232-c4fa66363c32",
+      "image": "Fremen Worm Riders",
+      "name": "Fremen Worm Riders",
+      "type": "Unit",
+      "aspects": [
+        "Cunning",
+        "Heroism"
+      ],
+      "cost": 7,
+      "traits": [
+        "Fremen",
+        "Creature"
+      ],
+      "text": "overwhelm\nwhile you control an arrakis base, this unit gains ambush.\nwhen defeated: put this card on the bottom of its owner's deck.",
+      "set": "DUNE",
+      "number": "135",
+      "arena": "Ground"
+    },
+    {
+      "id": "6016d1f0-bb83-4a96-99e8-d6056a0413f9",
+      "image": "Sietch Raiders",
+      "name": "Sietch Raiders",
+      "type": "Unit",
+      "aspects": [
+        "Cunning",
+        "Heroism"
+      ],
+      "cost": 4,
+      "traits": [
+        "Fremen",
+        "Trooper"
+      ],
+      "text": "while you control an arrakis base, this unit gains ambush.",
+      "set": "DUNE",
+      "number": "134",
+      "arena": "Ground"
+    },
+    {
+      "id": "c64a1e84-663f-4c24-b763-c9027c6b29fa",
+      "image": "Fedaykin Death Commando",
+      "name": "Fedaykin Death Commando",
+      "type": "Unit",
+      "aspects": [
+        "Cunning",
+        "Heroism"
+      ],
+      "cost": 3,
+      "traits": [
+        "Fremen",
+        "Fedaykin",
+        "Trooper"
+      ],
+      "text": "grit\nwhen played: give an experience token to this unit for each other friendly fremen unit.\nwhen defeated: create a fremen token.",
+      "set": "DUNE",
+      "number": "134",
+      "arena": "Ground"
+    },
+    {
+      "id": "b5a0d3e5-b64e-4a72-a2c7-5305a768032a",
+      "image": "Chani - Desert Guide",
+      "name": "Chani",
+      "subtitle": "Desert Guide",
+      "type": "Unit",
+      "aspects": [
+        "Cunning",
+        "Heroism"
+      ],
+      "cost": 3,
+      "traits": [
+        "Fremen"
+      ],
+      "text": "while you control an arrakis base, this unit gains hidden.\nother friendly fremen units get +1/+0.",
+      "set": "DUNE",
+      "number": "133",
+      "arena": "Ground"
+    },
+    {
+      "id": "b8a0ba1b-4f51-40f2-8681-59ca4b921de6",
+      "image": "Sietch Sayyadina",
+      "name": "Sietch Sayyadina",
+      "type": "Unit",
+      "aspects": [
+        "Cunning",
+        "Heroism"
+      ],
+      "cost": 2,
+      "traits": [
+        "Fremen"
+      ],
+      "text": "restore 1\nwhen played: draw a card. then, discard a card from your hand.",
+      "set": "DUNE",
+      "number": "132",
+      "arena": "Ground"
+    },
+    {
+      "id": "48449f2c-fdcc-4c8d-9eff-1f0280b64cf5",
+      "image": "Spice Hunter",
+      "name": "Spice Hunter",
+      "type": "Unit",
+      "aspects": [
+        "Cunning",
+        "Heroism"
+      ],
+      "cost": 2,
+      "traits": [
+        "Fremen"
+      ],
+      "text": "on attack: if you control another fremen unit, choose one:\n- create a spice token.\n- take control of an enemy spice token.",
+      "set": "DUNE",
+      "number": "131",
+      "arena": "Ground"
+    },
+    {
+      "id": "0cd1cd92-e363-4058-8c5c-6dcb216491ad",
+      "image": "Fremen Warrior",
+      "name": "Fremen Warrior",
+      "type": "Unit",
+      "aspects": [
+        "Cunning",
+        "Heroism"
+      ],
+      "cost": 1,
+      "traits": [
+        "Fremen",
+        "Trooper"
+      ],
+      "text": "while you control an arrakis base, this unit gains hidden.",
+      "set": "DUNE",
+      "number": "130",
+      "arena": "Ground"
+    },
+    {
+      "id": "df991edb-41a1-485e-b3ed-a9553a96f4f3",
+      "image": "Spice Raid",
+      "name": "Spice Raid",
+      "type": "Event",
+      "aspects": [
+        "Aggression"
+      ],
+      "cost": 2,
+      "traits": [
+        "Supply",
+        "Tactic"
+      ],
+      "text": "deal 2 damage to a ground unit. if that unit is defeated this way, create a spice token.",
+      "set": "DUNE",
+      "number": "123"
+    },
+    {
+      "id": "bee6cf10-abef-4eec-9398-c9f79a5ebf7d",
+      "image": "Kanly",
+      "name": "Kanly",
+      "type": "Event",
+      "aspects": [
+        "Aggression"
+      ],
+      "cost": 2,
+      "traits": [
+        "Tactic"
+      ],
+      "text": "deal 2 damage to a unit. then, you may defeat a friendly non-leader unit. if you do, deal damage equal to its power to the same unit.",
+      "set": "DUNE",
+      "number": "122"
+    },
+    {
+      "id": "d9cd0927-2c13-4cfd-b6d5-6f247e8ef56b",
+      "image": "Spice-Sworn Blade",
+      "name": "Spice-Sworn Blade",
+      "type": "Unit",
+      "aspects": [
+        "Aggression"
+      ],
+      "cost": 1,
+      "traits": [
+        "Underworld",
+        "Trooper"
+      ],
+      "text": "you may play this unit from your hand or discard pile for free by defeating a friendly spice token.",
+      "set": "DUNE",
+      "number": "121",
+      "arena": "Ground"
+    },
+    {
+      "id": "7484d1ed-3110-4f06-aa0d-5090d4e04815",
+      "image": "Crysknife",
+      "name": "Crysknife",
+      "type": "Upgrade",
+      "aspects": [
+        "Aggression"
+      ],
+      "cost": 1,
+      "traits": [
+        "Fremen"
+      ],
+      "text": "attach to a non-vehicle unit.\n\nif attached unit is a fremen it gains saboteur.",
+      "set": "DUNE",
+      "number": "120"
+    },
+    {
+      "id": "fb538d7b-bb48-4147-8aee-0f92e7febf53",
+      "image": "Piter De Vries - Twisted Mentat",
+      "name": "Piter De Vries",
+      "subtitle": "Twisted Mentat",
+      "type": "Unit",
+      "aspects": [
+        "Aggression",
+        "Villainy"
+      ],
+      "cost": 5,
+      "traits": [
+        "Harkonnen",
+        "Mentat"
+      ],
+      "text": "when played: draw 2 cards, then put a card from your hand on the top or bottom of your deck or discard it.\nplot\nwhen played using plot: give a weakness token to each enemy unit. then, defeat this unit.",
+      "set": "DUNE",
+      "number": "109",
+      "arena": "Ground"
+    },
+    {
+      "id": "fcf32dbc-eb81-479e-9f1f-82de8524fcbb",
+      "image": "Harkonnen Harvester",
+      "name": "Harkonnen Harvester",
+      "type": "Unit",
+      "aspects": [
+        "Aggression",
+        "Villainy"
+      ],
+      "cost": 5,
+      "traits": [
+        "Harkonnen",
+        "Vehicle",
+        "Harvester"
+      ],
+      "text": "when played/on attack: if you control an arrakis base, create a spice token, then you may deal 2 damage to a friendly unit. if you do, create another spice token.",
+      "set": "DUNE",
+      "number": "108",
+      "arena": "Ground"
+    },
+    {
+      "id": "f81a4036-4ca9-4ecc-bcc6-9a7a5a6487d2",
+      "image": "The Baron's Wrath",
+      "name": "The Baron's Wrath",
+      "type": "Event",
+      "aspects": [
+        "Aggression",
+        "Villainy"
+      ],
+      "cost": 4,
+      "traits": [
+        "Harkonnen",
+        "Tactic"
+      ],
+      "text": "you may defeat any number of friendly spice tokens and friendly harkonnen units. deal x damage divided as you choose among any number of units. x is the number of friendly harkonnen units, plus 2 for each spice token and unit defeated this way.",
+      "set": "DUNE",
+      "number": "107"
+    },
+    {
+      "id": "27bb6ad3-ad8e-4de3-aeb9-0066913132f2",
+      "image": "Harkonnen Heavy 'Thopter",
+      "name": "Harkonnen Heavy 'Thopter",
+      "type": "Unit",
+      "aspects": [
+        "Aggression",
+        "Villainy"
+      ],
+      "cost": 3,
+      "traits": [
+        "Harkonnen",
+        "Vehicle",
+        "Fighter"
+      ],
+      "text": "friendly trooper units gain raid 1.",
+      "set": "DUNE",
+      "number": "106",
+      "arena": "Space"
+    },
+    {
+      "id": "a2e50bfd-efeb-48fb-92af-1cb96ef98eca",
+      "image": "Harkonnen Harvester Team",
+      "name": "Harkonnen Harvester Team",
+      "type": "Unit",
+      "aspects": [
+        "Aggression",
+        "Villainy"
+      ],
+      "cost": 3,
+      "traits": [
+        "Harkonnen",
+        "Trooper",
+        "Harvester"
+      ],
+      "text": "whenever a friendly harkonnen unit is defeated, create a spice token. use this ability only once each round.",
+      "set": "DUNE",
+      "number": "105",
+      "arena": "Ground"
+    },
+    {
+      "id": "c837a582-921a-4943-b281-6fe74059c88d",
+      "image": "Harkonnen Sergeant",
+      "name": "Harkonnen Sergeant",
+      "type": "Unit",
+      "aspects": [
+        "Aggression",
+        "Villainy"
+      ],
+      "cost": 2,
+      "traits": [
+        "Harkonnen",
+        "Trooper"
+      ],
+      "text": "when played: search the top 5 cards of your deck for a trooper unit, reveal it and draw it. you may play it now. it costs 1 less.",
+      "set": "DUNE",
+      "number": "104",
+      "arena": "Ground"
+    },
+    {
+      "id": "605ba3e7-7ad7-429c-a50d-e590eac3727b",
+      "image": "Harkonnen Flamer",
+      "name": "Harkonnen Flamer",
+      "type": "Unit",
+      "aspects": [
+        "Aggression",
+        "Villainy"
+      ],
+      "cost": 2,
+      "traits": [
+        "Harkonnen",
+        "Trooper"
+      ],
+      "text": "when defeated: deal 1 damage to each enemy ground unit.",
+      "set": "DUNE",
+      "number": "103",
+      "arena": "Ground"
+    },
+    {
+      "id": "1807fe62-16d2-4ac3-b0de-3f80298c6157",
+      "image": "Carthag Refinery",
+      "name": "Carthag Refinery",
+      "type": "Fortification",
+      "aspects": [
+        "Aggression",
+        "Villainy"
+      ],
+      "cost": 2,
+      "traits": [
+        "Fortification",
+        "Harkonnen"
+      ],
+      "text": "fortify\nwhile you control an arrakis base, if you would create a spice token, you may create 2 spice tokens instead. if you do, deal 1 damage to attached base.\nharvester units you play cost 1 less.",
+      "set": "DUNE",
+      "number": "102"
+    },
+    {
+      "id": "a50da882-75b5-4399-a035-e760c4f1aa23",
+      "image": "Harkonnen Troops",
+      "name": "Harkonnen Troops",
+      "type": "Unit",
+      "aspects": [
+        "Aggression",
+        "Villainy"
+      ],
+      "cost": 1,
+      "traits": [
+        "Harkonnen",
+        "Trooper"
+      ],
+      "text": "a deck can have up to 15 copies of this card.\nwhen defeated: deal 1 damage to a unit or base.",
+      "set": "DUNE",
+      "number": "101",
+      "arena": "Ground"
+    },
+    {
+      "id": "f9d41a1c-ed50-4f7e-9f89-a8de4964c490",
+      "image": "Hunter Seeker",
+      "name": "Hunter Seeker",
+      "type": "Unit",
+      "aspects": [
+        "Aggression",
+        "Villainy"
+      ],
+      "cost": 1,
+      "traits": [
+        "Drone"
+      ],
+      "text": "#elusive (can't be chosen as a target for an attack.)\nsaboteur\nwhen a non-leader ground unit enters play: arrow and defeat this unit. if you do, deal 3 damage to that unit.",
+      "set": "DUNE",
+      "number": "100",
+      "arena": "Ground"
+    },
+    {
+      "id": "76de506d-cc7b-4b78-bd3d-c13a4ac6232f",
+      "image": "Carryall",
+      "name": "Carryall",
+      "type": "Unit",
+      "aspects": [
+        "Command"
+      ],
+      "cost": 5,
+      "traits": [
+        "Vehicle",
+        "Transport"
+      ],
+      "text": "when played/on attack: you may play a ground vehicle unit from your discard pile that was defeated this phase and costs #5 or less for free.",
+      "set": "DUNE",
+      "number": "092",
+      "arena": "Space"
+    },
+    {
+      "id": "3f4a5f78-4647-438a-b66e-31c29de340b5",
+      "image": "Spice Harvester",
+      "name": "Spice Harvester",
+      "type": "Unit",
+      "aspects": [
+        "Command"
+      ],
+      "cost": 4,
+      "traits": [
+        "Vehicle",
+        "Harvester"
+      ],
+      "text": "when played/on attack: if you control an arrakis base, create a spice token.\n\nwhen the regroup phase starts: you may defeat 3 friendly spice tokens. if you do, put the top card of your deck into play as a resource.",
+      "set": "DUNE",
+      "number": "091",
+      "arena": "Ground"
+    },
+    {
+      "id": "289c0ad6-7185-44c0-904c-b721af6ee10e",
+      "image": "The Spice Must Flow",
+      "name": "The Spice Must Flow",
+      "type": "Event",
+      "aspects": [
+        "Command"
+      ],
+      "cost": 3,
+      "traits": [
+        "Supply"
+      ],
+      "text": "create 3 spice tokens. if you control an arrakis base, create 4 spice tokens instead. each opponent creates a spice token.",
+      "set": "DUNE",
+      "number": "090"
+    },
+    {
+      "id": "13264028-8ef9-4e01-ae64-58dda1d403f2",
+      "image": "Gurney Halleck - Warrior-Troubadour",
+      "name": "Gurney Halleck",
+      "subtitle": "Warrior-Troubadour",
+      "type": "Unit",
+      "aspects": [
+        "Command",
+        "Heroism"
+      ],
+      "cost": 5,
+      "traits": [
+        "Atreides",
+        "Trooper"
+      ],
+      "text": "saboteur\nwhen played/on attack: give an experience token to another friendly atreides unit.",
+      "set": "DUNE",
+      "number": "078",
+      "arena": "Ground"
+    },
+    {
+      "id": "26bb822f-2e58-4918-856a-ff80b4fcef7e",
+      "image": "Lady Jessica - Mother of the Kwisatz Haderach",
+      "name": "Lady Jessica",
+      "subtitle": "Mother of the Kwisatz Haderach",
+      "type": "Unit",
+      "aspects": [
+        "Command",
+        "Heroism"
+      ],
+      "cost": 5,
+      "traits": [
+        "Bene Gesserit",
+        "Atreides"
+      ],
+      "text": "restore 2\nwhen played/on attack: look at an opponent's hand and name a card. this phase, opponents can't play the named card. draw a card.",
+      "set": "DUNE",
+      "number": "077",
+      "arena": "Ground"
+    },
+    {
+      "id": "f80f1ac5-eac8-42e1-85df-a934743febb0",
+      "image": "Desert Power",
+      "name": "Desert Power",
+      "type": "Event",
+      "aspects": [
+        "Command",
+        "Cunning",
+        "Heroism"
+      ],
+      "cost": 4,
+      "traits": [
+        "Atreides",
+        "Fremen",
+        "Tactic"
+      ],
+      "text": "create 2 fremen tokens and ready them.",
+      "set": "DUNE",
+      "number": "076"
+    },
+    {
+      "id": "21a01460-8651-41fb-bfb6-d8c836a92162",
+      "image": "Atreides House Guard",
+      "name": "Atreides House Guard",
+      "type": "Unit",
+      "aspects": [
+        "Command",
+        "Heroism"
+      ],
+      "cost": 3,
+      "traits": [
+        "Atreides",
+        "Trooper"
+      ],
+      "text": "while you control another atreides unit, this unit gains sentinel.\nwhen defeated: give an experience token to another friendly atreides unit.",
+      "set": "DUNE",
+      "number": "075",
+      "arena": "Ground"
+    },
+    {
+      "id": "1b21e154-0608-4cf0-a138-2852a9933159",
+      "image": "Earning the Fremen's respect",
+      "name": "Earning the Fremen's respect",
+      "type": "Event",
+      "aspects": [
+        "Command",
+        "Heroism"
+      ],
+      "cost": 3,
+      "traits": [
+        "Atreides"
+      ],
+      "text": "you may defeat a friendly ground vehicle unit, any number of friendly spice tokens, or both. create 2 fremen tokens if you defeated a unit this way, plus 1 for each spice token defeated this way.",
+      "set": "DUNE",
+      "number": "074"
+    },
+    {
+      "id": "545c197a-a169-40f8-a066-7bc6a0e02752",
+      "image": "Duncan Idaho - Swordmaster of the Ginaz",
+      "name": "Duncan Idaho",
+      "subtitle": "Swordmaster of the Ginaz",
+      "type": "Unit",
+      "aspects": [
+        "Command",
+        "Heroism"
+      ],
+      "cost": 3,
+      "traits": [
+        "Atreides",
+        "Trooper"
+      ],
+      "text": "when defeated: if this unit was defending, you may defeat the attacking unit.",
+      "set": "DUNE",
+      "number": "073",
+      "arena": "Ground"
+    },
+    {
+      "id": "f57c0523-7889-45f4-9a85-83c9dbdd8173",
+      "image": "Paul Atreides - Heir to House Atreides",
+      "name": "Paul Atreides",
+      "subtitle": "Heir to House Atreides",
+      "type": "Unit",
+      "aspects": [
+        "Command",
+        "Heroism"
+      ],
+      "cost": 2,
+      "traits": [
+        "Atreides"
+      ],
+      "text": "on attack: discard the top card of your deck. if its cost is equal to the defender's cost, deal 1 damage to the defender or to a base.",
+      "set": "DUNE",
+      "number": "072",
+      "arena": "Ground"
+    },
+    {
+      "id": "2e62adc0-fa78-44fe-8ad8-24eb7397db11",
+      "image": "Strike 'Thopter",
+      "name": "Strike 'Thopter",
+      "type": "Unit",
+      "aspects": [
+        "Command",
+        "Heroism"
+      ],
+      "cost": 2,
+      "traits": [
+        "Atreides",
+        "Vehicle",
+        "Fighter"
+      ],
+      "text": "when played: you may deal 1 damage to a ground unit.",
+      "set": "DUNE",
+      "number": "071",
+      "arena": "Space"
+    },
+    {
+      "id": "e054215f-523f-41c0-ad88-92761d8cd392",
+      "image": "Atreides Troops",
+      "name": "Atreides Troops",
+      "type": "Unit",
+      "aspects": [
+        "Command",
+        "Heroism"
+      ],
+      "cost": 2,
+      "traits": [
+        "Atreides",
+        "Trooper"
+      ],
+      "text": "while you control another atreides unit, this unit gains restore 1.",
+      "set": "DUNE",
+      "number": "070",
+      "arena": "Ground"
+    },
+    {
+      "id": "57613afc-674d-40aa-afbc-5dadccaca9d7",
+      "image": "Sardaukar Legion",
+      "name": "Sardaukar Legion",
+      "type": "Unit",
+      "aspects": [
+        "Command",
+        "Villainy"
+      ],
+      "cost": 7,
+      "traits": [
+        "Emperor",
+        "Sardaukar",
+        "Trooper"
+      ],
+      "text": "as an additional cost to play this unit, defeat a friendly spice token.\nwhen played: search the top 10 cards of your deck for any number of sardaukar units and reveal them. you may defeat up to 3 friendly spice tokens. play any number of the revealed units with a combined cost of 2 or less for each spice token defeated this way, for free, ignoring their additional costs.",
+      "set": "DUNE",
+      "number": "062",
+      "arena": "Ground"
+    },
+    {
+      "id": "972f8a5d-d416-4210-909d-341c7ff2bd45",
+      "image": "Sardaukar Bashar",
+      "name": "Sardaukar Bashar",
+      "type": "Unit",
+      "aspects": [
+        "Command",
+        "Villainy"
+      ],
+      "cost": 3,
+      "traits": [
+        "Emperor",
+        "Sardaukar",
+        "Official"
+      ],
+      "text": "as an additional cost to play this unit, defeat a friendly spice token.\nwhen played: give an experience token to another friendly trooper unit. if it's a sardaukar unit, ready it.",
+      "set": "DUNE",
+      "number": "061",
+      "arena": "Ground"
+    },
+    {
+      "id": "9f59a5c3-b53d-492a-8bef-dd80cbc56c45",
+      "image": "Sardaukar Trooper",
+      "name": "Sardaukar Trooper",
+      "type": "Unit",
+      "aspects": [
+        "Command",
+        "Villainy"
+      ],
+      "cost": 2,
+      "traits": [
+        "Emperor",
+        "Sardaukar",
+        "Trooper"
+      ],
+      "text": "as an additional cost to play this unit, defeat a friendly spice token.",
+      "set": "DUNE",
+      "number": "060",
+      "arena": "Ground"
+    },
+    {
+      "id": "f7e4c8c9-97d7-4912-aad4-44aad461cd29",
+      "image": "Bene Gesserit Sister",
+      "name": "Bene Gesserit Sister",
+      "type": "Unit",
+      "aspects": [
+        "Vigilance"
+      ],
+      "cost": 4,
+      "traits": [
+        "Bene Gesserit"
+      ],
+      "text": "restore 1\nwhen played: choose one:\n  - deal 2 damage to a unit.\n  - the next bene gesserit card you play this phase costs 2 less.",
+      "set": "DUNE",
+      "number": "056",
+      "arena": "Ground"
+    },
+    {
+      "id": "5340e3f4-3941-402c-ae35-7cc97cd0ec57",
+      "image": "Bene Gesserit Operative",
+      "name": "Bene Gesserit Operative",
+      "type": "Unit",
+      "aspects": [
+        "Vigilance"
+      ],
+      "cost": 3,
+      "traits": [
+        "Bene Gesserit",
+        "Spy"
+      ],
+      "text": "saboteur\nhidden\non attack: if this unit is attacking a base, that base's controller discards a card from their hand.",
+      "set": "DUNE",
+      "number": "055",
+      "arena": "Ground"
+    },
+    {
+      "id": "5a2433e7-2fcb-4dbf-a09c-2069de8348b6",
+      "image": "Personal Shield",
+      "name": "Personal Shield",
+      "type": "Upgrade",
+      "aspects": [
+        "Vigilance"
+      ],
+      "cost": 3,
+      "traits": [],
+      "text": "attach to a friendly unit.\nwhen played: if you control an arrakis base, defeat attached unit. otherwise, give a shield token to attached unit.\nwhen the regroup phase starts: if attached unit has no shield token, give a shield token to it.",
+      "set": "DUNE",
+      "number": "054"
+    },
+    {
+      "id": "85d7f7a4-81b3-4725-8132-ffe4d34b5c7b",
+      "image": "Spice Trance",
+      "name": "Spice Trance",
+      "type": "Event",
+      "aspects": [
+        "Vigilance"
+      ],
+      "cost": 2,
+      "traits": [
+        "Supply",
+        "Innate"
+      ],
+      "text": "look at the top 3 cards of your deck. discard any number of them and put the rest back in any order. create a spice token. if you control an arrakis base, create another spice token.",
+      "set": "DUNE",
+      "number": "053"
+    },
+    {
+      "id": "bad799dd-a5f5-4d51-a7a6-928bca64ea46",
+      "image": "Missionaria Sister",
+      "name": "Missionaria Sister",
+      "type": "Unit",
+      "aspects": [
+        "Vigilance"
+      ],
+      "cost": 2,
+      "traits": [
+        "Bene Gesserit"
+      ],
+      "text": "when played: if you control an arrakis base, create a fremen token.",
+      "set": "DUNE",
+      "number": "052",
+      "arena": "Ground"
+    },
+    {
+      "id": "60353644-d070-42b3-b22d-ba4e441f39fb",
+      "image": "Bene Gesserit Initiate",
+      "name": "Bene Gesserit Initiate",
+      "type": "Unit",
+      "aspects": [
+        "Vigilance"
+      ],
+      "cost": 2,
+      "traits": [
+        "Bene Gesserit"
+      ],
+      "text": "restore 1\nwhen played: each opponent discards a card from their hand.",
+      "set": "DUNE",
+      "number": "051",
+      "arena": "Ground"
+    },
+    {
+      "id": "3355841f-28ac-4046-a421-abc2b8b8cfb9",
+      "image": "Gene Manipulation",
+      "name": "Gene Manipulation",
+      "type": "Upgrade",
+      "aspects": [
+        "Vigilance"
+      ],
+      "cost": 1,
+      "traits": [
+        "Bene Gesserit"
+      ],
+      "text": "when played: choose a card in your discard pile that shares a trait with attached unit. attached unit gains a keyword printed on that card.",
+      "set": "DUNE",
+      "number": "050"
+    },
+    {
+      "id": "a30de52b-5eea-4820-9878-d0a527224299",
+      "image": "Sietch Reverend Mother",
+      "name": "Sietch Reverend Mother",
+      "type": "Unit",
+      "aspects": [
+        "Cunning",
+        "Vigilance",
+        "Heroism"
+      ],
+      "cost": 5,
+      "traits": [
+        "Fremen",
+        "Bene Gesserit"
+      ],
+      "text": "when played: choose a fremen or bene gesserit unit in your discard pile other than a sietch reverend mother. use its when played ability as if it were this unit's.\nwhen defeated: return another fremen or bene gesserit unit from your discard pile to your hand.",
+      "set": "DUNE",
+      "number": "042",
+      "arena": "Ground"
+    },
+    {
+      "id": "b8c8468e-bac1-42e2-abb0-57b317523ad7",
+      "image": "Shadout Mapes - Keeper of the Household",
+      "name": "Shadout Mapes",
+      "subtitle": "Keeper of the Household",
+      "type": "Unit",
+      "aspects": [
+        "Vigilance",
+        "Heroism"
+      ],
+      "cost": 2,
+      "traits": [
+        "Fremen"
+      ],
+      "text": "sentinel\nwhen defeated: give an experience token to a friendly unit.",
+      "set": "DUNE",
+      "number": "041",
+      "arena": "Ground"
+    },
+    {
+      "id": "3f411417-15b6-42be-a7a1-e099e654be5e",
+      "image": "Reverend Mother Mohiam - The Emperor's Truthsayer",
+      "name": "Reverend Mother Mohiam",
+      "subtitle": "The Emperor's Truthsayer",
+      "type": "Unit",
+      "aspects": [
+        "Vigilance",
+        "Villainy"
+      ],
+      "cost": 7,
+      "traits": [
+        "Bene Gesserit",
+        "Emperor"
+      ],
+      "text": "when played: discard any number of cards from your hand. for each card discarded this way, choose a card in each opponent's hand. they discard it.\nopponents play with their hands revealed.",
+      "set": "DUNE",
+      "number": "032",
+      "arena": "Ground"
     },
     {
       "id": "83aa12f2-2533-43de-8416-029bcbf1f53d",
@@ -123,30 +1083,85 @@
         "Bene Gesserit"
       ],
       "text": "choose an enemy non-leader unit. its controller may discard 2 cards from their hand. if they don't, defeat that unit.",
-      "set": "DUNE"
+      "set": "DUNE",
+      "number": "031"
     },
     {
-      "id": "bd745293-96c8-448b-80c7-c7ae304ea2d3",
-      "image": "Stilgar - Naib of Sietch Tabr",
-      "back": "Stilgar - Naib of Sietch Tabr (unit)",
-      "name": "Stilgar",
-      "subtitle": "Naib of Sietch Tabr",
-      "type": "Leader",
+      "id": "f4f2b2ec-4914-4a47-bd86-9c4da3697744",
+      "image": "Gom Jabbar",
+      "name": "Gom Jabbar",
+      "type": "Upgrade",
       "aspects": [
-        "Cunning",
-        "Heroism",
-        "Cunning",
-        "Heroism"
+        "Vigilance",
+        "Villainy"
       ],
-      "cost": 5,
+      "cost": 2,
       "traits": [
-        "Fremen",
-        "Official",
-        "Fremen",
-        "Official"
+        "Bene Gesserit"
       ],
-      "text": "action 1, arrow: create a fremen token. while you control an arrakis base, this unit gains hidden.\non attack: create a fremen token.",
-      "set": "DUNE"
+      "text": "attach to a non-vehicle, non-leader unit.\nattached unit gains: \"when this unit becomes exhausted, defeat it unless its controller discards a card from their hand.\"",
+      "set": "DUNE",
+      "number": "030"
+    },
+    {
+      "id": "fc7b410b-4957-431e-9fac-7bed7e75443c",
+      "image": "Sietch Tabr",
+      "name": "Sietch Tabr",
+      "type": "Base",
+      "aspects": [
+        "Vigilance"
+      ],
+      "traits": [
+        "Arrakis"
+      ],
+      "text": "you start the game with a spice token.",
+      "set": "DUNE",
+      "number": "023"
+    },
+    {
+      "id": "003c87be-36d7-4aae-813f-c949e1c29ae1",
+      "image": "Arrakeen",
+      "name": "Arrakeen",
+      "type": "Base",
+      "aspects": [
+        "Command"
+      ],
+      "traits": [
+        "Arrakis"
+      ],
+      "text": "you start the game with a spice token.",
+      "set": "DUNE",
+      "number": "022"
+    },
+    {
+      "id": "57e8ef64-ebff-4e73-92ea-9ea72f6624d8",
+      "image": "Carthag",
+      "name": "Carthag",
+      "type": "Base",
+      "aspects": [
+        "Aggression"
+      ],
+      "traits": [
+        "Arrakis"
+      ],
+      "text": "you start the game with a spice token.",
+      "set": "DUNE",
+      "number": "021"
+    },
+    {
+      "id": "ede5069e-07b3-459b-b0ea-035771cda18a",
+      "image": "Imperial Bassin",
+      "name": "Imperial Bassin",
+      "type": "Base",
+      "aspects": [
+        "Cunning"
+      ],
+      "traits": [
+        "Arrakis"
+      ],
+      "text": "you start the game with a spice token.",
+      "set": "DUNE",
+      "number": "020"
     },
     {
       "id": "55476334-d6d4-4f4d-b19b-0d78e146f8b8",
@@ -169,240 +1184,9 @@
         "Official"
       ],
       "text": "action arrow: defeat a friendly spice token. if you do, play a card from your resources as if it were played using plot. it costs 1 less. deal 1 damage to your base. when deployed: play up to 2 cards from your resources as if they were played using plot. each costs 1 less.\nwhen defeated: deal 2 damage to each unit.",
-      "set": "DUNE"
-    },
-    {
-      "id": "c354b308-81c7-4dc7-9232-c4fa66363c32",
-      "image": "Fremen Worm Riders",
-      "name": "Fremen Worm Riders",
-      "type": "Unit",
-      "aspects": [
-        "Cunning",
-        "Heroism"
-      ],
-      "cost": 7,
-      "traits": [
-        "Fremen",
-        "Creature"
-      ],
-      "text": "overwhelm\nwhile you control an arrakis base, this unit gains ambush.\nwhen defeated: put this card on the bottom of its owner's deck.",
-      "set": "DUNE"
-    },
-    {
-      "id": "d9cd0927-2c13-4cfd-b6d5-6f247e8ef56b",
-      "image": "Spice-Sworn Blade",
-      "name": "Spice-Sworn Blade",
-      "type": "Unit",
-      "aspects": [
-        "Aggression"
-      ],
-      "cost": 1,
-      "traits": [
-        "Underworld",
-        "Trooper"
-      ],
-      "text": "you may play this unit from your hand or discard pile for free by defeating a friendly spice token.",
-      "set": "DUNE"
-    },
-    {
-      "id": "605ba3e7-7ad7-429c-a50d-e590eac3727b",
-      "image": "Harkonnen Flamer",
-      "name": "Harkonnen Flamer",
-      "type": "Unit",
-      "aspects": [
-        "Aggression",
-        "Villainy"
-      ],
-      "cost": 2,
-      "traits": [
-        "Harkonnen",
-        "Trooper"
-      ],
-      "text": "when defeated: deal 1 damage to each enemy ground unit.",
-      "set": "DUNE"
-    },
-    {
-      "id": "c837a582-921a-4943-b281-6fe74059c88d",
-      "image": "Harkonnen Sergeant",
-      "name": "Harkonnen Sergeant",
-      "type": "Unit",
-      "aspects": [
-        "Aggression",
-        "Villainy"
-      ],
-      "cost": 2,
-      "traits": [
-        "Harkonnen",
-        "Trooper"
-      ],
-      "text": "when played: search the top 5 cards of your deck for a trooper unit, reveal it and draw it. you may play it now. it costs 1 less.",
-      "set": "DUNE"
-    },
-    {
-      "id": "bee6cf10-abef-4eec-9398-c9f79a5ebf7d",
-      "image": "Kanly",
-      "name": "Kanly",
-      "type": "Event",
-      "aspects": [
-        "Aggression"
-      ],
-      "cost": 2,
-      "traits": [
-        "Tactic"
-      ],
-      "text": "deal 2 damage to a unit. then, you may defeat a friendly non-leader unit. if you do, deal damage equal to its power to the same unit.",
-      "set": "DUNE"
-    },
-    {
-      "id": "f81a4036-4ca9-4ecc-bcc6-9a7a5a6487d2",
-      "image": "The Baron's Wrath",
-      "name": "The Baron's Wrath",
-      "type": "Event",
-      "aspects": [
-        "Aggression",
-        "Villainy"
-      ],
-      "cost": 4,
-      "traits": [
-        "Harkonnen",
-        "Tactic"
-      ],
-      "text": "you may defeat any number of friendly spice tokens and friendly harkonnen units. deal x damage divided as you choose among any number of units. x is the number of friendly harkonnen units, plus 2 for each spice token and unit defeated this way.",
-      "set": "DUNE"
-    },
-    {
-      "id": "a30de52b-5eea-4820-9878-d0a527224299",
-      "image": "Sietch Reverend Mother",
-      "name": "Sietch Reverend Mother",
-      "type": "Unit",
-      "aspects": [
-        "Cunning",
-        "Vigilance",
-        "Heroism"
-      ],
-      "cost": 5,
-      "traits": [
-        "Fremen",
-        "Bene Gesserit"
-      ],
-      "text": "when played: choose a fremen or bene gesserit unit in your discard pile other than a sietch reverend mother. use its when played ability as if it were this unit's.\nwhen defeated: return another fremen or bene gesserit unit from your discard pile to your hand.",
-      "set": "DUNE"
-    },
-    {
-      "id": "6016d1f0-bb83-4a96-99e8-d6056a0413f9",
-      "image": "Sietch Raiders",
-      "name": "Sietch Raiders",
-      "type": "Unit",
-      "aspects": [
-        "Cunning",
-        "Heroism"
-      ],
-      "cost": 4,
-      "traits": [
-        "Fremen",
-        "Trooper"
-      ],
-      "text": "while you control an arrakis base, this unit gains ambush.",
-      "set": "DUNE"
-    },
-    {
-      "id": "21a01460-8651-41fb-bfb6-d8c836a92162",
-      "image": "Atreides House Guard",
-      "name": "Atreides House Guard",
-      "type": "Unit",
-      "aspects": [
-        "Command",
-        "Heroism"
-      ],
-      "cost": 3,
-      "traits": [
-        "Atreides",
-        "Trooper"
-      ],
-      "text": "while you control another atreides unit, this unit gains sentinel.\nwhen defeated: give an experience token to another friendly atreides unit.",
-      "set": "DUNE"
-    },
-    {
-      "id": "972f8a5d-d416-4210-909d-341c7ff2bd45",
-      "image": "Sardaukar Bashar",
-      "name": "Sardaukar Bashar",
-      "type": "Unit",
-      "aspects": [
-        "Command",
-        "Villainy"
-      ],
-      "cost": 3,
-      "traits": [
-        "Emperor",
-        "Sardaukar",
-        "Official"
-      ],
-      "text": "as an additional cost to play this unit, defeat a friendly spice token.\nwhen played: give an experience token to another friendly trooper unit. if it's a sardaukar unit, ready it.",
-      "set": "DUNE"
-    },
-    {
-      "id": "57613afc-674d-40aa-afbc-5dadccaca9d7",
-      "image": "Sardaukar Legion",
-      "name": "Sardaukar Legion",
-      "type": "Unit",
-      "aspects": [
-        "Command",
-        "Villainy"
-      ],
-      "cost": 7,
-      "traits": [
-        "Emperor",
-        "Sardaukar",
-        "Trooper"
-      ],
-      "text": "as an additional cost to play this unit, defeat a friendly spice token.\nwhen played: search the top 10 cards of your deck for any number of sardaukar units and reveal them. you may defeat up to 3 friendly spice tokens. play any number of the revealed units with a combined cost of 2 or less for each spice token defeated this way, for free, ignoring their additional costs.",
-      "set": "DUNE"
-    },
-    {
-      "id": "289c0ad6-7185-44c0-904c-b721af6ee10e",
-      "image": "The Spice Must Flow",
-      "name": "The Spice Must Flow",
-      "type": "Event",
-      "aspects": [
-        "Command"
-      ],
-      "cost": 3,
-      "traits": [
-        "Supply"
-      ],
-      "text": "create 3 spice tokens. if you control an arrakis base, create 4 spice tokens instead. each opponent creates a spice token.",
-      "set": "DUNE"
-    },
-    {
-      "id": "48449f2c-fdcc-4c8d-9eff-1f0280b64cf5",
-      "image": "Spice Hunter",
-      "name": "Spice Hunter",
-      "type": "Unit",
-      "aspects": [
-        "Cunning",
-        "Heroism"
-      ],
-      "cost": 2,
-      "traits": [
-        "Fremen"
-      ],
-      "text": "on attack: if you control another fremen unit, choose one:\n- create a spice token.\n- take control of an enemy spice token.",
-      "set": "DUNE"
-    },
-    {
-      "id": "7c85f602-4737-4736-a57c-78b46e362d72",
-      "image": "Spice Smuggler",
-      "name": "Spice Smuggler",
-      "type": "Unit",
-      "aspects": [
-        "Cunning"
-      ],
-      "cost": 2,
-      "traits": [
-        "Underworld"
-      ],
-      "text": "when played: create a spice token.",
-      "set": "DUNE"
+      "set": "DUNE",
+      "number": "005",
+      "arena": "Ground"
     },
     {
       "id": "2fb57847-cfcf-474c-9b75-19d509feb052",
@@ -427,465 +1211,60 @@
         "Official"
       ],
       "text": "you start the game with a spice token.\naction arrow: play a sardaukar card from your hand, ignoring its additional costs. once each round, when you play a sardaukar card, you may ignore its additional costs.\nwhen deployed: you may play a sardaukar unit from your hand or discard pile for free.\nother friendly sardaukar units gain sentinel.",
-      "set": "DUNE"
+      "set": "DUNE",
+      "number": "004",
+      "arena": "Ground"
     },
     {
-      "id": "fc7b410b-4957-431e-9fac-7bed7e75443c",
-      "image": "Sietch Tabr",
-      "name": "Sietch Tabr",
-      "type": "Base",
+      "id": "bd745293-96c8-448b-80c7-c7ae304ea2d3",
+      "image": "Stilgar - Naib of Sietch Tabr",
+      "back": "Stilgar - Naib of Sietch Tabr (unit)",
+      "name": "Stilgar",
+      "subtitle": "Naib of Sietch Tabr",
+      "type": "Leader",
       "aspects": [
-        "Vigilance"
-      ],
-      "traits": [
-        "Arrakis"
-      ],
-      "text": "you start the game with a spice token.",
-      "set": "DUNE"
-    },
-    {
-      "id": "003c87be-36d7-4aae-813f-c949e1c29ae1",
-      "image": "Arrakeen",
-      "name": "Arrakeen",
-      "type": "Base",
-      "aspects": [
-        "Command"
-      ],
-      "traits": [
-        "Arrakis"
-      ],
-      "text": "you start the game with a spice token.",
-      "set": "DUNE"
-    },
-    {
-      "id": "57e8ef64-ebff-4e73-92ea-9ea72f6624d8",
-      "image": "Carthag",
-      "name": "Carthag",
-      "type": "Base",
-      "aspects": [
-        "Aggression"
-      ],
-      "traits": [
-        "Arrakis"
-      ],
-      "text": "you start the game with a spice token.",
-      "set": "DUNE"
-    },
-    {
-      "id": "455a5bb1-a533-49c5-8a0e-aea9434c45df",
-      "image": "Liet Kynes - Imperial Planetologist",
-      "name": "Liet Kynes",
-      "subtitle": "Imperial Planetologist",
-      "type": "Unit",
-      "aspects": [
-        "Command",
-        "Cunning"
-      ],
-      "cost": 4,
-      "traits": [
-        "Fremen",
-        "Emperor"
-      ],
-      "text": "when played/on attack: you may defeat a friendly spice token. if you do, heal 3 damage from your base.\nwhen defeated: create 2 spice tokens.",
-      "set": "DUNE"
-    },
-    {
-      "id": "bad799dd-a5f5-4d51-a7a6-928bca64ea46",
-      "image": "Missionaria Sister",
-      "name": "Missionaria Sister",
-      "type": "Unit",
-      "aspects": [
-        "Vigilance"
-      ],
-      "cost": 2,
-      "traits": [
-        "Bene Gesserit"
-      ],
-      "text": "when played: if you control an arrakis base, create a fremen token.",
-      "set": "DUNE"
-    },
-    {
-      "id": "13264028-8ef9-4e01-ae64-58dda1d403f2",
-      "image": "Gurney Halleck - Warrior-Troubadour",
-      "name": "Gurney Halleck",
-      "subtitle": "Warrior-Troubadour",
-      "type": "Unit",
-      "aspects": [
-        "Command",
+        "Cunning",
+        "Heroism",
+        "Cunning",
         "Heroism"
       ],
       "cost": 5,
       "traits": [
-        "Atreides",
-        "Trooper"
-      ],
-      "text": "saboteur\nwhen played/on attack: give an experience token to another friendly atreides unit.",
-      "set": "DUNE"
-    },
-    {
-      "id": "c64a1e84-663f-4c24-b763-c9027c6b29fa",
-      "image": "Fedaykin Death Commando",
-      "name": "Fedaykin Death Commando",
-      "type": "Unit",
-      "aspects": [
-        "Cunning",
-        "Heroism"
-      ],
-      "cost": 3,
-      "traits": [
         "Fremen",
-        "Fedaykin",
-        "Trooper"
-      ],
-      "text": "grit\nwhen played: give an experience token to this unit for each other friendly fremen unit.\nwhen defeated: create a fremen token.",
-      "set": "DUNE"
-    },
-    {
-      "id": "f80f1ac5-eac8-42e1-85df-a934743febb0",
-      "image": "Desert Power",
-      "name": "Desert Power",
-      "type": "Event",
-      "aspects": [
-        "Command",
-        "Cunning",
-        "Heroism"
-      ],
-      "cost": 4,
-      "traits": [
-        "Atreides",
+        "Official",
         "Fremen",
-        "Tactic"
+        "Official"
       ],
-      "text": "create 2 fremen tokens and ready them.",
-      "set": "DUNE"
+      "text": "action 1, arrow: create a fremen token. while you control an arrakis base, this unit gains hidden.\non attack: create a fremen token.",
+      "set": "DUNE",
+      "number": "003",
+      "arena": "Ground"
     },
     {
-      "id": "b5a0d3e5-b64e-4a72-a2c7-5305a768032a",
-      "image": "Chani - Desert Guide",
-      "name": "Chani",
-      "subtitle": "Desert Guide",
-      "type": "Unit",
-      "aspects": [
-        "Cunning",
-        "Heroism"
-      ],
-      "cost": 3,
-      "traits": [
-        "Fremen"
-      ],
-      "text": "while you control an arrakis base, this unit gains hidden.\nother friendly fremen units get +1/+0.",
-      "set": "DUNE"
-    },
-    {
-      "id": "fb538d7b-bb48-4147-8aee-0f92e7febf53",
-      "image": "Piter De Vries - Twisted Mentat",
-      "name": "Piter De Vries",
-      "subtitle": "Twisted Mentat",
-      "type": "Unit",
-      "aspects": [
-        "Aggression",
-        "Villainy"
-      ],
-      "cost": 5,
-      "traits": [
-        "Harkonnen",
-        "Mentat"
-      ],
-      "text": "when played: draw 2 cards, then put a card from your hand on the top or bottom of your deck or discard it.\nplot\nwhen played using plot: give a weakness token to each enemy unit. then, defeat this unit.",
-      "set": "DUNE"
-    },
-    {
-      "id": "e054215f-523f-41c0-ad88-92761d8cd392",
-      "image": "Atreides Troops",
-      "name": "Atreides Troops",
-      "type": "Unit",
-      "aspects": [
-        "Command",
-        "Heroism"
-      ],
-      "cost": 2,
-      "traits": [
-        "Atreides",
-        "Trooper"
-      ],
-      "text": "while you control another atreides unit, this unit gains restore 1.",
-      "set": "DUNE"
-    },
-    {
-      "id": "a2e50bfd-efeb-48fb-92af-1cb96ef98eca",
-      "image": "Harkonnen Harvester Team",
-      "name": "Harkonnen Harvester Team",
-      "type": "Unit",
-      "aspects": [
-        "Aggression",
-        "Villainy"
-      ],
-      "cost": 3,
-      "traits": [
-        "Harkonnen",
-        "Trooper",
-        "Harvester"
-      ],
-      "text": "whenever a friendly harkonnen unit is defeated, create a spice token. use this ability only once each round.",
-      "set": "DUNE"
-    },
-    {
-      "id": "a50da882-75b5-4399-a035-e760c4f1aa23",
-      "image": "Harkonnen Troops",
-      "name": "Harkonnen Troops",
-      "type": "Unit",
-      "aspects": [
-        "Aggression",
-        "Villainy"
-      ],
-      "cost": 1,
-      "traits": [
-        "Harkonnen",
-        "Trooper"
-      ],
-      "text": "a deck can have up to 15 copies of this card.\nwhen defeated: deal 1 damage to a unit or base.",
-      "set": "DUNE"
-    },
-    {
-      "id": "9f59a5c3-b53d-492a-8bef-dd80cbc56c45",
-      "image": "Sardaukar Trooper",
-      "name": "Sardaukar Trooper",
-      "type": "Unit",
-      "aspects": [
-        "Command",
-        "Villainy"
-      ],
-      "cost": 2,
-      "traits": [
-        "Emperor",
-        "Sardaukar",
-        "Trooper"
-      ],
-      "text": "as an additional cost to play this unit, defeat a friendly spice token.",
-      "set": "DUNE"
-    },
-    {
-      "id": "fcf32dbc-eb81-479e-9f1f-82de8524fcbb",
-      "image": "Harkonnen Harvester",
-      "name": "Harkonnen Harvester",
-      "type": "Unit",
-      "aspects": [
-        "Aggression",
-        "Villainy"
-      ],
-      "cost": 5,
-      "traits": [
-        "Harkonnen",
-        "Vehicle",
-        "Harvester"
-      ],
-      "text": "when played/on attack: if you control an arrakis base, create a spice token, then you may deal 2 damage to a friendly unit. if you do, create another spice token.",
-      "set": "DUNE"
-    },
-    {
-      "id": "1807fe62-16d2-4ac3-b0de-3f80298c6157",
-      "image": "Carthag Refinery",
-      "name": "Carthag Refinery",
-      "type": "Fortification",
-      "aspects": [
-        "Aggression",
-        "Villainy"
-      ],
-      "cost": 2,
-      "traits": [
-        "Fortification",
-        "Harkonnen"
-      ],
-      "text": "fortify\nwhile you control an arrakis base, if you would create a spice token, you may create 2 spice tokens instead. if you do, deal 1 damage to attached base.\nharvester units you play cost 1 less.",
-      "set": "DUNE"
-    },
-    {
-      "id": "3f411417-15b6-42be-a7a1-e099e654be5e",
-      "image": "Reverend Mother Mohiam - The Emperor's Truthsayer",
-      "name": "Reverend Mother Mohiam",
-      "subtitle": "The Emperor's Truthsayer",
-      "type": "Unit",
+      "id": "81db9788-0cf6-4614-b6f0-e5757241ae3d",
+      "image": "Lady Jessica - Bene Gesserit",
+      "back": "Lady Jessica - Reverend Mother (unit)",
+      "name": "Lady Jessica",
+      "subtitle": "Bene Gesserit",
+      "type": "Leader",
       "aspects": [
         "Vigilance",
-        "Villainy"
-      ],
-      "cost": 7,
-      "traits": [
-        "Bene Gesserit",
-        "Emperor"
-      ],
-      "text": "when played: discard any number of cards from your hand. for each card discarded this way, choose a card in each opponent's hand. they discard it.\nopponents play with their hands revealed.",
-      "set": "DUNE"
-    },
-    {
-      "id": "12db351f-b35c-4c9a-a158-ee4acefdddb5",
-      "image": "Worm Signs",
-      "name": "Worm Signs",
-      "type": "Event",
-      "aspects": [
-        "Cunning"
-      ],
-      "cost": 3,
-      "traits": [
-        "Disaster"
-      ],
-      "text": "if you control an arrakis base, choose a non fremen non-leader ground unit. its controller chooses one:\n  - return it to its owner's hand.\n  - defeat it when the next regroup phase starts.",
-      "set": "DUNE"
-    },
-    {
-      "id": "631c4fe6-a97d-4e54-bd4c-a75ac91b31e4",
-      "image": "Fremen",
-      "name": "Fremen",
-      "type": "Token",
-      "aspects": [],
-      "cost": 1,
-      "traits": [
-        "Fremen",
-        "Trooper"
-      ],
-      "text": "while you control an arrakis base, this unit gains raid 1.",
-      "set": "DUNE"
-    },
-    {
-      "id": "27bb6ad3-ad8e-4de3-aeb9-0066913132f2",
-      "image": "Harkonnen Heavy 'Thopter",
-      "name": "Harkonnen Heavy 'Thopter",
-      "type": "Unit",
-      "aspects": [
-        "Aggression",
-        "Villainy"
-      ],
-      "cost": 3,
-      "traits": [
-        "Harkonnen",
-        "Vehicle",
-        "Fighter"
-      ],
-      "text": "friendly trooper units gain raid 1.",
-      "set": "DUNE"
-    },
-    {
-      "id": "9a4481da-e820-4e55-9ab8-62190c22eb0d",
-      "image": "Scouting 'Thopter",
-      "name": "Scouting 'Thopter",
-      "type": "Unit",
-      "aspects": [],
-      "cost": 1,
-      "traits": [
-        "Vehicle",
-        "Fighter"
-      ],
-      "text": "raid 1\nwhen played/on attack: look at the top card of any player's deck. you may discard it.",
-      "set": "DUNE"
-    },
-    {
-      "id": "2e62adc0-fa78-44fe-8ad8-24eb7397db11",
-      "image": "Strike 'Thopter",
-      "name": "Strike 'Thopter",
-      "type": "Unit",
-      "aspects": [
-        "Command",
+        "Heroism",
+        "Vigilance",
         "Heroism"
-      ],
-      "cost": 2,
-      "traits": [
-        "Atreides",
-        "Vehicle",
-        "Fighter"
-      ],
-      "text": "when played: you may deal 1 damage to a ground unit.",
-      "set": "DUNE"
-    },
-    {
-      "id": "1b21e154-0608-4cf0-a138-2852a9933159",
-      "image": "Earning the Fremen's respect",
-      "name": "Earning the Fremen's respect",
-      "type": "Event",
-      "aspects": [
-        "Command",
-        "Heroism"
-      ],
-      "cost": 3,
-      "traits": [
-        "Atreides"
-      ],
-      "text": "you may defeat a friendly ground vehicle unit, any number of friendly spice tokens, or both. create 2 fremen tokens if you defeated a unit this way, plus 1 for each spice token defeated this way.",
-      "set": "DUNE"
-    },
-    {
-      "id": "76de506d-cc7b-4b78-bd3d-c13a4ac6232f",
-      "image": "Carryall",
-      "name": "Carryall",
-      "type": "Unit",
-      "aspects": [
-        "Command"
       ],
       "cost": 5,
       "traits": [
-        "Vehicle",
-        "Transport"
+        "Bene Gesserit",
+        "Atreides",
+        "Bene Gesserit",
+        "Fremen",
+        "Atreides"
       ],
-      "text": "when played/on attack: you may play a ground vehicle unit from your discard pile that was defeated this phase and costs #5 or less for free.",
-      "set": "DUNE"
-    },
-    {
-      "id": "3f4a5f78-4647-438a-b66e-31c29de340b5",
-      "image": "Spice Harvester",
-      "name": "Spice Harvester",
-      "type": "Unit",
-      "aspects": [
-        "Command"
-      ],
-      "cost": 4,
-      "traits": [
-        "Vehicle",
-        "Harvester"
-      ],
-      "text": "when played/on attack: if you control an arrakis base, create a spice token.\n\nwhen the regroup phase starts: you may defeat 3 friendly spice tokens. if you do, put the top card of your deck into play as a resource.",
-      "set": "DUNE"
-    },
-    {
-      "id": "3355841f-28ac-4046-a421-abc2b8b8cfb9",
-      "image": "Gene Manipulation",
-      "name": "Gene Manipulation",
-      "type": "Upgrade",
-      "aspects": [
-        "Vigilance"
-      ],
-      "cost": 1,
-      "traits": [
-        "Bene Gesserit"
-      ],
-      "text": "when played: choose a card in your discard pile that shares a trait with attached unit. attached unit gains a keyword printed on that card.",
-      "set": "DUNE"
-    },
-    {
-      "id": "5a2433e7-2fcb-4dbf-a09c-2069de8348b6",
-      "image": "Personal Shield",
-      "name": "Personal Shield",
-      "type": "Upgrade",
-      "aspects": [
-        "Vigilance"
-      ],
-      "cost": 3,
-      "traits": [],
-      "text": "attach to a friendly unit.\nwhen played: if you control an arrakis base, defeat attached unit. otherwise, give a shield token to attached unit.\nwhen the regroup phase starts: if attached unit has no shield token, give a shield token to it.",
-      "set": "DUNE"
-    },
-    {
-      "id": "f7e4c8c9-97d7-4912-aad4-44aad461cd29",
-      "image": "Bene Gesserit Sister",
-      "name": "Bene Gesserit Sister",
-      "type": "Unit",
-      "aspects": [
-        "Vigilance"
-      ],
-      "cost": 4,
-      "traits": [
-        "Bene Gesserit"
-      ],
-      "text": "restore 1\nwhen played: choose one:\n  - deal 2 damage to a unit.\n  - the next bene gesserit card you play this phase costs 2 less.",
-      "set": "DUNE"
+      "text": "when you play a bene gesserit card: you may exhaust this leader. if you do, exhaust an enemy non-leader ground unit that costs 4 or less. restore 2\nwhen deployed: return a bene gesserit or fremen unit from your discard pile to your hand.\nwhen a friendly spice token is defeated: heal 2 damage from a unit or base.",
+      "set": "DUNE",
+      "number": "002",
+      "arena": "Ground"
     },
     {
       "id": "eea02b47-ea14-405e-b123-33bccfd3c546",
@@ -900,67 +1279,8 @@
         "Fortification"
       ],
       "text": "fortify\nattached base gains: \"enemy ground units get -1/-0 while attacking bases. \nyour units can't be defeated by enemy shai-hulud card abilities.\"",
-      "set": "DUNE"
-    },
-    {
-      "id": "60353644-d070-42b3-b22d-ba4e441f39fb",
-      "image": "Bene Gesserit Initiate",
-      "name": "Bene Gesserit Initiate",
-      "type": "Unit",
-      "aspects": [
-        "Vigilance"
-      ],
-      "cost": 2,
-      "traits": [
-        "Bene Gesserit"
-      ],
-      "text": "restore 1\nwhen played: each opponent discards a card from their hand.",
-      "set": "DUNE"
-    },
-    {
-      "id": "4a4aba7b-326d-4fdd-a304-565bb32e0652",
-      "image": "Shai-Hulud",
-      "name": "Shai-Hulud",
-      "type": "Unit",
-      "aspects": [],
-      "cost": 8,
-      "traits": [
-        "Creature"
-      ],
-      "text": "overwhelm\nwhen played: while you control an arrakis base, defeat all other non-fremen ground units.\nwhen this unit completes an attack: return it to the bottom of its owner's deck.",
-      "set": "DUNE"
-    },
-    {
-      "id": "f9d41a1c-ed50-4f7e-9f89-a8de4964c490",
-      "image": "Hunter Seeker",
-      "name": "Hunter Seeker",
-      "type": "Unit",
-      "aspects": [
-        "Aggression",
-        "Villainy"
-      ],
-      "cost": 1,
-      "traits": [
-        "Drone"
-      ],
-      "text": "#elusive (can't be chosen as a target for an attack.)\nsaboteur\nwhen a non-leader ground unit enters play: arrow and defeat this unit. if you do, deal 3 damage to that unit.",
-      "set": "DUNE"
-    },
-    {
-      "id": "f4f2b2ec-4914-4a47-bd86-9c4da3697744",
-      "image": "Gom Jabbar",
-      "name": "Gom Jabbar",
-      "type": "Upgrade",
-      "aspects": [
-        "Vigilance",
-        "Villainy"
-      ],
-      "cost": 2,
-      "traits": [
-        "Bene Gesserit"
-      ],
-      "text": "attach to a non-vehicle, non-leader unit.\nattached unit gains: \"when this unit becomes exhausted, defeat it unless its controller discards a card from their hand.\"",
-      "set": "DUNE"
+      "set": "DUNE",
+      "number": "001/100"
     },
     {
       "id": "8b5de66c-706d-404e-a66a-956fa1697c88",
@@ -981,133 +1301,9 @@
         "Atreides"
       ],
       "text": "you may look at the top card of your deck at any time.\naction arrow: discard the top card of your deck. then, attack with a unit. if it has the same cost as the discarded card, it gets +2/+0 for this attack. raid 1\non attack: look at the top 3 cards of your deck. discard 1 of them and put the others back in any order. if the discarded card has an on attack ability, use it as if it were this unit's.",
-      "set": "DUNE"
-    },
-    {
-      "id": "7484d1ed-3110-4f06-aa0d-5090d4e04815",
-      "image": "Crysknife",
-      "name": "Crysknife",
-      "type": "Upgrade",
-      "aspects": [
-        "Aggression"
-      ],
-      "cost": 1,
-      "traits": [
-        "Fremen"
-      ],
-      "text": "attach to a non-vehicle unit.\n\nif attached unit is a fremen it gains saboteur.",
-      "set": "DUNE"
-    },
-    {
-      "id": "f57c0523-7889-45f4-9a85-83c9dbdd8173",
-      "image": "Paul Atreides - Heir to House Atreides",
-      "name": "Paul Atreides",
-      "subtitle": "Heir to House Atreides",
-      "type": "Unit",
-      "aspects": [
-        "Command",
-        "Heroism"
-      ],
-      "cost": 2,
-      "traits": [
-        "Atreides"
-      ],
-      "text": "on attack: discard the top card of your deck. if its cost is equal to the defender's cost, deal 1 damage to the defender or to a base.",
-      "set": "DUNE"
-    },
-    {
-      "id": "0cd1cd92-e363-4058-8c5c-6dcb216491ad",
-      "image": "Fremen Warrior",
-      "name": "Fremen Warrior",
-      "type": "Unit",
-      "aspects": [
-        "Cunning",
-        "Heroism"
-      ],
-      "cost": 1,
-      "traits": [
-        "Fremen",
-        "Trooper"
-      ],
-      "text": "while you control an arrakis base, this unit gains hidden.",
-      "set": "DUNE"
-    },
-    {
-      "id": "26bb822f-2e58-4918-856a-ff80b4fcef7e",
-      "image": "Lady Jessica - Mother of the Kwisatz Haderach",
-      "name": "Lady Jessica",
-      "subtitle": "Mother of the Kwisatz Haderach",
-      "type": "Unit",
-      "aspects": [
-        "Command",
-        "Heroism"
-      ],
-      "cost": 5,
-      "traits": [
-        "Bene Gesserit",
-        "Atreides"
-      ],
-      "text": "restore 2\nwhen played/on attack: look at an opponent's hand and name a card. this phase, opponents can't play the named card. draw a card.",
-      "set": "DUNE"
-    },
-    {
-      "id": "ede5069e-07b3-459b-b0ea-035771cda18a",
-      "image": "Imperial Bassin",
-      "name": "Imperial Bassin",
-      "type": "Base",
-      "aspects": [
-        "Cunning"
-      ],
-      "traits": [
-        "Arrakis"
-      ],
-      "text": "you start the game with a spice token.",
-      "set": "DUNE"
-    },
-    {
-      "id": "545c197a-a169-40f8-a066-7bc6a0e02752",
-      "image": "Duncan Idaho - Swordmaster of the Ginaz",
-      "name": "Duncan Idaho",
-      "subtitle": "Swordmaster of the Ginaz",
-      "type": "Unit",
-      "aspects": [
-        "Command",
-        "Heroism"
-      ],
-      "cost": 3,
-      "traits": [
-        "Atreides",
-        "Trooper"
-      ],
-      "text": "when defeated: if this unit was defending, you may defeat the attacking unit.",
-      "set": "DUNE"
-    },
-    {
-      "id": "34f61fb8-aa97-4191-a378-82d405e530db",
-      "image": "The Voice",
-      "name": "The Voice",
-      "type": "Event",
-      "aspects": [
-        "Villainy"
-      ],
-      "cost": 2,
-      "traits": [
-        "Bene Gesserit"
-      ],
-      "text": "look at an opponent's hand and name a card. this phase, opponents can't play the named cards. draw a card.",
-      "set": "DUNE"
-    },
-    {
-      "id": "3067ed91-f5ee-4d21-8a22-11e509103391",
-      "image": "Spice",
-      "name": "Spice",
-      "type": "Token",
-      "aspects": [],
-      "traits": [
-        "Supply"
-      ],
-      "text": "action: defeat this token. look at the top 3 cards of your deck. draw 1 of them. put each of the others on the top or bottom of your deck in any order, or discard it.",
-      "set": "DUNE"
+      "set": "DUNE",
+      "number": "001",
+      "arena": "Ground"
     }
   ]
 }
