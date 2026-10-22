@@ -1,0 +1,30 @@
+{
+  "frameId": "leader-command-villainy",
+  "name": "Shaddam IV",
+  "trait": "Emperor, Corrino, Official",
+  "text": "You start the game with a [Spice Token].\n[Action [Arrow]:] Play a [{Sardaukar}] card from your hand, ignoring its additional costs.",
+  "setCode": "DUNE",
+  "language": "EN",
+  "rarity": "C",
+  "art": {
+    "src": "Shaddam IV - Padishah Emperor (art).webp",
+    "zoom": 0.7,
+    "x": -27,
+    "y": 20
+  },
+  "cost": 7,
+  "power": 5,
+  "hp": 8,
+  "backArt": {
+    "src": "Shaddam IV - Emperor of the Known Universe (unit) (art).webp",
+    "zoom": 0.9,
+    "x": 0,
+    "y": 5
+  },
+  "backText": "Once each round, when you play a [{Sardaukar}] card, you may ignore its additional costs.\n[When Deployed:] You may play a [{Sardaukar}] unit from your hand or discard pile for free.\nOther friendly [{Sardaukar}] units gain [Sentinel].",
+  "id": "2fb57847-cfcf-474c-9b75-19d509feb052",
+  "backSubtitle": "Emperor of the Known Universe",
+  "backTrait": "Emperor, Corrino, Official",
+  "subtitle": "Padishah Emperor",
+  "number": "004"
+}

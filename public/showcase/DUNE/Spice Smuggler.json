@@ -1,0 +1,21 @@
+{
+  "frameId": "unit-cunning",
+  "name": "Spice Smuggler",
+  "trait": "Underworld",
+  "text": "[When Played:] Create a Spice token.\n[Smuggle [[3 Cunning]]]\n[When played using Smuggle:] Create a Spice token.",
+  "setCode": "DUNE",
+  "language": "EN",
+  "rarity": "C",
+  "art": {
+    "src": "Spice Smuggler (art).webp",
+    "zoom": 1,
+    "x": -1,
+    "y": 11,
+    "rotate": 0
+  },
+  "cost": 2,
+  "power": 2,
+  "hp": 3,
+  "id": "7c85f602-4737-4736-a57c-78b46e362d72",
+  "number": "162"
+}

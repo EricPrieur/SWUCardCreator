@@ -1,0 +1,16 @@
+{
+  "frameId": "spice-token",
+  "name": "Spice",
+  "trait": "Supply",
+  "text": "[Action:] Defeat this token. Look at the top 3 cards of your deck. Draw 1 of them. Put each of the others on the top or bottom of your deck in any order, or discard it.",
+  "art": {
+    "src": "Spice (art).webp",
+    "zoom": 1.31,
+    "x": 0,
+    "y": -15
+  },
+  "id": "3067ed91-f5ee-4d21-8a22-11e509103391",
+  "setCode": "DUNE",
+  "language": "EN",
+  "number": "250"
+}

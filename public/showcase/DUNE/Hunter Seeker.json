@@ -1,0 +1,20 @@
+{
+  "frameId": "unit-aggression-villainy",
+  "name": "Hunter Seeker",
+  "trait": "Drone",
+  "text": "[#Elusive] {(Can't be chosen as a target for an attack.)}\n[Saboteur]\n[When a non-leader ground unit enters play]: [[Arrow]] and defeat this unit. If you do, deal 3 damage to that unit.",
+  "art": {
+    "src": "Hunter Seeker (art).webp",
+    "zoom": 0.9,
+    "x": 1,
+    "y": -19
+  },
+  "cost": 1,
+  "id": "f9d41a1c-ed50-4f7e-9f89-a8de4964c490",
+  "power": 1,
+  "hp": 1,
+  "setCode": "DUNE",
+  "language": "EN",
+  "rarity": "C",
+  "number": "100"
+}

@@ -1,0 +1,31 @@
+{
+  "frameId": "unit-cunning-vigilance-heroism",
+  "name": "Alia Atreides",
+  "trait": "Atreides, Fremen",
+  "text": "This unit gains each keyword printed on [{Fremen}] and [{Bene Gesserit}] units in your discard pile.",
+  "setCode": "DUNE",
+  "language": "EN",
+  "rarity": "L",
+  "unique": true,
+  "subtitle": "Pre-born",
+  "art": {
+    "src": "Alia Atreides - Pre-born (art).webp",
+    "zoom": 1,
+    "x": 0,
+    "y": 0,
+    "rotate": 0
+  },
+  "cost": 2,
+  "power": 2,
+  "hp": 4,
+  "id": "cfcaca80-9e13-460c-89d3-021a218ff5af",
+  "look": {
+    "frameOpacity": 0,
+    "panelFill": 0.5,
+    "panelBlur": 0,
+    "textGlow": 0,
+    "lightText": true,
+    "solidIcons": true
+  },
+  "number": "181"
+}

@@ -1,0 +1,20 @@
+{
+  "frameId": "unit-aggression-heroism",
+  "name": "Spice Hunter",
+  "trait": "Fremen, Trooper",
+  "text": "[On Attack:] If you control another [{Fremen}] unit, you may defeat an enemy Spice token. ",
+  "setCode": "DUNE",
+  "language": "EN",
+  "rarity": "U",
+  "cost": 2,
+  "power": 3,
+  "hp": 2,
+  "art": {
+    "src": "Spice Hunter (art).webp",
+    "zoom": 0.9,
+    "x": 3,
+    "y": 5
+  },
+  "id": "48449f2c-fdcc-4c8d-9eff-1f0280b64cf5",
+  "number": "120"
+}

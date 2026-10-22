@@ -1,0 +1,24 @@
+{
+  "frameId": "unit-aggression-villainy",
+  "name": "Glossu Rabban",
+  "trait": "Harkonnen, Official",
+  "text": "[Grit]",
+  "artist": "",
+  "block": "",
+  "setCode": "DUNE",
+  "language": "EN",
+  "rarity": "R",
+  "art": {
+    "src": "Glossu Rabban - The Beast (art).webp",
+    "zoom": 1,
+    "x": 0,
+    "y": 4
+  },
+  "unique": true,
+  "subtitle": "The Beast",
+  "cost": 3,
+  "power": 3,
+  "hp": 5,
+  "id": "10c9c976-6cb2-4091-84fb-7824c40da68e",
+  "number": "107"
+}

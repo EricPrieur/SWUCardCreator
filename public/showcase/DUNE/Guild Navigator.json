@@ -1,0 +1,20 @@
+{
+  "frameId": "unit-neutral-space",
+  "name": "Guild Navigator",
+  "trait": "Spacing Guild, Vehicle, Transport",
+  "text": "[When Played:] You may defeat a friendly Spice token. If you do, look at the top 5 cards of your deck. Draw 1 of them, discard any number of them and put the rest on the bottom of your deck in any order.",
+  "setCode": "DUNE",
+  "language": "EN",
+  "rarity": "C",
+  "cost": 3,
+  "power": 2,
+  "hp": 4,
+  "art": {
+    "src": "Guild Navigator (art).webp",
+    "zoom": 0.8,
+    "x": 1,
+    "y": -17
+  },
+  "id": "15b1004e-4a63-477f-bfb3-ecd3d64810e5",
+  "number": "203"
+}

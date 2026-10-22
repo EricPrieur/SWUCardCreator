@@ -1,0 +1,20 @@
+{
+  "frameId": "unit-command-heroism-space",
+  "name": "Strike 'Thopter",
+  "trait": "Atreides, Vehicle, Fighter",
+  "text": "[When Played:] You may deal 1 damage to a ground unit.",
+  "setCode": "DUNE",
+  "language": "EN",
+  "rarity": "C",
+  "art": {
+    "src": "Strike 'Thopter (art).webp",
+    "zoom": 1,
+    "x": 3,
+    "y": -16
+  },
+  "cost": 2,
+  "power": 2,
+  "hp": 3,
+  "id": "2e62adc0-fa78-44fe-8ad8-24eb7397db11",
+  "number": "071"
+}

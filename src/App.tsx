@@ -1105,6 +1105,8 @@ async function portableCard(
     if (!art?.src) return art
     // Shrunk the way uploaded art is, so a large original does not weigh on the export
     const original = await (await fetch(art.src.startsWith('data:') ? art.src : asset(art.src))).blob()
+    // A missing file comes back as the app's page, which no picture can be made of
+    if (!original.type.startsWith('image/')) throw new Error(`the art of ${card.name}, ${art.src}, was not found`)
     const body = await (await fetch(await readArtFile(new File([original], 'art')))).blob()
     const name = artFileNames((back && names.back) || names.image)[body.type === 'image/webp' ? 0 : 1]
     files.push({ name, body })

@@ -1,0 +1,21 @@
+{
+  "frameId": "fortification-vigilance",
+  "name": "The Shield Wall",
+  "trait": "Fortification",
+  "text": "[FORTIFY]\nAttached base gains: \"Enemy ground units get [-1/-0] while attacking bases. \nYour units can't be defeated by enemy Shai-Hulud card abilities.\"",
+  "art": {
+    "src": "The Shield Wall (art).webp",
+    "zoom": 1,
+    "x": 0,
+    "y": 0
+  },
+  "cost": 3,
+  "unique": true,
+  "id": "eea02b47-ea14-405e-b123-33bccfd3c546",
+  "artist": "",
+  "block": "",
+  "setCode": "DUNE",
+  "language": "EN",
+  "number": "067",
+  "rarity": "R"
+}

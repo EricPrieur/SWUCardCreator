@@ -1,0 +1,18 @@
+{
+  "frameId": "base-aggression-text",
+  "name": "Carthag",
+  "trait": "Arrakis",
+  "text": "You start the game with a [Spice Token].",
+  "art": {
+    "src": "Carthag (art).webp",
+    "zoom": 1,
+    "x": 0,
+    "y": 0
+  },
+  "hp": 28,
+  "id": "57e8ef64-ebff-4e73-92ea-9ea72f6624d8",
+  "setCode": "DUNE",
+  "language": "EN",
+  "rarity": "C",
+  "number": "021"
+}

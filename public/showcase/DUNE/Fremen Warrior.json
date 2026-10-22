@@ -1,0 +1,27 @@
+{
+  "frameId": "unit-cunning-heroism",
+  "name": "Fremen Warrior",
+  "trait": "Fremen, Trooper",
+  "text": "While you control an [Arrakis] base, this unit gains [HIDDEN].",
+  "art": {
+    "src": "Fremen Warrior (art).webp",
+    "zoom": 1.02,
+    "x": 0,
+    "y": 1
+  },
+  "look": {
+    "frameOpacity": 1,
+    "panelFill": 0,
+    "panelBlur": 0,
+    "textGlow": 0,
+    "lightText": false
+  },
+  "cost": 1,
+  "power": 3,
+  "hp": 1,
+  "id": "0cd1cd92-e363-4058-8c5c-6dcb216491ad",
+  "unique": false,
+  "setCode": "DUNE",
+  "language": "EN",
+  "number": "150"
+}

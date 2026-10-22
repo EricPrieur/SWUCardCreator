@@ -1,0 +1,24 @@
+{
+  "frameId": "unit-command-heroism",
+  "name": "Thufir Hawat",
+  "trait": "Atreides, Mentat, Official",
+  "text": "[When Played:] Draw 2 cards, then put a card from your hand on the top or bottom of your deck or discard it.\n[On Attack:] Look at an opponent's hand. You may discard an event from it.",
+  "artist": "",
+  "block": "",
+  "setCode": "DUNE",
+  "language": "EN",
+  "rarity": "R",
+  "art": {
+    "src": "Thufir Hawat - Master of Assassins (art).webp",
+    "zoom": 1.2,
+    "x": 0,
+    "y": -1
+  },
+  "unique": true,
+  "subtitle": "Master of Assassins",
+  "cost": 5,
+  "power": 4,
+  "hp": 6,
+  "id": "647a0827-a307-443d-b941-7e52eed5ed39",
+  "number": "079"
+}

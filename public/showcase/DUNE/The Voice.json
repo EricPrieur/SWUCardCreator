@@ -1,0 +1,31 @@
+{
+  "frameId": "event-villainy",
+  "name": "The Voice",
+  "trait": "Bene Gesserit",
+  "text": "Look at an opponent's hand and name a card. This phase, opponents can't play the named cards. Draw a card.",
+  "cost": 2,
+  "unique": true,
+  "power": 13,
+  "hp": 13,
+  "id": "34f61fb8-aa97-4191-a378-82d405e530db",
+  "art": {
+    "zoom": 1.9,
+    "x": 11,
+    "y": 29,
+    "src": "The Voice (art).webp"
+  },
+  "look": {
+    "frameOpacity": 0,
+    "panelFill": 0.1,
+    "panelBlur": 0,
+    "textGlow": 0,
+    "lightText": true,
+    "solidText": false,
+    "solidIcons": true,
+    "fadeTop": true,
+    "fadeBottom": true
+  },
+  "setCode": "DUNE",
+  "language": "EN",
+  "number": "170"
+}

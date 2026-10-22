@@ -1,0 +1,20 @@
+{
+  "frameId": "upgrade-vigilance-villainy",
+  "name": "Gom Jabbar",
+  "trait": "Bene Gesserit",
+  "text": "Attach to a non-[{Vehicle}], non-leader unit.\nAttached unit gains: \"When this unit becomes exhausted, defeat it unless its controller discards a card from their hand.\"",
+  "cost": 2,
+  "power": 0,
+  "hp": 0,
+  "art": {
+    "src": "Gom Jabbar (art).webp",
+    "zoom": 0.7,
+    "x": 1,
+    "y": -16,
+    "rotate": 25
+  },
+  "id": "f4f2b2ec-4914-4a47-bd86-9c4da3697744",
+  "setCode": "DUNE",
+  "language": "EN",
+  "number": "030"
+}

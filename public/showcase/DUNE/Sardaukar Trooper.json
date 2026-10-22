@@ -1,0 +1,20 @@
+{
+  "frameId": "unit-command-villainy",
+  "name": "Sardaukar Trooper",
+  "trait": "Emperor, Sardaukar, Trooper",
+  "text": "As an additional cost to play this unit, defeat a friendly Spice token.",
+  "setCode": "DUNE",
+  "language": "EN",
+  "rarity": "C",
+  "art": {
+    "src": "Sardaukar Trooper (art).webp",
+    "zoom": 1,
+    "x": 1,
+    "y": -9
+  },
+  "cost": 2,
+  "power": 4,
+  "hp": 3,
+  "id": "9f59a5c3-b53d-492a-8bef-dd80cbc56c45",
+  "number": "060"
+}

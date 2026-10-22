@@ -1,0 +1,29 @@
+{
+  "frameId": "leader-command-heroism",
+  "name": "Paul Atreides",
+  "trait": "Atreides",
+  "text": "You may look at the top card of your deck at any time.\n[Action [Arrow]:] Discard the top card of your deck. Then, attack with a unit. If it has the same cost as the discarded card, it gets [+2/+0] for this attack.",
+  "art": {
+    "src": "Paul Atreides - Haunted by Dreams (art).webp",
+    "zoom": 1,
+    "x": -21,
+    "y": 59
+  },
+  "cost": 4,
+  "power": 2,
+  "hp": 5,
+  "id": "8b5de66c-706d-404e-a66a-956fa1697c88",
+  "backArt": {
+    "src": "Paul Atreides - Haunted by Dreams (unit) (art).webp",
+    "zoom": 1,
+    "x": 0,
+    "y": 19
+  },
+  "backText": "[Raid 1]\n[On Attack:] Look at the top 3 cards of your deck. Discard 1 of them and put the others back in any order. If the discarded card has an [On Attack] ability, use it as if it were this unit's.",
+  "unique": true,
+  "subtitle": "Haunted by Dreams",
+  "setCode": "DUNE",
+  "language": "EN",
+  "rarity": "C",
+  "number": "001"
+}

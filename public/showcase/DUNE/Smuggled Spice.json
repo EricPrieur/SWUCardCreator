@@ -1,0 +1,19 @@
+{
+  "frameId": "event-cunning",
+  "name": "Smuggled Spice",
+  "trait": "Supply, Trick",
+  "text": "Create a Spice token.\n[Smuggle [[2 Cunning]]]\n[When played using Smuggle:] Create another Spice token.",
+  "setCode": "DUNE",
+  "language": "EN",
+  "rarity": "C",
+  "art": {
+    "src": "Smuggled Spice (art).webp",
+    "zoom": 1,
+    "x": 0,
+    "y": 15,
+    "rotate": 0
+  },
+  "cost": 1,
+  "id": "83566c75-2e6b-4c05-aa73-6b8b58bb2760",
+  "number": "160"
+}

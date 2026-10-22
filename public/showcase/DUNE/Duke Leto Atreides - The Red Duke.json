@@ -1,0 +1,23 @@
+{
+  "frameId": "unit-command-heroism",
+  "name": "Duke Leto Atreides",
+  "trait": "Atreides, Official",
+  "text": "[When Played/When Defeated:] Give an Experience token to each other friendly [{Atreides}] unit.",
+  "setCode": "DUNE",
+  "language": "EN",
+  "rarity": "L",
+  "art": {
+    "src": "Duke Leto Atreides - The Red Duke (art).webp",
+    "zoom": 1,
+    "x": 0,
+    "y": 4,
+    "rotate": 0
+  },
+  "unique": true,
+  "cost": 7,
+  "power": 6,
+  "hp": 7,
+  "subtitle": "The Red Duke",
+  "id": "0fb74fff-fdc6-474a-805a-76ecd8b6b316",
+  "number": "080"
+}

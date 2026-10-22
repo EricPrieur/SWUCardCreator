@@ -1,0 +1,22 @@
+{
+  "frameId": "unit-vigilance",
+  "name": "Bene Gesserit Sister",
+  "trait": "Bene Gesserit",
+  "text": "[Restore 1]\n[When Played:] Choose one:\n• Deal 2 damage to a unit.\n• The next [{Bene Gesserit}] card you play this phase costs [2] less.",
+  "artist": "",
+  "block": "",
+  "setCode": "DUNE",
+  "language": "EN",
+  "rarity": "U",
+  "art": {
+    "src": "Bene Gesserit Sister (art).webp",
+    "zoom": 1,
+    "x": 0,
+    "y": 7
+  },
+  "cost": 4,
+  "power": 3,
+  "hp": 6,
+  "id": "f7e4c8c9-97d7-4912-aad4-44aad461cd29",
+  "number": "056"
+}

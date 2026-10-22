@@ -1,0 +1,20 @@
+{
+  "frameId": "unit-aggression-villainy",
+  "name": "Harkonnen Harvester",
+  "trait": "Harkonnen, Vehicle, Harvester",
+  "text": "[When Played/On Attack:] If you control an [{Arrakis}] base, create a Spice token, then you may deal 2 damage to a friendly unit. If you do, create another Spice token.",
+  "setCode": "DUNE",
+  "language": "EN",
+  "rarity": "U",
+  "art": {
+    "src": "Harkonnen Harvester (art).webp",
+    "zoom": 1,
+    "x": 1,
+    "y": -12
+  },
+  "cost": 5,
+  "power": 4,
+  "hp": 7,
+  "id": "fcf32dbc-eb81-479e-9f1f-82de8524fcbb",
+  "number": "109"
+}

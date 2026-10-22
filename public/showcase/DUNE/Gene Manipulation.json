@@ -1,0 +1,20 @@
+{
+  "frameId": "upgrade-vigilance",
+  "name": "Gene Manipulation",
+  "trait": "Bene Gesserit",
+  "text": "[When Played:] Choose a card in your discard pile that shares a Trait with attached unit. Attached unit gains a [keyword] printed on that card.",
+  "setCode": "DUNE",
+  "language": "EN",
+  "art": {
+    "src": "Gene Manipulation (art).webp",
+    "zoom": 1,
+    "x": -2,
+    "y": -15
+  },
+  "cost": 1,
+  "power": 1,
+  "hp": 1,
+  "id": "3355841f-28ac-4046-a421-abc2b8b8cfb9",
+  "rarity": "C",
+  "number": "050"
+}

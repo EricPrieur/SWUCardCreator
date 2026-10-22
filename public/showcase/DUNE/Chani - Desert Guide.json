@@ -1,0 +1,22 @@
+{
+  "frameId": "unit-cunning-heroism",
+  "name": "Chani",
+  "trait": "Fremen",
+  "text": "While you control an [{Arrakis}] base, this unit gains [Hidden].\nOther friendly [{Fremen}] units get [+1/+0].",
+  "setCode": "DUNE",
+  "language": "EN",
+  "rarity": "R",
+  "unique": true,
+  "cost": 3,
+  "power": 3,
+  "hp": 5,
+  "subtitle": "Desert Guide",
+  "id": "b5a0d3e5-b64e-4a72-a2c7-5305a768032a",
+  "art": {
+    "src": "Chani - Desert Guide (art).webp",
+    "zoom": 1.1,
+    "x": 2,
+    "y": 20
+  },
+  "number": "152"
+}

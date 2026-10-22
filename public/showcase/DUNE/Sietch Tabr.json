@@ -1,0 +1,18 @@
+{
+  "frameId": "base-vigilance-text",
+  "name": "Sietch Tabr",
+  "trait": "Arrakis",
+  "text": "You start the game with a [Spice Token].",
+  "art": {
+    "src": "Sietch Tabr (art).webp",
+    "zoom": 1.1,
+    "x": 0,
+    "y": -15
+  },
+  "hp": 28,
+  "id": "fc7b410b-4957-431e-9fac-7bed7e75443c",
+  "setCode": "DUNE",
+  "language": "EN",
+  "rarity": "C",
+  "number": "023"
+}

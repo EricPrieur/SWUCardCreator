@@ -1,0 +1,20 @@
+{
+  "frameId": "unit-aggression-villainy",
+  "name": "Harkonnen Troops",
+  "trait": "Harkonnen, Trooper",
+  "text": "A deck can have up to 15 copies of this card.\n[When Defeated:] Deal 1 damage to a unit or base.",
+  "setCode": "DUNE",
+  "language": "EN",
+  "rarity": "C",
+  "cost": 1,
+  "power": 2,
+  "hp": 1,
+  "art": {
+    "src": "Harkonnen Troops (art).webp",
+    "zoom": 1,
+    "x": -3,
+    "y": -10
+  },
+  "id": "a50da882-75b5-4399-a035-e760c4f1aa23",
+  "number": "101"
+}

@@ -1,0 +1,20 @@
+{
+  "frameId": "unit-aggression-villainy",
+  "name": "Harkonnen Sergeant",
+  "trait": "Harkonnen, Trooper",
+  "text": "[When Played:] Search the top 5 cards of your deck for a [{Trooper}] unit, reveal it and draw it. You may play it now. It costs [1] less.",
+  "setCode": "DUNE",
+  "language": "EN",
+  "rarity": "U",
+  "art": {
+    "src": "Harkonnen Sergeant (art).webp",
+    "zoom": 1,
+    "x": 0,
+    "y": 0
+  },
+  "power": 2,
+  "hp": 2,
+  "cost": 2,
+  "id": "c837a582-921a-4943-b281-6fe74059c88d",
+  "number": "104"
+}

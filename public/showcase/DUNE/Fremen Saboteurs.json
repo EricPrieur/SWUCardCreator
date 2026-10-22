@@ -1,0 +1,20 @@
+{
+  "frameId": "unit-aggression-heroism",
+  "name": "Fremen Saboteurs",
+  "trait": "Fremen, Trooper",
+  "text": "[Saboteur]\n[When Played/On Attack:] You may defeat an enemy Spice token. If you do, deal 2 damage to a unit or base.\n",
+  "setCode": "DUNE",
+  "language": "EN",
+  "rarity": "U",
+  "art": {
+    "src": "Fremen Saboteurs (art).webp",
+    "zoom": 1,
+    "x": -1,
+    "y": -28
+  },
+  "cost": 4,
+  "power": 3,
+  "hp": 4,
+  "id": "c8547544-fce6-4f97-8d59-63237aa515d1",
+  "number": "121"
+}

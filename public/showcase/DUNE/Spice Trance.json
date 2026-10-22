@@ -1,0 +1,18 @@
+{
+  "frameId": "event-vigilance",
+  "name": "Spice Trance",
+  "trait": "Supply, Innate",
+  "text": "Look at the top 3 cards of your deck. Discard any number of them and put the rest back in any order. Create a Spice token. If you control an [{Arrakis}] base, create another Spice token.",
+  "setCode": "DUNE",
+  "language": "EN",
+  "rarity": "C",
+  "art": {
+    "src": "Spice Trance (art).webp",
+    "zoom": 1,
+    "x": 0,
+    "y": 0
+  },
+  "cost": 2,
+  "id": "85d7f7a4-81b3-4725-8132-ffe4d34b5c7b",
+  "number": "053"
+}

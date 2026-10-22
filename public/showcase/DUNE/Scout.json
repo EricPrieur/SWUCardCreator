@@ -1,0 +1,21 @@
+{
+  "frameId": "unit-cunning",
+  "name": "Scout",
+  "trait": "Trooper",
+  "text": "[When Played:] You may return another friendly non-leader unit that costs 2 or less and isn't named Scout to its owner's hand. If you do, you may play it. It costs [1] less.",
+  "artist": "",
+  "setCode": "DUNE",
+  "language": "EN",
+  "rarity": "C",
+  "art": {
+    "src": "Scout (art).webp",
+    "zoom": 1.1,
+    "x": 6,
+    "y": 0
+  },
+  "cost": 1,
+  "power": 2,
+  "hp": 1,
+  "id": "2b0947c1-3086-4ee9-bbf4-9e2f1c097433",
+  "number": "161"
+}

@@ -1,0 +1,20 @@
+{
+  "frameId": "unit-cunning-heroism",
+  "name": "Fedaykin Death Commando",
+  "trait": "Fremen, Fedaykin, Trooper",
+  "text": "[Grit]\n[When Played:] Give an Experience token to this unit for each other friendly [{Fremen}] unit.\n[When Defeated:] Create a Fremen token.",
+  "setCode": "DUNE",
+  "language": "EN",
+  "rarity": "U",
+  "art": {
+    "src": "Fedaykin Death Commando (art).webp",
+    "zoom": 1,
+    "x": 0,
+    "y": -4
+  },
+  "cost": 3,
+  "power": 2,
+  "hp": 2,
+  "id": "c64a1e84-663f-4c24-b763-c9027c6b29fa",
+  "number": "153"
+}

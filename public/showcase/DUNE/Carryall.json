@@ -1,0 +1,20 @@
+{
+  "frameId": "unit-command-space",
+  "name": "Carryall",
+  "trait": "Vehicle,Transport",
+  "text": "[When Played/On Attack:] You may play a ground [{Vehicle}] unit from your discard pile that was defeated this phase and costs [#5] or less for free.",
+  "setCode": "DUNE",
+  "language": "EN",
+  "rarity": "C",
+  "art": {
+    "src": "Carryall (art).webp",
+    "zoom": 0.9,
+    "x": 2,
+    "y": 10
+  },
+  "cost": 5,
+  "power": 2,
+  "hp": 5,
+  "id": "76de506d-cc7b-4b78-bd3d-c13a4ac6232f",
+  "number": "093"
+}

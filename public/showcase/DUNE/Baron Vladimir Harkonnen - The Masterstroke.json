@@ -1,0 +1,33 @@
+{
+  "frameId": "leader-aggression-villainy",
+  "name": "Baron Vladimir Harkonnen",
+  "trait": "Harkonnen, Official",
+  "text": "[Action [Arrow]:] Defeat a friendly Spice token. If you do, play a card from your resources as if it were played using [Plot]. It costs [1] less. Deal 1 damage to your base.",
+  "artist": "",
+  "setCode": "DUNE",
+  "language": "EN",
+  "rarity": "C",
+  "art": {
+    "src": "Baron Vladimir Harkonnen - The Masterstroke (art).webp",
+    "zoom": 0.9,
+    "x": -36,
+    "y": -41
+  },
+  "backArt": {
+    "src": "Baron Vladimir Harkonnen - The Masterstroke (unit) (art).webp",
+    "zoom": 1.9,
+    "x": -15,
+    "y": -35
+  },
+  "cost": 6,
+  "power": 4,
+  "hp": 8,
+  "backText": "[When Deployed:] Play up to 2 cards from your resources as if they were played using [Plot]. Each costs [1] less.\n[When Defeated:] Deal 2 damage to each unit.",
+  "backName": "Baron Vladimir Harkonnen",
+  "backSubtitle": "The Masterstroke",
+  "backTrait": "Harkonnen, Official",
+  "id": "55476334-d6d4-4f4d-b19b-0d78e146f8b8",
+  "backFrameId": "leader-aggression-villainy-unit",
+  "subtitle": "The Masterstroke",
+  "number": "005"
+}

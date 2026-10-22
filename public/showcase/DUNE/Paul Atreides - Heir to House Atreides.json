@@ -1,0 +1,21 @@
+{
+  "frameId": "unit-command-heroism",
+  "name": "Paul Atreides",
+  "trait": "Atreides",
+  "text": "[On Attack:] Discard the top card of your deck. If its cost is equal to the defender's cost, deal 1 damage to the defender or to a base.",
+  "art": {
+    "src": "Paul Atreides - Heir to House Atreides (art).webp",
+    "zoom": 1,
+    "x": -2,
+    "y": 10
+  },
+  "cost": 2,
+  "power": 3,
+  "hp": 3,
+  "id": "f57c0523-7889-45f4-9a85-83c9dbdd8173",
+  "unique": true,
+  "subtitle": "Heir to House Atreides",
+  "setCode": "DUNE",
+  "language": "EN",
+  "number": "072"
+}

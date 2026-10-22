@@ -1,0 +1,22 @@
+{
+  "frameId": "unit-aggression-villainy",
+  "name": "Harkonnen Flamer",
+  "trait": "Harkonnen, Trooper",
+  "text": "[When Defeated:] Deal 1 damage to each enemy ground unit.",
+  "setCode": "DUNE",
+  "language": "EN",
+  "rarity": "U",
+  "art": {
+    "src": "Harkonnen Flamer (art).webp",
+    "zoom": 1.6,
+    "x": 0,
+    "y": -7,
+    "rotate": 0
+  },
+  "cost": 2,
+  "power": 3,
+  "hp": 2,
+  "artist": "",
+  "id": "605ba3e7-7ad7-429c-a50d-e590eac3727b",
+  "number": "103"
+}

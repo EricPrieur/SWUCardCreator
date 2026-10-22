@@ -1,0 +1,20 @@
+{
+  "frameId": "unit-cunning-space",
+  "name": "Smuggler's 'Thopter",
+  "trait": "Underworld, Vehicle, Fighter",
+  "text": "[When Played:] Create a Spice token. If you control a [{Spacing Guild}] unit, draw a card.\n[Smuggle [[4 Cunning]]]\n[When played using Smuggle:] Create a Spice token.",
+  "setCode": "DUNE",
+  "language": "EN",
+  "rarity": "C",
+  "art": {
+    "src": "Smuggler's 'Thopter (art).webp",
+    "zoom": 1,
+    "x": 0,
+    "y": 0
+  },
+  "cost": 3,
+  "power": 3,
+  "hp": 2,
+  "id": "8c73f01a-8e4d-4013-933a-5225d6447954",
+  "number": "163"
+}

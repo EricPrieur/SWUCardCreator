@@ -1,0 +1,22 @@
+{
+  "frameId": "unit-vigilance-villainy",
+  "name": "Reverend Mother Mohiam",
+  "trait": "Bene Gesserit, Emperor",
+  "text": "[When Played:] Discard any number of cards from your hand. For each card discarded this way, choose a card in each opponent's hand. They discard it.\nOpponents play with their hands revealed.",
+  "setCode": "DUNE",
+  "language": "EN",
+  "rarity": "L",
+  "unique": true,
+  "subtitle": "The Emperor's Truthsayer",
+  "cost": 7,
+  "power": 4,
+  "hp": 8,
+  "art": {
+    "src": "Reverend Mother Mohiam - The Emperor's Truthsayer (art).webp",
+    "zoom": 1,
+    "x": 0,
+    "y": 9
+  },
+  "id": "3f411417-15b6-42be-a7a1-e099e654be5e",
+  "number": "032"
+}
