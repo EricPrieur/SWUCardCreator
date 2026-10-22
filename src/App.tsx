@@ -1014,11 +1014,157 @@ function showcaseEntry(card: Card): ShowcaseCard {
   }
 }
 
-// On this computer only (the dev server): publishes the cards shown, set by set, as
-// showcases. Each card side is drawn as a JPG; the images and the set's list go into
-// public/showcase/<SET>, to be committed to make them part of the site.
-function PublishSets(props: { cards: Card[] }) {
-  const { cards } = props
+// Where Export writes a set: its folder of card images, a .json file per card and the
+// card's art, for Import to bring back, and the set's showcase.json
+type ExportTarget = {
+  // The set's showcase.json already there, to update rather than replace
+  read: (set: string) => Promise<ShowcaseList | null>
+  write: (set: string, file: string, body: Blob | string) => Promise<void>
+  // Once a set is written, with the files it has now
+  finish: (set: string, keep: string[]) => Promise<void>
+  // Where it all went, for the note after an export
+  done: () => Promise<string>
+}
+
+// On this computer (the dev server): public/showcase/<SET>, which is the site once committed
+function devTarget(): ExportTarget {
+  const send = async (set: string, file: string, body: BodyInit, method = 'PUT') => {
+    const response = await fetch(`/__publish/${set}/${encodeURIComponent(file)}`, { method, body })
+    if (!response.ok) throw new Error(await response.text())
+  }
+  return {
+    read: async (set) => {
+      const response = await fetch(`/showcase/${set}/showcase.json`, { cache: 'no-store' })
+      return response.ok ? response.json() : null
+    },
+    write: (set, file, body) => send(set, file, body),
+    finish: (set, keep) => send(set, 'finish', JSON.stringify(keep), 'POST'),
+    done: async () => 'public/showcase',
+  }
+}
+
+type SavePicker = (options: {
+  id?: string
+  suggestedName: string
+  types: { description: string; accept: Record<string, string[]> }[]
+}) => Promise<FileSystemFileHandle>
+const showSaveFilePicker = (window as Window & { showSaveFilePicker?: SavePicker }).showSaveFilePicker
+
+// On the site: one .zip, a folder per set in it. Where the browser can (Chrome and Edge
+// on a computer) it is saved where the person picks, under a name they may change;
+// elsewhere, phones among them, it is downloaded. The place is asked for at once: a
+// browser only shows its Save box straight after a click, not once the cards are drawn.
+async function zipTarget(sets: string[]): Promise<ExportTarget> {
+  const suggestedName = `${sets.length === 1 ? sets[0] : 'Cards'}.zip`
+  const handle = await showSaveFilePicker?.({
+    id: 'export',
+    suggestedName,
+    types: [{ description: 'Zip file', accept: { 'application/zip': ['.zip'] } }],
+  })
+  const files: Record<string, [Uint8Array, { level: 0 | 6 }]> = {}
+  return {
+    read: async () => null,
+    write: async (set, file, body) => {
+      const bytes = typeof body === 'string' ? new TextEncoder().encode(body) : new Uint8Array(await body.arrayBuffer())
+      // A JPG is already as small as it gets
+      files[`${set}/${file}`] = [bytes, { level: file.endsWith('.jpg') ? 0 : 6 }]
+    },
+    finish: async () => {},
+    done: async () => {
+      const { zipSync } = await import('fflate')
+      const zip = new Blob([zipSync(files) as Uint8Array<ArrayBuffer>], { type: 'application/zip' })
+      if (handle) {
+        const writable = await handle.createWritable()
+        await writable.write(zip)
+        await writable.close()
+        return handle.name
+      }
+      const link = document.createElement('a')
+      link.href = URL.createObjectURL(zip)
+      link.download = suggestedName
+      link.click()
+      URL.revokeObjectURL(link.href)
+      return suggestedName
+    },
+  }
+}
+
+// The names a card's art is exported under, beside its image: either kind a browser
+// may have written it as
+const artFileNames = (image: string) => ['webp', 'jpg'].map((extension) => `${image} (art).${extension}`)
+
+// A card ready to be imported anywhere: its art as files of their own, which the card
+// names, rather than in this browser's storage or this computer's art folder
+async function portableCard(
+  card: Card,
+  // The names of its images in the set
+  names: { image: string; back?: string },
+): Promise<{ card: Card; files: { name: string; body: Blob }[] }> {
+  const files: { name: string; body: Blob }[] = []
+  const separate = async (art: Art | undefined, back: boolean) => {
+    if (!art?.src) return art
+    // Shrunk the way uploaded art is, so a large original does not weigh on the export
+    const original = await (await fetch(art.src.startsWith('data:') ? art.src : asset(art.src))).blob()
+    const body = await (await fetch(await readArtFile(new File([original], 'art')))).blob()
+    const name = artFileNames((back && names.back) || names.image)[body.type === 'image/webp' ? 0 : 1]
+    files.push({ name, body })
+    return { ...art, src: name }
+  }
+  return { card: { ...card, art: await separate(card.art, false), backArt: await separate(card.backArt, true) }, files }
+}
+
+// Cards in the files Export wrote: cards' .json and their art, or a .zip of them.
+// Anything else among them is passed over.
+async function cardsInFiles(picked: File[]): Promise<Card[]> {
+  // Every file by its path in a .zip and by its name alone, for a card to find its art
+  const files = new Map<string, Blob>()
+  const add = (path: string, blob: Blob) => {
+    files.set(path, blob)
+    files.set(path.split('/').pop()!, blob)
+  }
+  for (const file of picked) {
+    if (!/\.zip$/i.test(file.name)) {
+      add(file.name, file)
+      continue
+    }
+    const { unzipSync } = await import('fflate')
+    for (const [path, bytes] of Object.entries(unzipSync(new Uint8Array(await file.arrayBuffer())))) {
+      add(path, new Blob([bytes as Uint8Array<ArrayBuffer>]))
+    }
+  }
+  const isCard = (value: unknown): value is Card =>
+    typeof value === 'object' && value !== null && typeof (value as Card).frameId === 'string' && typeof (value as Card).name === 'string'
+  const cards: Card[] = []
+  // Each .json once, under its full path
+  const jsons = new Map<Blob, string>()
+  for (const [path, blob] of files) if (path.endsWith('.json') && !jsons.has(blob)) jsons.set(blob, path)
+  for (const [blob, path] of jsons) {
+    let value: unknown
+    try {
+      value = JSON.parse(await blob.text())
+    } catch {
+      continue
+    }
+    const folder = path.includes('/') ? path.slice(0, path.lastIndexOf('/') + 1) : ''
+    // Art named by the card comes into this browser's storage; art it cannot find is left off
+    const art = async (placed?: Art) => {
+      if (!placed || placed.src.startsWith('data:') || placed.src.startsWith('/')) return placed
+      const file = files.get(folder + placed.src) ?? files.get(placed.src)
+      return file && { ...placed, src: await readArtFile(new File([file], placed.src)) }
+    }
+    for (const card of (Array.isArray(value) ? value : [value]).filter(isCard)) {
+      cards.push({ ...card, art: await art(card.art), backArt: await art(card.backArt) })
+    }
+  }
+  return cards
+}
+
+// Export: the cards shown, set by set. Each card side is drawn as a JPG and kept with
+// a .json of the card, for Import to bring back. On this computer (the dev server)
+// they go into public/showcase/<SET>; on the site into a .zip.
+// Import: brings cards back from those .json or .zip files.
+function CardFiles(props: { cards: Card[]; onImport: (cards: Card[]) => string }) {
+  const { cards, onImport } = props
   const [status, setStatus] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   // Replace the whole set with the cards shown, rather than update the cards shown in it
@@ -1026,17 +1172,16 @@ function PublishSets(props: { cards: Card[] }) {
   // The card side being drawn, off the page
   const [drawing, setDrawing] = useState<{ card: Card; back: boolean } | null>(null)
   const stage = useRef<HTMLDivElement>(null)
+  const picker = useRef<HTMLInputElement>(null)
+  const mode = import.meta.env.DEV ? 'dev' : 'zip'
   const bySet = new Map<string, Card[]>()
   for (const card of cards) {
     const set = card.setCode?.trim().toUpperCase()
-    if (set && /^[A-Z0-9_-]+$/.test(set)) bySet.set(set, [...(bySet.get(set) ?? []), card])
+    // The site's showcases are by set; elsewhere a card without one still goes out
+    const folder = set && /^[A-Z0-9_-]+$/.test(set) ? set : mode === 'dev' ? undefined : 'Cards'
+    if (folder) bySet.set(folder, [...(bySet.get(folder) ?? []), card])
   }
   const skipped = cards.length - [...bySet.values()].reduce((count, list) => count + list.length, 0)
-
-  const send = async (set: string, file: string, body: BodyInit, method = 'PUT') => {
-    const response = await fetch(`/__publish/${set}/${encodeURIComponent(file)}`, { method, body })
-    if (!response.ok) throw new Error(await response.text())
-  }
 
   // Draws one side of a card at the frame's own size, once its pictures have loaded
   const draw = async (card: Card, back: boolean) => {
@@ -1051,63 +1196,129 @@ function PublishSets(props: { cards: Card[] }) {
     return cardImage(el, cardSide(card, back).frame, 'jpg', 1)
   }
 
-  const publish = async () => {
+  const exportCards = async () => {
     setBusy(true)
     try {
+      const target = mode === 'dev' ? devTarget() : await zipTarget([...bySet.keys()])
       for (const [set, list] of bySet) {
-        // What the set has already: the cards published now update it, the rest stay
+        // What the set has already: the cards exported now update it, the rest stay
         // as they are, unless the whole set is being replaced
-        let already: ShowcaseCard[] = []
-        if (!replace) {
-          const response = await fetch(`/showcase/${set}/showcase.json`, { cache: 'no-store' })
-          if (response.ok) already = ((await response.json()) as ShowcaseList).cards
-        }
-        let done = 0
-        for (const card of list) {
-          const sides = findFrame(card.frameId).backId ? [false, true] : [false]
-          for (const back of sides) {
-            setStatus(`Publishing ${set}: card ${done + 1} of ${list.length}…`)
-            const file = `${cardFileName(card, back)}.jpg`
-            await send(set, file, await draw(card, back))
-          }
-          done++
-        }
-        // A card published before keeps its place in the set; a new one goes at the end
+        const already = (!replace && (await target.read(set))?.cards) || []
+        // A card exported before keeps its place in the set; a new one goes at the end
         const cards = [...already]
         for (const entry of list.map(showcaseEntry)) {
           const at = cards.findIndex((other) => (other.id ? other.id === entry.id : other.image === entry.image))
           if (at >= 0) cards[at] = entry
           else cards.push(entry)
         }
+        // Two cards of a name in one set, drafts of a card say, would write over each
+        // other's files: those exported now are numbered, the set's others keep the
+        // names their files have
+        const exporting = (entry: ShowcaseCard) => list.some((card) => card.id === entry.id)
+        const used = new Set<string>()
+        for (const entry of [...cards.filter((entry) => !exporting(entry)), ...cards.filter(exporting)]) {
+          let number = 1
+          const named = (name: string) => (number === 1 ? name : name.replace(/( \(unit\))?$/, ` (${number})$1`))
+          while (used.has(named(entry.image).toLowerCase())) number++
+          entry.image = named(entry.image)
+          entry.back = entry.back && named(entry.back)
+          used.add(entry.image.toLowerCase())
+        }
+        let done = 0
+        for (const card of list) {
+          setStatus(`Exporting ${set}: card ${done + 1} of ${list.length}…`)
+          const names = cards.find((entry) => entry.id === card.id)!
+          const sides = findFrame(card.frameId).backId ? [false, true] : [false]
+          for (const back of sides) await target.write(set, `${back ? names.back : names.image}.jpg`, await draw(card, back))
+          const portable = await portableCard(card, names)
+          for (const { name, body } of portable.files) await target.write(set, name, body)
+          await target.write(set, `${names.image}.json`, JSON.stringify(portable.card, null, 2))
+          done++
+        }
         const showcase: ShowcaseList = { title: set, cards }
-        await send(set, 'showcase.json', JSON.stringify(showcase, null, 2))
-        // The set's images now, which leaves out those of cards renamed since
-        const files = cards.flatMap((card) => [card.image, ...(card.back ? [card.back] : [])].map((name) => `${name}.jpg`))
-        await send(set, 'finish', JSON.stringify([...files, 'showcase.json']), 'POST')
+        await target.write(set, 'showcase.json', JSON.stringify(showcase, null, 2))
+        // The set's files now, which leaves out those of cards renamed since
+        const files = cards.flatMap((card) => [
+          ...[card.image, ...(card.back ? [card.back] : [])].flatMap((name) => [`${name}.jpg`, ...artFileNames(name)]),
+          `${card.image}.json`,
+        ])
+        await target.finish(set, [...files, 'showcase.json'])
       }
+      const where = await target.done()
       setStatus(
-        `${replace ? 'Replaced' : 'Updated'} ${[...bySet].map(([set, list]) => `${set} (${list.length})`).join(', ')} in public/showcase.` +
+        `Exported ${[...bySet].map(([set, list]) => `${set} (${list.length})`).join(', ')} to ${where}.` +
           (skipped ? ` ${skipped} card${skipped === 1 ? '' : 's'} with no set left out.` : ''),
       )
     } catch (error) {
-      setStatus(`Could not publish: ${error instanceof Error ? error.message : error}`)
+      // Closing the Save box is not a failure
+      setStatus(
+        error instanceof DOMException && error.name === 'AbortError'
+          ? null
+          : `Could not export: ${error instanceof Error ? error.message : error}`,
+      )
     }
     setDrawing(null)
     setBusy(false)
   }
 
+  const importFiles = async (files: File[]) => {
+    if (files.length === 0) return
+    setBusy(true)
+    try {
+      const found = await cardsInFiles(files)
+      setStatus(found.length ? onImport(found) : 'No cards in these files')
+    } catch (error) {
+      setStatus(`Could not import: ${error instanceof Error ? error.message : error}`)
+    }
+    setBusy(false)
+  }
+
   return (
-    <div className="publish-sets">
-      <button className="chip" type="button" disabled={busy || bySet.size === 0} onClick={publish}>
-        {busy ? 'Publishing…' : `Publish ${bySet.size === 1 ? `set ${[...bySet.keys()][0]}` : `${bySet.size} sets`}`}
+    <div className="card-files">
+      {cards.length > 0 && (
+        <>
+          <button
+            className="chip"
+            type="button"
+            disabled={busy || bySet.size === 0}
+            title={
+              mode === 'dev'
+                ? 'Into public/showcase on this computer'
+                : 'As a .zip: the card images, and for Import, each card as a .json with its art'
+            }
+            onClick={exportCards}
+          >
+            {busy && drawing ? 'Exporting…' : `Export ${bySet.size === 1 ? [...bySet.keys()][0] : `${bySet.size} sets`}`}
+          </button>
+          {mode === 'dev' && (
+            <label className="toggle filter-label" title="Otherwise the cards shown are added to their set or updated in it">
+              <input type="checkbox" checked={replace} onChange={(event) => setReplace(event.target.checked)} />
+              Replace the whole set
+            </label>
+          )}
+        </>
+      )}
+      <button
+        className="chip"
+        type="button"
+        disabled={busy}
+        title="Cards from the .json or .zip files Export makes"
+        onClick={() => picker.current?.click()}
+      >
+        Import
       </button>
-      <label className="toggle filter-label" title="Otherwise the cards shown are added to their set or updated in it">
-        <input type="checkbox" checked={replace} onChange={(event) => setReplace(event.target.checked)} />
-        Replace the whole set
-      </label>
-      <span className="filter-label">
-        {status ?? 'Dev only: the cards shown go into their sets in public/showcase. Commit to put them on the site.'}
-      </span>
+      <input
+        ref={picker}
+        type="file"
+        accept=".json,.zip,application/json,application/zip"
+        multiple
+        hidden
+        onChange={(event) => {
+          importFiles([...(event.target.files ?? [])])
+          event.target.value = ''
+        }}
+      />
+      {status && <span className="filter-label">{status}</span>}
       {drawing && (
         <div className="publish-stage" ref={stage}>
           <CardFace card={drawing.card} back={drawing.back} />
@@ -1117,8 +1328,13 @@ function PublishSets(props: { cards: Card[] }) {
   )
 }
 
-function Showroom(props: { cards: Card[]; onEdit: (card: Card) => void; onRemove: (card: Card) => void }) {
-  const { cards, onEdit, onRemove } = props
+function Showroom(props: {
+  cards: Card[]
+  onEdit: (card: Card) => void
+  onRemove: (card: Card) => void
+  onImport: (cards: Card[]) => string
+}) {
+  const { cards, onEdit, onRemove, onImport } = props
   const { bar, shown, grid, preview } = useCardFilters(
     'showroom',
     cards.map((card) => ({ item: card, facts: cardFacts(card) })),
@@ -1133,6 +1349,7 @@ function Showroom(props: { cards: Card[]; onEdit: (card: Card) => void; onRemove
         <p>
           Cards saved from the <a href="#creator">Card Creator</a> are displayed here.
         </p>
+        <CardFiles cards={[]} onImport={onImport} />
       </section>
     )
   }
@@ -1140,7 +1357,7 @@ function Showroom(props: { cards: Card[]; onEdit: (card: Card) => void; onRemove
   return (
     <section className="showroom">
       {bar}
-      {import.meta.env.DEV && <PublishSets cards={shown.map(({ item }) => item)} />}
+      <CardFiles cards={shown.map(({ item }) => item)} onImport={onImport} />
 
       {shown.length === 0 ? (
         <p className="empty-note">No card matches these filters.</p>
@@ -2275,6 +2492,22 @@ function App() {
     if (draft.id === card.id) changeDraft({ ...draft, id: undefined })
   }
 
+  // A card imported again replaces the one it was exported from; the others are added.
+  // From the cards as stored, which another tab may have saved to since this one loaded.
+  const importCards = (found: Card[]) => {
+    const next = loadCards()
+    let replaced = 0
+    for (const card of found) {
+      const at = card.id ? next.findIndex((saved) => saved.id === card.id) : -1
+      if (at >= 0) {
+        next[at] = card
+        replaced++
+      } else next.push({ ...card, id: card.id || crypto.randomUUID() })
+    }
+    if (!updateCards(next)) return 'Could not import: this browser has run out of storage. Remove a card or use smaller art.'
+    return `Imported ${found.length} card${found.length === 1 ? '' : 's'}` + (replaced ? `, ${replaced} of them updated` : '')
+  }
+
   const editCard = (card: Card) => {
     changeDraft(card)
     window.location.hash = 'creator'
@@ -2306,7 +2539,7 @@ function App() {
         </nav>
       </header>
 
-      {tab === 'showroom' && <Showroom cards={cards} onEdit={editCard} onRemove={removeCard} />}
+      {tab === 'showroom' && <Showroom cards={cards} onEdit={editCard} onRemove={removeCard} onImport={importCards} />}
       {tab === 'projects' && <Projects />}
       {tab === 'creator' && (
         <CardCreator

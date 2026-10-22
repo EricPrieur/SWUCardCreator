@@ -880,8 +880,8 @@
   cursor: default;
 }
 
-/* The dev-only Publish button under the Showroom's filters */
-.publish-sets {
+/* Export and Import, under the Showroom's filters */
+.card-files {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -889,7 +889,12 @@
   margin: -0.75rem 0 1.75rem;
 }
 
-/* Where a card is drawn for publishing: off the page, at the editor's size */
+.empty .card-files {
+  justify-content: center;
+  margin: 1.5rem 0 0;
+}
+
+/* Where a card is drawn for export: off the page, at the editor's size */
 .publish-stage {
   position: fixed;
   left: -10000px;

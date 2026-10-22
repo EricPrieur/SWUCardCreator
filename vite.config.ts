@@ -49,10 +49,10 @@ function artList(): Plugin {
 
 const showcaseDir = resolve(import.meta.dirname, 'public/showcase')
 
-// For the Showroom's Publish button, on this computer only: writes a set's card
-// images and list into public/showcase/<SET>, from where the site serves them once
-// they are committed. Nothing like it exists on the built site.
-//   PUT  /__publish/<SET>/<file>   a card image or the set's showcase.json
+// For the Showroom's Export button, on this computer only: writes a set's card
+// images, cards and list into public/showcase/<SET>, from where the site serves them
+// once they are committed. The built site exports to a folder or a .zip instead.
+//   PUT  /__publish/<SET>/<file>   a card image, a card's .json or art, or the set's showcase.json
 //   POST /__publish/<SET>/finish   with the files to keep: drops the set's other files
 //                                  and brings public/showcase/index.json up to date
 function publishSets(): Plugin {
@@ -74,7 +74,7 @@ function publishSets(): Plugin {
         req.on('end', () => {
           const body = Buffer.concat(chunks)
           mkdirSync(folder, { recursive: true })
-          if (req.method === 'PUT' && /\.(jpg|json)$/i.test(file)) {
+          if (req.method === 'PUT' && /\.(jpg|webp|json)$/i.test(file)) {
             writeFileSync(resolve(folder, file), body)
             return res.end('ok')
           }
