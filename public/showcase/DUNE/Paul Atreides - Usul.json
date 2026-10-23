@@ -1,0 +1,22 @@
+{
+  "frameId": "unit-command-cunning-heroism",
+  "name": "Paul Atreides",
+  "trait": "Atreides, Fremen",
+  "text": "While you control an [{Arrakis}] base, this unit gains [Hidden].\n[On Attack:] Look at the top card of your deck. You may discard it. If you do and it's a [{Fremen}] card, this unit gets [+2/+0] for this attack.",
+  "setCode": "DUNE",
+  "language": "EN",
+  "rarity": "R",
+  "unique": true,
+  "subtitle": "Usul",
+  "cost": 4,
+  "power": 4,
+  "hp": 6,
+  "art": {
+    "src": "Paul Atreides - Usul (art).webp",
+    "zoom": 1,
+    "x": 0,
+    "y": 12
+  },
+  "id": "a724f31a-73d8-47f7-8c5a-6bc4eb8676a7",
+  "number": "014"
+}

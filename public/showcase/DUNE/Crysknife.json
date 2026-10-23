@@ -1,8 +1,8 @@
 {
   "frameId": "upgrade-aggression",
   "name": "Crysknife",
-  "trait": "Fremen",
-  "text": "Attach to a non-[VEHICLE] unit.\n\nIf attached unit is a [Fremen] it gains [SABOTEUR].",
+  "trait": "Fremen, Item, Weapon",
+  "text": "Attach to a non-[{Vehicle}] unit.\n[When Played:] Deal 1 damage to a ground unit.\nYou may play this upgrade from your discard pile if you attach it to a [{Fremen}] unit.",
   "art": {
     "src": "Crysknife (art).webp",
     "zoom": 1.1,
@@ -12,10 +12,10 @@
   },
   "cost": 1,
   "hp": 0,
-  "power": 2,
+  "power": 1,
   "id": "7484d1ed-3110-4f06-aa0d-5090d4e04815",
   "setCode": "DUNE",
   "language": "EN",
   "rarity": "C",
-  "number": "130"
+  "number": "073"
 }

@@ -1,0 +1,20 @@
+{
+  "frameId": "upgrade-cunning",
+  "name": "Stillsuit",
+  "trait": "Item, Armor",
+  "text": "Attach to a non-[{Vehicle}] unit.\nAttached unit gains [Restore 1], or [Restore 2] instead if it's a [{Fremen}] unit.",
+  "setCode": "DUNE",
+  "language": "EN",
+  "rarity": "C",
+  "cost": 1,
+  "power": 0,
+  "hp": 2,
+  "art": {
+    "src": "Stillsuit (art).webp",
+    "zoom": 1.3,
+    "x": 0,
+    "y": 13
+  },
+  "id": "1d5b1877-1a1c-43b9-b6be-c6216f824ac2",
+  "number": "089"
+}

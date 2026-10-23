@@ -1,0 +1,20 @@
+{
+  "frameId": "unit-command",
+  "name": "Imperial Quartermaster",
+  "trait": "Emperor, Official",
+  "text": "[When Played:] You may pay [2]. If you do, defeat an upgrade.",
+  "setCode": "DUNE",
+  "language": "EN",
+  "rarity": "C",
+  "cost": 4,
+  "power": 4,
+  "hp": 4,
+  "number": "048",
+  "id": "b63da887-2266-4434-bb99-8101a18ecf9c",
+  "art": {
+    "src": "Imperial Quartermaster (art).webp",
+    "zoom": 1.2,
+    "x": 0,
+    "y": -6
+  }
+}

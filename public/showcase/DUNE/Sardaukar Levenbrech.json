@@ -1,0 +1,20 @@
+{
+  "frameId": "unit-command-villainy",
+  "name": "Sardaukar Levenbrech",
+  "trait": "Emperor, Sardaukar, Trooper",
+  "text": "As an additional cost to play this unit, defeat a friendly Spice token.\n[When Played:] You may defeat a non-unique upgrade.",
+  "setCode": "DUNE",
+  "language": "EN",
+  "rarity": "U",
+  "cost": 3,
+  "power": 4,
+  "hp": 3,
+  "id": "744cb873-87dd-4e54-bb3c-58c60700cb11",
+  "number": "034",
+  "art": {
+    "src": "Sardaukar Levenbrech (art).webp",
+    "zoom": 1.2,
+    "x": -1,
+    "y": 18
+  }
+}

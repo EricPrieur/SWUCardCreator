@@ -1,0 +1,21 @@
+{
+  "frameId": "unit-aggression",
+  "name": "Old Artillery",
+  "trait": "Vehicle",
+  "text": "[When Played/On Attack:] Defeat a non-unique upgrade.",
+  "setCode": "DUNE",
+  "language": "EN",
+  "rarity": "U",
+  "art": {
+    "src": "Old Artillery (art).webp",
+    "zoom": 1,
+    "x": 0,
+    "y": -3,
+    "rotate": 0
+  },
+  "cost": 4,
+  "power": 3,
+  "hp": 5,
+  "number": "069",
+  "id": "f0277cdc-6e40-432e-97ad-145ed74c3633"
+}

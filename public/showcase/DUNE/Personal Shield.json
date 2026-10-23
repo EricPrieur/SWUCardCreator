@@ -1,7 +1,7 @@
 {
   "frameId": "upgrade-vigilance",
   "name": "Personal Shield",
-  "trait": "",
+  "trait": "Item, Shield",
   "text": "Attach to a friendly unit.\n[When Played:] If you control an [{Arrakis}] base, defeat attached unit. Otherwise, give a Shield token to attached unit.\n[When the regroup phase starts:] If attached unit has no Shield token, give a Shield token to it.",
   "setCode": "DUNE",
   "language": "EN",
@@ -15,5 +15,6 @@
   "power": 1,
   "hp": 1,
   "id": "5a2433e7-2fcb-4dbf-a09c-2069de8348b6",
-  "number": "054"
+  "number": "030",
+  "rarity": "U"
 }
