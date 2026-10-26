@@ -25,7 +25,8 @@
       "text": "when you play a bene gesserit card: you may exhaust this leader. if you do, exhaust an enemy non-leader ground unit that costs 4 or less. restore 2\nwhen deployed: return a bene gesserit or fremen unit from your discard pile to your hand.\nwhen a friendly spice token is defeated: heal 2 damage from a unit or base.",
       "set": "DUNE",
       "number": "001",
-      "arena": "Ground"
+      "arena": "Ground",
+      "rarity": "C"
     },
     {
       "id": "2fb57847-cfcf-474c-9b75-19d509feb052",
@@ -52,7 +53,8 @@
       "text": "you start the game with a spice token.\naction arrow: play a sardaukar card from your hand, ignoring its additional costs. once each round, when you play a sardaukar card, you may ignore its additional costs.\nwhen deployed: you may play a sardaukar unit from your hand or discard pile for free.\nother friendly sardaukar units gain sentinel.",
       "set": "DUNE",
       "number": "002",
-      "arena": "Ground"
+      "arena": "Ground",
+      "rarity": "C"
     },
     {
       "id": "8b5de66c-706d-404e-a66a-956fa1697c88",
@@ -75,7 +77,8 @@
       "text": "you may look at the top card of your deck at any time.\naction arrow: discard the top card of your deck. then, attack with a unit. if it has the same cost as the discarded card, it gets +2/+0 for this attack. raid 1\non attack: look at the top 3 cards of your deck. discard 1 of them and put the others back in any order. if the discarded card has an on attack ability, use it as if it were this unit's.",
       "set": "DUNE",
       "number": "003",
-      "arena": "Ground"
+      "arena": "Ground",
+      "rarity": "C"
     },
     {
       "id": "9f32c1fe-bf5c-4791-9ea3-fe9c4d18967f",
@@ -100,7 +103,8 @@
       "text": "when you play a unit: you may exhaust this leader and either pay 1 or defeat a friendly spice token. if you do, give an experience token to that unit. if you control another atreides unit, this unit gains sentinel.\nwhen defeated: defeat an enemy non-leader unit.",
       "set": "DUNE",
       "number": "004",
-      "arena": "Ground"
+      "arena": "Ground",
+      "rarity": "R"
     },
     {
       "id": "0eea4382-6661-4450-bdb5-99cbcdc26045",
@@ -125,7 +129,8 @@
       "text": "action arrow: choose a friendly unit. deal 1 damage to it. then, attack with it. it gets +1/+0 for this attack, or +2/+0 instead if it's a harkonnen unit. overwhelm\nwhen another friendly unit attacks: you may deal 1 damage to it. if you do, it gets +1/+0 for this attack, or +2/+0 instead if it's a harkonnen unit.",
       "set": "DUNE",
       "number": "005",
-      "arena": "Ground"
+      "arena": "Ground",
+      "rarity": "C"
     },
     {
       "id": "55476334-d6d4-4f4d-b19b-0d78e146f8b8",
@@ -150,7 +155,8 @@
       "text": "action arrow: defeat a friendly spice token. if you do, play a card from your resources as if it were played using plot. it costs 1 less. deal 1 damage to your base. when deployed: play up to 2 cards from your resources as if they were played using plot. each costs 1 less.\nwhen defeated: deal 2 damage to each unit.",
       "set": "DUNE",
       "number": "006",
-      "arena": "Ground"
+      "arena": "Ground",
+      "rarity": "C"
     },
     {
       "id": "9218a637-8808-4998-b56f-8bc38d6ccffa",
@@ -175,7 +181,8 @@
       "text": "action arrow: defeat a friendly spice token. if you do, choose one:\n• play a card using smuggle. it costs 2 less.\n• give an experience token to a friendly underworld unit. on attack: you may defeat a friendly spice token. if you do, choose one:\n• play a card using smuggle. it costs 2 less.\n• give an experience token to a friendly underworld unit.",
       "set": "DUNE",
       "number": "007",
-      "arena": "Space"
+      "arena": "Space",
+      "rarity": "R"
     },
     {
       "id": "bd745293-96c8-448b-80c7-c7ae304ea2d3",
@@ -200,7 +207,8 @@
       "text": "action 1, arrow: create a fremen token. while you control an arrakis base, this unit gains hidden.\non attack: create a fremen token.",
       "set": "DUNE",
       "number": "008",
-      "arena": "Ground"
+      "arena": "Ground",
+      "rarity": "C"
     },
     {
       "id": "fc7b410b-4957-431e-9fac-7bed7e75443c",
@@ -215,7 +223,8 @@
       ],
       "text": "you start the game with a spice token.",
       "set": "DUNE",
-      "number": "009"
+      "number": "009",
+      "rarity": "C"
     },
     {
       "id": "003c87be-36d7-4aae-813f-c949e1c29ae1",
@@ -230,7 +239,8 @@
       ],
       "text": "you start the game with a spice token.",
       "set": "DUNE",
-      "number": "010"
+      "number": "010",
+      "rarity": "C"
     },
     {
       "id": "57e8ef64-ebff-4e73-92ea-9ea72f6624d8",
@@ -245,7 +255,8 @@
       ],
       "text": "you start the game with a spice token.",
       "set": "DUNE",
-      "number": "011"
+      "number": "011",
+      "rarity": "C"
     },
     {
       "id": "ede5069e-07b3-459b-b0ea-035771cda18a",
@@ -260,7 +271,8 @@
       ],
       "text": "you start the game with a spice token.",
       "set": "DUNE",
-      "number": "012"
+      "number": "012",
+      "rarity": "C"
     },
     {
       "id": "cfcaca80-9e13-460c-89d3-021a218ff5af",
@@ -281,7 +293,8 @@
       "text": "this unit gains each keyword printed on fremen and bene gesserit units in your discard pile.",
       "set": "DUNE",
       "number": "013",
-      "arena": "Ground"
+      "arena": "Ground",
+      "rarity": "L"
     },
     {
       "id": "a724f31a-73d8-47f7-8c5a-6bc4eb8676a7",
@@ -302,7 +315,8 @@
       "text": "while you control an arrakis base, this unit gains hidden.\non attack: look at the top card of your deck. you may discard it. if you do and it's a fremen card, this unit gets +2/+0 for this attack.",
       "set": "DUNE",
       "number": "014",
-      "arena": "Ground"
+      "arena": "Ground",
+      "rarity": "R"
     },
     {
       "id": "455a5bb1-a533-49c5-8a0e-aea9434c45df",
@@ -322,7 +336,8 @@
       "text": "when played/on attack: you may defeat a friendly spice token. if you do, heal 3 damage from your base.\nwhen defeated: create 2 spice tokens.",
       "set": "DUNE",
       "number": "015",
-      "arena": "Ground"
+      "arena": "Ground",
+      "rarity": "R"
     },
     {
       "id": "a30de52b-5eea-4820-9878-d0a527224299",
@@ -342,7 +357,8 @@
       "text": "when played: choose a fremen or bene gesserit unit in your discard pile other than a sietch reverend mother. use its when played ability as if it were this unit's.\nwhen defeated: return another fremen or bene gesserit unit from your discard pile to your hand.",
       "set": "DUNE",
       "number": "016",
-      "arena": "Ground"
+      "arena": "Ground",
+      "rarity": "R"
     },
     {
       "id": "ba3e5657-3bbe-45ef-907d-d553845d74a0",
@@ -359,7 +375,8 @@
       ],
       "text": "choose one:\n• defeat an upgrade. if it was a fortification, draw a card.\n• pay 3. if you do, defeat a non-leader unit and deal 3 damage to your base.",
       "set": "DUNE",
-      "number": "017"
+      "number": "017",
+      "rarity": "R"
     },
     {
       "id": "f80f1ac5-eac8-42e1-85df-a934743febb0",
@@ -379,7 +396,8 @@
       ],
       "text": "create 2 fremen tokens and ready them.",
       "set": "DUNE",
-      "number": "018"
+      "number": "018",
+      "rarity": "R"
     },
     {
       "id": "3f411417-15b6-42be-a7a1-e099e654be5e",
@@ -396,10 +414,11 @@
         "Bene Gesserit",
         "Emperor"
       ],
-      "text": "when played: discard any number of cards from your hand. for each card discarded this way, choose a card in each opponent's hand. they discard it.\nopponents play with their hands revealed.",
+      "text": "opponents play with their hands revealed.\nwhen played: discard any number of cards from your hand. for each card discarded this way, choose a card in each opponent's hand. they discard it.",
       "set": "DUNE",
       "number": "019",
-      "arena": "Ground"
+      "arena": "Ground",
+      "rarity": "L"
     },
     {
       "id": "83aa12f2-2533-43de-8416-029bcbf1f53d",
@@ -416,7 +435,8 @@
       ],
       "text": "choose an enemy non-leader unit. its controller may discard 2 cards from their hand. if they don't, defeat that unit.",
       "set": "DUNE",
-      "number": "020"
+      "number": "020",
+      "rarity": "R"
     },
     {
       "id": "f4f2b2ec-4914-4a47-bd86-9c4da3697744",
@@ -433,7 +453,8 @@
       ],
       "text": "attach to a non-vehicle, non-leader unit.\nattached unit gains: \"when this unit becomes exhausted, defeat it unless its controller discards a card from their hand.\"",
       "set": "DUNE",
-      "number": "021"
+      "number": "021",
+      "rarity": "U"
     },
     {
       "id": "b8c8468e-bac1-42e2-abb0-57b317523ad7",
@@ -452,7 +473,8 @@
       "text": "sentinel\nwhen defeated: give an experience token to a friendly unit.",
       "set": "DUNE",
       "number": "022",
-      "arena": "Ground"
+      "arena": "Ground",
+      "rarity": "U"
     },
     {
       "id": "60353644-d070-42b3-b22d-ba4e441f39fb",
@@ -469,7 +491,8 @@
       "text": "restore 1\nwhen played: each opponent discards a card from their hand.",
       "set": "DUNE",
       "number": "023",
-      "arena": "Ground"
+      "arena": "Ground",
+      "rarity": "C"
     },
     {
       "id": "bad799dd-a5f5-4d51-a7a6-928bca64ea46",
@@ -486,7 +509,8 @@
       "text": "when played: if you control an arrakis base, create a fremen token.",
       "set": "DUNE",
       "number": "024",
-      "arena": "Ground"
+      "arena": "Ground",
+      "rarity": "C"
     },
     {
       "id": "8ae00f62-0697-49d0-b325-241c336d4e50",
@@ -503,7 +527,8 @@
       "text": "when played: you may defeat an upgrade attached to an exhausted unit.",
       "set": "DUNE",
       "number": "025",
-      "arena": "Ground"
+      "arena": "Ground",
+      "rarity": "C"
     },
     {
       "id": "5340e3f4-3941-402c-ae35-7cc97cd0ec57",
@@ -521,7 +546,8 @@
       "text": "saboteur\nhidden\non attack: if this unit is attacking a base, that base's controller discards a card from their hand.",
       "set": "DUNE",
       "number": "026",
-      "arena": "Ground"
+      "arena": "Ground",
+      "rarity": "U"
     },
     {
       "id": "f7e4c8c9-97d7-4912-aad4-44aad461cd29",
@@ -538,7 +564,46 @@
       "text": "restore 1\nwhen played: choose one:\n• deal 2 damage to a unit.\n• the next bene gesserit card you play this phase costs 2 less.",
       "set": "DUNE",
       "number": "027",
-      "arena": "Ground"
+      "arena": "Ground",
+      "rarity": "U"
+    },
+    {
+      "id": "a11b3db0-22ce-4c86-8a19-e7eb86ac884a",
+      "image": "Prana-Bindu Adept",
+      "name": "Prana-Bindu Adept",
+      "type": "Unit",
+      "aspects": [
+        "Vigilance"
+      ],
+      "cost": 4,
+      "traits": [
+        "Bene Gesserit"
+      ],
+      "text": "sentinel\nwhen this unit is attacked: discard the top card of your deck. if it's a bene gesserit card, the attacking unit gets -2/-0 for this attack.",
+      "set": "DUNE",
+      "number": "028",
+      "arena": "Ground",
+      "rarity": "C"
+    },
+    {
+      "id": "a5c93f7f-de1c-48d4-b0d8-b350c63e036e",
+      "image": "Lady Margot Fenring - Agent of the Sisterhood",
+      "name": "Lady Margot Fenring",
+      "subtitle": "Agent of the Sisterhood",
+      "type": "Unit",
+      "aspects": [
+        "Vigilance"
+      ],
+      "cost": 6,
+      "traits": [
+        "Bene Gesserit",
+        "Emperor"
+      ],
+      "text": "when played/on attack: choose an enemy non-leader unit. you may discard a card from your hand. if you do and it costs 4 or less, take control of it. otherwise, exhaust it. at the start of the regroup phase, its owner takes control of it.",
+      "set": "DUNE",
+      "number": "029",
+      "arena": "Ground",
+      "rarity": "L"
     },
     {
       "id": "85d7f7a4-81b3-4725-8132-ffe4d34b5c7b",
@@ -555,7 +620,25 @@
       ],
       "text": "look at the top 3 cards of your deck. discard any number of them and put the rest back in any order. create a spice token. if you control an arrakis base, create another spice token.",
       "set": "DUNE",
-      "number": "028"
+      "number": "030",
+      "rarity": "C"
+    },
+    {
+      "id": "97c40df3-3fac-4466-8783-7b3a26918f95",
+      "image": "Seduction",
+      "name": "Seduction",
+      "type": "Event",
+      "aspects": [
+        "Vigilance"
+      ],
+      "cost": 4,
+      "traits": [
+        "Bene Gesserit"
+      ],
+      "text": "choose an enemy non-leader unit. if it costs the same as or less than a friendly bene gesserit unit, take control of it and ready it. otherwise, exhaust it. at the start of the regroup phase, its owner takes control of it.",
+      "set": "DUNE",
+      "number": "031",
+      "rarity": "R"
     },
     {
       "id": "3355841f-28ac-4046-a421-abc2b8b8cfb9",
@@ -571,7 +654,25 @@
       ],
       "text": "when played: choose a card in your discard pile that shares a trait with attached unit. attached unit gains a keyword printed on that card.",
       "set": "DUNE",
-      "number": "029"
+      "number": "032",
+      "rarity": "C"
+    },
+    {
+      "id": "691fb66f-1050-4d4c-8c4c-85707518d949",
+      "image": "Pawn of the Sisterhood",
+      "name": "Pawn of the Sisterhood",
+      "type": "Upgrade",
+      "aspects": [
+        "Vigilance"
+      ],
+      "cost": 2,
+      "traits": [
+        "Bene Gesserit"
+      ],
+      "text": "attach to a non-bene gesserit, non-vehicle unit.\nattached unit gains sentinel.",
+      "set": "DUNE",
+      "number": "033",
+      "rarity": "U"
     },
     {
       "id": "5a2433e7-2fcb-4dbf-a09c-2069de8348b6",
@@ -588,7 +689,8 @@
       ],
       "text": "attach to a friendly unit.\nwhen played: if you control an arrakis base, defeat attached unit. otherwise, give a shield token to attached unit.\nwhen the regroup phase starts: if attached unit has no shield token, give a shield token to it.",
       "set": "DUNE",
-      "number": "030"
+      "number": "034",
+      "rarity": "U"
     },
     {
       "id": "eea02b47-ea14-405e-b123-33bccfd3c546",
@@ -604,7 +706,8 @@
       ],
       "text": "fortify\nattached base gains: \"enemy ground units get -1/-0 while attacking bases. \nyour units can't be defeated by enemy shai-hulud card abilities.\"",
       "set": "DUNE",
-      "number": "031"
+      "number": "035",
+      "rarity": "R"
     },
     {
       "id": "9f59a5c3-b53d-492a-8bef-dd80cbc56c45",
@@ -623,8 +726,9 @@
       ],
       "text": "as an additional cost to play this unit, defeat a friendly spice token.",
       "set": "DUNE",
-      "number": "032",
-      "arena": "Ground"
+      "number": "036",
+      "arena": "Ground",
+      "rarity": "C"
     },
     {
       "id": "972f8a5d-d416-4210-909d-341c7ff2bd45",
@@ -643,8 +747,9 @@
       ],
       "text": "as an additional cost to play this unit, defeat a friendly spice token.\nwhen played: give an experience token to another friendly trooper unit. if it's a sardaukar unit, ready it.",
       "set": "DUNE",
-      "number": "033",
-      "arena": "Ground"
+      "number": "037",
+      "arena": "Ground",
+      "rarity": "U"
     },
     {
       "id": "744cb873-87dd-4e54-bb3c-58c60700cb11",
@@ -663,8 +768,9 @@
       ],
       "text": "as an additional cost to play this unit, defeat a friendly spice token.\nwhen played: you may defeat a non-unique upgrade.",
       "set": "DUNE",
-      "number": "034",
-      "arena": "Ground"
+      "number": "038",
+      "arena": "Ground",
+      "rarity": "U"
     },
     {
       "id": "57613afc-674d-40aa-afbc-5dadccaca9d7",
@@ -683,8 +789,27 @@
       ],
       "text": "as an additional cost to play this unit, defeat a friendly spice token.\nwhen played: search the top 10 cards of your deck for any number of sardaukar units and reveal them. you may defeat up to 3 friendly spice tokens. play any number of the revealed units with a combined cost of 2 or less for each spice token defeated this way, for free, ignoring their additional costs.",
       "set": "DUNE",
-      "number": "035",
-      "arena": "Ground"
+      "number": "039",
+      "arena": "Ground",
+      "rarity": "L"
+    },
+    {
+      "id": "ef288baa-d8ab-48ff-8e07-9b1558de7edb",
+      "image": "Sardaukar Vow",
+      "name": "Sardaukar Vow",
+      "type": "Upgrade",
+      "aspects": [
+        "Command",
+        "Villainy"
+      ],
+      "cost": 2,
+      "traits": [
+        "Sardaukar"
+      ],
+      "text": "attach to a non-vehicle unit.\nattached unit gains sentinel.\nwhen played: if attached unit is a sardaukar unit, give a shield token to it.",
+      "set": "DUNE",
+      "number": "040",
+      "rarity": "U"
     },
     {
       "id": "e054215f-523f-41c0-ad88-92761d8cd392",
@@ -702,8 +827,9 @@
       ],
       "text": "while you control another atreides unit, this unit gains restore 1.",
       "set": "DUNE",
-      "number": "036",
-      "arena": "Ground"
+      "number": "041",
+      "arena": "Ground",
+      "rarity": "C"
     },
     {
       "id": "f57c0523-7889-45f4-9a85-83c9dbdd8173",
@@ -721,8 +847,9 @@
       ],
       "text": "on attack: discard the top card of your deck. if its cost is equal to the defender's cost, deal 1 damage to the defender or to a base.",
       "set": "DUNE",
-      "number": "037",
-      "arena": "Ground"
+      "number": "042",
+      "arena": "Ground",
+      "rarity": "U"
     },
     {
       "id": "2e62adc0-fa78-44fe-8ad8-24eb7397db11",
@@ -741,8 +868,9 @@
       ],
       "text": "when played: you may deal 1 damage to a ground unit.",
       "set": "DUNE",
-      "number": "038",
-      "arena": "Space"
+      "number": "043",
+      "arena": "Space",
+      "rarity": "C"
     },
     {
       "id": "21a01460-8651-41fb-bfb6-d8c836a92162",
@@ -760,8 +888,9 @@
       ],
       "text": "while you control another atreides unit, this unit gains sentinel.\nwhen defeated: give an experience token to another friendly atreides unit.",
       "set": "DUNE",
-      "number": "039",
-      "arena": "Ground"
+      "number": "044",
+      "arena": "Ground",
+      "rarity": "C"
     },
     {
       "id": "a4451be5-74d6-47ca-88ab-e6244af0f228",
@@ -779,8 +908,9 @@
       ],
       "text": "on attack: defeat all upgrades on the defending unit.",
       "set": "DUNE",
-      "number": "040",
-      "arena": "Ground"
+      "number": "045",
+      "arena": "Ground",
+      "rarity": "U"
     },
     {
       "id": "545c197a-a169-40f8-a066-7bc6a0e02752",
@@ -792,16 +922,17 @@
         "Command",
         "Heroism"
       ],
-      "cost": 3,
+      "cost": 4,
       "traits": [
         "Atreides",
         "Ginaz",
         "Trooper"
       ],
-      "text": "when defeated: if this unit was defending, you may defeat the attacking unit.",
+      "text": "sentinel\nwhen defeated: if this unit was defending and you control paul atreides or lady jessica, you may defeat the attacking unit.",
       "set": "DUNE",
-      "number": "041",
-      "arena": "Ground"
+      "number": "046",
+      "arena": "Ground",
+      "rarity": "U"
     },
     {
       "id": "13264028-8ef9-4e01-ae64-58dda1d403f2",
@@ -820,28 +951,9 @@
       ],
       "text": "saboteur\nwhen played/on attack: give an experience token to another friendly atreides unit.",
       "set": "DUNE",
-      "number": "042",
-      "arena": "Ground"
-    },
-    {
-      "id": "26bb822f-2e58-4918-856a-ff80b4fcef7e",
-      "image": "Lady Jessica - Mother of the Kwisatz Haderach",
-      "name": "Lady Jessica",
-      "subtitle": "Mother of the Kwisatz Haderach",
-      "type": "Unit",
-      "aspects": [
-        "Command",
-        "Heroism"
-      ],
-      "cost": 5,
-      "traits": [
-        "Bene Gesserit",
-        "Atreides"
-      ],
-      "text": "restore 2\nwhen played/on attack: look at an opponent's hand and name a card. this phase, opponents can't play the named card. draw a card.",
-      "set": "DUNE",
-      "number": "043",
-      "arena": "Ground"
+      "number": "047",
+      "arena": "Ground",
+      "rarity": "R"
     },
     {
       "id": "647a0827-a307-443d-b941-7e52eed5ed39",
@@ -861,8 +973,30 @@
       ],
       "text": "when played: draw 2 cards, then put a card from your hand on the top or bottom of your deck or discard it.\non attack: look at an opponent's hand. you may discard an event from it.",
       "set": "DUNE",
-      "number": "044",
-      "arena": "Ground"
+      "number": "048",
+      "arena": "Ground",
+      "rarity": "R"
+    },
+    {
+      "id": "26bb822f-2e58-4918-856a-ff80b4fcef7e",
+      "image": "Lady Jessica - Mother of the Kwisatz Haderach",
+      "name": "Lady Jessica",
+      "subtitle": "Mother of the Kwisatz Haderach",
+      "type": "Unit",
+      "aspects": [
+        "Command",
+        "Heroism"
+      ],
+      "cost": 6,
+      "traits": [
+        "Bene Gesserit",
+        "Atreides"
+      ],
+      "text": "restore 3\nwhen played/on attack: look at an opponent's hand and name a card. this phase, opponents can't play the named card. draw a card.",
+      "set": "DUNE",
+      "number": "049",
+      "arena": "Ground",
+      "rarity": "L"
     },
     {
       "id": "0fb74fff-fdc6-474a-805a-76ecd8b6b316",
@@ -881,8 +1015,9 @@
       ],
       "text": "when played/when defeated: give an experience token to each other friendly atreides unit.",
       "set": "DUNE",
-      "number": "045",
-      "arena": "Ground"
+      "number": "050",
+      "arena": "Ground",
+      "rarity": "L"
     },
     {
       "id": "1b21e154-0608-4cf0-a138-2852a9933159",
@@ -899,7 +1034,26 @@
       ],
       "text": "you may defeat a friendly ground vehicle unit, any number of friendly spice tokens, or both. create 2 fremen tokens if you defeated a unit this way, plus 1 for each spice token defeated this way.",
       "set": "DUNE",
-      "number": "046"
+      "number": "051",
+      "rarity": "R"
+    },
+    {
+      "id": "ad5da231-ec92-461b-bd4d-7fc70413b7fa",
+      "image": "Sworn Sword",
+      "name": "Sworn Sword",
+      "type": "Upgrade",
+      "aspects": [
+        "Command",
+        "Heroism"
+      ],
+      "cost": 2,
+      "traits": [
+        "Atreides"
+      ],
+      "text": "attach to a non-vehicle unit.\nattached unit gains sentinel and the atreides trait.\nwhen played: if attached unit has the atreides trait printed on it, give an experience token to it.",
+      "set": "DUNE",
+      "number": "052",
+      "rarity": "C"
     },
     {
       "id": "7e3fc552-6c87-4d05-913f-17f5ab9f2f47",
@@ -916,8 +1070,9 @@
       ],
       "text": "hidden\nwhen played/on attack: look at the top card of an opponent's deck. you may put it on the bottom of their deck or discard it.",
       "set": "DUNE",
-      "number": "047",
-      "arena": "Ground"
+      "number": "053",
+      "arena": "Ground",
+      "rarity": "C"
     },
     {
       "id": "b63da887-2266-4434-bb99-8101a18ecf9c",
@@ -934,8 +1089,9 @@
       ],
       "text": "when played: you may pay 2. if you do, defeat an upgrade.",
       "set": "DUNE",
-      "number": "048",
-      "arena": "Ground"
+      "number": "054",
+      "arena": "Ground",
+      "rarity": "C"
     },
     {
       "id": "3f4a5f78-4647-438a-b66e-31c29de340b5",
@@ -952,8 +1108,9 @@
       ],
       "text": "when played/on attack: if you control an arrakis base, create a spice token.\n\nwhen the regroup phase starts: you may defeat 3 friendly spice tokens. if you do, put the top card of your deck into play as a resource.",
       "set": "DUNE",
-      "number": "049",
-      "arena": "Ground"
+      "number": "055",
+      "arena": "Ground",
+      "rarity": "C"
     },
     {
       "id": "76de506d-cc7b-4b78-bd3d-c13a4ac6232f",
@@ -970,8 +1127,9 @@
       ],
       "text": "when played/on attack: you may play a ground vehicle unit from your discard pile that was defeated this phase and costs #5 or less for free.",
       "set": "DUNE",
-      "number": "050",
-      "arena": "Space"
+      "number": "056",
+      "arena": "Space",
+      "rarity": "C"
     },
     {
       "id": "289c0ad6-7185-44c0-904c-b721af6ee10e",
@@ -987,7 +1145,8 @@
       ],
       "text": "create 3 spice tokens. if you control an arrakis base, create 4 spice tokens instead. each opponent creates a spice token.",
       "set": "DUNE",
-      "number": "051"
+      "number": "057",
+      "rarity": "C"
     },
     {
       "id": "a50da882-75b5-4399-a035-e760c4f1aa23",
@@ -1005,8 +1164,9 @@
       ],
       "text": "a deck can have up to 15 copies of this card.\nwhen defeated: deal 1 damage to a unit or base.",
       "set": "DUNE",
-      "number": "052",
-      "arena": "Ground"
+      "number": "058",
+      "arena": "Ground",
+      "rarity": "C"
     },
     {
       "id": "f9d41a1c-ed50-4f7e-9f89-a8de4964c490",
@@ -1019,12 +1179,14 @@
       ],
       "cost": 1,
       "traits": [
+        "Harkonnen",
         "Drone"
       ],
-      "text": "#elusive (can't be chosen as a target for an attack.)\nsaboteur\nwhen a non-leader ground unit enters play: arrow and defeat this unit. if you do, deal 3 damage to that unit.",
+      "text": "when an enemy ground unit attacks: defeat this unit. if you do, deal 3 damage to the attacking unit.",
       "set": "DUNE",
-      "number": "053",
-      "arena": "Ground"
+      "number": "059",
+      "arena": "Ground",
+      "rarity": "C"
     },
     {
       "id": "605ba3e7-7ad7-429c-a50d-e590eac3727b",
@@ -1042,8 +1204,9 @@
       ],
       "text": "when defeated: deal 1 damage to each enemy ground unit.",
       "set": "DUNE",
-      "number": "054",
-      "arena": "Ground"
+      "number": "060",
+      "arena": "Ground",
+      "rarity": "U"
     },
     {
       "id": "c837a582-921a-4943-b281-6fe74059c88d",
@@ -1061,8 +1224,9 @@
       ],
       "text": "when played: search the top 5 cards of your deck for a trooper unit, reveal it and draw it. you may play it now. it costs 1 less.",
       "set": "DUNE",
-      "number": "055",
-      "arena": "Ground"
+      "number": "061",
+      "arena": "Ground",
+      "rarity": "U"
     },
     {
       "id": "10c9c976-6cb2-4091-84fb-7824c40da68e",
@@ -1081,8 +1245,9 @@
       ],
       "text": "grit",
       "set": "DUNE",
-      "number": "056",
-      "arena": "Ground"
+      "number": "062",
+      "arena": "Ground",
+      "rarity": "R"
     },
     {
       "id": "a2e50bfd-efeb-48fb-92af-1cb96ef98eca",
@@ -1101,8 +1266,9 @@
       ],
       "text": "whenever a friendly harkonnen unit is defeated, create a spice token. use this ability only once each round.",
       "set": "DUNE",
-      "number": "057",
-      "arena": "Ground"
+      "number": "063",
+      "arena": "Ground",
+      "rarity": "U"
     },
     {
       "id": "27bb6ad3-ad8e-4de3-aeb9-0066913132f2",
@@ -1121,8 +1287,9 @@
       ],
       "text": "friendly trooper units gain raid 1.",
       "set": "DUNE",
-      "number": "058",
-      "arena": "Space"
+      "number": "064",
+      "arena": "Space",
+      "rarity": "U"
     },
     {
       "id": "fcf32dbc-eb81-479e-9f1f-82de8524fcbb",
@@ -1141,8 +1308,9 @@
       ],
       "text": "when played/on attack: if you control an arrakis base, create a spice token, then you may deal 2 damage to a friendly unit. if you do, create another spice token.",
       "set": "DUNE",
-      "number": "059",
-      "arena": "Ground"
+      "number": "065",
+      "arena": "Ground",
+      "rarity": "U"
     },
     {
       "id": "fb538d7b-bb48-4147-8aee-0f92e7febf53",
@@ -1161,8 +1329,9 @@
       ],
       "text": "when played: draw 2 cards, then put a card from your hand on the top or bottom of your deck or discard it.\nplot\nwhen played using plot: give a weakness token to each enemy unit. then, defeat this unit.",
       "set": "DUNE",
-      "number": "060",
-      "arena": "Ground"
+      "number": "066",
+      "arena": "Ground",
+      "rarity": "R"
     },
     {
       "id": "0259bc37-e0a4-4b2c-8b49-21bb04637b54",
@@ -1179,7 +1348,8 @@
       ],
       "text": "choose one:\n• defeat an upgrade.\n• deal 2 damage to a base.",
       "set": "DUNE",
-      "number": "061"
+      "number": "067",
+      "rarity": "U"
     },
     {
       "id": "f81a4036-4ca9-4ecc-bcc6-9a7a5a6487d2",
@@ -1197,7 +1367,8 @@
       ],
       "text": "you may defeat any number of friendly spice tokens and friendly harkonnen units. deal x damage divided as you choose among any number of units. x is the number of friendly harkonnen units, plus 2 for each spice token and unit defeated this way.",
       "set": "DUNE",
-      "number": "062"
+      "number": "068",
+      "rarity": "R"
     },
     {
       "id": "1807fe62-16d2-4ac3-b0de-3f80298c6157",
@@ -1215,7 +1386,8 @@
       ],
       "text": "fortify\nwhile you control an arrakis base, if you would create a spice token, you may create 2 spice tokens instead. if you do, deal 1 damage to attached base.\nharvester units you play cost 1 less.",
       "set": "DUNE",
-      "number": "063"
+      "number": "069",
+      "rarity": "R"
     },
     {
       "id": "48449f2c-fdcc-4c8d-9eff-1f0280b64cf5",
@@ -1233,8 +1405,9 @@
       ],
       "text": "on attack: if you control another fremen unit, you may defeat an enemy spice token. ",
       "set": "DUNE",
-      "number": "064",
-      "arena": "Ground"
+      "number": "070",
+      "arena": "Ground",
+      "rarity": "U"
     },
     {
       "id": "c8547544-fce6-4f97-8d59-63237aa515d1",
@@ -1252,8 +1425,9 @@
       ],
       "text": "saboteur\nwhen played/on attack: you may defeat an enemy spice token. if you do, deal 2 damage to a unit or base.\n",
       "set": "DUNE",
-      "number": "065",
-      "arena": "Ground"
+      "number": "071",
+      "arena": "Ground",
+      "rarity": "U"
     },
     {
       "id": "d9cd0927-2c13-4cfd-b6d5-6f247e8ef56b",
@@ -1270,8 +1444,9 @@
       ],
       "text": "you may play this unit from your hand or discard pile for free by defeating a friendly spice token.",
       "set": "DUNE",
-      "number": "066",
-      "arena": "Ground"
+      "number": "072",
+      "arena": "Ground",
+      "rarity": "U"
     },
     {
       "id": "1a8f71ce-8cef-451c-97c1-53ffeb094a2f",
@@ -1288,8 +1463,9 @@
       ],
       "text": "on attack: you may defeat a friendly spice token. if you do, this unit gets +2/+0 for this attack.",
       "set": "DUNE",
-      "number": "067",
-      "arena": "Ground"
+      "number": "073",
+      "arena": "Ground",
+      "rarity": "U"
     },
     {
       "id": "650c2968-1ee1-476e-b340-a4d1c8167720",
@@ -1306,8 +1482,9 @@
       ],
       "text": "ambush\non attack: if you control another ginaz unit, this unit deals its combat damage before the defender.",
       "set": "DUNE",
-      "number": "068",
-      "arena": "Ground"
+      "number": "074",
+      "arena": "Ground",
+      "rarity": "U"
     },
     {
       "id": "f0277cdc-6e40-432e-97ad-145ed74c3633",
@@ -1323,8 +1500,9 @@
       ],
       "text": "when played/on attack: defeat a non-unique upgrade.",
       "set": "DUNE",
-      "number": "069",
-      "arena": "Ground"
+      "number": "075",
+      "arena": "Ground",
+      "rarity": "U"
     },
     {
       "id": "770780f5-6d3b-4899-9e76-924fbeb1dd7c",
@@ -1340,7 +1518,8 @@
       ],
       "text": "attack with a ground unit, even if it's exhausted. it can't attack bases for this attack. if it's a ginaz unit, it deals its combat damage before the defender.",
       "set": "DUNE",
-      "number": "070"
+      "number": "076",
+      "rarity": "C"
     },
     {
       "id": "bee6cf10-abef-4eec-9398-c9f79a5ebf7d",
@@ -1356,7 +1535,8 @@
       ],
       "text": "deal 2 damage to a unit. then, you may defeat a friendly non-leader unit. if you do, deal damage equal to its power to the same unit.",
       "set": "DUNE",
-      "number": "071"
+      "number": "077",
+      "rarity": "C"
     },
     {
       "id": "df991edb-41a1-485e-b3ed-a9553a96f4f3",
@@ -1373,7 +1553,8 @@
       ],
       "text": "deal 2 damage to a ground unit. if that unit is defeated this way, create a spice token.",
       "set": "DUNE",
-      "number": "072"
+      "number": "078",
+      "rarity": "C"
     },
     {
       "id": "7484d1ed-3110-4f06-aa0d-5090d4e04815",
@@ -1391,7 +1572,8 @@
       ],
       "text": "attach to a non-vehicle unit.\nwhen played: deal 1 damage to a ground unit.\nyou may play this upgrade from your discard pile if you attach it to a fremen unit.",
       "set": "DUNE",
-      "number": "073"
+      "number": "079",
+      "rarity": "C"
     },
     {
       "id": "0cd1cd92-e363-4058-8c5c-6dcb216491ad",
@@ -1409,8 +1591,9 @@
       ],
       "text": "while you control an arrakis base, this unit gains hidden.",
       "set": "DUNE",
-      "number": "074",
-      "arena": "Ground"
+      "number": "080",
+      "arena": "Ground",
+      "rarity": "C"
     },
     {
       "id": "b8a0ba1b-4f51-40f2-8681-59ca4b921de6",
@@ -1427,8 +1610,9 @@
       ],
       "text": "restore 1\nwhen played: draw a card. then, discard a card from your hand.",
       "set": "DUNE",
-      "number": "075",
-      "arena": "Ground"
+      "number": "081",
+      "arena": "Ground",
+      "rarity": "C"
     },
     {
       "id": "b5a0d3e5-b64e-4a72-a2c7-5305a768032a",
@@ -1446,8 +1630,9 @@
       ],
       "text": "while you control an arrakis base, this unit gains hidden.\nother friendly fremen units get +1/+0.",
       "set": "DUNE",
-      "number": "076",
-      "arena": "Ground"
+      "number": "082",
+      "arena": "Ground",
+      "rarity": "R"
     },
     {
       "id": "c64a1e84-663f-4c24-b763-c9027c6b29fa",
@@ -1466,8 +1651,9 @@
       ],
       "text": "grit\nwhen played: give an experience token to this unit for each other friendly fremen unit.\nwhen defeated: create a fremen token.",
       "set": "DUNE",
-      "number": "077",
-      "arena": "Ground"
+      "number": "083",
+      "arena": "Ground",
+      "rarity": "U"
     },
     {
       "id": "6016d1f0-bb83-4a96-99e8-d6056a0413f9",
@@ -1485,8 +1671,9 @@
       ],
       "text": "while you control an arrakis base, this unit gains ambush and hidden.",
       "set": "DUNE",
-      "number": "078",
-      "arena": "Ground"
+      "number": "084",
+      "arena": "Ground",
+      "rarity": "C"
     },
     {
       "id": "c354b308-81c7-4dc7-9232-c4fa66363c32",
@@ -1504,8 +1691,27 @@
       ],
       "text": "overwhelm\nwhile you control an arrakis base, this unit gains ambush.\nwhen defeated: put this card on the bottom of its owner's deck.",
       "set": "DUNE",
-      "number": "079",
-      "arena": "Ground"
+      "number": "085",
+      "arena": "Ground",
+      "rarity": "R"
+    },
+    {
+      "id": "92da8977-396e-4d52-8df0-44db6b58f66c",
+      "image": "Fedaykin Oath",
+      "name": "Fedaykin Oath",
+      "type": "Upgrade",
+      "aspects": [
+        "Cunning",
+        "Heroism"
+      ],
+      "cost": 1,
+      "traits": [
+        "Fremen"
+      ],
+      "text": "attach to a non-vehicle unit.\nattached unit gains sentinel and: \"when defeated: create a fremen token.\"",
+      "set": "DUNE",
+      "number": "086",
+      "rarity": "U"
     },
     {
       "id": "2b0947c1-3086-4ee9-bbf4-9e2f1c097433",
@@ -1521,8 +1727,9 @@
       ],
       "text": "when played: you may return another friendly non-leader unit that costs 2 or less and isn't named scout to its owner's hand. if you do, you may play it. it costs 1 less.",
       "set": "DUNE",
-      "number": "080",
-      "arena": "Ground"
+      "number": "087",
+      "arena": "Ground",
+      "rarity": "C"
     },
     {
       "id": "7c85f602-4737-4736-a57c-78b46e362d72",
@@ -1538,8 +1745,9 @@
       ],
       "text": "when played: create a spice token.\nsmuggle 3 cunning\nwhen played using smuggle: create a spice token.",
       "set": "DUNE",
-      "number": "081",
-      "arena": "Ground"
+      "number": "088",
+      "arena": "Ground",
+      "rarity": "C"
     },
     {
       "id": "8c73f01a-8e4d-4013-933a-5225d6447954",
@@ -1557,8 +1765,9 @@
       ],
       "text": "when played: create a spice token. if you control a spacing guild unit, draw a card.\nsmuggle 4 cunning\nwhen played using smuggle: create a spice token.",
       "set": "DUNE",
-      "number": "082",
-      "arena": "Space"
+      "number": "089",
+      "arena": "Space",
+      "rarity": "C"
     },
     {
       "id": "b3964be1-09b4-4e99-ab76-7fc7edf517a7",
@@ -1576,8 +1785,9 @@
       ],
       "text": "hidden\nwhen played/on attack: if you control an arrakis base, create a spice token.\n",
       "set": "DUNE",
-      "number": "083",
-      "arena": "Ground"
+      "number": "090",
+      "arena": "Ground",
+      "rarity": "C"
     },
     {
       "id": "04248bb9-9b38-4fe3-b171-ef47ceda7294",
@@ -1593,8 +1803,9 @@
       ],
       "text": "when played: you may take control of a non-unique item upgrade or a token upgrade and attach it to a friendly unit.",
       "set": "DUNE",
-      "number": "084",
-      "arena": "Ground"
+      "number": "091",
+      "arena": "Ground",
+      "rarity": "U"
     },
     {
       "id": "60349849-6284-4098-be3d-df0495ecd485",
@@ -1611,8 +1822,9 @@
       ],
       "text": "when played: if you control a command unit, give 2 experience tokens to a friendly underworld unit. then, if you control an aggression unit, this unit may deal damage equal to its power to a unit.",
       "set": "DUNE",
-      "number": "085",
-      "arena": "Ground"
+      "number": "092",
+      "arena": "Ground",
+      "rarity": "R"
     },
     {
       "id": "58945d01-75d0-4adb-be9f-f4230c5aba08",
@@ -1629,8 +1841,9 @@
       ],
       "text": "hidden\nsmuggle 6 cunning\nwhen played: draw a card.\nwhenever an opponent defeats a spice token, create a spice token. use this ability only once each round.",
       "set": "DUNE",
-      "number": "086",
-      "arena": "Ground"
+      "number": "093",
+      "arena": "Ground",
+      "rarity": "R"
     },
     {
       "id": "83566c75-2e6b-4c05-aa73-6b8b58bb2760",
@@ -1647,7 +1860,8 @@
       ],
       "text": "create a spice token.\nsmuggle 2 cunning\nwhen played using smuggle: create another spice token.",
       "set": "DUNE",
-      "number": "087"
+      "number": "094",
+      "rarity": "C"
     },
     {
       "id": "12db351f-b35c-4c9a-a158-ee4acefdddb5",
@@ -1663,7 +1877,8 @@
       ],
       "text": "if you control an arrakis base, choose a non-fremen non-leader ground unit. its controller chooses one:\n• return it to its owner's hand.\n• defeat it when the next regroup phase starts.",
       "set": "DUNE",
-      "number": "088"
+      "number": "095",
+      "rarity": "C"
     },
     {
       "id": "1d5b1877-1a1c-43b9-b6be-c6216f824ac2",
@@ -1680,7 +1895,26 @@
       ],
       "text": "attach to a non-vehicle unit.\nattached unit gains restore 1, or restore 2 instead if it's a fremen unit.",
       "set": "DUNE",
-      "number": "089"
+      "number": "096",
+      "rarity": "C"
+    },
+    {
+      "id": "f9404462-1ce4-4a94-ae31-3ababa1a6824",
+      "image": "Thumper",
+      "name": "Thumper",
+      "type": "Fortification",
+      "aspects": [
+        "Cunning"
+      ],
+      "cost": 1,
+      "traits": [
+        "Fortification",
+        "Fremen"
+      ],
+      "text": "fortify\nwhen played: search the top 10 cards of your deck for a creature card, reveal it and draw it.\ncreature cards you play cost 1 less. when you play a creature card, defeat this upgrade.",
+      "set": "DUNE",
+      "number": "097",
+      "rarity": "U"
     },
     {
       "id": "34f61fb8-aa97-4191-a378-82d405e530db",
@@ -1696,7 +1930,8 @@
       ],
       "text": "look at an opponent's hand and name a card. this phase, opponents can't play the named cards. draw a card.",
       "set": "DUNE",
-      "number": "090"
+      "number": "098",
+      "rarity": "C"
     },
     {
       "id": "a94e0500-7d5e-4848-b52a-c62bb03104cd",
@@ -1713,7 +1948,8 @@
       ],
       "text": "attached unit can't be defeated by enemy card abilities.",
       "set": "DUNE",
-      "number": "091"
+      "number": "099",
+      "rarity": "C"
     },
     {
       "id": "9a4481da-e820-4e55-9ab8-62190c22eb0d",
@@ -1728,8 +1964,9 @@
       ],
       "text": "raid 1\nwhen played/on attack: look at the top card of your deck. you may put it on the bottom of your deck or discard it.",
       "set": "DUNE",
-      "number": "092",
-      "arena": "Space"
+      "number": "100",
+      "arena": "Space",
+      "rarity": "C"
     },
     {
       "id": "fb6a9b51-2fc4-4a7e-8a4e-2ae98ffe5d2d",
@@ -1744,8 +1981,9 @@
       ],
       "text": "when played: create a spice token. then, you may pay 2. if you do, create another spice token.",
       "set": "DUNE",
-      "number": "093",
-      "arena": "Ground"
+      "number": "101",
+      "arena": "Ground",
+      "rarity": "C"
     },
     {
       "id": "15b1004e-4a63-477f-bfb3-ecd3d64810e5",
@@ -1759,10 +1997,11 @@
         "Vehicle",
         "Transport"
       ],
-      "text": "when played: you may defeat a friendly spice token. if you do, look at the top 5 cards of your deck. draw 1 of them, discard any number of them and put the rest on the bottom of your deck in any order.",
+      "text": "sentinel\nwhen played: you may defeat a friendly spice token. if you do, look at the top 5 cards of your deck. draw 1 of them, discard any number of them and put the rest on the bottom of your deck in any order.",
       "set": "DUNE",
-      "number": "094",
-      "arena": "Space"
+      "number": "102",
+      "arena": "Space",
+      "rarity": "C"
     },
     {
       "id": "4a4aba7b-326d-4fdd-a304-565bb32e0652",
@@ -1776,8 +2015,9 @@
       ],
       "text": "overwhelm\nwhen played: if you control an arrakis base, return each non-leader fremen unit to its owner's hand. then defeat each other ground unit that isn't a fremen unit.\nwhen this unit completes an attack: return it to the bottom of its owner's deck.",
       "set": "DUNE",
-      "number": "095",
-      "arena": "Ground"
+      "number": "103",
+      "arena": "Ground",
+      "rarity": "L"
     },
     {
       "id": "50ddfd6c-0845-40ee-9aaa-31fa2f085950",
@@ -1793,8 +2033,9 @@
       ],
       "text": "as you play this unit, you may defeat any number of friendly spice tokens. it costs 1 less for each spice token defeated this way.\nwhen played: play any number of ground units from your hand with a combined cost of 8 or less for free. they gain ambush for this phase.",
       "set": "DUNE",
-      "number": "096",
-      "arena": "Space"
+      "number": "104",
+      "arena": "Space",
+      "rarity": "L"
     },
     {
       "id": "662183f9-cb70-4223-8fdc-5e55a2ba5498",
@@ -1809,7 +2050,8 @@
       ],
       "text": "when played: if attached unit is a trooper unit, defeat another upgrade. if it was a shield token, deal 3 damage to the unit it was attached to.",
       "set": "DUNE",
-      "number": "097"
+      "number": "105",
+      "rarity": "U"
     },
     {
       "id": "631c4fe6-a97d-4e54-bd4c-a75ac91b31e4",
@@ -1824,7 +2066,7 @@
       ],
       "text": "while you control an arrakis base, this unit gains raid 1.",
       "set": "DUNE",
-      "number": "098",
+      "number": "106",
       "arena": "Ground"
     },
     {
@@ -1838,7 +2080,7 @@
       ],
       "text": "action: defeat this token. look at the top 3 cards of your deck. draw 1 of them. put each of the others on the top or bottom of your deck in any order, or discard it.",
       "set": "DUNE",
-      "number": "099"
+      "number": "107"
     }
   ]
 }

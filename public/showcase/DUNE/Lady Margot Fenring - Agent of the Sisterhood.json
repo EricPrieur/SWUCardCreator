@@ -1,0 +1,31 @@
+{
+  "frameId": "unit-vigilance",
+  "name": "Lady Margot Fenring",
+  "trait": "Bene Gesserit, Emperor",
+  "text": "[When Played/On Attack:] Choose an enemy non-leader unit. You may discard a card from your hand. If you do and it costs 4 or less, take control of it. Otherwise, exhaust it. At the start of the regroup phase, its owner takes control of it.",
+  "setCode": "DUNE",
+  "language": "EN",
+  "rarity": "L",
+  "cost": 6,
+  "power": 4,
+  "hp": 6,
+  "unique": true,
+  "subtitle": "Agent of the Sisterhood",
+  "id": "a5c93f7f-de1c-48d4-b0d8-b350c63e036e",
+  "art": {
+    "src": "Lady Margot Fenring - Agent of the Sisterhood (art).webp",
+    "zoom": 1.1,
+    "x": 1,
+    "y": 17
+  },
+  "look": {
+    "frameOpacity": 0,
+    "panelFill": 0.5,
+    "panelBlur": 0,
+    "textGlow": 0,
+    "lightText": true,
+    "solidText": false,
+    "solidIcons": true
+  },
+  "number": "029"
+}

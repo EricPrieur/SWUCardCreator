@@ -5,7 +5,7 @@
   "text": "While you control an [{Arrakis}] base, this unit gains [Raid 1].",
   "setCode": "DUNE",
   "language": "EN",
-  "rarity": "C",
+  "rarity": "",
   "art": {
     "src": "Fremen (art).webp",
     "zoom": 0.9,
@@ -16,5 +16,5 @@
   "power": 2,
   "hp": 1,
   "id": "631c4fe6-a97d-4e54-bd4c-a75ac91b31e4",
-  "number": "098"
+  "number": "106"
 }

@@ -1,0 +1,22 @@
+{
+  "frameId": "upgrade-cunning-heroism",
+  "name": "Fedaykin Oath",
+  "trait": "Fremen",
+  "text": "Attach to a non-[{Vehicle}] unit.\nAttached unit gains [Sentinel] and: \"[When Defeated:] Create a Fremen token.\"",
+  "setCode": "DUNE",
+  "language": "EN",
+  "rarity": "U",
+  "cost": 1,
+  "power": 1,
+  "hp": 0,
+  "unique": false,
+  "art": {
+    "src": "Fedaykin Oath (art).webp",
+    "zoom": 1.4,
+    "x": 10,
+    "y": 11,
+    "rotate": 0
+  },
+  "id": "92da8977-396e-4d52-8df0-44db6b58f66c",
+  "number": "086"
+}

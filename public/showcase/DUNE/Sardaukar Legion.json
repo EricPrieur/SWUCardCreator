@@ -16,5 +16,13 @@
     "x": 0,
     "y": 0
   },
-  "number": "035"
+  "number": "039",
+  "look": {
+    "frameOpacity": 0,
+    "panelFill": 0.5,
+    "panelBlur": 0,
+    "textGlow": 0,
+    "lightText": true,
+    "solidIcons": true
+  }
 }

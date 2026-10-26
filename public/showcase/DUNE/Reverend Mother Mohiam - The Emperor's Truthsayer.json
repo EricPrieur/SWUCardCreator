@@ -2,7 +2,7 @@
   "frameId": "unit-vigilance-villainy",
   "name": "Reverend Mother Mohiam",
   "trait": "Bene Gesserit, Emperor",
-  "text": "[When Played:] Discard any number of cards from your hand. For each card discarded this way, choose a card in each opponent's hand. They discard it.\nOpponents play with their hands revealed.",
+  "text": "Opponents play with their hands revealed.\n[When Played:] Discard any number of cards from your hand. For each card discarded this way, choose a card in each opponent's hand. They discard it.",
   "setCode": "DUNE",
   "language": "EN",
   "rarity": "L",
@@ -18,5 +18,13 @@
     "y": 9
   },
   "id": "3f411417-15b6-42be-a7a1-e099e654be5e",
-  "number": "019"
+  "number": "019",
+  "look": {
+    "frameOpacity": 0,
+    "panelFill": 0.5,
+    "panelBlur": 0,
+    "textGlow": 0,
+    "lightText": true,
+    "solidIcons": true
+  }
 }
