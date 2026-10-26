@@ -1466,3 +1466,717 @@
   color: var(--sand);
   cursor: pointer;
 }
+
+/* The Deck Builder: the deck's bar across the top, the cards to pick from on the
+   left, the deck's list on the right, kept in view while the cards scroll */
+.decks {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 1.5rem 2rem;
+  align-items: start;
+  width: 100%;
+  max-width: 1400px;
+}
+
+/* Each column stacks on its own, so the buttons' two rows leave no gap beside the fields */
+.deck-main {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  min-width: 0;
+}
+
+.deck-side {
+  position: sticky;
+  top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-height: calc(100svh - 2rem);
+}
+
+.deck-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem 1rem;
+}
+
+.deck-bar .saved-note {
+  flex-basis: 100%;
+}
+
+.deck-name {
+  width: 14rem;
+  padding: 0.4rem 0.75rem;
+  border: 1px solid rgb(232 215 181 / 0.25);
+  border-radius: 6px;
+  background: rgb(0 0 0 / 0.3);
+  font: inherit;
+  font-size: 0.95rem;
+  color: var(--sand);
+}
+
+.deck-name:focus {
+  outline: 2px solid var(--spice);
+  outline-offset: 1px;
+}
+
+.deck-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+/* The deck's buttons, over its list in the right column */
+.deck-bar-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.deck-bar-buttons .button {
+  padding: 0.4rem 0.8rem;
+  font-size: 0.85rem;
+}
+
+/* A card to pick: the whole card is the button that adds it */
+.deck-pool-image {
+  position: relative;
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.deck-pool-image[aria-disabled='true'] {
+  cursor: default;
+}
+
+.deck-pool-card:not(.deck-picked) .deck-pool-image {
+  opacity: 0.8;
+}
+
+.deck-pool-card .deck-pool-image:hover {
+  opacity: 1;
+}
+
+/* How many copies are in the deck, on the card's corner */
+.deck-badge {
+  position: absolute;
+  top: 6%;
+  right: -0.4rem;
+  min-width: 1.9rem;
+  padding: 0.2rem 0.45rem;
+  border-radius: 999px;
+  background: var(--spice);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.6);
+  font-weight: 700;
+  color: var(--night);
+}
+
+.deck-pool-actions {
+  align-items: center;
+  justify-content: center;
+}
+
+.deck-pool-count {
+  min-width: 1.2rem;
+  text-align: center;
+  font-weight: 600;
+}
+
+/* A small square button: − and + and the like */
+.deck-button {
+  min-width: 1.8rem;
+  padding: 0.15rem 0.4rem;
+  border: 1px solid rgb(232 215 181 / 0.25);
+  border-radius: 5px;
+  background: none;
+  font: inherit;
+  font-size: 0.85rem;
+  line-height: 1.3;
+  color: var(--sand);
+  cursor: pointer;
+}
+
+.deck-button:hover:not(:disabled) {
+  border-color: var(--spice);
+}
+
+.deck-button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* What an aspect the deck lacks adds to a card's cost */
+.deck-penalty {
+  margin-left: 0.25rem;
+  padding: 0 0.3rem;
+  border-radius: 4px;
+  background: rgb(200 60 40 / 0.85);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.deck-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 1rem;
+  border: 1px solid rgb(232 215 181 / 0.15);
+  border-radius: 10px;
+  background: rgb(0 0 0 / 0.35);
+}
+
+/* The leader and the base: buttons that go back to choosing them */
+.deck-choice {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid rgb(232 215 181 / 0.2);
+  border-radius: 6px;
+  background: none;
+  font: inherit;
+  font-size: 0.9rem;
+  text-align: left;
+  color: var(--sand);
+  cursor: pointer;
+}
+
+.deck-choice:hover {
+  border-color: var(--sand-dim);
+}
+
+.deck-choice[aria-pressed='true'] {
+  border-color: var(--spice);
+  background: rgb(224 138 44 / 0.12);
+}
+
+.deck-choice .deck-row-name {
+  cursor: pointer;
+}
+
+/* Over the cards while the leader or the base is being chosen */
+.deck-step {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.page .deck-step h2 {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--spice);
+}
+
+.deck-choice > .filter-label {
+  width: 3.2rem;
+  flex: none;
+}
+
+.deck-choice > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.deck-missing {
+  font-size: 0.85rem;
+  font-style: italic;
+  color: var(--sand-dim);
+}
+
+.deck-aspects {
+  display: flex;
+  gap: 0.3rem;
+}
+
+.deck-aspects img {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.deck-totals,
+.deck-legal {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.deck-short {
+  color: var(--spice);
+}
+
+.deck-legal {
+  color: #9ccf7a;
+}
+
+.deck-problems {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.85rem;
+  color: var(--spice);
+}
+
+/* The main deck's cards by cost, as bars */
+.deck-curve {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 0.3rem;
+  height: 6.5rem;
+}
+
+.deck-curve-bar {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.15rem;
+  min-height: 0;
+}
+
+.deck-curve-fill {
+  width: 100%;
+  max-height: calc(100% - 2.4rem);
+  border-radius: 3px 3px 0 0;
+  background: var(--spice);
+}
+
+.deck-curve-count,
+.deck-curve-cost {
+  font-size: 0.75rem;
+  color: var(--sand-dim);
+}
+
+.page .deck-group {
+  margin: 0.5rem 0 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--sand-dim);
+}
+
+.deck-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.deck-row {
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.25rem 0;
+  border-bottom: 1px solid rgb(232 215 181 / 0.08);
+  font-size: 0.88rem;
+}
+
+.deck-row-count {
+  font-weight: 600;
+  color: var(--spice);
+}
+
+.deck-row-name {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  cursor: default;
+}
+
+.deck-row-cost {
+  font-weight: 600;
+}
+
+.deck-row-buttons {
+  display: flex;
+  gap: 0.25rem;
+}
+
+@media (max-width: 900px) {
+  .decks {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* One column: the fields, the buttons, the list (short, and no longer kept in
+     view), then the cards */
+  .deck-main,
+  .deck-side {
+    display: contents;
+  }
+
+  .deck-bar {
+    order: -3;
+  }
+
+  .deck-bar-buttons {
+    order: -2;
+  }
+
+  .deck-panel {
+    order: -1;
+  }
+}
+
+/* Leaders and bases lie on their side: wider cells, so they are drawn as tall as the other cards */
+.showroom-grid.deck-landscape {
+  --card-min: 300px;
+}
+
+.card-size-m.deck-landscape {
+  --card-min: 240px;
+}
+
+.card-size-s.deck-landscape {
+  --card-min: 180px;
+}
+
+/* The deck list's tabs: Cards, Draw, Math */
+.deck-tabs {
+  display: flex;
+  gap: 1.25rem;
+  border-bottom: 1px solid rgb(232 215 181 / 0.15);
+}
+
+.deck-tabs button {
+  margin-bottom: -1px;
+  padding: 0.4rem 0.1rem;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  font: inherit;
+  font-size: 0.78rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--sand-dim);
+  cursor: pointer;
+}
+
+.deck-tabs button:hover {
+  color: var(--sand);
+}
+
+.deck-tabs button[aria-selected='true'] {
+  border-bottom-color: var(--spice);
+  color: var(--sand);
+}
+
+.deck-draw {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.deck-draw-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.deck-draw-buttons .button {
+  padding: 0.35rem 0.7rem;
+  font-size: 0.82rem;
+}
+
+.deck-draw-buttons .button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.deck-draw .filter-label {
+  margin: 0;
+}
+
+/* The drawn cards, three to a row */
+.deck-hand {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.deck-math {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.deck-chart {
+  margin: 0;
+}
+
+.deck-chart figcaption {
+  margin-bottom: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--sand-dim);
+}
+
+.deck-pie-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.deck-pie {
+  flex: none;
+  width: 6.5rem;
+  height: 6.5rem;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px rgb(232 215 181 / 0.2);
+}
+
+.deck-legend,
+.deck-traits {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
+  flex: 1;
+  font-size: 0.82rem;
+}
+
+.deck-legend li,
+.deck-traits li {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.deck-swatch {
+  flex: none;
+  width: 0.8rem;
+  height: 0.8rem;
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px rgb(232 215 181 / 0.3);
+}
+
+.deck-legend-label {
+  flex: 1;
+  min-width: 0;
+}
+
+.deck-legend-icons {
+  display: inline-flex;
+  gap: 0.15rem;
+  vertical-align: middle;
+}
+
+.deck-legend-icons img {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.deck-legend-count {
+  margin-left: auto;
+  white-space: nowrap;
+  color: var(--sand-dim);
+}
+
+.deck-traits li {
+  padding: 0.15rem 0;
+  border-bottom: 1px solid rgb(232 215 181 / 0.08);
+}
+
+/* The deck image is laid out here, out of sight, while it is drawn */
+.deck-image-holder {
+  position: fixed;
+  top: 0;
+  left: -20000px;
+  pointer-events: none;
+}
+
+/* The deck as a picture, 1440 × 810 on the page and saved at twice that: the deck's
+   name, leader, base and sideboard on the left, the deck by cost on the right */
+.deck-image {
+  position: relative;
+  display: flex;
+  gap: 24px;
+  padding: 24px 28px;
+  box-sizing: border-box;
+  overflow: hidden;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  color: #14100c;
+}
+
+.deck-image-side {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  flex: 1;
+  min-width: 0;
+}
+
+.page .deck-image-name,
+.deck-image-name {
+  margin: 14px 0 6px;
+  font-size: 40px;
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1.1;
+  text-align: center;
+  text-transform: none;
+  color: #14100c;
+}
+
+.deck-image-choices {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.deck-image-heading {
+  margin: 8px 0 0;
+  font-size: 26px;
+  font-weight: 700;
+  text-align: center;
+  text-transform: uppercase;
+  color: #14100c;
+}
+
+.deck-image-sideboard {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 14px 10px;
+}
+
+.deck-image-deck {
+  display: grid;
+  align-content: center;
+  justify-content: center;
+  flex: none;
+  height: 762px;
+}
+
+.deck-image .card {
+  box-shadow: 0 6px 14px rgb(0 0 0 / 0.45);
+}
+
+/* How many copies: a white number on a black hexagon edged in white, in the card's top
+   right corner, which is mostly empty, so no text is hidden. Sized to the card. */
+.deck-image-card {
+  position: relative;
+  container-type: inline-size;
+}
+
+.deck-image-count {
+  position: absolute;
+  top: 1.5%;
+  right: 2%;
+  width: 24%;
+  aspect-ratio: 1 / 1.1;
+  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+  background: #fff;
+}
+
+.deck-image-count span {
+  position: absolute;
+  inset: 7%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+  background: #111;
+  font-size: 13cqw;
+  font-weight: 800;
+  color: #fff;
+}
+
+.deck-image-credit {
+  position: absolute;
+  right: 18px;
+  bottom: 10px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #14100c;
+}
+
+/* The finished picture over the page, Download and Close at its top right */
+.deck-image-view {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: rgb(0 0 0 / 0.85);
+}
+
+.deck-image-view-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  width: min(100%, calc((100svh - 6rem) * 16 / 9));
+}
+
+.deck-image-view-bar .saved-note {
+  margin-right: auto;
+}
+
+.deck-image-view-bar a.button {
+  text-decoration: none;
+}
+
+.deck-image-view img {
+  display: block;
+  max-width: 100%;
+  max-height: calc(100svh - 6rem);
+  border-radius: 6px;
+  box-shadow: 0 20px 60px rgb(0 0 0 / 0.7);
+}
+
+.deck-author {
+  width: 10rem;
+}
+
+.deck-image-author {
+  margin: -14px 0 4px;
+  font-size: 26px;
+  font-weight: 700;
+  text-align: center;
+  color: #14100c;
+}
+
+/* A card with all the copies the deck may have: greyed, so it reads as done */
+.deck-pool-card.deck-full .deck-pool-image {
+  filter: grayscale(0.7) brightness(0.7);
+}
+
+.deck-row-name[title] {
+  cursor: pointer;
+}
+
+.deck-row-name[title]:hover {
+  color: var(--spice);
+}
+
+/* A Showcase's two views, its cards and its Deck Builder, over them */
+.showcase-views {
+  justify-content: center;
+  margin: 0 0 1.5rem;
+}

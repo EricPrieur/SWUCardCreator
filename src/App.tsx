@@ -13,9 +13,13 @@ import {
   storeDraft,
   loadCardLine,
   storeCardLine,
+  loadDecks,
+  storeDecks,
   type CardLine,
   type Art,
   type Card,
+  type Deck,
+  type DeckEntry,
   type Draft,
   type Look,
 } from './cards'
@@ -34,6 +38,7 @@ import {
 const tabs = [
   { id: 'creator', label: 'Card Creator' },
   { id: 'showroom', label: 'Showroom' },
+  { id: 'decks', label: 'Deck Builder' },
   { id: 'projects', label: 'My Other Projects' },
 ] as const
 
@@ -684,6 +689,8 @@ type Facts = {
   number: string
   // Where a unit fights; a leader's is its unit side's. None for the other cards.
   arena?: Arena
+  // The rarity's letter (C, U, R, S, L); empty when the card has none
+  rarity: string
 }
 
 // A saved card's facts. A leader counts for what either of its sides says.
@@ -705,6 +712,7 @@ function cardFacts(card: Card): Facts {
     set: card.setCode?.trim() ?? '',
     number: card.number?.trim() ?? '',
     arena: frame.arena ?? back?.frame.arena,
+    rarity: card.rarity?.trim().toUpperCase().slice(0, 1) ?? '',
   }
 }
 
@@ -727,8 +735,10 @@ function loadCardSize(): CardSize {
   }
 }
 
-// The Set filter's choice for the cards whose card line has no set
+// The Set filter's choice for the cards whose card line has no set, and the Rarity
+// filter's for the cards with no rarity
 const NO_SET = '\u0000none'
+const NO_RARITY = '\u0000none'
 
 const sorts = [
   { value: 'saved', label: 'Order saved' },
@@ -765,7 +775,13 @@ function useRemembered<T>(name: string, first: T) {
 // Search, filters and sort over a list of cards, as the Showroom and a Showcase
 // show them: the bar to put above the cards, and the cards it lets through, in order.
 // Each list remembers its own choices under its name.
-function useCardFilters<T>(name: string, items: { item: T; facts: Facts }[], firstSort = 'Order saved') {
+function useCardFilters<T>(
+  name: string,
+  items: { item: T; facts: Facts }[],
+  firstSort = 'Order saved',
+  // The sort until one is picked
+  startSort: SortKey = 'saved',
+) {
   const [query, setQuery] = useRemembered(`${name}.search`, '')
   const [types, setTypes] = useRemembered<FrameFilter[]>(`${name}.types`, [])
   const [traits, setTraits] = useRemembered<string[]>(`${name}.traits`, [])
@@ -776,7 +792,9 @@ function useCardFilters<T>(name: string, items: { item: T; facts: Facts }[], fir
   // Only the cards with no aspect at all; picking an aspect turns it off, and the other way round
   const [neutral, setNeutral] = useRemembered(`${name}.neutral`, false)
   const [arenas, setArenas] = useRemembered<Arena[]>(`${name}.arenas`, [])
-  const [sort, setSort] = useRemembered<SortKey>(`${name}.sort`, 'saved')
+  // Rarity letters ticked; NO_RARITY stands for the cards with none
+  const [rarityPicks, setRarityPicks] = useRemembered<string[]>(`${name}.rarities`, [])
+  const [sort, setSort] = useRemembered<SortKey>(`${name}.sort`, startSort)
   const [descending, setDescending] = useRemembered(`${name}.descending`, false)
   const [size, setSize] = useState<CardSize>(loadCardSize)
   const changeSize = (next: CardSize) => {
@@ -815,6 +833,13 @@ function useCardFilters<T>(name: string, items: { item: T; facts: Facts }[], fir
       .map(([value, label]) => ({ value, label: label.toUpperCase() })),
     ...(listed.some(({ facts }) => !facts.set) ? [{ value: NO_SET, label: 'No set' }] : []),
   ]
+  // In the order of the Card Creator's picker, then the cards with none; only offered
+  // once some card has a rarity
+  const rarityOptions = [
+    ...rarities.filter(({ value }) => listed.some(({ facts }) => facts.rarity === value)),
+    ...(listed.some(({ facts }) => !facts.rarity) ? [{ value: NO_RARITY, label: 'No rarity' }] : []),
+  ]
+  const hasRarity = listed.some(({ facts }) => facts.rarity)
 
   const search = query.trim().toLowerCase()
   // Within Type, Trait and Cost any ticked box will do; every picked aspect must be on the card
@@ -826,6 +851,7 @@ function useCardFilters<T>(name: string, items: { item: T; facts: Facts }[], fir
       (costs.length === 0 || (facts.cost !== undefined && costs.includes(facts.cost))) &&
       (sets.length === 0 || sets.includes(facts.set ? facts.set.toUpperCase() : NO_SET)) &&
       (arenas.length === 0 || (facts.arena !== undefined && arenas.includes(facts.arena))) &&
+      (rarityPicks.length === 0 || rarityPicks.includes(facts.rarity || NO_RARITY)) &&
       (!neutral || facts.aspects.length === 0) &&
       picked.every((aspect) => facts.aspects.includes(aspect)),
   )
@@ -848,7 +874,9 @@ function useCardFilters<T>(name: string, items: { item: T; facts: Facts }[], fir
   const missing = (facts: Facts) => (sort === 'cost' ? facts.cost === undefined : sort === 'number' ? !facts.number : false)
   if (descending) shown.sort((a, b) => Number(missing(a.facts)) - Number(missing(b.facts)))
   const filtered =
-    search !== '' || neutral || types.length + traits.length + costs.length + sets.length + arenas.length + picked.length > 0
+    search !== '' ||
+    neutral ||
+    types.length + traits.length + costs.length + sets.length + arenas.length + rarityPicks.length + picked.length > 0
 
   const bar = (
     <div className="filters showroom-filters">
@@ -864,6 +892,9 @@ function useCardFilters<T>(name: string, items: { item: T; facts: Facts }[], fir
         <CheckDropdown label="Type" options={typeOptions} selected={types} onChange={setTypes} />
         <CheckDropdown label="Trait" options={traitOptions} selected={traits} onChange={setTraits} />
         <CheckDropdown label="Cost" options={costOptions} selected={costs} onChange={setCosts} />
+        {hasRarity && (
+          <CheckDropdown label="Rarity" options={rarityOptions} selected={rarityPicks} onChange={setRarityPicks} />
+        )}
         <CheckDropdown label="Set" options={setOptions} selected={sets} onChange={setSets} />
         {arenaOptions.length > 0 && <CheckDropdown label="Arena" options={arenaOptions} selected={arenas} onChange={setArenas} />}
       </div>
@@ -946,6 +977,7 @@ function useCardFilters<T>(name: string, items: { item: T; facts: Facts }[], fir
               setCosts([])
               setSets([])
               setArenas([])
+              setRarityPicks([])
               setNeutral(false)
               setPicked([])
             }}
@@ -987,6 +1019,7 @@ type ShowcaseCard = {
   set?: string
   number?: string
   arena?: Arena
+  rarity?: string
 }
 type ShowcaseList = { title: string; cards: ShowcaseCard[] }
 
@@ -1011,6 +1044,7 @@ function showcaseEntry(card: Card): ShowcaseCard {
     set: facts.set || undefined,
     number: facts.number || undefined,
     arena: facts.arena,
+    rarity: facts.rarity || undefined,
   }
 }
 
@@ -1382,6 +1416,24 @@ function Showroom(props: {
   )
 }
 
+// What a Showcase card can be found and sorted by, from its showcase.json entry
+function showcaseFacts(card: ShowcaseCard): Facts {
+  return {
+    name: card.name,
+    type: card.type,
+    names: [card.name, card.backName ?? ''].map((name) => name.toLowerCase()),
+    traits: card.traits.map((trait) => trait.toLowerCase()),
+    traitLabels: card.traits,
+    text: card.text ?? '',
+    aspects: card.aspects,
+    cost: card.cost,
+    set: card.set ?? '',
+    number: card.number ?? '',
+    arena: card.arena,
+    rarity: card.rarity ?? '',
+  }
+}
+
 // One card of a Showcase: its image, and Flip for a leader's other side
 function ShowcaseItem(props: { folder: string; card: ShowcaseCard; preview: boolean }) {
   const { folder, card, preview } = props
@@ -1438,32 +1490,50 @@ function Showcase(props: { folder: string }) {
   }, [])
   const { bar, shown, grid, preview } = useCardFilters(
     `showcase.${props.folder}`,
-    (list?.cards ?? []).map((card) => ({
-      item: card,
-      facts: {
-        name: card.name,
-        type: card.type,
-        names: [card.name, card.backName ?? ''].map((name) => name.toLowerCase()),
-        traits: card.traits.map((trait) => trait.toLowerCase()),
-        traitLabels: card.traits,
-        text: card.text ?? '',
-        aspects: card.aspects,
-        cost: card.cost,
-        set: card.set ?? '',
-        number: card.number ?? '',
-        arena: card.arena,
-      },
-    })),
+    (list?.cards ?? []).map((card) => ({ item: card, facts: showcaseFacts(card) })),
     'Showcase order',
   )
+  // The set's cards, or a Deck Builder that only uses them
+  const [view, setView] = useRemembered<'cards' | 'decks'>(`showcase.${props.folder}.view`, 'cards')
   useEffect(() => {
     if (list) document.title = list.title
   }, [list])
 
   if (missing) return <p className="empty-note">There is no showcase here.</p>
   if (!list) return <p className="empty-note">Loading…</p>
+  const views = (
+    <nav className="tabs showcase-views">
+      {(['cards', 'decks'] as const).map((value) => (
+        <a
+          key={value}
+          href={window.location.hash}
+          aria-current={view === value ? 'page' : undefined}
+          onClick={(event) => {
+            event.preventDefault()
+            setView(value)
+          }}
+        >
+          {value === 'cards' ? 'Cards' : 'Deck Builder'}
+        </a>
+      ))}
+    </nav>
+  )
+  if (view === 'decks') {
+    return (
+      <>
+        {views}
+        <DeckBuilder
+          cards={list.cards.map((card) => deckCardOfShowcase(folder, card))}
+          prefix={`showcase.${props.folder}.decks`}
+          storageKey={`dune-unlimited.decks.${props.folder}`}
+          source="set"
+        />
+      </>
+    )
+  }
   return (
     <section className="showroom">
+      {views}
       {bar}
       {shown.length === 0 ? (
         <p className="empty-note">No card matches these filters.</p>
@@ -1474,6 +1544,1257 @@ function Showcase(props: { folder: string }) {
           ))}
         </ul>
       )}
+    </section>
+  )
+}
+
+// Premier: at least 50 cards, up to 3 copies of a card counting the sideboard, and
+// up to 10 cards in the sideboard
+const DECK_SIZE = 50
+const MAX_COPIES = 3
+const SIDEBOARD_SIZE = 10
+// Each aspect icon a card has that the leader and base don't cover costs this much more
+const ASPECT_PENALTY = 2
+
+// A card as the Deck Builder knows it, whether a card saved in the Showroom or a card
+// of a Showcase, which only has its image and its showcase.json entry: what a deck needs
+// to know of it, and how to draw it
+type DeckCard = {
+  id: string
+  name: string
+  subtitle?: string
+  // The name and subtitle, as the deck's list shows them
+  label: string
+  type: FrameFilter
+  arena?: Arena
+  // The aspect icons it is played with; a leader's are its Leader side's
+  icons: Aspect[]
+  cost?: number
+  // The rarity's letter, or empty
+  rarity: string
+  traits: string[]
+  // The set code in capitals, or NO_SET
+  set: string
+  number?: string
+  // How many copies a deck may have
+  max: number
+  facts: Facts
+  face: ReactNode
+  // The same card drawn lighter, for the deck image
+  forImage?: () => Promise<DeckCard>
+}
+
+// How many copies a deck may have: 3, or what the card says ("A deck can have up to 15
+// copies of this card", "any number of copies")
+function maxCopies(text: string) {
+  const rule = /a deck can (?:have|include) (?:up to (\d+)|any number of) copies/.exec(plainText(text))
+  if (!rule) return MAX_COPIES
+  return rule[1] ? Number(rule[1]) : Infinity
+}
+
+// A card saved in the Showroom, drawn as it is on the page
+function deckCardOf(card: Card): DeckCard {
+  const frame = findFrame(card.frameId)
+  const facts = cardFacts(card)
+  const deckCard: DeckCard = {
+    id: card.id,
+    name: card.name,
+    subtitle: card.subtitle?.trim() || undefined,
+    label: cardLabel(card),
+    type: facts.type,
+    arena: facts.arena,
+    icons: frame.aspects,
+    cost: card.cost,
+    rarity: facts.rarity,
+    traits: splitTraits(card.trait),
+    set: facts.set.toUpperCase() || NO_SET,
+    number: facts.number || undefined,
+    max: maxCopies(card.text),
+    facts,
+    face: <CardFace card={card} />,
+  }
+  return { ...deckCard, forImage: async () => ({ ...deckCard, face: <CardFace card={await withSmallArt(card)} /> }) }
+}
+
+// A card of a Showcase: its saved image, and what showcase.json says of it. A leader's
+// aspects are listed for both its sides there, the same ones twice: kept once.
+function deckCardOfShowcase(folder: string, card: ShowcaseCard): DeckCard {
+  const label = [card.name, card.subtitle].filter(Boolean).join(', ')
+  const src = asset(`${folder}/${encodeURIComponent(card.image)}.jpg`)
+  const deckCard: DeckCard = {
+    id: card.id ?? card.image,
+    name: card.name,
+    subtitle: card.subtitle,
+    label,
+    type: card.type,
+    arena: card.arena,
+    icons: card.type === 'Leader' ? [...new Set(card.aspects)] : card.aspects,
+    cost: card.cost,
+    rarity: card.rarity ?? '',
+    traits: card.traits,
+    set: card.set?.toUpperCase() || NO_SET,
+    number: card.number,
+    max: maxCopies(card.text ?? ''),
+    facts: showcaseFacts(card),
+    face: <img className="showcase-image" src={src} alt={label} loading="lazy" />,
+  }
+  // The deck image is laid out out of sight, where a lazy image never loads: loaded first
+  return {
+    ...deckCard,
+    forImage: async () => {
+      const image = new Image()
+      image.src = src
+      await image.decode().catch(() => undefined)
+      return { ...deckCard, face: <img className="showcase-image" src={src} alt={label} /> }
+    },
+  }
+}
+
+const deckGroups = ['Ground units', 'Space units', 'Events', 'Upgrades'] as const
+type DeckGroup = (typeof deckGroups)[number]
+
+// Where a card is listed in a deck; leaders, bases and tokens are not deck cards
+function deckGroup(card: DeckCard): DeckGroup | undefined {
+  if (card.type === 'Unit' || card.type === 'Pilot') return card.arena === 'Space' ? 'Space units' : 'Ground units'
+  if (card.type === 'Event') return 'Events'
+  if (card.type === 'Upgrade' || card.type === 'Fortification') return 'Upgrades'
+  return undefined
+}
+
+// How many of a card's aspect icons the leader and base leave uncovered: two Vigilance
+// icons need two Vigilance between them
+function missingAspects(card: DeckCard, covered: Aspect[]) {
+  return aspects.reduce((sum, aspect) => sum + Math.max(0, countOf(card.icons, aspect) - countOf(covered, aspect)), 0)
+}
+
+const copiesOf = (entries: DeckEntry[], id: string) => entries.find((entry) => entry.id === id)?.count ?? 0
+
+// The list with that card at that many copies, or without it at 0
+function withCopies(entries: DeckEntry[], id: string, count: number): DeckEntry[] {
+  if (count <= 0) return entries.filter((entry) => entry.id !== id)
+  return entries.some((entry) => entry.id === id)
+    ? entries.map((entry) => (entry.id === id ? { ...entry, count } : entry))
+    : [...entries, { id, count }]
+}
+
+const deckCount = (entries: DeckEntry[]) => entries.reduce((sum, { count }) => sum + count, 0)
+
+function downloadText(fileName: string, text: string) {
+  const link = document.createElement('a')
+  link.href = URL.createObjectURL(new Blob([text], { type: 'text/plain' }))
+  link.download = fileName.replace(/[\\/:*?"<>|]/g, '')
+  link.click()
+  setTimeout(() => URL.revokeObjectURL(link.href), 1000)
+}
+
+// A deck as a file: each card by its name, set and number as well as its id, so the
+// deck still finds its cards in another browser whose cards were imported, not copied
+type DeckFileCard = { count: number; name: string; subtitle?: string; set?: string; number?: string; id: string }
+type DeckFile = {
+  deck: string
+  author?: string
+  sets: string[]
+  leader?: Omit<DeckFileCard, 'count'>
+  base?: Omit<DeckFileCard, 'count'>
+  cards: DeckFileCard[]
+  sideboard: DeckFileCard[]
+}
+
+const fileCard = (card: DeckCard) => ({
+  name: card.name,
+  subtitle: card.subtitle,
+  set: card.set === NO_SET ? undefined : card.set,
+  number: card.number,
+  id: card.id,
+})
+
+// The saved card a deck file means: the same id, or else the same set and number, or
+// else the same name and subtitle
+function findDeckCard(cards: DeckCard[], wanted: Omit<DeckFileCard, 'count'>) {
+  const same = (a?: string, b?: string) => (a ?? '').trim().toLowerCase() === (b ?? '').trim().toLowerCase()
+  return (
+    cards.find((card) => card.id === wanted.id) ??
+    cards.find((card) => wanted.number && same(card.set, wanted.set) && same(card.number, wanted.number)) ??
+    cards.find((card) => same(card.name, wanted.name) && same(card.subtitle, wanted.subtitle))
+  )
+}
+
+// A card of the deck's list: how many, its name with a large copy under the mouse, its
+// cost (and the aspect penalty), and the buttons that change it. A click on the name adds
+// a copy, a right click takes one out.
+function DeckRow(props: {
+  card: DeckCard
+  count: number
+  penalty: number
+  onAdd: () => void
+  onTake: () => void
+  children: ReactNode
+}) {
+  const { card, count, penalty, onAdd, onTake, children } = props
+  return (
+    <li className="deck-row">
+      <span className="deck-row-count">{count}×</span>
+      <HoverPreview enabled preview={card.face}>
+        <span
+          className="deck-row-name"
+          title="Click to add a copy, right click to take one out"
+          onClick={onAdd}
+          onContextMenu={(event) => {
+            event.preventDefault()
+            onTake()
+          }}
+        >
+          {card.label}
+        </span>
+      </HoverPreview>
+      <span className="deck-row-cost" title={penalty ? `Costs ${penalty} more: an aspect the deck lacks` : undefined}>
+        {card.cost ?? ''}
+        {penalty > 0 && <span className="deck-penalty">+{penalty}</span>}
+      </span>
+      <span className="deck-row-buttons">{children}</span>
+    </li>
+  )
+}
+
+// The leader or the base at the top of the deck's list: a button that goes back to
+// choosing it among the cards
+type DeckStep = 'Leader' | 'Base'
+
+function DeckChoice(props: { label: DeckStep; card?: DeckCard; active: boolean; onPick: () => void }) {
+  const { label, card, active, onPick } = props
+  return (
+    <button className="deck-choice" type="button" aria-pressed={active} title={`Choose another ${label.toLowerCase()}`} onClick={onPick}>
+      <span className="filter-label">{label}</span>
+      {card ? (
+        <HoverPreview enabled preview={card.face}>
+          <span className="deck-row-name">{card.label}</span>
+        </HoverPreview>
+      ) : (
+        <span className="deck-missing">None yet: choose one</span>
+      )}
+    </button>
+  )
+}
+
+// One card to pick from. A click adds a copy and a right click takes one out; a leader
+// or a base is chosen with a click.
+function DeckPoolCard(props: {
+  card: DeckCard
+  preview: boolean
+  // Leaders and bases are chosen, the other cards counted
+  choice?: DeckStep
+  chosen: boolean
+  count: number
+  max: number
+  penalty: number
+  onAdd: () => void
+  onTake: () => void
+  // Adds a copy to the sideboard rather than the deck
+  onSideboard: () => void
+}) {
+  const { card, preview, choice, chosen, count, max, penalty, onAdd, onTake, onSideboard } = props
+  const full = count >= max
+  return (
+    <li className={`deck-pool-card${chosen || count > 0 ? ' deck-picked' : ''}${!choice && full ? ' deck-full' : ''}`}>
+      <HoverPreview enabled={preview} preview={card.face}>
+        <button
+          className="deck-pool-image"
+          type="button"
+          aria-disabled={!choice && full}
+          title={
+            choice
+              ? `Choose as the ${choice.toLowerCase()}`
+              : full
+                ? `${max} copies already. Right click to take one out.`
+                : 'Click to add a copy, right click to take one out'
+          }
+          onClick={() => (choice || !full) && onAdd()}
+          onContextMenu={(event) => {
+            event.preventDefault()
+            if (!choice && count > 0) onTake()
+          }}
+        >
+          {card.face}
+          {count > 0 && <span className="deck-badge">{count}</span>}
+        </button>
+      </HoverPreview>
+      <div className="showroom-actions deck-pool-actions">
+        {choice ? (
+          chosen && <span className="filter-label">The deck's {choice.toLowerCase()}</span>
+        ) : (
+          <>
+            <button className="deck-button" type="button" disabled={count === 0} aria-label="Take a copy out" onClick={onTake}>
+              −
+            </button>
+            <span className="deck-pool-count">{count}</span>
+            <button className="deck-button" type="button" disabled={full} aria-label="Add a copy" onClick={onAdd}>
+              +
+            </button>
+            <button className="deck-button" type="button" disabled={full} title="Add a copy to the sideboard" onClick={onSideboard}>
+              SB
+            </button>
+            {penalty > 0 && (
+              <span className="deck-penalty" title="Costs more: an aspect the leader and base lack">
+                +{penalty}
+              </span>
+            )}
+          </>
+        )}
+      </div>
+    </li>
+  )
+}
+
+// The deck list's tabs: the cards, test draws, and the deck's numbers
+const deckPanelTabs = [
+  { value: 'list', label: 'Cards' },
+  { value: 'draw', label: 'Draw' },
+  { value: 'math', label: 'Math' },
+] as const
+type DeckPanelTab = (typeof deckPanelTabs)[number]['value']
+
+type DeckCards = { card: DeckCard; count: number }[]
+
+// Test draws from the main deck, shuffled: Draw 6 deals a new opening hand, Draw 2 and
+// Draw 1 add to it from what is left, Clear puts everything back
+function DeckDraw(props: { cards: DeckCards }) {
+  const [library, setLibrary] = useState<DeckCard[]>([])
+  const [hand, setHand] = useState<DeckCard[]>([])
+  const shuffled = () => {
+    const all = props.cards.flatMap(({ card, count }) => Array.from({ length: count }, () => card))
+    for (let i = all.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1))
+      ;[all[i], all[j]] = [all[j], all[i]]
+    }
+    return all
+  }
+  const draw = (count: number, fresh = false) => {
+    // Before the first draw, or after Clear, the deck is shuffled
+    const from = fresh || hand.length === 0 ? shuffled() : library
+    setHand([...(fresh ? [] : hand), ...from.slice(0, count)])
+    setLibrary(from.slice(count))
+  }
+  const total = deckCount(props.cards.map(({ card, count }) => ({ id: card.id, count })))
+  return (
+    <div className="deck-draw">
+      <div className="deck-draw-buttons">
+        <button className="button" type="button" disabled={total === 0} onClick={() => draw(6, true)}>
+          Draw 6
+        </button>
+        <button className="button" type="button" disabled={total === 0 || (hand.length > 0 && library.length === 0)} onClick={() => draw(2)}>
+          Draw 2
+        </button>
+        <button className="button" type="button" disabled={total === 0 || (hand.length > 0 && library.length === 0)} onClick={() => draw(1)}>
+          Draw 1
+        </button>
+        <button
+          className="button"
+          type="button"
+          disabled={hand.length === 0}
+          onClick={() => {
+            setHand([])
+            setLibrary([])
+          }}
+        >
+          Clear
+        </button>
+      </div>
+      {total === 0 ? (
+        <p className="empty-note">Add cards to the deck to draw.</p>
+      ) : (
+        hand.length > 0 && (
+          <>
+            <p className="filter-label">
+              {hand.length} drawn · {library.length} left in the deck
+            </p>
+            <ul className="deck-hand">
+              {hand.map((card, index) => (
+                <li key={index}>
+                  <HoverPreview enabled preview={card.face}>
+                    {card.face}
+                  </HoverPreview>
+                </li>
+              ))}
+            </ul>
+          </>
+        )
+      )}
+    </div>
+  )
+}
+
+// A bar chart: one bar for each label, as tall as its count
+function DeckBars(props: { title: string; bars: { label: string; count: number }[] }) {
+  const tallest = Math.max(1, ...props.bars.map(({ count }) => count))
+  return (
+    <figure className="deck-chart">
+      <figcaption>{props.title}</figcaption>
+      <div className="deck-curve" style={{ gridTemplateColumns: `repeat(${props.bars.length}, 1fr)` }}>
+        {props.bars.map(({ label, count }) => (
+          <div key={label} className="deck-curve-bar" title={`${label}: ${count}`}>
+            <span className="deck-curve-count">{count || ''}</span>
+            <span className="deck-curve-fill" style={{ height: `${(count / tallest) * 100}%` }} />
+            <span className="deck-curve-cost">{label}</span>
+          </div>
+        ))}
+      </div>
+    </figure>
+  )
+}
+
+// A pie chart, with a legend that gives each slice's count and share
+function DeckPie(props: { title: string; slices: { label: ReactNode; key: string; count: number; color: string }[] }) {
+  const slices = props.slices.filter(({ count }) => count > 0)
+  const total = slices.reduce((sum, { count }) => sum + count, 0)
+  // Each slice from where the ones before it end
+  const stops = slices.map(({ count, color }, index) => {
+    const from = (slices.slice(0, index).reduce((sum, slice) => sum + slice.count, 0) / total) * 360
+    return `${color} ${from}deg ${from + (count / total) * 360}deg`
+  })
+  return (
+    <figure className="deck-chart">
+      <figcaption>{props.title}</figcaption>
+      <div className="deck-pie-row">
+        <div className="deck-pie" style={{ background: `conic-gradient(${stops.join(', ')})` }} />
+        <ul className="deck-legend">
+          {slices.map(({ label, key, count, color }) => (
+            <li key={key}>
+              <span className="deck-swatch" style={{ background: color }} />
+              <span className="deck-legend-label">{label}</span>
+              <span className="deck-legend-count">
+                {count} · {Math.round((count / total) * 100)}%
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </figure>
+  )
+}
+
+// Each aspect's colour in the charts; a card with two takes a mix of both
+const aspectColors: Record<Aspect, string> = {
+  Vigilance: '#3f7fd6',
+  Command: '#2e9b52',
+  Aggression: '#cc3d2e',
+  Cunning: '#e3b33a',
+  Heroism: '#eee6d2',
+  Villainy: '#2c2733',
+}
+const rarityColors: Record<string, string> = { C: '#8e4f1c', U: '#cfcfcf', R: '#e6b83c', S: '#111111', L: '#16c2ee' }
+
+// The main deck's numbers: by cost, by type, by aspect, by rarity, and its most common traits
+function DeckMath(props: { cards: DeckCards }) {
+  const { cards } = props
+  if (cards.length === 0) return <p className="empty-note">Add cards to the deck to see its numbers.</p>
+  const sum = (keep: (card: DeckCard) => boolean) => cards.reduce((total, { card, count }) => total + (keep(card) ? count : 0), 0)
+
+  // The aspects as printed on each card, a combination counted as one
+  const combos = new Map<string, { icons: Aspect[]; count: number }>()
+  for (const { card, count } of cards) {
+    const icons = card.icons
+    const key = icons.join(' ') || 'Neutral'
+    combos.set(key, { icons, count: (combos.get(key)?.count ?? 0) + count })
+  }
+  const traits = new Map<string, number>()
+  for (const { card, count } of cards) {
+    for (const trait of card.traits) traits.set(trait, (traits.get(trait) ?? 0) + count)
+  }
+
+  return (
+    <div className="deck-math">
+      <DeckBars
+        title="Cards by cost"
+        bars={Array.from({ length: 8 }, (_, cost) => ({
+          label: cost === 7 ? '7+' : String(cost),
+          count: sum((card) => Math.min(card.cost ?? 0, 7) === cost),
+        }))}
+      />
+      <DeckBars title="Cards by type" bars={deckGroups.map((group) => ({ label: group.replace(' units', ''), count: sum((card) => deckGroup(card) === group) }))} />
+      <DeckPie
+        title="Cards by aspect"
+        slices={[...combos]
+          .sort(([, a], [, b]) => b.count - a.count)
+          .map(([key, { icons, count }]) => ({
+            key,
+            count,
+            label:
+              icons.length === 0 ? (
+                'Neutral'
+              ) : (
+                <span className="deck-legend-icons" title={key}>
+                  {icons.map((aspect, index) => (
+                    <img key={index} src={aspectIcon(aspect)} alt={aspect} />
+                  ))}
+                </span>
+              ),
+            color:
+              icons.length === 0
+                ? '#8a8a8a'
+                : icons.length === 1 || icons[0] === icons[1]
+                  ? aspectColors[icons[0]]
+                  : `color-mix(in srgb, ${aspectColors[icons[0]]} 60%, ${aspectColors[icons[1]]})`,
+          }))}
+      />
+      <DeckPie
+        title="Cards by rarity"
+        slices={[...rarities, { value: '', label: 'No rarity' }].map(({ value, label }) => ({
+          key: value || 'none',
+          label,
+          color: rarityColors[value] ?? '#555',
+          count: sum((card) => card.rarity === value),
+        }))}
+      />
+      <figure className="deck-chart">
+        <figcaption>Traits</figcaption>
+        <ul className="deck-traits">
+          {[...traits]
+            .sort(([a, x], [b, y]) => y - x || a.localeCompare(b))
+            .map(([trait, count]) => (
+              <li key={trait}>
+                <span>{trait}</span>
+                <span className="deck-legend-count">{count}</span>
+              </li>
+            ))}
+        </ul>
+      </figure>
+    </div>
+  )
+}
+
+// The deck as one picture to share, like SWUDB's: drawn at this size on the page,
+// off-screen, and saved at twice it (2880 × 1620)
+const DECK_IMAGE = { width: 1440, height: 810, scale: 2 }
+// The main deck's cards fill this much of the right side; the sideboard's, what the left
+// side has under the deck's name, leader and base (less with an author's line)
+const DECK_IMAGE_GRID = { width: 920, height: 762, gap: 10 }
+const DECK_IMAGE_SIDEBOARD = { width: 440, height: 430, author: 40 }
+// A card's height for its width
+const CARD_RATIO = 1.4
+
+// The biggest a card can be drawn when that many fill that space, with as many to a row
+// as draws them biggest (6, when that is as big)
+function deckImageFit(cards: number, width: number, height: number) {
+  const gap = DECK_IMAGE_GRID.gap
+  const size = (columns: number) => {
+    const rows = Math.max(1, Math.ceil(cards / columns))
+    return Math.min((width - gap * (columns - 1)) / columns, (height - gap * (rows - 1)) / rows / CARD_RATIO)
+  }
+  const columns = [6, 5, 7, 4, 3, 8, 2, 9, 10, 1, 11, 12].reduce((best, columns) => (size(columns) > size(best) + 0.5 ? columns : best))
+  return Math.floor(size(columns))
+}
+
+// The deck's and the sideboard's cards drawn at one size, the biggest both fit at, and
+// how many to a row that makes in each
+function deckImageGrids(cards: number, sideboard: number, author: boolean) {
+  const { gap } = DECK_IMAGE_GRID
+  const side = { width: DECK_IMAGE_SIDEBOARD.width, height: DECK_IMAGE_SIDEBOARD.height - (author ? DECK_IMAGE_SIDEBOARD.author : 0) }
+  const card = Math.min(
+    deckImageFit(cards, DECK_IMAGE_GRID.width, DECK_IMAGE_GRID.height),
+    sideboard ? deckImageFit(sideboard, side.width, side.height) : Infinity,
+  )
+  const columns = (count: number, width: number) => Math.max(1, Math.min(count, Math.floor((width + gap) / (card + gap))))
+  return { card, deck: columns(cards, DECK_IMAGE_GRID.width), sideboard: columns(sideboard, side.width) }
+}
+
+// Art files are drawn smaller for the deck image, which would otherwise carry every
+// picture at full size and take long to make. Kept for the next image.
+const deckImageArt = new Map<string, Promise<string>>()
+
+function smallArt(src: string) {
+  let small = deckImageArt.get(src)
+  if (!small) {
+    small = new Promise<string>((resolve) => {
+      const image = new Image()
+      image.onload = () => {
+        const scale = Math.min(1, 520 / image.naturalWidth)
+        const canvas = document.createElement('canvas')
+        canvas.width = Math.round(image.naturalWidth * scale)
+        canvas.height = Math.round(image.naturalHeight * scale)
+        canvas.getContext('2d')!.drawImage(image, 0, 0, canvas.width, canvas.height)
+        resolve(canvas.toDataURL('image/webp', 0.85))
+      }
+      // A picture that will not load is drawn as it is
+      image.onerror = () => resolve(src)
+      image.src = src
+    })
+    deckImageArt.set(src, small)
+  }
+  return small
+}
+
+// The card with its art, both sides', drawn smaller
+async function withSmallArt(card: Card): Promise<Card> {
+  const shrink = async (art?: Art) => art && { ...art, src: await smallArt(art.src) }
+  return { ...card, art: await shrink(card.art), backArt: await shrink(card.backArt) }
+}
+
+// The background: the leader and base's colours, paler toward the middle
+function deckImageBackground(covered: Aspect[]) {
+  const colours = [...new Set(covered.filter((aspect) => aspect !== 'Heroism' && aspect !== 'Villainy'))]
+  const [first, second] = (colours.length ? colours : [...new Set(covered)]).map((aspect) => aspectColors[aspect])
+  const pale = (colour: string) => `color-mix(in srgb, ${colour} 25%, #f3efe6)`
+  return `linear-gradient(110deg, ${first ?? '#8a7a60'} 0%, ${pale(first ?? '#8a7a60')} 45%, ${second ? pale(second) : '#f3efe6'} 60%, ${second ?? pale(first ?? '#8a7a60')} 100%)`
+}
+
+// A card of the picture, with how many copies on a hexagon at its foot
+function DeckImageCard(props: { card: DeckCard; count?: number }) {
+  return (
+    <div className="deck-image-card">
+      {props.card.face}
+      {props.count !== undefined && (
+        <span className="deck-image-count">
+          <span>{props.count}</span>
+        </span>
+      )}
+    </div>
+  )
+}
+
+function DeckImage(props: {
+  name: string
+  author?: string
+  leader?: DeckCard
+  base?: DeckCard
+  covered: Aspect[]
+  cards: DeckCards
+  sideboard: DeckCards
+}) {
+  const { name, author, leader, base, covered, cards, sideboard } = props
+  const byCost = (a: { card: DeckCard }, b: { card: DeckCard }) =>
+    (a.card.cost ?? 0) - (b.card.cost ?? 0) || a.card.name.localeCompare(b.card.name)
+  const grid = deckImageGrids(cards.length, sideboard.length, Boolean(author))
+  return (
+    <div className="deck-image" style={{ width: DECK_IMAGE.width, height: DECK_IMAGE.height, background: deckImageBackground(covered) }}>
+      <div className="deck-image-side">
+        <h2 className="deck-image-name">{name}</h2>
+        {author && <p className="deck-image-author">by {author}</p>}
+        <div className="deck-image-choices">
+          {leader && <DeckImageCard card={leader} />}
+          {base && <DeckImageCard card={base} />}
+        </div>
+        {sideboard.length > 0 && (
+          <>
+            <h3 className="deck-image-heading">Sideboard</h3>
+            <div
+              className="deck-image-sideboard"
+              style={{ gap: DECK_IMAGE_GRID.gap, gridTemplateColumns: `repeat(${grid.sideboard}, ${grid.card}px)` }}
+            >
+              {[...sideboard].sort(byCost).map(({ card, count }) => (
+                <DeckImageCard key={card.id} card={card} count={count} />
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+      <div
+        className="deck-image-deck"
+        style={{
+          width: DECK_IMAGE_GRID.width,
+          gap: DECK_IMAGE_GRID.gap,
+          gridTemplateColumns: `repeat(${grid.deck}, ${grid.card}px)`,
+        }}
+      >
+        {[...cards].sort(byCost).map(({ card, count }) => (
+          <DeckImageCard key={card.id} card={card} count={count} />
+        ))}
+      </div>
+      <span className="deck-image-credit">SWU Card Creator</span>
+    </div>
+  )
+}
+
+// The finished picture over the page: it is already copied, Download saves it
+function DeckImageView(props: { url: string; fileName: string; note: string; onClose: () => void }) {
+  const { url, fileName, note, onClose } = props
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => event.key === 'Escape' && onClose()
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [onClose])
+  return createPortal(
+    <div className="deck-image-view" role="dialog" aria-label="Deck image" onClick={onClose}>
+      <div className="deck-image-view-bar" onClick={(event) => event.stopPropagation()}>
+        <span className="saved-note">{note}</span>
+        <a className="button button-primary" href={url} download={fileName}>
+          Download
+        </a>
+        <button className="button" type="button" onClick={onClose}>
+          Close
+        </button>
+      </div>
+      <img src={url} alt="The deck" onClick={(event) => event.stopPropagation()} />
+    </div>,
+    document.body,
+  )
+}
+
+// Decks made of the Showroom's cards, where a deck can keep to some sets (the DUNE cards
+// for one) and then only offers theirs; or of a Showcase's cards, all of one set.
+function DeckBuilder(props: {
+  cards: DeckCard[]
+  // Where its choices are remembered, and its decks kept
+  prefix?: string
+  storageKey?: string
+  // Where the cards come from, for the messages: "Showroom", or "set" for a Showcase,
+  // whose cards are all of one set and offer no choice of sets
+  source?: 'Showroom' | 'set'
+}) {
+  const { cards, prefix = 'decks', storageKey, source = 'Showroom' } = props
+  const fixedSet = source === 'set'
+  const [decks, setDecks] = useState<Deck[]>(() => loadDecks(storageKey))
+  const [currentId, setCurrentId] = useRemembered(`${prefix}.current`, '')
+  // On each time the Deck Builder opens: cards a deck can't play at their cost are left out
+  const [onAspect, setOnAspect] = useState(true)
+  // The author last typed, for the next new deck
+  const [lastAuthor, setLastAuthor] = useRemembered('decks.author', '')
+  const [deleting, setDeleting] = useState(false)
+  const [note, setNote] = useState<string | null>(null)
+  // Choosing another leader or base, from its button in the deck's list
+  const [changing, setChanging] = useState<DeckStep | null>(null)
+  const [panelTab, setPanelTab] = useRemembered<DeckPanelTab>(`${prefix}.panel`, 'list')
+  // The deck image: on the page, off-screen, while it is drawn; then shown, with whether it was copied
+  const [drawing, setDrawing] = useState(false)
+  // The deck's cards as the image draws them, their art smaller; set while it is drawn
+  const [pictureCards, setPictureCards] = useState<Map<string, DeckCard> | null>(null)
+  const [picture, setPicture] = useState<{ url: string; note: string } | null>(null)
+  const pictureRef = useRef<HTMLDivElement>(null)
+  const importInput = useRef<HTMLInputElement>(null)
+
+  // With no deck yet, a new one is open straight away; it is kept once something is picked
+  const [firstDeck] = useState<Deck>(() => ({
+    id: crypto.randomUUID(),
+    name: 'Deck 1',
+    author: lastAuthor || undefined,
+    sets: [],
+    cards: [],
+    sideboard: [],
+  }))
+  const deck = decks.find(({ id }) => id === currentId) ?? decks[0] ?? firstDeck
+  const byId = new Map(cards.map((card) => [card.id, card]))
+
+  const saveDecks = (next: Deck[]) => {
+    if (!storeDecks(next, storageKey)) {
+      setNote('Could not save: this browser has run out of storage.')
+      return
+    }
+    setDecks(next)
+  }
+  const changeDeck = (next: Deck) => {
+    if (decks.some((other) => other.id === next.id)) saveDecks(decks.map((other) => (other.id === next.id ? next : other)))
+    else {
+      // The new deck opened for want of any, kept now that it has something
+      saveDecks([...decks, next])
+      setCurrentId(next.id)
+    }
+  }
+  const addDeck = (next: Deck) => {
+    saveDecks([...decks, next])
+    setCurrentId(next.id)
+    setDeleting(false)
+    setChanging(null)
+  }
+  // A new deck keeps to the sets of the one open, as the next deck is likely for the same game
+  const newDeck = () =>
+    addDeck({
+      id: crypto.randomUUID(),
+      name: `Deck ${decks.length + 1}`,
+      author: lastAuthor || undefined,
+      sets: fixedSet ? [] : (deck?.sets ?? []),
+      cards: [],
+      sideboard: [],
+    })
+
+  // Every set some card is in, for the deck to keep to
+  const setOptions = [
+    ...[...new Set(cards.map((card) => card.set))]
+      .filter((set) => set !== NO_SET)
+      .sort()
+      .map((set) => ({ value: set, label: set })),
+    ...(cards.some((card) => card.set === NO_SET) ? [{ value: NO_SET, label: 'No set' }] : []),
+  ]
+
+  const leader = deck?.leader ? byId.get(deck.leader) : undefined
+  const base = deck?.base ? byId.get(deck.base) : undefined
+  // What the leader and base cover; until both are chosen there is no penalty to show
+  const covered = leader && base ? [...leader.icons, ...base.icons] : undefined
+  const penaltyOf = (card: DeckCard) => (covered ? missingAspects(card, covered) * ASPECT_PENALTY : 0)
+  const inSets = (card: DeckCard) => fixedSet || !deck || deck.sets.length === 0 || deck.sets.includes(card.set)
+
+  // A deck starts with its leader, then its base, then the cards
+  const step: DeckStep | null = changing ?? (!leader ? 'Leader' : !base ? 'Base' : null)
+  const inPool = (card: DeckCard) => card.type !== 'Token' && inSets(card)
+  // Each list keeps its own filters: a Type filter for the cards is no use for leaders
+  const choosing = useCardFilters(
+    `${prefix}.choose`,
+    cards.filter((card) => inPool(card) && card.type === step).map((card) => ({ item: card, facts: card.facts })),
+  )
+  const picking = useCardFilters(
+    prefix,
+    cards
+      .filter((card) => inPool(card) && deckGroup(card) !== undefined && (!onAspect || penaltyOf(card) === 0))
+      .map((card) => ({ item: card, facts: card.facts })),
+    'Order saved',
+    'cost',
+  )
+  const { bar, shown, grid, preview } = step ? choosing : picking
+
+  const copies = (id: string) => copiesOf(deck.cards, id) + copiesOf(deck.sideboard, id)
+  const add = (card: DeckCard) => {
+    if (card.type === 'Leader' || card.type === 'Base') {
+      changeDeck(card.type === 'Leader' ? { ...deck, leader: card.id } : { ...deck, base: card.id })
+      setChanging(null)
+    } else if (copies(card.id) < card.max)
+      changeDeck({ ...deck, cards: withCopies(deck.cards, card.id, copiesOf(deck.cards, card.id) + 1) })
+  }
+  const addToSideboard = (card: DeckCard) => {
+    if (copies(card.id) < card.max)
+      changeDeck({ ...deck, sideboard: withCopies(deck.sideboard, card.id, copiesOf(deck.sideboard, card.id) + 1) })
+  }
+  // The Leader or Base button: choose another, or, pressed again, keep it and go back to the cards
+  const pickChoice = (choice: DeckStep) =>
+    setChanging(step === choice && (choice === 'Leader' ? leader : base) ? null : choice)
+  // From the deck first, then from the sideboard
+  const take = (card: DeckCard) => {
+    const main = copiesOf(deck.cards, card.id)
+    if (main > 0) changeDeck({ ...deck, cards: withCopies(deck.cards, card.id, main - 1) })
+    else changeDeck({ ...deck, sideboard: withCopies(deck.sideboard, card.id, copiesOf(deck.sideboard, card.id) - 1) })
+  }
+  // One copy from the deck to the sideboard, or back
+  const move = (card: DeckCard, toSideboard: boolean) => {
+    const [from, to] = toSideboard ? [deck.cards, deck.sideboard] : [deck.sideboard, deck.cards]
+    const moved = {
+      from: withCopies(from, card.id, copiesOf(from, card.id) - 1),
+      to: withCopies(to, card.id, copiesOf(to, card.id) + 1),
+    }
+    changeDeck(
+      toSideboard ? { ...deck, cards: moved.from, sideboard: moved.to } : { ...deck, cards: moved.to, sideboard: moved.from },
+    )
+  }
+
+  const known = (entries: DeckEntry[]) =>
+    entries.flatMap(({ id, count }) => {
+      const card = byId.get(id)
+      return card ? [{ card, count }] : []
+    })
+  const main = known(deck.cards)
+  const sideboard = known(deck.sideboard)
+  const mainCount = deckCount(deck.cards)
+  const sideboardCount = deckCount(deck.sideboard)
+  // Cards removed from the Showroom since they were put in the deck
+  const lost = deckCount([...deck.cards, ...deck.sideboard].filter(({ id }) => !byId.has(id)))
+  const byCost = (a: { card: DeckCard }, b: { card: DeckCard }) =>
+    (a.card.cost ?? 0) - (b.card.cost ?? 0) || a.card.name.localeCompare(b.card.name)
+
+  const problems = [
+    !leader && 'Choose a leader.',
+    !base && 'Choose a base.',
+    mainCount < DECK_SIZE && `${DECK_SIZE - mainCount} more card${DECK_SIZE - mainCount === 1 ? '' : 's'} needed: a deck has at least ${DECK_SIZE}.`,
+    sideboardCount > SIDEBOARD_SIZE && `${sideboardCount - SIDEBOARD_SIZE} too many in the sideboard: it holds ${SIDEBOARD_SIZE}.`,
+    ...[...new Set([...main, ...sideboard].map(({ card }) => card))]
+      .filter((card) => copies(card.id) > card.max)
+      .map((card) => `${card.label}: more than ${card.max} copies.`),
+    ...[leader, base, ...main.map(({ card }) => card), ...sideboard.map(({ card }) => card)]
+      .filter((card): card is DeckCard => card !== undefined && !inSets(card))
+      .map((card) => `${card.label} is not in the deck's sets.`),
+    lost > 0 && `${lost} card${lost === 1 ? ' is' : 's are'} no longer in the ${source}.`,
+  ].filter((problem): problem is string => Boolean(problem))
+
+  const deckFile = (): DeckFile => ({
+    deck: deck.name,
+    author: deck.author || undefined,
+    sets: deck.sets,
+    leader: leader && fileCard(leader),
+    base: base && fileCard(base),
+    cards: main.map(({ card, count }) => ({ count, ...fileCard(card) })),
+    sideboard: sideboard.map(({ card, count }) => ({ count, ...fileCard(card) })),
+  })
+  const deckText = () =>
+    [
+      deck.name,
+      `Leader: ${leader ? leader.label : '—'}`,
+      `Base: ${base ? base.label : '—'}`,
+      '',
+      `Deck (${mainCount})`,
+      ...[...main].sort(byCost).map(({ card, count }) => `${count} ${card.label}`),
+      ...(sideboard.length
+        ? ['', `Sideboard (${sideboardCount})`, ...[...sideboard].sort(byCost).map(({ card, count }) => `${count} ${card.label}`)]
+        : []),
+    ].join('\n')
+
+  // Draws the deck image and copies it. The copy starts on the click, with the image
+  // still to come: browsers only let a page write to the clipboard right after a click.
+  const deckImage = () => {
+    if (drawing) return
+    setDrawing(true)
+    const drawn = (async () => {
+      const used = [leader, base, ...main.map(({ card }) => card), ...sideboard.map(({ card }) => card)].filter(
+        (card): card is DeckCard => card !== undefined,
+      )
+      const small = new Map(
+        (await Promise.all(used.map((card) => (card.forImage ? card.forImage() : card)))).map((card) => [card.id, card]),
+      )
+      flushSync(() => setPictureCards(small))
+      const node = pictureRef.current?.firstElementChild as HTMLElement | null
+      if (!node) throw new Error('No deck image')
+      // The card text fits itself to its box once on the page: a frame or two, and the fonts
+      await document.fonts.ready
+      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+      const { toCanvas } = await import('html-to-image')
+      const options = { pixelRatio: DECK_IMAGE.scale, width: DECK_IMAGE.width, height: DECK_IMAGE.height }
+      // Safari leaves the pictures out the first time, as with the cards
+      if (webKit) await toCanvas(node, options)
+      const canvas = await toCanvas(node, options)
+      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'))
+      if (!blob) throw new Error('The deck image could not be drawn')
+      return blob
+    })()
+    const copied = navigator.clipboard
+      .write([new ClipboardItem({ 'image/png': drawn })])
+      .then(
+        () => true,
+        () => false,
+      )
+    Promise.all([drawn, copied])
+      .then(([blob, ok]) =>
+        setPicture({
+          url: URL.createObjectURL(blob),
+          note: ok ? 'Copied to the clipboard.' : 'Could not copy it: this browser would not allow it. Download it instead.',
+        }),
+      )
+      .catch(() => setNote('Could not make the deck image.'))
+      .finally(() => {
+        setDrawing(false)
+        setPictureCards(null)
+      })
+  }
+  const closePicture = () => {
+    if (picture) URL.revokeObjectURL(picture.url)
+    setPicture(null)
+  }
+
+  const importDeck = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+    try {
+      const data = JSON.parse(await file.text()) as DeckFile
+      let missing = 0
+      const entries = (list: DeckFileCard[] = []) =>
+        list.flatMap((wanted) => {
+          const card = findDeckCard(cards, wanted)
+          if (!card) missing += wanted.count
+          return card ? [{ id: card.id, count: wanted.count }] : []
+        })
+      const found = (wanted?: Omit<DeckFileCard, 'count'>) => {
+        const card = wanted && findDeckCard(cards, wanted)
+        if (wanted && !card) missing++
+        return card?.id
+      }
+      addDeck({
+        id: crypto.randomUUID(),
+        name: data.deck || file.name.replace(/\.json$/i, ''),
+        author: typeof data.author === 'string' ? data.author : undefined,
+        sets: !fixedSet && Array.isArray(data.sets) ? data.sets : [],
+        leader: found(data.leader),
+        base: found(data.base),
+        cards: entries(data.cards),
+        sideboard: entries(data.sideboard),
+      })
+      setNote(missing ? `Imported. ${missing} card${missing === 1 ? ' was' : 's were'} not found in the ${source}.` : 'Imported.')
+    } catch {
+      setNote('That file is not a deck.')
+    }
+  }
+
+  return (
+    <section className="decks">
+      {pictureCards &&
+        createPortal(
+          <div className="deck-image-holder" ref={pictureRef} aria-hidden="true">
+            <DeckImage
+              name={deck.name}
+              author={deck.author?.trim()}
+              leader={leader && pictureCards.get(leader.id)}
+              base={base && pictureCards.get(base.id)}
+              covered={covered ?? [...(leader?.icons ?? []), ...(base?.icons ?? [])]}
+              cards={main.map(({ card, count }) => ({ card: pictureCards.get(card.id) ?? card, count }))}
+              sideboard={sideboard.map(({ card, count }) => ({ card: pictureCards.get(card.id) ?? card, count }))}
+            />
+          </div>,
+          document.body,
+        )}
+      {picture && (
+        <DeckImageView url={picture.url} fileName={`${deck.name || 'Deck'}.png`.replace(/[\\/:*?"<>|]/g, '')} note={picture.note} onClose={closePicture} />
+      )}
+
+      {/* The deck's fields over the cards to pick from; its buttons over its list */}
+      <div className="deck-main">
+        <div className="deck-bar">
+          <ChoiceDropdown
+            label="Deck"
+            options={decks.map(({ id, name }) => ({ value: id, label: name || 'Unnamed deck' }))}
+            selected={deck.id}
+            onChange={(id) => {
+              setCurrentId(id)
+              setDeleting(false)
+              setChanging(null)
+            }}
+          />
+          <input
+            className="deck-name"
+            aria-label="Deck name"
+            value={deck.name}
+            onChange={(event) => changeDeck({ ...deck, name: event.target.value })}
+          />
+          <input
+            className="deck-name deck-author"
+            aria-label="Author"
+            placeholder="Author"
+            value={deck.author ?? ''}
+            onChange={(event) => {
+              changeDeck({ ...deck, author: event.target.value })
+              setLastAuthor(event.target.value)
+            }}
+          />
+          {!fixedSet && (
+            <>
+              <CheckDropdown label="Sets" options={setOptions} selected={deck.sets} onChange={(sets) => changeDeck({ ...deck, sets })} />
+              <span className="filter-label">
+                {deck.sets.length ? deck.sets.map((set) => (set === NO_SET ? 'No set' : set)).join(', ') : 'All sets'}
+              </span>
+            </>
+          )}
+          <label className="toggle deck-toggle" title="Leave out the cards that would cost more with this leader and base">
+            <input type="checkbox" checked={onAspect} onChange={(event) => setOnAspect(event.target.checked)} />
+            In aspect only
+          </label>
+          {note && <p className="saved-note">{note}</p>}
+        </div>
+
+        <div className="deck-pool">
+          {step && (
+            <div className="deck-step">
+              <h2>Choose {step === 'Leader' ? 'a leader' : 'a base'}</h2>
+              {changing && (step === 'Leader' ? leader : base) && (
+                <button className="button" type="button" onClick={() => setChanging(null)}>
+                  Keep the {step.toLowerCase()} and go back to the cards
+                </button>
+              )}
+            </div>
+          )}
+          {bar}
+          {shown.length === 0 ? (
+            <p className="empty-note">No card matches these filters.</p>
+          ) : (
+            <ul className={step ? `${grid} deck-landscape` : grid}>
+              {shown.map(({ item: card }) => (
+                <DeckPoolCard
+                  key={card.id}
+                  card={card}
+                  preview={preview}
+                  choice={step ?? undefined}
+                  chosen={card.id === deck.leader || card.id === deck.base}
+                  count={step ? 0 : copies(card.id)}
+                  max={card.max}
+                  penalty={step ? 0 : penaltyOf(card)}
+                  onAdd={() => add(card)}
+                  onTake={() => take(card)}
+                  onSideboard={() => addToSideboard(card)}
+                />
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+
+      <div className="deck-side">
+        {/* What can be done with the deck, over its list */}
+        <div className="deck-bar-buttons">
+          <button className="button" type="button" onClick={newDeck}>
+            New
+          </button>
+          <button
+            className="button"
+            type="button"
+            onClick={() => addDeck({ ...structuredClone(deck), id: crypto.randomUUID(), name: `${deck.name} (copy)` })}
+          >
+            Duplicate
+          </button>
+          <button
+            className="button"
+            type="button"
+            disabled={drawing}
+            title="Copies a picture of the deck to share, and shows it"
+            onClick={deckImage}
+          >
+            {drawing ? 'Drawing…' : 'Deck image'}
+          </button>
+          <button className="button" type="button" onClick={() => downloadText(`${deck.name}.json`, JSON.stringify(deckFile(), null, 2))}>
+            Export
+          </button>
+          <button className="button" type="button" onClick={() => importInput.current?.click()}>
+            Import
+          </button>
+          <input ref={importInput} type="file" accept=".json,application/json" hidden onChange={importDeck} />
+          <button
+            className="button"
+            type="button"
+            onClick={() =>
+              navigator.clipboard.writeText(deckText()).then(
+                () => setNote('The list is copied.'),
+                () => setNote('Could not copy the list.'),
+              )
+            }
+          >
+            Copy list
+          </button>
+          {deleting ? (
+            <span className="confirm">
+              Delete this deck?
+              <button
+                className="button button-primary"
+                type="button"
+                onClick={() => {
+                  saveDecks(decks.filter((other) => other.id !== deck.id))
+                  setDeleting(false)
+                }}
+              >
+                Yes
+              </button>
+              <button className="button" type="button" onClick={() => setDeleting(false)}>
+                No
+              </button>
+            </span>
+          ) : (
+            <button className="button" type="button" onClick={() => setDeleting(true)}>
+              Delete
+            </button>
+          )}
+        </div>
+
+        <aside className="deck-panel">
+          <DeckChoice label="Leader" card={leader} active={step === 'Leader'} onPick={() => pickChoice('Leader')} />
+          <DeckChoice label="Base" card={base} active={step === 'Base'} onPick={() => pickChoice('Base')} />
+          {covered && (
+            <div className="deck-aspects" title="The aspects the leader and base cover">
+              {covered.map((aspect, index) => (
+                <img key={index} src={aspectIcon(aspect)} alt={aspect} />
+              ))}
+            </div>
+          )}
+
+          <p className="deck-totals">
+            <strong className={mainCount < DECK_SIZE ? 'deck-short' : undefined}>
+              {mainCount}/{DECK_SIZE}
+            </strong>{' '}
+            cards · sideboard {sideboardCount}/{SIDEBOARD_SIZE}
+          </p>
+          {problems.length === 0 ? (
+            <p className="deck-legal">Ready to play: the deck follows the Premier rules.</p>
+          ) : (
+            <ul className="deck-problems">
+              {problems.map((problem) => (
+                <li key={problem}>{problem}</li>
+              ))}
+            </ul>
+          )}
+          {lost > 0 && (
+            <button
+              className="button"
+              type="button"
+              onClick={() =>
+                changeDeck({
+                  ...deck,
+                  cards: deck.cards.filter(({ id }) => byId.has(id)),
+                  sideboard: deck.sideboard.filter(({ id }) => byId.has(id)),
+                })
+              }
+            >
+              Take the missing cards out
+            </button>
+          )}
+
+          <div className="deck-tabs" role="tablist">
+            {deckPanelTabs.map(({ value, label }) => (
+              <button key={value} type="button" role="tab" aria-selected={panelTab === value} onClick={() => setPanelTab(value)}>
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {panelTab === 'draw' && <DeckDraw key={deck.id} cards={main} />}
+          {panelTab === 'math' && <DeckMath cards={main} />}
+          {panelTab === 'list' && deckGroups.map((group) => {
+            const rows = main.filter(({ card }) => deckGroup(card) === group).sort(byCost)
+            if (rows.length === 0) return null
+            return (
+              <div key={group}>
+                <h3 className="deck-group">
+                  {group} ({rows.reduce((sum, { count }) => sum + count, 0)})
+                </h3>
+                <ul className="deck-rows">
+                  {rows.map(({ card, count }) => (
+                    <DeckRow
+                      key={card.id}
+                      card={card}
+                      count={count}
+                      penalty={penaltyOf(card)}
+                      onAdd={() => add(card)}
+                      onTake={() => take(card)}
+                    >
+                      <button className="deck-button" type="button" aria-label="Take a copy out" onClick={() => take(card)}>
+                        −
+                      </button>
+                      <button
+                        className="deck-button"
+                        type="button"
+                        aria-label="Add a copy"
+                        disabled={copies(card.id) >= card.max}
+                        onClick={() => add(card)}
+                      >
+                        +
+                      </button>
+                      <button className="deck-button" type="button" title="Move a copy to the sideboard" onClick={() => move(card, true)}>
+                        SB
+                      </button>
+                    </DeckRow>
+                  ))}
+                </ul>
+              </div>
+            )
+          })}
+          {panelTab === 'list' && sideboard.length > 0 && (
+            <div>
+              <h3 className="deck-group">Sideboard ({sideboardCount})</h3>
+              <ul className="deck-rows">
+                {[...sideboard].sort(byCost).map(({ card, count }) => (
+                  <DeckRow
+                    key={card.id}
+                    card={card}
+                    count={count}
+                    penalty={penaltyOf(card)}
+                    onAdd={() => addToSideboard(card)}
+                    onTake={() => changeDeck({ ...deck, sideboard: withCopies(deck.sideboard, card.id, count - 1) })}
+                  >
+                    <button
+                      className="deck-button"
+                      type="button"
+                      aria-label="Take a copy out"
+                      onClick={() => changeDeck({ ...deck, sideboard: withCopies(deck.sideboard, card.id, count - 1) })}
+                    >
+                      −
+                    </button>
+                    <button className="deck-button" type="button" title="Move a copy to the deck" onClick={() => move(card, false)}>
+                      Deck
+                    </button>
+                  </DeckRow>
+                ))}
+              </ul>
+            </div>
+          )}
+        </aside>
+      </div>
     </section>
   )
 }
@@ -2542,6 +3863,7 @@ function App() {
       </header>
 
       {tab === 'showroom' && <Showroom cards={cards} onEdit={editCard} onRemove={removeCard} onImport={importCards} />}
+      {tab === 'decks' && <DeckBuilder cards={cards.map(deckCardOf)} />}
       {tab === 'projects' && <Projects />}
       {tab === 'creator' && (
         <CardCreator

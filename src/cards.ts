@@ -189,6 +189,44 @@ export function storeCards(cards: Card[]) {
   }
 }
 
+// A card in a deck: a saved card, by its id, and how many copies
+export type DeckEntry = { id: string; count: number }
+
+export type Deck = {
+  id: string
+  name: string
+  // Who made it, shown on the deck image
+  author?: string
+  // The set codes, in capitals, its cards may come from; empty, any card in the Showroom
+  sets: string[]
+  leader?: string
+  base?: string
+  cards: DeckEntry[]
+  sideboard: DeckEntry[]
+}
+
+// Decks live in this browser too, beside the cards they are made of
+const DECKS_KEY = 'dune-unlimited.decks'
+
+// The Showroom's decks are under DECKS_KEY; a Showcase's under a key of its own
+export function loadDecks(key = DECKS_KEY): Deck[] {
+  try {
+    const decks = JSON.parse(localStorage.getItem(key) ?? '[]')
+    return Array.isArray(decks) ? decks : []
+  } catch {
+    return []
+  }
+}
+
+export function storeDecks(decks: Deck[], key = DECKS_KEY) {
+  try {
+    localStorage.setItem(key, JSON.stringify(decks))
+    return true
+  } catch {
+    return false
+  }
+}
+
 const MAX_ART_SIDE = 1400
 
 // An image file as something a canvas can draw. Some browsers cannot read every
