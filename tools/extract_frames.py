@@ -1517,6 +1517,21 @@ def mend_cost_hexagons():
     print("mended the cost hexagon on", mended, "unit frames")
 
 
+def mend_vigilance_icons():
+    """The single Vigilance unit frames came out with specks of art in their aspect
+    icon and a ragged edge, which show once the frame is faded around a solid icon.
+    The icon is the same on every Vigilance unit frame, so it is copied, outline and
+    all, from the Heroism one, down to just above where that frame's second icon begins."""
+    for arena in ("", "-space"):
+        clean = np.array(Image.open(OUT / "unit" / ("vigilance-heroism%s.png" % arena)).convert("RGBA"))
+        for name in ("vigilance", "vigilance-vigilance"):
+            path = OUT / "unit" / (name + arena + ".png")
+            frame = np.array(Image.open(path).convert("RGBA"))
+            frame[104:181, 20:124] = clean[104:181, 20:124]
+            Image.fromarray(frame, "RGBA").save(path)
+            print("mended the Vigilance icon on", path.name)
+
+
 def unstreak(path):
     """Paint over the thin white dash left near the top of an upgrade's power icon, a
     remnant of the sign printed on the card it came from, with the colours above and below it."""
@@ -1549,7 +1564,7 @@ if __name__ == "__main__":
               "leader": extract_leaders, "icons/exhaust": extract_exhaust_icon,
               "icons/artist": extract_artist_icon, "icons/rarity": extract_rarity_icons,
               "icons/labels": extract_label_masks, "icons/foil": extract_foil_stamp, "upgrade/unstreak": unstreak_upgrades,
-              "unit/cost-hexagons": mend_cost_hexagons}
+              "unit/cost-hexagons": mend_cost_hexagons, "unit/vigilance-icons": mend_vigilance_icons}
     for subtitle in SUBTITLES:
         extras[subtitle] = lambda subtitle=subtitle: extract_subtitle(subtitle)
     for frame in sys.argv[1:] or list(FRAMES) + list(extras):
