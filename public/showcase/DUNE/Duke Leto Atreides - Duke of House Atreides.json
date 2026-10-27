@@ -25,7 +25,7 @@
   "power": 5,
   "hp": 7,
   "id": "9f32c1fe-bf5c-4791-9ea3-fe9c4d18967f",
-  "number": "004",
+  "number": "006",
   "subtitle": "Duke of House Atreides",
   "backText": "<If you control another [{Atreides}] unit, this unit gains [Sentinel].>\n[When Defeated:] Defeat an enemy non-leader unit."
 }

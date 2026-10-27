@@ -1,0 +1,18 @@
+{
+  "frameId": "event-aggression",
+  "name": "Lasgun Volley",
+  "trait": "Tactic",
+  "text": "Deal 4 damage to a unit. Then, you may defeat a friendly Spice token. If you do, deal 2 damage to the same unit.",
+  "setCode": "DUNE",
+  "language": "EN",
+  "rarity": "C",
+  "cost": 3,
+  "id": "0b72ff5a-bc19-4218-bbfb-c71830007a2c",
+  "number": "098",
+  "art": {
+    "src": "Lasgun Volley (art).webp",
+    "zoom": 1,
+    "x": -1,
+    "y": 47
+  }
+}
