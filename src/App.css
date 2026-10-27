@@ -1558,14 +1558,6 @@
   cursor: default;
 }
 
-.deck-pool-card:not(.deck-picked) .deck-pool-image {
-  opacity: 0.8;
-}
-
-.deck-pool-card .deck-pool-image:hover {
-  opacity: 1;
-}
-
 /* How many copies are in the deck, on the card's corner */
 .deck-badge {
   position: absolute;
@@ -2179,4 +2171,9 @@
 .showcase-views {
   justify-content: center;
   margin: 0 0 1.5rem;
+}
+
+/* A token of the deck's list: only its name, to see it large under the mouse */
+.deck-token-row {
+  grid-template-columns: minmax(0, 1fr);
 }

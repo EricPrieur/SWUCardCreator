@@ -117,7 +117,7 @@ function findFrame(frameId: string) {
 // leaves it out, so it is not found by a search or published with the showcase.
 function forFrame(card: Draft): Draft {
   const front = findFrame(card.frameId)
-  const back = front.backId ? findFrame(card.backFrameId ?? front.backId) : undefined
+  const back = backFrameOf(card)
   const kept: Draft = { ...card }
   if (!back) {
     delete kept.backText
@@ -141,11 +141,36 @@ function forFrame(card: Draft): Draft {
 // What both sides of a leader say, unless its Leader Unit side was given its own
 type SharedKey = 'name' | 'subtitle' | 'trait'
 
+// A base frame of that aspect, with a game text box or without
+const baseFrameOf = (aspect: Aspect, withText: boolean) => findFrame(`base-${aspect.toLowerCase()}${withText ? '-text' : ''}`)
+
+// A card's other side, if it has one: a leader's Leader Unit side, or a two-sided
+// base's second side. A base's second side is kept as the frame of its aspect; it has
+// a game text box when the first side has one.
+function backFrameOf(card: Draft): Frame | undefined {
+  const front = findFrame(card.frameId)
+  if (front.backId) return findFrame(card.backFrameId ?? front.backId + (card.backArena === 'Space' ? '-space' : ''))
+  if (front.type !== 'Base' || !card.backFrameId) return undefined
+  const [aspect] = findFrame(card.backFrameId).aspects
+  return aspect ? baseFrameOf(aspect, front.textBox !== undefined) : undefined
+}
+
+// A two-sided base: the same base, played with the aspect of the side its deck chooses
+const isTwoSidedBase = (card: Draft) => findFrame(card.frameId).type === 'Base' && backFrameOf(card) !== undefined
+
 // A leader is one card with two sides, which share everything but the frame, the
-// game text and where the art sits. Every other card only has a front.
+// game text and where the art sits. A two-sided base's sides share everything but the
+// aspect; the second side shows the first side's art until it is given its own.
+// Every other card only has a front. "mirrors" is true on a side whose name, trait
+// and text are the other side's.
 function cardSide(card: Draft, back: boolean) {
   const front = findFrame(card.frameId)
-  const shared = { name: card.name, subtitle: card.subtitle, trait: card.trait }
+  const shared = { name: card.name, subtitle: card.subtitle, trait: card.trait, mirrors: false }
+  if (front.type === 'Base') {
+    const second = back ? backFrameOf(card) : undefined
+    if (!second) return { ...shared, frame: front, text: card.text, art: card.art, isBack: false }
+    return { ...shared, frame: second, text: card.text, art: card.backArt ?? card.art, isBack: true, mirrors: true }
+  }
   if (!front.backId) return { ...shared, frame: front, text: card.text, art: card.art, isBack: false }
   // A side with no art of its own shows the other side's image, not yet placed
   const borrowed = (art?: Art): Art | undefined => art && { src: art.src, zoom: 1, x: 0, y: 0 }
@@ -155,10 +180,11 @@ function cardSide(card: Draft, back: boolean) {
     name: card.backName ?? card.name,
     subtitle: card.backSubtitle ?? card.subtitle,
     trait: card.backTrait ?? card.trait,
-    frame: findFrame(card.backFrameId ?? front.backId + (card.backArena === 'Space' ? '-space' : '')),
+    frame: backFrameOf(card)!,
     text: card.backText ?? '',
     art: card.backArt ?? borrowed(card.art),
     isBack: true,
+    mirrors: false,
   }
 }
 
@@ -435,7 +461,7 @@ function ShowroomCard(props: {
         </div>
       </HoverPreview>
       <div className="showroom-actions">
-        {findFrame(card.frameId).backId && (
+        {backFrameOf(card) && (
           <button className="button" onClick={() => setBack(!back)}>
             Flip
           </button>
@@ -693,11 +719,12 @@ type Facts = {
   rarity: string
 }
 
-// A saved card's facts. A leader counts for what either of its sides says.
+// A saved card's facts. A leader, or a two-sided base, counts for what either of its sides says.
 function cardFacts(card: Card): Facts {
   const frame = findFrame(card.frameId)
-  const back = frame.backId ? cardSide(card, true) : undefined
-  const traitLabels = [...splitTraits(card.trait), ...splitTraits(back?.trait)]
+  const back = backFrameOf(card) ? cardSide(card, true) : undefined
+  // A base's second side says what its first says: its location is not listed twice
+  const traitLabels = [...splitTraits(card.trait), ...(back?.mirrors ? [] : splitTraits(back?.trait))]
   return {
     name: card.name,
     // A token unit is listed with the tokens
@@ -993,13 +1020,17 @@ function useCardFilters<T>(
 }
 
 // The name a card's image is saved under: its name and subtitle, and "(unit)" for a
-// leader's other side, without the characters file names cannot have
+// leader's other side or the aspect for a base's second side, "(Cunning)", without
+// the characters file names cannot have
 function cardFileName(card: Draft, back: boolean) {
   const side = cardSide(card, back)
   const subtitle = side.subtitle?.trim()
-  const name = `${side.name.trim() || 'card'}${subtitle ? ` - ${subtitle}` : ''}${side.isBack ? ' (unit)' : ''}`
+  const which = !side.isBack ? '' : side.mirrors ? ` (${side.frame.aspects[0]})` : ' (unit)'
+  const name = `${side.name.trim() || 'card'}${subtitle ? ` - ${subtitle}` : ''}${which}`
   return name.replace(/[\\/:*?"<>|]/g, '')
 }
+// What cardFileName adds for a card's other side
+const sideSuffix = / \((?:unit|Vigilance|Command|Aggression|Cunning)\)$/
 
 // A Showcase's list of cards, kept as showcase.json beside the cards' images, which
 // are saved from the Showroom as JPG under the names given here.
@@ -1012,7 +1043,9 @@ type ShowcaseCard = {
   backName?: string
   subtitle?: string
   type: FrameFilter
+  // A two-sided base's first side's aspects here, its second side's in backAspects
   aspects: Aspect[]
+  backAspects?: Aspect[]
   cost?: number
   traits: string[]
   text?: string
@@ -1028,7 +1061,7 @@ type ShowcaseList = { title: string; cards: ShowcaseCard[] }
 function showcaseEntry(card: Card): ShowcaseCard {
   const facts = cardFacts(card)
   const frame = findFrame(card.frameId)
-  const back = frame.backId ? cardSide(card, true) : undefined
+  const back = backFrameOf(card) ? cardSide(card, true) : undefined
   return {
     id: card.id,
     image: cardFileName(card, false),
@@ -1037,7 +1070,8 @@ function showcaseEntry(card: Card): ShowcaseCard {
     backName: back && back.name !== card.name ? back.name : undefined,
     subtitle: card.subtitle?.trim() || undefined,
     type: facts.type,
-    aspects: facts.aspects,
+    aspects: back?.mirrors ? frame.aspects : facts.aspects,
+    backAspects: back?.mirrors ? back.frame.aspects : undefined,
     cost: card.cost,
     traits: facts.traitLabels,
     text: facts.text || undefined,
@@ -1254,7 +1288,8 @@ function CardFiles(props: { cards: Card[]; onImport: (cards: Card[]) => string }
         const used = new Set<string>()
         for (const entry of [...cards.filter((entry) => !exporting(entry)), ...cards.filter(exporting)]) {
           let number = 1
-          const named = (name: string) => (number === 1 ? name : name.replace(/( \(unit\))?$/, ` (${number})$1`))
+          const named = (name: string) =>
+            number === 1 ? name : name.replace(sideSuffix, '') + ` (${number})` + (sideSuffix.exec(name)?.[0] ?? '')
           while (used.has(named(entry.image).toLowerCase())) number++
           entry.image = named(entry.image)
           entry.back = entry.back && named(entry.back)
@@ -1264,7 +1299,7 @@ function CardFiles(props: { cards: Card[]; onImport: (cards: Card[]) => string }
         for (const card of list) {
           setStatus(`Exporting ${set}: card ${done + 1} of ${list.length}…`)
           const names = cards.find((entry) => entry.id === card.id)!
-          const sides = findFrame(card.frameId).backId ? [false, true] : [false]
+          const sides = backFrameOf(card) ? [false, true] : [false]
           for (const back of sides) await target.write(set, `${back ? names.back : names.image}.jpg`, await draw(card, back))
           const portable = await portableCard(card, names)
           for (const { name, body } of portable.files) await target.write(set, name, body)
@@ -1425,7 +1460,7 @@ function showcaseFacts(card: ShowcaseCard): Facts {
     traits: card.traits.map((trait) => trait.toLowerCase()),
     traitLabels: card.traits,
     text: card.text ?? '',
-    aspects: card.aspects,
+    aspects: [...card.aspects, ...(card.backAspects ?? [])],
     cost: card.cost,
     set: card.set ?? '',
     number: card.number ?? '',
@@ -1523,7 +1558,7 @@ function Showcase(props: { folder: string }) {
       <>
         {views}
         <DeckBuilder
-          cards={list.cards.map((card) => deckCardOfShowcase(folder, card))}
+          cards={list.cards.flatMap((card) => deckCardOfShowcase(folder, card))}
           prefix={`showcase.${props.folder}.decks`}
           storageKey={`dune-unlimited.decks.${props.folder}`}
           source="set"
@@ -1578,6 +1613,8 @@ type DeckCard = {
   number?: string
   // How many copies a deck may have
   max: number
+  // A two-sided base's second side, offered as a base of its own
+  back?: boolean
   facts: Facts
   face: ReactNode
   // The same card drawn lighter, for the deck image
@@ -1592,8 +1629,14 @@ function maxCopies(text: string) {
   return rule[1] ? Number(rule[1]) : Infinity
 }
 
-// A card saved in the Showroom, drawn as it is on the page
-function deckCardOf(card: Card): DeckCard {
+// A two-sided base is two bases in the Deck Builder, one per side, each with the aspect
+// it is played with: the second's id is the card's with this after it
+const BACK_SIDE = '#back'
+// The label of one side of a two-sided base: its name, and the aspect of that side
+const sideLabel = (label: string, icons: Aspect[]) => `${label} (${icons.join(' ')})`
+
+// A card saved in the Showroom, drawn as it is on the page: one card, or a base's two sides
+function deckCardOf(card: Card): DeckCard[] {
   const frame = findFrame(card.frameId)
   const facts = cardFacts(card)
   const deckCard: DeckCard = {
@@ -1613,12 +1656,39 @@ function deckCardOf(card: Card): DeckCard {
     facts,
     face: <CardFace card={card} />,
   }
-  return { ...deckCard, forImage: async () => ({ ...deckCard, face: <CardFace card={await withSmallArt(card)} /> }) }
+  const second = isTwoSidedBase(card) ? backFrameOf(card) : undefined
+  if (!second) return [{ ...deckCard, forImage: async () => ({ ...deckCard, face: <CardFace card={await withSmallArt(card)} /> }) }]
+  const side = (back: boolean): DeckCard => {
+    const icons = back ? second.aspects : frame.aspects
+    const each: DeckCard = {
+      ...deckCard,
+      id: back ? card.id + BACK_SIDE : card.id,
+      label: sideLabel(deckCard.label, icons),
+      icons,
+      back: back || undefined,
+      facts: { ...facts, aspects: icons },
+      face: <CardFace card={card} back={back} />,
+    }
+    return { ...each, forImage: async () => ({ ...each, face: <CardFace card={await withSmallArt(card)} back={back} /> }) }
+  }
+  return [side(false), side(true)]
 }
 
 // A card of a Showcase: its saved image, and what showcase.json says of it. A leader's
-// aspects are listed for both its sides there, the same ones twice: kept once.
-function deckCardOfShowcase(folder: string, card: ShowcaseCard): DeckCard {
+// aspects are listed for both its sides there, the same ones twice: kept once. A
+// two-sided base is its two sides, as in deckCardOf.
+function deckCardOfShowcase(folder: string, card: ShowcaseCard): DeckCard[] {
+  if (card.type === 'Base' && card.back && card.backAspects) {
+    const sides = [
+      { ...card, back: undefined, backAspects: undefined },
+      { ...card, id: (card.id ?? card.image) + BACK_SIDE, image: card.back, aspects: card.backAspects, back: undefined, backAspects: undefined },
+    ]
+    return sides.map((side, index) => {
+      const [deckCard] = deckCardOfShowcase(folder, side)
+      const which = { label: sideLabel(deckCard.label, side.aspects), back: index === 1 || undefined }
+      return { ...deckCard, ...which, forImage: async () => ({ ...(await deckCard.forImage!()), ...which }) }
+    })
+  }
   const label = [card.name, card.subtitle].filter(Boolean).join(', ')
   const src = asset(`${folder}/${encodeURIComponent(card.image)}.jpg`)
   const deckCard: DeckCard = {
@@ -1639,15 +1709,17 @@ function deckCardOfShowcase(folder: string, card: ShowcaseCard): DeckCard {
     face: <img className="showcase-image" src={src} alt={label} loading="lazy" />,
   }
   // The deck image is laid out out of sight, where a lazy image never loads: loaded first
-  return {
-    ...deckCard,
-    forImage: async () => {
-      const image = new Image()
-      image.src = src
-      await image.decode().catch(() => undefined)
-      return { ...deckCard, face: <img className="showcase-image" src={src} alt={label} /> }
+  return [
+    {
+      ...deckCard,
+      forImage: async () => {
+        const image = new Image()
+        image.src = src
+        await image.decode().catch(() => undefined)
+        return { ...deckCard, face: <img className="showcase-image" src={src} alt={label} /> }
+      },
     },
-  }
+  ]
 }
 
 const deckGroups = ['Ground units', 'Space units', 'Events', 'Upgrades'] as const
@@ -1689,7 +1761,8 @@ function downloadText(fileName: string, text: string) {
 
 // A deck as a file: each card by its name, set and number as well as its id, so the
 // deck still finds its cards in another browser whose cards were imported, not copied
-type DeckFileCard = { count: number; name: string; subtitle?: string; set?: string; number?: string; id: string }
+// back: the second side of a two-sided base
+type DeckFileCard = { count: number; name: string; subtitle?: string; set?: string; number?: string; id: string; back?: boolean }
 type DeckFile = {
   deck: string
   author?: string
@@ -1706,16 +1779,18 @@ const fileCard = (card: DeckCard) => ({
   set: card.set === NO_SET ? undefined : card.set,
   number: card.number,
   id: card.id,
+  back: card.back,
 })
 
 // The saved card a deck file means: the same id, or else the same set and number, or
-// else the same name and subtitle
+// else the same name and subtitle, on the same side for a two-sided base
 function findDeckCard(cards: DeckCard[], wanted: Omit<DeckFileCard, 'count'>) {
   const same = (a?: string, b?: string) => (a ?? '').trim().toLowerCase() === (b ?? '').trim().toLowerCase()
+  const sameSide = cards.filter((card) => (card.back ?? false) === (wanted.back ?? false))
   return (
     cards.find((card) => card.id === wanted.id) ??
-    cards.find((card) => wanted.number && same(card.set, wanted.set) && same(card.number, wanted.number)) ??
-    cards.find((card) => same(card.name, wanted.name) && same(card.subtitle, wanted.subtitle))
+    sameSide.find((card) => wanted.number && same(card.set, wanted.set) && same(card.number, wanted.number)) ??
+    sameSide.find((card) => same(card.name, wanted.name) && same(card.subtitle, wanted.subtitle))
   )
 }
 
@@ -1795,7 +1870,7 @@ function DeckPoolCard(props: {
   const { card, preview, choice, chosen, count, max, penalty, onAdd, onTake, onSideboard } = props
   const full = count >= max
   return (
-    <li className={`deck-pool-card${chosen || count > 0 ? ' deck-picked' : ''}${!choice && full ? ' deck-full' : ''}`}>
+    <li className={`deck-pool-card${!choice && full ? ' deck-full' : ''}`}>
       <HoverPreview enabled={preview} preview={card.face}>
         <button
           className="deck-pool-image"
@@ -2068,7 +2143,7 @@ const DECK_IMAGE = { width: 1440, height: 810, scale: 2 }
 // The main deck's cards fill this much of the right side; the sideboard's, what the left
 // side has under the deck's name, leader and base (less with an author's line)
 const DECK_IMAGE_GRID = { width: 920, height: 762, gap: 10 }
-const DECK_IMAGE_SIDEBOARD = { width: 440, height: 430, author: 40 }
+const DECK_IMAGE_SIDEBOARD = { width: 440, height: 430, author: 40, heading: 54 }
 // A card's height for its width
 const CARD_RATIO = 1.4
 
@@ -2084,17 +2159,35 @@ function deckImageFit(cards: number, width: number, height: number) {
   return Math.floor(size(columns))
 }
 
-// The deck's and the sideboard's cards drawn at one size, the biggest both fit at, and
-// how many to a row that makes in each
-function deckImageGrids(cards: number, sideboard: number, author: boolean) {
+// The deck's, the sideboard's and the tokens' cards drawn at one size, the biggest they
+// all fit at, and how many to a row that makes in each. The sideboard and the tokens
+// share the left side, under one heading each.
+function deckImageGrids(cards: number, sideboard: number, tokens: number, author: boolean) {
   const { gap } = DECK_IMAGE_GRID
-  const side = { width: DECK_IMAGE_SIDEBOARD.width, height: DECK_IMAGE_SIDEBOARD.height - (author ? DECK_IMAGE_SIDEBOARD.author : 0) }
-  const card = Math.min(
-    deckImageFit(cards, DECK_IMAGE_GRID.width, DECK_IMAGE_GRID.height),
-    sideboard ? deckImageFit(sideboard, side.width, side.height) : Infinity,
-  )
-  const columns = (count: number, width: number) => Math.max(1, Math.min(count, Math.floor((width + gap) / (card + gap))))
-  return { card, deck: columns(cards, DECK_IMAGE_GRID.width), sideboard: columns(sideboard, side.width) }
+  const headings = (sideboard ? 1 : 0) + (tokens ? 1 : 0)
+  const side = {
+    width: DECK_IMAGE_SIDEBOARD.width,
+    height:
+      DECK_IMAGE_SIDEBOARD.height -
+      (author ? DECK_IMAGE_SIDEBOARD.author : 0) -
+      Math.max(0, headings - 1) * DECK_IMAGE_SIDEBOARD.heading,
+  }
+  const columns = (count: number, width: number, card: number) =>
+    Math.max(1, Math.min(count, Math.floor((width + gap) / (card + gap))))
+  // The left side's cards fit when the rows of both groups, each started afresh, fit its height
+  const sideFits = (card: number) => {
+    const rows = (count: number) => (count ? Math.ceil(count / columns(count, side.width, card)) : 0)
+    const all = rows(sideboard) + rows(tokens)
+    return all * card * CARD_RATIO + gap * Math.max(0, all - headings) <= side.height
+  }
+  let card = deckImageFit(cards, DECK_IMAGE_GRID.width, DECK_IMAGE_GRID.height)
+  while (card > 40 && sideboard + tokens > 0 && !sideFits(card)) card--
+  return {
+    card,
+    deck: columns(cards, DECK_IMAGE_GRID.width, card),
+    sideboard: columns(sideboard, side.width, card),
+    tokens: columns(tokens, side.width, card),
+  }
 }
 
 // Art files are drawn smaller for the deck image, which would otherwise carry every
@@ -2159,11 +2252,13 @@ function DeckImage(props: {
   covered: Aspect[]
   cards: DeckCards
   sideboard: DeckCards
+  // The tokens the deck's cards make or use, shown so they need no explaining
+  tokens: DeckCard[]
 }) {
-  const { name, author, leader, base, covered, cards, sideboard } = props
+  const { name, author, leader, base, covered, cards, sideboard, tokens } = props
   const byCost = (a: { card: DeckCard }, b: { card: DeckCard }) =>
     (a.card.cost ?? 0) - (b.card.cost ?? 0) || a.card.name.localeCompare(b.card.name)
-  const grid = deckImageGrids(cards.length, sideboard.length, Boolean(author))
+  const grid = deckImageGrids(cards.length, sideboard.length, tokens.length, Boolean(author))
   return (
     <div className="deck-image" style={{ width: DECK_IMAGE.width, height: DECK_IMAGE.height, background: deckImageBackground(covered) }}>
       <div className="deck-image-side">
@@ -2182,6 +2277,19 @@ function DeckImage(props: {
             >
               {[...sideboard].sort(byCost).map(({ card, count }) => (
                 <DeckImageCard key={card.id} card={card} count={count} />
+              ))}
+            </div>
+          </>
+        )}
+        {tokens.length > 0 && (
+          <>
+            <h3 className="deck-image-heading">Tokens</h3>
+            <div
+              className="deck-image-sideboard"
+              style={{ gap: DECK_IMAGE_GRID.gap, gridTemplateColumns: `repeat(${grid.tokens}, ${grid.card}px)` }}
+            >
+              {tokens.map((card) => (
+                <DeckImageCard key={card.id} card={card} />
               ))}
             </div>
           </>
@@ -2328,6 +2436,8 @@ function DeckBuilder(props: {
   const choosing = useCardFilters(
     `${prefix}.choose`,
     cards.filter((card) => inPool(card) && card.type === step).map((card) => ({ item: card, facts: card.facts })),
+    'Order saved',
+    'number',
   )
   const picking = useCardFilters(
     prefix,
@@ -2385,6 +2495,14 @@ function DeckBuilder(props: {
   const lost = deckCount([...deck.cards, ...deck.sideboard].filter(({ id }) => !byId.has(id)))
   const byCost = (a: { card: DeckCard }, b: { card: DeckCard }) =>
     (a.card.cost ?? 0) - (b.card.cost ?? 0) || a.card.name.localeCompare(b.card.name)
+  // The tokens a card of the deck names ("Create a Fremen token", "a Spice Token"): new
+  // to most players, so shown with the deck
+  const namedText = [leader, base, ...main.map(({ card }) => card), ...sideboard.map(({ card }) => card)]
+    .map((card) => card?.facts.text ?? '')
+    .join(' ')
+  const tokens = cards.filter(
+    (card) => card.type === 'Token' && inSets(card) && namedText.includes(`${card.name.trim().toLowerCase()} token`),
+  )
 
   const problems = [
     !leader && 'Choose a leader.',
@@ -2428,7 +2546,7 @@ function DeckBuilder(props: {
     if (drawing) return
     setDrawing(true)
     const drawn = (async () => {
-      const used = [leader, base, ...main.map(({ card }) => card), ...sideboard.map(({ card }) => card)].filter(
+      const used = [leader, base, ...main.map(({ card }) => card), ...sideboard.map(({ card }) => card), ...tokens].filter(
         (card): card is DeckCard => card !== undefined,
       )
       const small = new Map(
@@ -2520,6 +2638,7 @@ function DeckBuilder(props: {
               covered={covered ?? [...(leader?.icons ?? []), ...(base?.icons ?? [])]}
               cards={main.map(({ card, count }) => ({ card: pictureCards.get(card.id) ?? card, count }))}
               sideboard={sideboard.map(({ card, count }) => ({ card: pictureCards.get(card.id) ?? card, count }))}
+              tokens={tokens.map((card) => pictureCards.get(card.id) ?? card)}
             />
           </div>,
           document.body,
@@ -2793,6 +2912,22 @@ function DeckBuilder(props: {
               </ul>
             </div>
           )}
+          {panelTab === 'list' && tokens.length > 0 && (
+            <div>
+              <h3 className="deck-group" title="Tokens the deck's cards name">
+                Tokens ({tokens.length})
+              </h3>
+              <ul className="deck-rows">
+                {tokens.map((card) => (
+                  <li key={card.id} className="deck-row deck-token-row">
+                    <HoverPreview enabled preview={card.face}>
+                      <span className="deck-row-name">{card.label}</span>
+                    </HoverPreview>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </aside>
       </div>
     </section>
@@ -2881,7 +3016,7 @@ function CardCreator(props: {
   const front = findFrame(draft.frameId)
   const side = cardSide(draft, back)
   const { frame } = side
-  const bothSides = front.backId ? [front, cardSide(draft, true).frame] : [front]
+  const bothSides = backFrameOf(draft) ? [front, cardSide(draft, true).frame] : [front]
   // Each side of a leader has its own art. Changing it changes that side alone; a
   // side that has never been given art shows the other side's (see cardSide).
   const setArt = (art?: Art) => onChange(side.isBack ? { ...draft, backArt: art } : { ...draft, art })
@@ -2894,7 +3029,7 @@ function CardCreator(props: {
     !front.backId ? false : side.isBack ? !draft[key]?.trim() : draft[backKeys[key]]?.trim() === ''
   const setShared = (key: SharedKey, value: string) => {
     if (bothWays.current.has(key)) return onChange({ ...draft, [key]: value, [backKeys[key]]: undefined })
-    if (!side.isBack) return onChange({ ...draft, [key]: value })
+    if (!side.isBack || side.mirrors) return onChange({ ...draft, [key]: value })
     onChange({ ...draft, [backKeys[key]]: value === (draft[key] ?? '') ? undefined : value })
   }
   // What the shared fields' inputs need: their value, and noting when typing begins and ends
@@ -2910,6 +3045,8 @@ function CardCreator(props: {
   // matching the Leader side until another is picked for it, which leaves the
   // Leader side as it is.
   const pickFrame = (candidate: Frame) => {
+    // A base frame picked on a base's second side changes that side's aspect alone
+    if (side.mirrors && candidate.type === 'Base') return onChange({ ...draft, backFrameId: candidate.id })
     if (!candidate.backOf) return onChange({ ...draft, frameId: candidate.id })
     setBack(true)
     // Picked for a card that is not a leader yet, it brings its Leader side along
@@ -3056,7 +3193,45 @@ function CardCreator(props: {
               </button>
             </div>
           )}
-          {side.isBack && (
+          {front.type === 'Base' && (
+            <div className="side-toggle" title="A two-sided base has the same name, text and HP on both sides; a deck plays the aspect of the side it chooses">
+              <span className="filter-label">Second side</span>
+              {[undefined, ...aspects.slice(0, 4).filter((aspect) => !front.aspects.includes(aspect))].map((aspect) => {
+                const pressed = (bothSides[1]?.aspects[0] ?? undefined) === aspect
+                return (
+                  <button
+                    key={aspect ?? 'none'}
+                    className="chip"
+                    type="button"
+                    aria-pressed={pressed}
+                    onClick={() => {
+                      if (!aspect) setBack(false)
+                      onChange({ ...draft, backFrameId: aspect && baseFrameOf(aspect, front.textBox !== undefined).id })
+                    }}
+                  >
+                    {aspect ?? 'None'}
+                  </button>
+                )
+              })}
+            </div>
+          )}
+          {front.type === 'Base' && bothSides[1] && (
+            <div className="side-toggle">
+              <button className="chip" type="button" aria-pressed={!side.isBack} onClick={() => setBack(false)}>
+                {front.aspects[0]} side
+              </button>
+              <button className="chip" type="button" aria-pressed={side.isBack} onClick={() => setBack(true)}>
+                {bothSides[1].aspects[0]} side
+              </button>
+            </div>
+          )}
+          {side.isBack && side.mirrors && (
+            <p className="empty-note">
+              Both sides share the name, location, HP and game text: changed here, they change on both. The art is
+              the first side's until you give this side its own.
+            </p>
+          )}
+          {side.isBack && !side.mirrors && (
             <p className="empty-note">
               Name, subtitle, trait and art are the Leader side's until you change them here. Pick a frame below
               to change this side's frame alone: a Space one, or other aspects.
@@ -3113,7 +3288,7 @@ function CardCreator(props: {
                 rows={7}
                 value={side.text}
                 onChange={(event) =>
-                  onChange({ ...draft, [side.isBack ? 'backText' : 'text']: event.target.value })
+                  onChange({ ...draft, [side.isBack && !side.mirrors ? 'backText' : 'text']: event.target.value })
                 }
               />
               <span>
@@ -3863,7 +4038,7 @@ function App() {
       </header>
 
       {tab === 'showroom' && <Showroom cards={cards} onEdit={editCard} onRemove={removeCard} onImport={importCards} />}
-      {tab === 'decks' && <DeckBuilder cards={cards.map(deckCardOf)} />}
+      {tab === 'decks' && <DeckBuilder cards={cards.flatMap(deckCardOf)} />}
       {tab === 'projects' && <Projects />}
       {tab === 'creator' && (
         <CardCreator
