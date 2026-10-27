@@ -32,3 +32,9 @@ art-source
 
 # Card art lives on this computer only; the site shows art people upload
 public/art
+
+# Server secrets
+.env
+
+# The local database of npm run local
+server/.localdb

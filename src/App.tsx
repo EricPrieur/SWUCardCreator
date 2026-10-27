@@ -4,6 +4,7 @@ import artFiles from 'virtual:art-list'
 import { asset } from './asset'
 import './App.css'
 import { CardView } from './CardView'
+import { AccountBar } from './account'
 import {
   defaultLook,
   loadCards,
@@ -808,6 +809,8 @@ function useCardFilters<T>(
   firstSort = 'Order saved',
   // The sort until one is picked
   startSort: SortKey = 'saved',
+  // The card an item is a side of, so the count names each card once
+  cardOf?: (item: T) => string,
 ) {
   const [query, setQuery] = useRemembered(`${name}.search`, '')
   const [types, setTypes] = useRemembered<FrameFilter[]>(`${name}.types`, [])
@@ -900,6 +903,10 @@ function useCardFilters<T>(
   // Cards with no cost (bases, tokens) or no number stay after the others, the other way round as well
   const missing = (facts: Facts) => (sort === 'cost' ? facts.cost === undefined : sort === 'number' ? !facts.number : false)
   if (descending) shown.sort((a, b) => Number(missing(a.facts)) - Number(missing(b.facts)))
+  // The two sides of a base are one card
+  const cardCount = (list: { item: T }[]) => (cardOf ? new Set(list.map(({ item }) => cardOf(item))).size : list.length)
+  const itemCount = cardCount(items)
+  const shownCount = cardCount(shown)
   const filtered =
     search !== '' ||
     neutral ||
@@ -991,7 +998,7 @@ function useCardFilters<T>(
       </div>
       <div className="filter-group">
         <span className="filter-label">
-          {shown.length === items.length ? `${items.length} cards` : `${shown.length} of ${items.length} cards`}
+          {shownCount === itemCount ? `${itemCount} cards` : `${shownCount} of ${itemCount} cards`}
         </span>
         {filtered && (
           <button
@@ -2438,6 +2445,7 @@ function DeckBuilder(props: {
     cards.filter((card) => inPool(card) && card.type === step).map((card) => ({ item: card, facts: card.facts })),
     'Order saved',
     'number',
+    (card) => card.id.replace(BACK_SIDE, ''),
   )
   const picking = useCardFilters(
     prefix,
@@ -4027,6 +4035,7 @@ function App() {
   return (
     <main className="page">
       <header className="page-header">
+        <AccountBar />
         <h1>SWU Card Creator</h1>
         <nav className="tabs">
           {tabs.map(({ id, label }) => (

@@ -11,6 +11,225 @@
   text-align: center;
 }
 
+/* Account buttons in the top right corner, as on The Chrome Grid */
+.page {
+  position: relative;
+}
+
+.account-bar {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.account-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.35rem 0.9rem;
+  border: 1px solid rgb(224 138 44 / 0.45);
+  border-radius: 999px;
+  background: none;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--spice);
+  cursor: pointer;
+}
+
+.account-name:hover {
+  border-color: var(--spice);
+  color: var(--sand);
+}
+
+.account-gear {
+  display: inline-block;
+  opacity: 0.75;
+  transition: transform 0.2s ease, opacity 0.15s ease;
+}
+
+.account-name:hover .account-gear {
+  opacity: 1;
+  transform: rotate(45deg);
+}
+
+/* On a phone the buttons sit above the title instead of over it */
+@media (max-width: 700px) {
+  .account-bar {
+    position: static;
+    justify-content: flex-end;
+    margin-bottom: 1rem;
+  }
+}
+
+.account-modal {
+  width: min(24rem, calc(100vw - 2rem));
+  padding: 0;
+  border: 1px solid rgb(232 215 181 / 0.25);
+  border-radius: 10px;
+  background: var(--dune);
+  color: var(--sand);
+}
+
+.account-modal-wide {
+  width: min(48rem, calc(100vw - 2rem));
+}
+
+.account-modal::backdrop {
+  background: rgb(0 0 0 / 0.65);
+}
+
+.account-modal-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.5rem;
+  text-align: left;
+}
+
+.account-modal h2 {
+  margin: 0;
+  color: var(--spice);
+}
+
+.account-modal h3 {
+  margin: 0 0 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--sand-dim);
+}
+
+.account-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.account-form input,
+.quota-input input {
+  padding: 0.55rem 0.7rem;
+  border: 1px solid rgb(232 215 181 / 0.25);
+  border-radius: 6px;
+  background: var(--night);
+  font: inherit;
+  color: var(--sand);
+}
+
+.account-form input:focus,
+.quota-input input:focus {
+  outline: none;
+  border-color: var(--spice);
+}
+
+.account-note {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--sand-dim);
+}
+
+.account-error {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #ff8a7a;
+}
+
+.account-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.account-buttons .button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.account-switch {
+  align-self: center;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: 0.8rem;
+  color: var(--sand-dim);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.account-switch:hover {
+  color: var(--sand);
+}
+
+.account-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.3rem 0;
+  font-size: 0.9rem;
+}
+
+.account-row span:first-child {
+  color: var(--sand-dim);
+}
+
+.account-meter {
+  height: 6px;
+  margin: 0.25rem 0 0.75rem;
+  border-radius: 3px;
+  background: var(--night);
+  overflow: hidden;
+}
+
+.account-meter div {
+  height: 100%;
+  background: var(--spice);
+}
+
+.admin-table-wrap {
+  overflow-x: auto;
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.admin-table th,
+.admin-table td {
+  padding: 0.45rem 0.6rem;
+  border-bottom: 1px solid rgb(232 215 181 / 0.12);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.admin-table th {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--sand-dim);
+}
+
+.admin-badge {
+  margin-left: 0.4rem;
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+  background: var(--spice);
+  font-size: 0.65rem;
+  color: var(--night);
+}
+
+.quota-input input {
+  width: 5rem;
+  padding: 0.2rem 0.4rem;
+}
+
 .page-header h1 {
   margin: 0;
   font-size: clamp(2rem, 6vw, 3.25rem);

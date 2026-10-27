@@ -1,0 +1,26 @@
+{
+  "name": "swu-card-creator-server",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Accounts and card storage for SWU Card Creator",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js",
+    "local": "node local.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "dotenv": "^17.4.1",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
+    "pg": "^8.20.0"
+  },
+  "devDependencies": {
+    "embedded-postgres": "^17.5.0-beta.15"
+  }
+}
