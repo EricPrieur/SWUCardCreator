@@ -5,8 +5,6 @@
   "text": "Look at an opponent's hand and name a card. This phase, opponents can't play the named cards. Draw a card.",
   "cost": 2,
   "unique": true,
-  "power": 13,
-  "hp": 13,
   "id": "34f61fb8-aa97-4191-a378-82d405e530db",
   "art": {
     "zoom": 1.9,
@@ -27,6 +25,6 @@
   },
   "setCode": "DUNE",
   "language": "EN",
-  "number": "098",
+  "number": "117",
   "rarity": "C"
 }

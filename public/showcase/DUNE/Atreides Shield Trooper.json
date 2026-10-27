@@ -1,0 +1,20 @@
+{
+  "frameId": "unit-command-heroism",
+  "setCode": "DUNE",
+  "language": "EN",
+  "id": "288c2c12-387c-436f-a54d-b994660ede64",
+  "name": "Atreides Shield Trooper",
+  "trait": "Atreides, Trooper",
+  "rarity": "C",
+  "number": "050",
+  "cost": 2,
+  "power": 2,
+  "hp": 2,
+  "text": "[When Played:] If you control an [{Arrakis}] base, give an Experience token to this unit. Otherwise, give a Shield token to this unit.",
+  "art": {
+    "src": "Atreides Shield Trooper (art).webp",
+    "zoom": 0.8,
+    "x": 0,
+    "y": -2
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "id": "a4911393-6df8-47d3-a366-b8a3de186499",
+  "frameId": "unit-vigilance-command-villainy",
+  "name": "Princess Irulan",
+  "subtitle": "Imperial Chronicler",
+  "unique": true,
+  "trait": "Emperor, Bene Gesserit",
+  "setCode": "DUNE",
+  "language": "EN",
+  "rarity": "R",
+  "number": "023",
+  "cost": 3,
+  "power": 3,
+  "hp": 4,
+  "text": "[Restore 1]\n[When Played:] You may put 3 [{Bene Gesserit}] cards from your discard pile on the bottom of your deck in any order. If you do, put the top card of your deck into play as a resource.",
+  "art": {
+    "src": "Princess Irulan - Imperial Chronicler (art).webp",
+    "zoom": 1,
+    "x": 0,
+    "y": 3
+  }
+}

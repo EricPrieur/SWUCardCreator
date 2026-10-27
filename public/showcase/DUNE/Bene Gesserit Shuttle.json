@@ -1,0 +1,20 @@
+{
+  "frameId": "unit-vigilance-space",
+  "name": "Bene Gesserit Shuttle",
+  "trait": "Bene Gesserit, Vehicle, Transport",
+  "text": "[When Played:] Search the top 5 cards of your deck for a [{Bene Gesserit}] unit, reveal it and draw it.",
+  "setCode": "DUNE",
+  "language": "EN",
+  "rarity": "U",
+  "art": {
+    "src": "Bene Gesserit Shuttle (art).webp",
+    "zoom": 0.8,
+    "x": 1,
+    "y": -19
+  },
+  "cost": 3,
+  "power": 2,
+  "hp": 4,
+  "id": "ed1eecdc-8ec5-4a3e-a08d-fc9d5913550d",
+  "number": "033"
+}

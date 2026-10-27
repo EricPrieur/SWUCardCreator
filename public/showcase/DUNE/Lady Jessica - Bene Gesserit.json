@@ -2,7 +2,7 @@
   "frameId": "leader-vigilance-heroism",
   "name": "Lady Jessica",
   "trait": "Bene Gesserit, Atreides",
-  "text": "When you play a [{Bene Gesserit}] card: You may exhaust this leader. If you do, exhaust an enemy non-leader ground unit that costs 4 or less.",
+  "text": "[When you play a [{Bene Gesserit}] card:] You may exhaust this leader. If you do, exhaust an enemy non-leader ground unit that costs [#4] or less.",
   "setCode": "DUNE",
   "language": "EN",
   "rarity": "C",

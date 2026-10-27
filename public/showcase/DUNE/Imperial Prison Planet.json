@@ -1,0 +1,19 @@
+{
+  "setCode": "DUNE",
+  "language": "EN",
+  "rarity": "R",
+  "hp": 25,
+  "id": "e2dd3d20-a615-4295-a07c-bf49d11e736a",
+  "number": "014",
+  "frameId": "base-command-text",
+  "backFrameId": "base-aggression-text",
+  "name": "Imperial Prison Planet",
+  "trait": "Salusa Secundus",
+  "text": "[When you defeat a friendly Spice token:] You may deal 1 damage to a friendly unit. If you do and it survives, give an Experience token to it.",
+  "art": {
+    "src": "Imperial Prison Planet (art).webp",
+    "zoom": 1,
+    "x": -1,
+    "y": 26
+  }
+}

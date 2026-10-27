@@ -1,0 +1,21 @@
+{
+  "id": "759969a1-5f0c-4978-9b4c-855efd6ff0df",
+  "frameId": "unit-aggression-villainy-space",
+  "name": "Harkonnen Drop Ship",
+  "trait": "Harkonnen, Vehicle, Transport",
+  "text": "[When Played/On Attack:] You may play up to 2 [{Harkonnen}] [{Trooper}] units that cost [#2] or less from your discard pile for free.",
+  "setCode": "DUNE",
+  "language": "EN",
+  "rarity": "R",
+  "number": "080",
+  "cost": 6,
+  "power": 4,
+  "hp": 5,
+  "art": {
+    "src": "Harkonnen Drop Ship (art).webp",
+    "zoom": 1,
+    "x": 0,
+    "y": -28,
+    "rotate": 9
+  }
+}

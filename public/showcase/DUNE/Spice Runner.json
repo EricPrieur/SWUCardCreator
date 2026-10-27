@@ -1,0 +1,20 @@
+{
+  "frameId": "unit-aggression",
+  "name": "Spice Runner",
+  "trait": "Underworld",
+  "text": "[When Defeated:] Create a Spice token.",
+  "setCode": "DUNE",
+  "language": "EN",
+  "rarity": "C",
+  "cost": 1,
+  "power": 2,
+  "hp": 1,
+  "art": {
+    "src": "Spice Runner (art).webp",
+    "zoom": 1,
+    "x": 0,
+    "y": 3
+  },
+  "id": "921fc6fb-b12b-421d-942a-6ff09e6dd189",
+  "number": "087"
+}

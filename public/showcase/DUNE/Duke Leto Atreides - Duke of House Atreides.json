@@ -2,7 +2,7 @@
   "frameId": "leader-command-heroism",
   "name": "Duke Leto Atreides",
   "trait": "Atreides, Official",
-  "text": "When you play a unit: You may exhaust this leader and either pay [1] or defeat a friendly Spice token. If you do, give an Experience token to that unit.",
+  "text": "[When you play a unit:] You may exhaust this leader and either pay [1] or defeat a friendly Spice token. If you do, give an Experience token to that unit.",
   "setCode": "DUNE",
   "language": "EN",
   "rarity": "R",
