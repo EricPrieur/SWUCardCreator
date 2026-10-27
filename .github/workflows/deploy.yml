@@ -24,7 +24,11 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      # The accounts server, from the repository variable API_URL; without it the
+      # site has no Log In and keeps cards in the browser only
       - run: npm run build
+        env:
+          VITE_API_URL: ${{ vars.API_URL }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
