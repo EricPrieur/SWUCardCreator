@@ -44,4 +44,40 @@ export async function initDB() {
   `)
   // Names are unique whatever their capitals, so no one can pass for Prieur as prieur
   await query(`CREATE UNIQUE INDEX IF NOT EXISTS users_username_lower ON ${SCHEMA}.users (LOWER(username))`)
+  // A card as the app keeps it, its art naming images below. Ids come from the app,
+  // so two accounts may hold a card with the same id (one imported from the other).
+  await query(`
+    CREATE TABLE IF NOT EXISTS ${SCHEMA}.cards (
+      user_id INTEGER NOT NULL REFERENCES ${SCHEMA}.users(id) ON DELETE CASCADE,
+      id VARCHAR(64) NOT NULL,
+      data JSONB NOT NULL,
+      bytes INTEGER NOT NULL,
+      is_public BOOLEAN NOT NULL DEFAULT FALSE,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (user_id, id)
+    )
+  `)
+  // Art uploaded by an account: the file is on disk, named by the SHA-256 of its bytes
+  await query(`
+    CREATE TABLE IF NOT EXISTS ${SCHEMA}.images (
+      user_id INTEGER NOT NULL REFERENCES ${SCHEMA}.users(id) ON DELETE CASCADE,
+      id CHAR(64) NOT NULL,
+      content_type VARCHAR(32) NOT NULL,
+      bytes INTEGER NOT NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (user_id, id)
+    )
+  `)
+}
+
+// The bytes an account uses: its cards' data and its images
+export async function usedBytes(userId) {
+  const { rows } = await query(
+    `SELECT
+       COALESCE((SELECT SUM(bytes) FROM ${SCHEMA}.cards WHERE user_id = $1), 0)
+     + COALESCE((SELECT SUM(bytes) FROM ${SCHEMA}.images WHERE user_id = $1), 0) AS used`,
+    [userId],
+  )
+  return Number(rows[0].used)
 }

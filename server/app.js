@@ -1,6 +1,7 @@
 import express from 'express'
 import authRouter from './auth.js'
 import adminRouter from './admin.js'
+import cardsRouter from './cards.js'
 
 // The sites allowed to call this server: the app on GitHub Pages and the dev server
 const DEFAULT_ORIGINS = ['https://ericprieur.github.io', 'http://localhost:5173']
@@ -32,6 +33,7 @@ export function createApp() {
   app.get('/api/health', (req, res) => res.json({ ok: true }))
   app.use('/api/auth', authRouter)
   app.use('/api/admin', adminRouter)
+  app.use('/api', cardsRouter)
 
   app.use('/api', (req, res) => res.status(404).json({ error: 'Not found' }))
   // A body that isn't JSON, or is too big

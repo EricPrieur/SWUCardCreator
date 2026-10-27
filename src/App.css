@@ -138,6 +138,13 @@
   color: #ff8a7a;
 }
 
+/* Under the tabs while the account's cards load or save, or when a save failed */
+.account-status {
+  margin: -1rem 0 0;
+  font-size: 0.85rem;
+  color: var(--sand-dim);
+}
+
 .account-buttons {
   display: flex;
   justify-content: flex-end;

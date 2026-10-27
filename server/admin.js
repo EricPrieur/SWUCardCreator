@@ -10,13 +10,18 @@ router.get('/users', async (req, res) => {
   try {
     await enforcePermanentAdmins()
     const { rows } = await query(
-      `SELECT id, username, is_admin, quota_bytes, created_at, last_login_at FROM ${SCHEMA}.users ORDER BY created_at DESC`,
+      `SELECT u.id, u.username, u.is_admin, u.quota_bytes, u.created_at, u.last_login_at,
+         COALESCE((SELECT SUM(bytes) FROM ${SCHEMA}.cards c WHERE c.user_id = u.id), 0)
+       + COALESCE((SELECT SUM(bytes) FROM ${SCHEMA}.images i WHERE i.user_id = u.id), 0) AS used_bytes,
+         (SELECT COUNT(*) FROM ${SCHEMA}.cards c WHERE c.user_id = u.id)::INT AS card_count
+       FROM ${SCHEMA}.users u ORDER BY u.created_at DESC`,
     )
     res.json({
       users: rows.map((row) => ({
         ...userPublic(row),
         lastLoginAt: row.last_login_at,
-        usedBytes: 0,
+        usedBytes: Number(row.used_bytes),
+        cardCount: row.card_count,
         permanent: PERMANENT_ADMINS.has(row.username.toLowerCase()),
       })),
     })

@@ -1,6 +1,6 @@
 # SWU Card Creator server
 
-Accounts (and, in the next steps, card storage) for SWU Card Creator. Express, Postgres,
+Accounts and card storage for SWU Card Creator. Express, Postgres,
 bcrypt passwords and JWT logins. Its tables live in the `dune` schema, so it shares a
 database with The Chrome Grid without touching its tables.
 
@@ -13,10 +13,16 @@ database with The Chrome Grid without touching its tables.
 | `GET /api/auth/me` | The account signed in, and the storage it uses |
 | `GET /api/admin/users` | Admins: every account |
 | `PATCH /api/admin/users/:id` | Admins: `{ isAdmin?, quotaBytes? }` (`null`: no limit) |
+| `GET /api/cards` | The account's cards, and the storage it uses |
+| `PUT /api/cards/:id` | `{ data }`: adds or replaces a card. Its art names uploaded images as `account:<id>`; art left inline is refused (64 KB per card). |
+| `DELETE /api/cards/:id` | Removes a card |
+| `POST /api/images` | The image file as the body (JPEG, PNG or WebP, 5 MB at most) → `{ id }`, the SHA-256 of its bytes. The same image is kept once. |
+| `GET /api/images/:id` | One of the account's images |
 | `GET /api/health` | `{ ok: true }` |
 
 Signed-in calls send `Authorization: Bearer <token>`; a token lasts 30 days.
-Each account gets 50 MB. `prieur` is a permanent admin with no limit: the server
+Each account gets 50 MB, counting its cards' data and its images. Images no card
+names any more are removed an hour after they were uploaded. `prieur` is a permanent admin with no limit: the server
 restores both whenever that account signs in or the server starts.
 
 ## On this computer
@@ -25,7 +31,8 @@ restores both whenever that account signs in or the server starts.
 npm install
 npm test          # runs against a throwaway Postgres, nothing to set up
 cp .env.example .env   # then fill it in to run the server itself
-npm run dev       # http://localhost:3001
+npm run local     # the server with its own Postgres, kept in .localdb, art in .localdata
+npm run dev       # the server with the database in .env, http://localhost:3001
 ```
 
 ## On Railway
@@ -37,5 +44,6 @@ npm run dev       # http://localhost:3001
    - `JWT_SECRET`: a new long random value (not The Chrome Grid's)
    - `ALLOWED_ORIGINS`: `https://ericprieur.github.io,http://localhost:5173`
    - `NODE_ENV`: `production`
+   - `IMAGE_DIR`: `/data/images`, with a **volume** added to the service and mounted at `/data`
 3. Generate a public domain for the service, then register `prieur` right away, before
    sharing the address, so no one else takes the name.

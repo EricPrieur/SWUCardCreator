@@ -1,64 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
+import { api, ApiError, setSession, useServerOnline, useSession, type Session, type User } from './api'
 
-// The accounts server: VITE_API_URL when built, the one `npm run local` starts otherwise
-const API_URL = (import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? 'http://localhost:3001' : '')).replace(/\/$/, '')
-const SESSION_KEY = 'dune-unlimited.account'
-
-export type User = {
-  id: number
-  username: string
-  isAdmin: boolean
-  // null: no limit
-  quotaBytes: number | null
-  createdAt: string
-}
-type Session = { token: string; user: User }
-type AdminUser = User & { lastLoginAt: string | null; usedBytes: number; permanent: boolean }
-
-function loadSession(): Session | null {
-  try {
-    const session = JSON.parse(localStorage.getItem(SESSION_KEY) ?? 'null')
-    return session?.token && session.user ? session : null
-  } catch {
-    return null
-  }
-}
-
-function storeSession(session: Session | null) {
-  try {
-    if (session) localStorage.setItem(SESSION_KEY, JSON.stringify(session))
-    else localStorage.removeItem(SESSION_KEY)
-  } catch {
-    // Signed in for this visit only, then
-  }
-}
-
-class ApiError extends Error {
-  status: number
-  constructor(message: string, status: number) {
-    super(message)
-    this.status = status
-  }
-}
-
-async function api<T>(path: string, options: { method?: string; body?: unknown; token?: string } = {}): Promise<T> {
-  let res: Response
-  try {
-    res = await fetch(API_URL + path, {
-      method: options.method ?? 'GET',
-      headers: {
-        ...(options.body !== undefined && { 'Content-Type': 'application/json' }),
-        ...(options.token && { Authorization: `Bearer ${options.token}` }),
-      },
-      body: options.body === undefined ? undefined : JSON.stringify(options.body),
-    })
-  } catch {
-    throw new ApiError('The server can’t be reached. Try again in a moment.', 0)
-  }
-  const data = await res.json().catch(() => ({}))
-  if (!res.ok) throw new ApiError(data.error ?? `Server error (${res.status})`, res.status)
-  return data
-}
+type AdminUser = User & { lastLoginAt: string | null; usedBytes: number; cardCount: number; permanent: boolean }
 
 export function formatBytes(bytes: number) {
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`
@@ -147,20 +90,36 @@ function AuthModal(props: { mode: 'login' | 'register'; onDone: (session: Sessio
   )
 }
 
-function SettingsModal(props: { session: Session; onUser: (user: User) => void; onLogOut: () => void; onClose: () => void }) {
-  const { session, onUser, onLogOut, onClose } = props
+function SettingsModal(props: {
+  session: Session
+  localCards: number
+  onCopyLocal: () => Promise<string>
+  onUser: (user: User) => void
+  onLogOut: () => void
+  onClose: () => void
+}) {
+  const { session, localCards, onCopyLocal, onUser, onLogOut, onClose } = props
+  const [copying, setCopying] = useState<string | null>(null)
   const [used, setUsed] = useState<number | null>(null)
   const { user } = session
 
-  useEffect(() => {
+  const readUsage = () =>
     api<{ user: User; usedBytes: number }>('/api/auth/me', { token: session.token })
       .then((data) => {
         setUsed(data.usedBytes)
         onUser(data.user)
       })
       .catch(() => setUsed(null))
-    // Once, when it opens
+  // Once, when it opens
+  useEffect(() => {
+    readUsage()
   }, [])
+
+  const copy = async () => {
+    setCopying('Copying…')
+    setCopying(await onCopyLocal())
+    readUsage()
+  }
 
   const share = used !== null && user.quotaBytes ? Math.min(1, used / user.quotaBytes) : 0
   return (
@@ -195,7 +154,23 @@ function SettingsModal(props: { session: Session; onUser: (user: User) => void; 
             <div style={{ width: `${share * 100}%` }} />
           </div>
         )}
-        <p className="account-note">Cards are still kept in this browser. Saving them to your account comes next.</p>
+        <p className="account-note">Signed in, your cards and their art are saved to your account.</p>
+      </section>
+      <section className="account-section">
+        <h3>This browser</h3>
+        <p className="account-note">
+          {localCards
+            ? `${localCards} card${localCards === 1 ? ' is' : 's are'} kept in this browser, from before you signed in. A copy can go to your account; a card already there with the same id is replaced.`
+            : 'No cards are kept in this browser.'}
+        </p>
+        {localCards > 0 && (
+          <div className="account-buttons">
+            <button className="button" type="button" disabled={copying === 'Copying…'} onClick={copy}>
+              Copy them to my account
+            </button>
+          </div>
+        )}
+        {copying && <p className="account-note">{copying}</p>}
       </section>
       <div className="account-buttons">
         <button className="button" type="button" onClick={onLogOut}>
@@ -244,6 +219,7 @@ function AdminModal(props: { session: Session; onClose: () => void }) {
               <tr>
                 <th>User</th>
                 <th>Admin</th>
+                <th>Cards</th>
                 <th>Storage</th>
                 <th>Joined</th>
                 <th>Last login</th>
@@ -265,6 +241,7 @@ function AdminModal(props: { session: Session; onClose: () => void }) {
                       onChange={(event) => change(user, { isAdmin: event.target.checked })}
                     />
                   </td>
+                  <td>{user.cardCount}</td>
                   <td>
                     {formatBytes(user.usedBytes)} of{' '}
                     {user.permanent ? (
@@ -319,32 +296,21 @@ function QuotaInput(props: { quota: number | null; onChange: (quota: number | nu
 
 // The account buttons in the top right corner, as on The Chrome Grid:
 // Log In and Register, or the name (opening the settings) and, for admins, Admin
-export function AccountBar() {
-  const [session, setSession] = useState<Session | null>(loadSession)
+export function AccountBar(props: { localCards: number; onCopyLocal: () => Promise<string> }) {
+  const session = useSession()
+  const online = useServerOnline()
   const [open, setOpen] = useState<'login' | 'register' | 'settings' | 'admin' | null>(null)
-  // Hidden until the server answers, so a site without one looks as it always did
-  const [online, setOnline] = useState(false)
 
-  useEffect(() => {
-    if (!API_URL) return
-    api('/api/health')
-      .then(() => setOnline(true))
-      .catch(() => setOnline(false))
-  }, [])
-
-  // A token the server no longer takes (expired, or the account removed) signs out
+  // A token the server no longer takes (expired, or the account removed) signs out;
+  // otherwise the account is read again, in case an admin changed it
   useEffect(() => {
     if (!online || !session) return
     api<{ user: User }>('/api/auth/me', { token: session.token })
-      .then((data) => change({ ...session, user: data.user }))
-      .catch((err) => err instanceof ApiError && err.status === 401 && change(null))
-    // Once the server is known to be there
-  }, [online])
+      .then((data) => setSession({ ...session, user: data.user }))
+      .catch((err) => err instanceof ApiError && err.status === 401 && setSession(null))
+  }, [online, session?.token])
 
-  const change = (next: Session | null) => {
-    storeSession(next)
-    setSession(next)
-  }
+  const change = setSession
 
   if (!online) return null
   return (
@@ -387,6 +353,8 @@ export function AccountBar() {
       {open === 'settings' && session && (
         <SettingsModal
           session={session}
+          localCards={props.localCards}
+          onCopyLocal={props.onCopyLocal}
           onUser={(user) => change({ ...session, user })}
           onLogOut={() => {
             change(null)

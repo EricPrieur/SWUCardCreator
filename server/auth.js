@@ -1,7 +1,7 @@
 import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
 import { Router } from 'express'
-import { query, SCHEMA } from './db.js'
+import { query, SCHEMA, usedBytes } from './db.js'
 
 const SALT_ROUNDS = 10
 // Accounts that are always admins, with no storage limit, whatever the table says
@@ -133,8 +133,7 @@ router.get('/me', verifyToken, async (req, res) => {
   try {
     const { rows } = await query(`SELECT ${USER_COLUMNS} FROM ${SCHEMA}.users WHERE id = $1`, [req.user.id])
     if (!rows.length) return res.status(404).json({ error: 'User not found' })
-    // Cards and images come in step 2; nothing is stored yet
-    res.json({ user: userPublic(rows[0]), usedBytes: 0 })
+    res.json({ user: userPublic(rows[0]), usedBytes: await usedBytes(req.user.id) })
   } catch (err) {
     console.error('Me error:', err)
     res.status(500).json({ error: 'Server error' })

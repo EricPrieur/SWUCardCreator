@@ -1,10 +1,12 @@
-import { useEffect, useRef, useState, type ChangeEvent, type ReactNode, type RefObject } from 'react'
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode, type RefObject } from 'react'
 import { createPortal, flushSync } from 'react-dom'
 import artFiles from 'virtual:art-list'
 import { asset } from './asset'
 import './App.css'
 import { CardView } from './CardView'
 import { AccountBar } from './account'
+import { loadAccountCards, syncAccountCards } from './accountCards'
+import { useAccount } from './api'
 import {
   defaultLook,
   loadCards,
@@ -3968,11 +3970,75 @@ function App() {
     return () => clearTimeout(timer)
   }, [draft])
 
+  // Signed in, the cards are the account's: loaded from it, and each change saved to it.
+  // Signed out, they are the ones kept in this browser, as they always were.
+  const account = useAccount()
+  const [accountCards, setAccountCards] = useState<'loading' | 'ready' | 'failed'>('loading')
+  const [syncError, setSyncError] = useState<string | null>(null)
+  const [syncing, setSyncing] = useState(0)
+  // What the account is known to hold, and the saves waiting their turn
+  const synced = useRef<Card[]>([])
+  const saving = useRef<Promise<void>>(Promise.resolve())
+
+  useEffect(() => {
+    setSyncError(null)
+    if (!account) {
+      setCards(loadCards())
+      return
+    }
+    let live = true
+    setAccountCards('loading')
+    // Not the browser's cards meanwhile: they aren't the account's
+    setCards([])
+    loadAccountCards(account)
+      .then(({ cards: found }) => {
+        if (!live) return
+        synced.current = found
+        setCards(found)
+        setAccountCards('ready')
+      })
+      .catch((err) => {
+        if (!live) return
+        setAccountCards('failed')
+        setSyncError(`Your account's cards could not be loaded: ${err.message}`)
+      })
+    return () => {
+      live = false
+    }
+  }, [account?.token])
+
   const updateCards = (next: Card[]) => {
-    if (!storeCards(next)) return false
+    if (!account) {
+      if (!storeCards(next)) return false
+      setCards(next)
+      return true
+    }
+    // Until the account's cards are in, a change would be made to the wrong list
+    if (accountCards !== 'ready') return false
     setCards(next)
+    setSyncing((count) => count + 1)
+    saving.current = saving.current
+      .then(async () => {
+        await syncAccountCards(account, synced.current, next)
+        synced.current = next
+        setSyncError(null)
+      })
+      .catch((err) =>
+        setSyncError(
+          err.quota ? err.message : `Not saved to your account: ${err.message} It will be saved with your next change.`,
+        ),
+      )
+      .finally(() => setSyncing((count) => count - 1))
     return true
   }
+  // The cards kept in this browser, which can be copied to the account
+  const localCount = useMemo(() => (account ? loadCards().length : 0), [account?.token])
+  const storageFull = () =>
+    account
+      ? accountCards === 'ready'
+        ? 'Could not save.'
+        : 'Your account’s cards are still loading. Try again in a moment.'
+      : 'this browser has run out of storage. Remove a card or use smaller art.'
 
   const changeDraft = (next: Draft) => {
     setDraft(next)
@@ -3985,7 +4051,7 @@ function App() {
     const exists = cards.some((saved) => saved.id === card.id)
     const next = exists ? cards.map((saved) => (saved.id === card.id ? card : saved)) : [...cards, card]
     if (!updateCards(next)) {
-      setSaveError('Could not save: this browser has run out of storage. Remove a card or use smaller art.')
+      setSaveError(`Could not save: ${storageFull()}`)
       return
     }
     setDraft(card)
@@ -4001,7 +4067,7 @@ function App() {
   // A card imported again replaces the one it was exported from; the others are added.
   // From the cards as stored, which another tab may have saved to since this one loaded.
   const importCards = (found: Card[]) => {
-    const next = loadCards()
+    const next = account ? [...cards] : loadCards()
     let replaced = 0
     for (const card of found) {
       const at = card.id ? next.findIndex((saved) => saved.id === card.id) : -1
@@ -4010,7 +4076,7 @@ function App() {
         replaced++
       } else next.push({ ...card, id: card.id || crypto.randomUUID() })
     }
-    if (!updateCards(next)) return 'Could not import: this browser has run out of storage. Remove a card or use smaller art.'
+    if (!updateCards(next)) return `Could not import: ${storageFull()}`
     return `Imported ${found.length} card${found.length === 1 ? '' : 's'}` + (replaced ? `, ${replaced} of them updated` : '')
   }
 
@@ -4035,7 +4101,14 @@ function App() {
   return (
     <main className="page">
       <header className="page-header">
-        <AccountBar />
+        <AccountBar
+          localCards={localCount}
+          onCopyLocal={async () => {
+            const done = importCards(loadCards())
+            await saving.current
+            return done
+          }}
+        />
         <h1>SWU Card Creator</h1>
         <nav className="tabs">
           {tabs.map(({ id, label }) => (
@@ -4046,6 +4119,11 @@ function App() {
         </nav>
       </header>
 
+      {account && (accountCards === 'loading' || syncing > 0 || syncError) && (
+        <p className={syncError ? 'account-status account-error' : 'account-status'}>
+          {syncError ?? (accountCards === 'loading' ? 'Loading your cards…' : 'Saving to your account…')}
+        </p>
+      )}
       {tab === 'showroom' && <Showroom cards={cards} onEdit={editCard} onRemove={removeCard} onImport={importCards} />}
       {tab === 'decks' && <DeckBuilder cards={cards.flatMap(deckCardOf)} />}
       {tab === 'projects' && <Projects />}
