@@ -156,6 +156,52 @@
   cursor: default;
 }
 
+/* Outlined in Discord's purple; .button is later in the file, hence .button here */
+.button.discord-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border: 1.5px solid #5865f2;
+  color: var(--sand);
+}
+
+.button.discord-button svg {
+  color: #5865f2;
+}
+
+.button.discord-button:hover:not(:disabled) {
+  border-color: #7983f5;
+  background: rgb(88 101 242 / 0.15);
+}
+
+.button.discord-button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* Between the Discord button and the username form */
+.account-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--sand-dim);
+}
+
+.account-divider::before,
+.account-divider::after {
+  content: '';
+  flex: 1;
+  border-top: 1px solid rgb(232 215 181 / 0.2);
+}
+
+.admin-discord {
+  font-size: 0.75rem;
+  color: var(--sand-dim);
+}
+
 .account-switch {
   align-self: center;
   padding: 0;

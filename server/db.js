@@ -46,6 +46,10 @@ export async function initDB() {
   await query(`CREATE UNIQUE INDEX IF NOT EXISTS users_username_lower ON ${SCHEMA}.users (LOWER(username))`)
   // Whether the account may make cards public; an admin can take it away
   await query(`ALTER TABLE ${SCHEMA}.users ADD COLUMN IF NOT EXISTS can_publish BOOLEAN NOT NULL DEFAULT TRUE`)
+  // The Discord account it signs in with, if any, and its name there
+  await query(`ALTER TABLE ${SCHEMA}.users ADD COLUMN IF NOT EXISTS discord_id VARCHAR(32)`)
+  await query(`ALTER TABLE ${SCHEMA}.users ADD COLUMN IF NOT EXISTS discord_username VARCHAR(64)`)
+  await query(`CREATE UNIQUE INDEX IF NOT EXISTS users_discord_id ON ${SCHEMA}.users (discord_id)`)
   // A card as the app keeps it, its art naming images below. Ids come from the app,
   // so two accounts may hold a card with the same id (one imported from the other).
   await query(`

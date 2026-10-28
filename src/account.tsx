@@ -1,5 +1,17 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
-import { api, ApiError, onAdminRequest, setSession, useServerOnline, useSession, type Session, type User } from './api'
+import {
+  api,
+  ApiError,
+  onAdminRequest,
+  onDiscordDone,
+  setSession,
+  startDiscord,
+  useDiscordEnabled,
+  useServerOnline,
+  useSession,
+  type Session,
+  type User,
+} from './api'
 
 type AdminUser = User & { lastLoginAt: string | null; usedBytes: number; cardCount: number; permanent: boolean }
 
@@ -10,6 +22,44 @@ export function formatBytes(bytes: number) {
 }
 
 const formatDate = (date: string | null) => (date ? new Date(date).toLocaleDateString() : '—')
+
+const discordIcon = (
+  <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true">
+    <path d="M19.6 5.3A17 17 0 0 0 15.4 4l-.5 1a15.7 15.7 0 0 0-5.8 0l-.5-1a17 17 0 0 0-4.2 1.3C1.7 9.3 1 13.2 1.3 17a17 17 0 0 0 5.2 2.6l1.1-1.8a11 11 0 0 1-1.7-.8l.4-.3a12.2 12.2 0 0 0 11.4 0l.4.3-1.7.8 1.1 1.8a17 17 0 0 0 5.2-2.6c.4-4.4-.7-8.3-3-11.7zM8.7 14.7c-1 0-1.9-1-1.9-2.1s.8-2.1 1.9-2.1 1.9 1 1.9 2.1-.8 2.1-1.9 2.1zm6.6 0c-1 0-1.9-1-1.9-2.1s.8-2.1 1.9-2.1 1.9 1 1.9 2.1-.8 2.1-1.9 2.1z" />
+  </svg>
+)
+
+// Starts the Discord window; its outcome comes back through onDiscordDone
+function useDiscord() {
+  const [error, setError] = useState<string | null>(null)
+  const [waiting, setWaiting] = useState(false)
+  useEffect(
+    () =>
+      onDiscordDone((next) => {
+        setWaiting(false)
+        setError(next)
+      }),
+    [],
+  )
+  const start = async (link?: Session) => {
+    setError(null)
+    setWaiting(true)
+    try {
+      const popup = await startDiscord(link)
+      // Closed before the end: nothing more is coming
+      const watch = window.setInterval(() => {
+        if (!popup || popup.closed) {
+          window.clearInterval(watch)
+          window.setTimeout(() => setWaiting(false), 500)
+        }
+      }, 500)
+    } catch (err) {
+      setWaiting(false)
+      setError((err as Error).message)
+    }
+  }
+  return { start, waiting, error }
+}
 
 // A window over the page; Escape or a click outside closes it
 function Modal(props: { title: string; wide?: boolean; onClose: () => void; children: ReactNode }) {
@@ -41,6 +91,8 @@ function AuthModal(props: { mode: 'login' | 'register'; onDone: (session: Sessio
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const registering = mode === 'register'
+  const discordEnabled = useDiscordEnabled()
+  const discord = useDiscord()
 
   const submit = async (event: FormEvent) => {
     event.preventDefault()
@@ -57,6 +109,16 @@ function AuthModal(props: { mode: 'login' | 'register'; onDone: (session: Sessio
   return (
     <Modal title={registering ? 'Register' : 'Log In'} onClose={onClose}>
       <form className="account-form" onSubmit={submit}>
+        {discordEnabled && (
+          <>
+            <button className="button discord-button" type="button" disabled={discord.waiting} onClick={() => discord.start()}>
+              {discordIcon}
+              {discord.waiting ? 'Waiting for Discord…' : registering ? 'Sign up with Discord' : 'Continue with Discord'}
+            </button>
+            {discord.error && <p className="account-error">{discord.error}</p>}
+            <p className="account-divider">or with a username</p>
+          </>
+        )}
         <input
           type="text"
           placeholder="Username"
@@ -102,6 +164,19 @@ function SettingsModal(props: {
   const [copying, setCopying] = useState<string | null>(null)
   const [used, setUsed] = useState<number | null>(null)
   const { user } = session
+  const discordEnabled = useDiscordEnabled()
+  const discord = useDiscord()
+  const [unlinkError, setUnlinkError] = useState<string | null>(null)
+
+  const unlink = async () => {
+    setUnlinkError(null)
+    try {
+      const data = await api<{ user: User }>('/api/auth/discord', { method: 'DELETE', token: session.token })
+      onUser(data.user)
+    } catch (err) {
+      setUnlinkError((err as Error).message)
+    }
+  }
 
   const readUsage = () =>
     api<{ user: User; usedBytes: number }>('/api/auth/me', { token: session.token })
@@ -140,6 +215,30 @@ function SettingsModal(props: {
           <span>Member since</span>
           <span>{formatDate(user.createdAt)}</span>
         </div>
+        {(discordEnabled || user.discordName) && (
+          <div className="account-row">
+            <span>Discord</span>
+            {user.discordName ? (
+              <span>
+                {user.discordName}
+                {user.hasPassword && (
+                  <>
+                    {' '}
+                    <button className="account-switch" type="button" title="Sign in with the password only" onClick={unlink}>
+                      Unlink
+                    </button>
+                  </>
+                )}
+              </span>
+            ) : (
+              <button className="button discord-button" type="button" disabled={discord.waiting} onClick={() => discord.start(session)}>
+                {discordIcon}
+                {discord.waiting ? 'Waiting…' : 'Link Discord'}
+              </button>
+            )}
+          </div>
+        )}
+        {(discord.error || unlinkError) && <p className="account-error">{discord.error || unlinkError}</p>}
       </section>
       <section className="account-section">
         <h3>Storage</h3>
@@ -238,6 +337,7 @@ function AdminModal(props: { session: Session; focus?: number; onClose: () => vo
                   <td>
                     {user.username}
                     {user.permanent && <span className="admin-badge">permanent</span>}
+                    {user.discordName && <div className="admin-discord">Discord: {user.discordName}</div>}
                   </td>
                   <td>
                     <input
@@ -339,6 +439,10 @@ export function AccountBar(props: { localCards: number; onCopyLocal: () => Promi
   }, [online, session?.token])
 
   const change = setSession
+  const signedIn = !!session
+  useEffect(() => {
+    if (signedIn) setOpen((now) => (now === 'login' || now === 'register' ? null : now))
+  }, [signedIn])
 
   if (!online) return null
   return (

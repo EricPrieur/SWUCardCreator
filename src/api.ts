@@ -1,4 +1,4 @@
-import { useSyncExternalStore } from 'react'
+import { useEffect, useState, useSyncExternalStore } from 'react'
 
 // The accounts server: VITE_API_URL when built, the one `npm run local` starts otherwise
 export const API_URL = (import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? 'http://localhost:3001' : '')).replace(/\/$/, '')
@@ -12,6 +12,10 @@ export type User = {
   quotaBytes: number | null
   // May make cards public; an admin can turn it off
   canPublish: boolean
+  // The Discord account it signs in with; null when none is linked
+  discordName: string | null
+  // Discord can only be unlinked from an account that also has a password
+  hasPassword: boolean
   createdAt: string
 }
 export type Session = { token: string; user: User }
@@ -83,6 +87,14 @@ const subscribeSession = (listener: () => void) => {
 
 export const useSession = () => useSyncExternalStore(subscribeSession, getSession)
 
+// Signing in or out in another tab (or the Discord window) does it here too
+if (typeof window !== 'undefined')
+  window.addEventListener('storage', (event) => {
+    if (event.key !== SESSION_KEY) return
+    session = loadSession()
+    sessionListeners.forEach((listener) => listener())
+  })
+
 // Whether the server answers, asked once per visit. A site without one looks as it always did.
 let online: boolean | null = null
 const onlineListeners = new Set<() => void>()
@@ -109,6 +121,76 @@ export const onAdminRequest = (listener: ((userId?: number) => void) | null) => 
   adminRequest = listener
 }
 export const openAdminPanel = (userId?: number) => adminRequest?.(userId)
+
+// ── Discord ──
+// Whether the server has Discord sign-in set up, asked once
+let discordEnabled: Promise<boolean> | null = null
+export function useDiscordEnabled() {
+  const online = useServerOnline()
+  const [enabled, setEnabled] = useState(false)
+  useEffect(() => {
+    if (!online) return
+    discordEnabled ??= api<{ enabled: boolean }>('/api/auth/discord/status')
+      .then((data) => data.enabled)
+      .catch(() => false)
+    discordEnabled.then(setEnabled)
+  }, [online])
+  return enabled
+}
+
+// What came of the last Discord window, for whichever window of ours is open
+const discordListeners = new Set<(error: string | null) => void>()
+export function onDiscordDone(listener: (error: string | null) => void) {
+  discordListeners.add(listener)
+  return () => {
+    discordListeners.delete(listener)
+  }
+}
+
+async function signInWithToken(token: string) {
+  try {
+    const { user } = await api<{ user: User }>('/api/auth/me', { token })
+    setSession({ token, user })
+    discordListeners.forEach((listener) => listener(null))
+  } catch (err) {
+    discordListeners.forEach((listener) => listener((err as Error).message))
+  }
+}
+
+// Opens Discord's page in a small window: to sign in, or with a session, to link
+// Discord to that account. The window hands the result back by a message.
+export async function startDiscord(link?: Session): Promise<Window | null> {
+  // Opened at once, on the click, so the browser doesn't block it
+  const popup = window.open('', 'swu-discord', 'width=520,height=760')
+  try {
+    const { url } = await api<{ url: string }>('/api/auth/discord/url', {
+      method: 'POST',
+      body: { link: !!link, returnTo: window.location.href },
+      token: link?.token,
+    })
+    if (popup) popup.location.href = url
+    else window.location.href = url
+    return popup
+  } catch (err) {
+    popup?.close()
+    throw err
+  }
+}
+
+if (API_URL && typeof window !== 'undefined') {
+  const serverOrigin = new URL(API_URL, window.location.href).origin
+  window.addEventListener('message', (event) => {
+    if (event.origin !== serverOrigin || event.data?.type !== 'swu-discord') return
+    if (event.data.token) signInWithToken(event.data.token)
+    else discordListeners.forEach((listener) => listener(event.data.error ?? 'Discord sign-in failed'))
+  })
+  // Back from Discord in this tab, when the window couldn't reach the one that opened it
+  const back = window.location.hash.match(/^#discord=(.+)$/)
+  if (back || window.location.hash === '#discord-error=1') {
+    history.replaceState(null, '', window.location.pathname + window.location.search)
+    if (back) signInWithToken(back[1])
+  }
+}
 
 // The session to save cards to: signed in, with the server there
 export function useAccount() {

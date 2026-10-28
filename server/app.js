@@ -1,19 +1,11 @@
 import express from 'express'
-import authRouter from './auth.js'
+import authRouter, { allowedOrigins } from './auth.js'
 import adminRouter from './admin.js'
 import cardsRouter from './cards.js'
 import publicRouter from './public.js'
 
-// The sites allowed to call this server: the app on GitHub Pages and the dev server
-const DEFAULT_ORIGINS = ['https://ericprieur.github.io', 'http://localhost:5173']
-
 export function createApp() {
-  const allowed = new Set(
-    (process.env.ALLOWED_ORIGINS ?? DEFAULT_ORIGINS.join(','))
-      .split(',')
-      .map((origin) => origin.trim())
-      .filter(Boolean),
-  )
+  const allowed = allowedOrigins()
   const app = express()
   // Railway sits in front of the server
   app.set('trust proxy', 1)

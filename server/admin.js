@@ -10,7 +10,8 @@ router.get('/users', async (req, res) => {
   try {
     await enforcePermanentAdmins()
     const { rows } = await query(
-      `SELECT u.id, u.username, u.is_admin, u.quota_bytes, u.can_publish, u.created_at, u.last_login_at,
+      `SELECT u.id, u.username, u.is_admin, u.quota_bytes, u.can_publish, u.created_at, u.last_login_at, u.discord_username,
+         (u.password_hash IS NOT NULL) AS has_password,
          COALESCE((SELECT SUM(bytes) FROM ${SCHEMA}.cards c WHERE c.user_id = u.id), 0)
        + COALESCE((SELECT SUM(bytes) FROM ${SCHEMA}.images i WHERE i.user_id = u.id), 0) AS used_bytes,
          (SELECT COUNT(*) FROM ${SCHEMA}.cards c WHERE c.user_id = u.id)::INT AS card_count
@@ -54,7 +55,7 @@ router.patch('/users/:id', async (req, res) => {
          quota_bytes = CASE WHEN $3 THEN $4::BIGINT ELSE quota_bytes END,
          can_publish = COALESCE($5, can_publish)
        WHERE id = $1
-       RETURNING id, username, is_admin, quota_bytes, can_publish, created_at`,
+       RETURNING id, username, is_admin, quota_bytes, can_publish, created_at, discord_username, (password_hash IS NOT NULL) AS has_password`,
       [id, isAdmin ?? null, quotaBytes !== undefined, quotaBytes ?? null, canPublish ?? null],
     )
     res.json({ user: userPublic(rows[0]) })
