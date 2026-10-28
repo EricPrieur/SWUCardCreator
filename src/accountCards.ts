@@ -1,6 +1,6 @@
 import { api, API_URL, type Session } from './api'
 import { asset } from './asset'
-import { readArtFile, type Art, type Card } from './cards'
+import { localDeckLists, readArtFile, type Art, type Card, type Deck } from './cards'
 
 // Cards on an account name their art as account:<SHA-256 of the image>. In the page the
 // art is a data: URL, as for cards kept in the browser; it is uploaded when a card is saved.
@@ -167,3 +167,41 @@ export async function publishCard(session: Session, id: string, entry: unknown, 
 
 export const unpublishCard = (session: Session, id: string) =>
   api(`/api/cards/${encodeURIComponent(id)}/public`, { method: 'DELETE', token: session.token })
+
+// Which Deck Builder a list of decks belongs to on the account, from the key it is kept
+// under in the browser: the Showroom's, or a set's ("showcase:<folder>")
+export const deckScope = (storageKey?: string) =>
+  storageKey ? storageKey.replace(/^dune-unlimited\.decks\./, 'showcase:') : 'showroom'
+
+const deckPath = (scope: string, id?: string) =>
+  `/api/decks/${encodeURIComponent(scope)}${id === undefined ? '' : `/${encodeURIComponent(id)}`}`
+
+export const loadAccountDecks = async (session: Session, scope: string) =>
+  (await api<{ decks: Deck[] }>(deckPath(scope), { token: session.token })).decks
+
+// Saves what changed between two lists of one Deck Builder's decks
+export async function syncAccountDecks(session: Session, scope: string, before: Deck[], after: Deck[]) {
+  const was = new Map(before.map((deck) => [deck.id, deck]))
+  const now = new Set(after.map((deck) => deck.id))
+  for (const deck of after) {
+    if (was.get(deck.id) === deck) continue
+    await api(deckPath(scope, deck.id), { method: 'PUT', body: { data: deck }, token: session.token })
+  }
+  for (const deck of before) {
+    if (!now.has(deck.id)) await api(deckPath(scope, deck.id), { method: 'DELETE', token: session.token })
+  }
+}
+
+// Copies the decks kept in this browser to the account; a deck there with the same id is
+// replaced. Gives how many were copied.
+export async function copyLocalDecks(session: Session) {
+  let copied = 0
+  for (const { key, decks } of localDeckLists()) {
+    const scope = deckScope(key === 'dune-unlimited.decks' ? undefined : key)
+    for (const deck of decks) {
+      await api(deckPath(scope, deck.id), { method: 'PUT', body: { data: deck }, token: session.token })
+      copied++
+    }
+  }
+  return copied
+}

@@ -39,13 +39,13 @@ async function quotaOf(userId) {
 }
 
 // True when adding `extra` bytes keeps the account within its limit
-async function fits(userId, extra) {
+export async function fits(userId, extra) {
   const quota = await quotaOf(userId)
   if (quota === undefined) return false
   return quota === null || (await usedBytes(userId)) + extra <= quota
 }
 
-const quotaError = (res) =>
+export const quotaError = (res) =>
   res.status(413).json({ error: 'Your account storage is full. Remove some cards or art to make room.', quota: true })
 
 // Removes the account's images that no card names any more, once they are old enough

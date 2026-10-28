@@ -24,13 +24,16 @@ database with The Chrome Grid without touching its tables.
 | `GET /api/images/:id` | One of the account's images |
 | `PUT /api/cards/:id/public` | `{ entry, image, backImage? }`: makes a card public with its showcase entry and the JPG of each side (uploaded first as images), or updates them |
 | `DELETE /api/cards/:id/public` | Makes a card private again |
+| `GET /api/decks/:scope` | The account's decks of one Deck Builder: `showroom`, or `showcase:<folder>` for a set's |
+| `PUT /api/decks/:scope/:id` | `{ data }`: adds or replaces a deck (32 KB at most) |
+| `DELETE /api/decks/:scope/:id` | Removes a deck |
 | `GET /api/public/cards` | Everyone's public cards, newest first; no sign-in needed. Admins also get the hidden ones. |
 | `GET /api/public/images/:id` | The JPG of a public card's side, for anyone |
 | `PATCH /api/admin/cards/:userId/:cardId` | Admins: `{ hidden }`, takes a card off the Community tab or puts it back |
 | `GET /api/health` | `{ ok: true }` |
 
 Signed-in calls send `Authorization: Bearer <token>`; a token lasts 30 days.
-Each account gets 50 MB, counting its cards' data and its images. Images no card
+Each account gets 50 MB, counting its cards' data, its images and its decks. Images no card
 names any more are removed an hour after they were uploaded. `prieur` is a permanent admin with no limit: the server
 restores both whenever that account signs in or the server starts.
 

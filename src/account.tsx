@@ -167,12 +167,13 @@ function AuthModal(props: { mode: 'login' | 'register'; onDone: (session: Sessio
 function SettingsModal(props: {
   session: Session
   localCards: number
+  localDecks: number
   onCopyLocal: () => Promise<string>
   onUser: (user: User) => void
   onLogOut: () => void
   onClose: () => void
 }) {
-  const { session, localCards, onCopyLocal, onUser, onLogOut, onClose } = props
+  const { session, localCards, localDecks, onCopyLocal, onUser, onLogOut, onClose } = props
   const [copying, setCopying] = useState<string | null>(null)
   const [used, setUsed] = useState<number | null>(null)
   const { user } = session
@@ -265,16 +266,21 @@ function SettingsModal(props: {
             <div style={{ width: `${share * 100}%` }} />
           </div>
         )}
-        <p className="account-note">Signed in, your cards and their art are saved to your account.</p>
+        <p className="account-note">Signed in, your cards, their art and your decks are saved to your account.</p>
       </section>
       <section className="account-section">
         <h3>This browser</h3>
         <p className="account-note">
-          {localCards
-            ? `${localCards} card${localCards === 1 ? ' is' : 's are'} kept in this browser, from before you signed in. A copy can go to your account; a card already there with the same id is replaced.`
-            : 'No cards are kept in this browser.'}
+          {localCards || localDecks
+            ? `${[
+                localCards && `${localCards} card${localCards === 1 ? '' : 's'}`,
+                localDecks && `${localDecks} deck${localDecks === 1 ? '' : 's'}`,
+              ]
+                .filter(Boolean)
+                .join(' and ')} kept in this browser, from before you signed in. A copy can go to your account; one already there with the same id is replaced.`
+            : 'No cards or decks are kept in this browser.'}
         </p>
-        {localCards > 0 && (
+        {(localCards > 0 || localDecks > 0) && (
           <div className="account-buttons">
             <button className="button" type="button" disabled={copying === 'Copying…'} onClick={copy}>
               Copy them to my account
@@ -425,7 +431,7 @@ function QuotaInput(props: { quota: number | null; onChange: (quota: number | nu
 
 // The account buttons in the top right corner, as on The Chrome Grid:
 // Log In and Register, or the name (opening the settings) and, for admins, Admin
-export function AccountBar(props: { localCards: number; onCopyLocal: () => Promise<string> }) {
+export function AccountBar(props: { localCards: number; localDecks: number; onCopyLocal: () => Promise<string> }) {
   const session = useSession()
   const online = useServerOnline()
   const [open, setOpen] = useState<'login' | 'register' | 'settings' | 'admin' | null>(null)
@@ -516,6 +522,7 @@ export function AccountBar(props: { localCards: number; onCopyLocal: () => Promi
         <SettingsModal
           session={session}
           localCards={props.localCards}
+          localDecks={props.localDecks}
           onCopyLocal={props.onCopyLocal}
           onUser={(user) => change({ ...session, user })}
           onLogOut={() => {

@@ -207,3 +207,31 @@ test('an admin can stop an account making cards public', async () => {
   await call('PATCH', `/admin/users/${me.id}`, { canPublish: true }, admin)
   assert.ok((await call('GET', '/public/cards')).body.cards.some((card) => card.owner === 'frank'))
 })
+
+test('decks are kept per account and per Deck Builder, and count against its storage', async () => {
+  const decker = await register('decker')
+  const stranger = await register('stranger')
+  const deck = { name: 'Spice Rush', sets: ['DUNE'], cards: [{ id: 'a', count: 3 }], sideboard: [] }
+
+  assert.equal((await call('PUT', '/decks/showroom/d1', { data: deck }, decker)).status, 200)
+  assert.equal((await call('PUT', '/decks/showcase:DUNE/d2', { data: { ...deck, name: 'Set deck' } }, decker)).status, 200)
+  assert.equal((await call('PUT', '/decks/showroom/d1', { data: { ...deck, name: 'Renamed' } }, decker)).status, 200)
+
+  const mine = (await call('GET', '/decks/showroom', undefined, decker)).body.decks
+  assert.deepEqual(
+    mine.map((each) => [each.id, each.name]),
+    [['d1', 'Renamed']],
+  )
+  assert.equal((await call('GET', '/decks/showcase:DUNE', undefined, decker)).body.decks[0].name, 'Set deck')
+  assert.equal((await call('GET', '/decks/showroom', undefined, stranger)).body.decks.length, 0)
+  assert.equal((await call('GET', '/decks/showroom')).status, 401)
+  assert.equal((await call('PUT', '/decks/bad scope/d1', { data: deck }, decker)).status, 400)
+
+  const used = (await call('GET', '/auth/me', undefined, decker)).body.usedBytes
+  assert.ok(used > 100)
+  await pool.query(`UPDATE dune.users SET quota_bytes = $1 WHERE username = 'decker'`, [used + 50])
+  assert.equal((await call('PUT', '/decks/showroom/d3', { data: { ...deck, name: 'x'.repeat(200) } }, decker)).status, 413)
+
+  assert.equal((await call('DELETE', '/decks/showroom/d1', undefined, decker)).status, 200)
+  assert.equal((await call('GET', '/decks/showroom', undefined, decker)).body.decks.length, 0)
+})

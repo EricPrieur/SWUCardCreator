@@ -83,14 +83,29 @@ export async function initDB() {
       PRIMARY KEY (user_id, id)
     )
   `)
+  // A deck, as the app keeps it, in one of the app's Deck Builders: the Showroom's, or a
+  // set's ("showcase:<folder>")
+  await query(`
+    CREATE TABLE IF NOT EXISTS ${SCHEMA}.decks (
+      user_id INTEGER NOT NULL REFERENCES ${SCHEMA}.users(id) ON DELETE CASCADE,
+      scope VARCHAR(64) NOT NULL,
+      id VARCHAR(64) NOT NULL,
+      data JSONB NOT NULL,
+      bytes INTEGER NOT NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (user_id, scope, id)
+    )
+  `)
 }
 
-// The bytes an account uses: its cards' data and its images
+// The bytes an account uses: its cards' data, its images and its decks
 export async function usedBytes(userId) {
   const { rows } = await query(
     `SELECT
        COALESCE((SELECT SUM(bytes) FROM ${SCHEMA}.cards WHERE user_id = $1), 0)
-     + COALESCE((SELECT SUM(bytes) FROM ${SCHEMA}.images WHERE user_id = $1), 0) AS used`,
+     + COALESCE((SELECT SUM(bytes) FROM ${SCHEMA}.images WHERE user_id = $1), 0)
+     + COALESCE((SELECT SUM(bytes) FROM ${SCHEMA}.decks WHERE user_id = $1), 0) AS used`,
     [userId],
   )
   return Number(rows[0].used)

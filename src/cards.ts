@@ -218,6 +218,20 @@ export function loadDecks(key = DECKS_KEY): Deck[] {
   }
 }
 
+// Every Deck Builder's decks kept in this browser, by the key they are under
+export function localDeckLists() {
+  const lists: { key: string; decks: Deck[] }[] = []
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i)
+      if (key === DECKS_KEY || key?.startsWith(`${DECKS_KEY}.`)) lists.push({ key, decks: loadDecks(key) })
+    }
+  } catch {
+    // Nothing to read, then
+  }
+  return lists.filter(({ decks }) => decks.length)
+}
+
 export function storeDecks(decks: Deck[], key = DECKS_KEY) {
   try {
     localStorage.setItem(key, JSON.stringify(decks))

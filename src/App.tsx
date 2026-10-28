@@ -5,7 +5,17 @@ import { asset } from './asset'
 import './App.css'
 import { CardView } from './CardView'
 import { AccountBar } from './account'
-import { loadAccountCards, publishCard, syncAccountCards, unpublishCard, type Published } from './accountCards'
+import {
+  copyLocalDecks,
+  deckScope,
+  loadAccountCards,
+  loadAccountDecks,
+  publishCard,
+  syncAccountCards,
+  syncAccountDecks,
+  unpublishCard,
+  type Published,
+} from './accountCards'
 import { api, API_URL, openAdminPanel, useAccount, useServerOnline, type Session } from './api'
 import {
   defaultLook,
@@ -17,6 +27,7 @@ import {
   loadCardLine,
   storeCardLine,
   loadDecks,
+  localDeckLists,
   storeDecks,
   type CardLine,
   type Art,
@@ -2607,7 +2618,39 @@ function DeckBuilder(props: {
 }) {
   const { cards, prefix = 'decks', storageKey, source = 'Showroom' } = props
   const fixedSet = source === 'set'
-  const [decks, setDecks] = useState<Deck[]>(() => loadDecks(storageKey))
+  // Signed in, the decks are the account's; otherwise this browser's
+  const account = useAccount()
+  const scope = deckScope(storageKey)
+  const [decks, setDecks] = useState<Deck[]>(() => (account ? [] : loadDecks(storageKey)))
+  const [deckState, setDeckState] = useState<'loading' | 'ready' | 'failed'>(account ? 'loading' : 'ready')
+  // Saves to the account, one after another, in the order made, each from the list the
+  // last one left
+  const deckSaving = useRef(Promise.resolve())
+  const savedDecks = useRef(decks)
+  useEffect(() => {
+    if (!account) {
+      setDecks(loadDecks(storageKey))
+      setDeckState('ready')
+      return
+    }
+    let live = true
+    setDeckState('loading')
+    loadAccountDecks(account, scope)
+      .then((found) => {
+        if (!live) return
+        savedDecks.current = found
+        setDecks(found)
+        setDeckState('ready')
+      })
+      .catch(() => {
+        if (!live) return
+        setDeckState('failed')
+        setNote('Could not load the decks on your account. Reload the page to try again.')
+      })
+    return () => {
+      live = false
+    }
+  }, [account?.token, scope, storageKey])
   const [currentId, setCurrentId] = useRemembered(`${prefix}.current`, '')
   // On each time the Deck Builder opens: cards a deck can't play at their cost are left out
   const [onAspect, setOnAspect] = useState(true)
@@ -2639,6 +2682,19 @@ function DeckBuilder(props: {
   const byId = new Map(cards.map((card) => [card.id, card]))
 
   const saveDecks = (next: Deck[]) => {
+    if (account) {
+      if (deckState !== 'ready') {
+        setNote('Your account’s decks are still loading. Try again in a moment.')
+        return
+      }
+      const before = savedDecks.current
+      savedDecks.current = next
+      setDecks(next)
+      deckSaving.current = deckSaving.current
+        .then(() => syncAccountDecks(account, scope, before, next))
+        .catch((err) => setNote(`Could not save to your account: ${(err as Error).message}`))
+      return
+    }
     if (!storeDecks(next, storageKey)) {
       setNote('Could not save: this browser has run out of storage.')
       return
@@ -4323,6 +4379,12 @@ function App() {
 
   // The cards kept in this browser, which can be copied to the account
   const localCount = useMemo(() => (account ? loadCards().length : 0), [account?.token])
+  // Counts the copies of this browser's decks to the account, so the Deck Builder reads them again
+  const [decksCopied, setDecksCopied] = useState(0)
+  const localDeckCount = useMemo(
+    () => (account ? localDeckLists().reduce((sum, { decks }) => sum + decks.length, 0) : 0),
+    [account?.token],
+  )
   const storageFull = () =>
     account
       ? accountCards === 'ready'
@@ -4393,10 +4455,21 @@ function App() {
       <header className="page-header">
         <AccountBar
           localCards={localCount}
+          localDecks={localDeckCount}
           onCopyLocal={async () => {
-            const done = importCards(loadCards())
+            const done = localCount ? [importCards(loadCards())] : []
             await saving.current
-            return done
+            if (account && localDeckCount) {
+              try {
+                const copied = await copyLocalDecks(account)
+                done.push(`copied ${copied} deck${copied === 1 ? '' : 's'}`)
+                setDecksCopied((count) => count + 1)
+              } catch (err) {
+                done.push(`could not copy the decks: ${(err as Error).message}`)
+              }
+            }
+            const text = done.join('; ')
+            return text.charAt(0).toUpperCase() + text.slice(1)
           }}
         />
         <h1>SWU Card Creator</h1>
@@ -4430,7 +4503,7 @@ function App() {
       )}
       {tab === 'community' && <Community session={account} />}
       {drawer.stage}
-      {tab === 'decks' && <DeckBuilder cards={cards.flatMap(deckCardOf)} />}
+      {tab === 'decks' && <DeckBuilder key={decksCopied} cards={cards.flatMap(deckCardOf)} />}
       {tab === 'projects' && <Projects />}
       {tab === 'creator' && (
         <CardCreator
