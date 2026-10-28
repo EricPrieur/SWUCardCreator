@@ -26,6 +26,15 @@ const formatDate = (date: string | null) => (date ? new Date(date).toLocaleDateS
 // The project's Discord server, as The Chrome Grid has its own
 const DISCORD_INVITE = 'https://discord.gg/5aMudhGRW5'
 
+// Support for the project, as on The Chrome Grid
+const KOFI = 'https://ko-fi.com/ericprieur'
+
+const kofiIcon = (
+  <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true">
+    <path d="M2 4h13a4 4 0 0 1 4 4v.5h.5A3.5 3.5 0 0 1 23 12v.5a4.5 4.5 0 0 1-4.5 4.5h-.61A6 6 0 0 1 12 21H8a6 6 0 0 1-6-6V4Zm17 11h-.5a4 4 0 0 0 .5-2v-3.5h.5a2 2 0 0 1 2 2V12a3 3 0 0 1-2.5 3ZM7.5 8.25a2 2 0 0 1 1.62.82A2 2 0 0 1 12.5 8.5a2.25 2.25 0 0 1 0 4.5L9.12 16.35l-3.37-3.35a2.25 2.25 0 0 1 1.75-4.75Z" />
+  </svg>
+)
+
 const discordIcon = (
   <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true">
     <path d="M19.6 5.3A17 17 0 0 0 15.4 4l-.5 1a15.7 15.7 0 0 0-5.8 0l-.5-1a17 17 0 0 0-4.2 1.3C1.7 9.3 1 13.2 1.3 17a17 17 0 0 0 5.2 2.6l1.1-1.8a11 11 0 0 1-1.7-.8l.4-.3a12.2 12.2 0 0 0 11.4 0l.4.3-1.7.8 1.1 1.8a17 17 0 0 0 5.2-2.6c.4-4.4-.7-8.3-3-11.7zM8.7 14.7c-1 0-1.9-1-1.9-2.1s.8-2.1 1.9-2.1 1.9 1 1.9 2.1-.8 2.1-1.9 2.1zm6.6 0c-1 0-1.9-1-1.9-2.1s.8-2.1 1.9-2.1 1.9 1 1.9 2.1-.8 2.1-1.9 2.1z" />
@@ -487,6 +496,10 @@ export function AccountBar(props: { localCards: number; onCopyLocal: () => Promi
       <a className="discord-join" href={DISCORD_INVITE} target="_blank" rel="noopener noreferrer">
         {discordIcon}
         Join the Discord for feedback
+      </a>
+      <a className="kofi-link" href={KOFI} target="_blank" rel="noopener noreferrer">
+        {kofiIcon}
+        Support on Ko-fi
       </a>
 
       {(open === 'login' || open === 'register') && (

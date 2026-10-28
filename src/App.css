@@ -49,6 +49,23 @@
   text-shadow: 0 0 10px rgb(114 137 218 / 0.5);
 }
 
+/* Shaped like the Discord link, in Ko-fi's coral */
+.kofi-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.03em;
+  color: #ff5e5b;
+  text-decoration: none;
+  transition: color 0.2s, text-shadow 0.2s;
+}
+
+.kofi-link:hover {
+  color: #ff8a87;
+  text-shadow: 0 0 10px rgb(255 94 91 / 0.5);
+}
+
 .account-name {
   display: inline-flex;
   align-items: center;
