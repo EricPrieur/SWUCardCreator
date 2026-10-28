@@ -89,8 +89,15 @@ async function mapArt(card: Card, change: (art: Art) => Promise<Art>): Promise<C
 }
 
 // The account's cards, ready to show, and the storage it uses
-export async function loadAccountCards(session: Session): Promise<{ cards: Card[]; usedBytes: number }> {
-  const data = await api<{ cards: { data: Card }[]; usedBytes: number }>('/api/cards', { token: session.token })
+// Which of the account's cards are public, and whether an admin hid them
+export type Published = Record<string, { hidden: boolean }>
+
+export async function loadAccountCards(session: Session): Promise<{ cards: Card[]; published: Published; usedBytes: number }> {
+  const data = await api<{ cards: { data: Card; isPublic: boolean; hidden: boolean }[]; usedBytes: number }>('/api/cards', {
+    token: session.token,
+  })
+  const published: Published = {}
+  for (const { data: card, isPublic, hidden } of data.cards) if (isPublic) published[card.id] = { hidden }
   const cards = await Promise.all(
     data.cards.map(({ data: card }) =>
       mapArt(card, async (art) => {
@@ -104,7 +111,7 @@ export async function loadAccountCards(session: Session): Promise<{ cards: Card[
       }),
     ),
   )
-  return { cards, usedBytes: data.usedBytes }
+  return { cards, published, usedBytes: data.usedBytes }
 }
 
 // Uploads one piece of art, if the account doesn't have it yet, and names it
@@ -144,3 +151,19 @@ export async function syncAccountCards(session: Session, before: Card[], after: 
     await api(`/api/cards/${encodeURIComponent(card.id)}`, { method: 'DELETE', token: session.token })
   }
 }
+
+// Makes a saved card public, or shows its latest version: the JPG of each side, and
+// the entry the Community tab searches and filters by
+export async function publishCard(session: Session, id: string, entry: unknown, sides: Blob[]) {
+  const [image, backImage] = await Promise.all(
+    sides.map(async (blob) => (await api<{ id: string }>('/api/images', { method: 'POST', raw: blob, token: session.token })).id),
+  )
+  return api<{ hidden: boolean }>(`/api/cards/${encodeURIComponent(id)}/public`, {
+    method: 'PUT',
+    body: { entry, image, backImage },
+    token: session.token,
+  })
+}
+
+export const unpublishCard = (session: Session, id: string) =>
+  api(`/api/cards/${encodeURIComponent(id)}/public`, { method: 'DELETE', token: session.token })

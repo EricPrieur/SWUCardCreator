@@ -5,8 +5,8 @@ import { asset } from './asset'
 import './App.css'
 import { CardView } from './CardView'
 import { AccountBar } from './account'
-import { loadAccountCards, syncAccountCards } from './accountCards'
-import { useAccount } from './api'
+import { loadAccountCards, publishCard, syncAccountCards, unpublishCard, type Published } from './accountCards'
+import { api, API_URL, openAdminPanel, useAccount, useServerOnline, type Session } from './api'
 import {
   defaultLook,
   loadCards,
@@ -42,6 +42,8 @@ const tabs = [
   { id: 'creator', label: 'Card Creator' },
   { id: 'showroom', label: 'Showroom' },
   { id: 'decks', label: 'Deck Builder' },
+  // Everyone's public cards; only where the accounts server answers
+  { id: 'community', label: 'Community' },
   { id: 'projects', label: 'My Other Projects' },
 ] as const
 
@@ -321,6 +323,37 @@ function useImageFormat() {
   return [format, change] as const
 }
 
+// Small line icons for the Showroom's card buttons, drawn in the text colour
+const saveIcon = (
+  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M5 3h11l3 3v13a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2z" />
+    <path d="M8 3v5h7V3" />
+    <rect x="8" y="13" width="8" height="6" rx="1" />
+  </svg>
+)
+const flipIcon = (
+  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M4 12a8 8 0 0 1 14-5.3L20 9" />
+    <path d="M20 4v5h-5" />
+    <path d="M20 12a8 8 0 0 1-14 5.3L4 15" />
+    <path d="M4 20v-5h5" />
+  </svg>
+)
+const copyIcon = (
+  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <rect x="9" y="9" width="11" height="11" rx="2" />
+    <path d="M5 15V6a2 2 0 0 1 2-2h9" />
+  </svg>
+)
+const trashIcon = (
+  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M4 7h16" />
+    <path d="M9 7V4h6v3" />
+    <path d="M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13" />
+    <path d="M10 11v6M14 11v6" />
+  </svg>
+)
+
 // Save (with its choice of format) and Copy, for a card shown on the page. A middle
 // click on Save opens the image in a new tab instead.
 function ImageButtons(props: {
@@ -332,8 +365,10 @@ function ImageButtons(props: {
   onFormat: (format: ImageFormat) => void
   // What came of the last click, to show near the buttons
   onNote: (note: string | null) => void
+  // Save as an icon, where room is short
+  compact?: boolean
 }) {
-  const { holder, frame, fileName, format, onFormat, onNote } = props
+  const { holder, frame, fileName, format, onFormat, onNote, compact } = props
   // What the buttons are up to, shown in place of their labels
   const [busy, setBusy] = useState<'save' | 'copy' | null>(null)
 
@@ -368,37 +403,46 @@ function ImageButtons(props: {
     setBusy(null)
   }
 
+  const copyButton = (
+    <button
+      className={compact ? 'button icon-button' : 'button'}
+      type="button"
+      disabled={busy !== null}
+      aria-label="Copy the image"
+      title="Copy the image"
+      onClick={() => image('copy')}
+    >
+      {busy === 'copy' ? (compact ? '…' : 'Drawing…') : compact ? copyIcon : 'Copy'}
+    </button>
+  )
+  // Compact, Copy comes first: Save, wider with its format, then wraps as a whole
   return (
     <>
+      {compact && copyButton}
       <span className="split-button">
         <button
-          className="button"
+          className={compact ? 'button icon-button' : 'button'}
           type="button"
           disabled={busy !== null}
+          aria-label="Save the image"
           title="Click to save the image; middle-click to open it in a new tab"
           onClick={() => image('save')}
           // A middle click shows the image in a new tab instead of scrolling the page
           onMouseDown={(event) => event.button === 1 && event.preventDefault()}
           onAuxClick={(event) => event.button === 1 && image('save', window.open('', '_blank'))}
         >
-          {busy === 'save' ? 'Drawing…' : 'Save'}
+          {busy === 'save' ? (compact ? '…' : 'Drawing…') : compact ? saveIcon : 'Save'}
         </button>
-        <select
-          aria-label="Image format"
+        <ChoiceDropdown
+          label="Image format"
           title="Print: 822 × 1122 px with a mirrored bleed edge and square corners, for MakePlayingCards and similar services"
-          value={format}
-          onChange={(event) => onFormat(event.target.value as ImageFormat)}
-        >
-          {imageFormats.map(({ value, label }) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </select>
+          options={[...imageFormats]}
+          selected={format}
+          onChange={onFormat}
+          buttonClass="split-choice"
+        />
       </span>
-      <button className="button" type="button" disabled={busy !== null} onClick={() => image('copy')}>
-        {busy === 'copy' ? 'Drawing…' : 'Copy'}
-      </button>
+      {!compact && copyButton}
     </>
   )
 }
@@ -447,8 +491,14 @@ function ShowroomCard(props: {
   onFormat: (format: ImageFormat) => void
   onEdit: () => void
   onRemove: () => void
+  // Signed in: whether the card is public (hidden: an admin took it off the Community tab)
+  published?: { hidden: boolean } | null
+  publishing?: boolean
+  // An admin turned off making cards public for the account
+  blocked?: boolean
+  onPublic?: (makePublic: boolean) => void
 }) {
-  const { card, preview, format, onFormat, onEdit, onRemove } = props
+  const { card, preview, format, onFormat, onEdit, onRemove, published, publishing, blocked, onPublic } = props
   const [back, setBack] = useState(false)
   // Remove asks once more before it does anything
   const [removing, setRemoving] = useState(false)
@@ -465,8 +515,8 @@ function ShowroomCard(props: {
       </HoverPreview>
       <div className="showroom-actions">
         {backFrameOf(card) && (
-          <button className="button" onClick={() => setBack(!back)}>
-            Flip
+          <button className="button icon-button" aria-label="Flip" title="Show the other side" onClick={() => setBack(!back)}>
+            {flipIcon}
           </button>
         )}
         <button className="button" onClick={onEdit}>
@@ -483,8 +533,8 @@ function ShowroomCard(props: {
             </button>
           </span>
         ) : (
-          <button className="button" onClick={() => setRemoving(true)}>
-            Remove
+          <button className="button icon-button" aria-label="Remove" title="Remove this card" onClick={() => setRemoving(true)}>
+            {trashIcon}
           </button>
         )}
         <ImageButtons
@@ -494,9 +544,30 @@ function ShowroomCard(props: {
           format={format}
           onFormat={onFormat}
           onNote={setNote}
+          compact
         />
+        {onPublic && (
+          // Stays pressed, in colour, while the card shows on the Community tab
+          <button
+            className="button public-button"
+            type="button"
+            aria-pressed={!!published}
+            disabled={publishing || (blocked && !published)}
+            title={
+              blocked
+                ? 'An admin has turned off making cards public for your account'
+                : published
+                  ? 'Shown on the Community tab. Click to make it private again.'
+                  : 'Show this card on the Community tab, for everyone'
+            }
+            onClick={() => onPublic(!published)}
+          >
+            {publishing ? 'Drawing…' : 'Public'}
+          </button>
+        )}
       </div>
       {note && <p className="saved-note showroom-note">{note}</p>}
+      {published?.hidden && <p className="saved-note showroom-note">Hidden from the Community tab by an admin</p>}
     </li>
   )
 }
@@ -631,8 +702,11 @@ function ChoiceDropdown<T extends string>(props: {
   options: { label: string; value: T }[]
   selected: T
   onChange: (value: T) => void
+  // In place of the chip look, for a dropdown joined to another button
+  buttonClass?: string
+  title?: string
 }) {
-  const { label, options, selected, onChange } = props
+  const { label, options, selected, onChange, buttonClass, title } = props
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -655,9 +729,10 @@ function ChoiceDropdown<T extends string>(props: {
   return (
     <div className="check-dropdown" ref={ref}>
       <button
-        className="chip"
+        className={buttonClass ?? 'chip'}
         type="button"
         aria-label={label}
+        title={title}
         aria-haspopup="listbox"
         aria-expanded={open}
         onClick={() => setOpen(!open)}
@@ -1238,6 +1313,31 @@ async function cardsInFiles(picked: File[]): Promise<Card[]> {
   return cards
 }
 
+// Draws a card side as a JPG at the frame's own size, off the page: what Export writes
+// and what a public card shows. The stage must be on the page while drawing.
+function useCardDrawer() {
+  const [drawing, setDrawing] = useState<{ card: Card; back: boolean } | null>(null)
+  const holder = useRef<HTMLDivElement>(null)
+  // Once its pictures have loaded
+  const draw = async (card: Card, back: boolean) => {
+    flushSync(() => setDrawing({ card, back }))
+    const el = holder.current?.querySelector<HTMLElement>('.card')
+    if (!el) throw new Error('Nothing to draw')
+    await document.fonts.ready
+    await Promise.all(
+      [...el.querySelectorAll('img')].map((img) => (img.complete ? null : new Promise((done) => img.addEventListener('load', done, { once: true })))),
+    )
+    await new Promise((done) => setTimeout(done, 150)) // the art's size is worked out once it has loaded
+    return cardImage(el, cardSide(card, back).frame, 'jpg', 1)
+  }
+  const stage = drawing && (
+    <div className="publish-stage" ref={holder}>
+      <CardFace card={drawing.card} back={drawing.back} />
+    </div>
+  )
+  return { draw, stage, done: () => setDrawing(null) }
+}
+
 // Export: the cards shown, set by set. Each card side is drawn as a JPG and kept with
 // a .json of the card, for Import to bring back. On this computer (the dev server)
 // they go into public/showcase/<SET>; on the site into a .zip.
@@ -1248,9 +1348,7 @@ function CardFiles(props: { cards: Card[]; onImport: (cards: Card[]) => string }
   const [busy, setBusy] = useState(false)
   // Replace the whole set with the cards shown, rather than update the cards shown in it
   const [replace, setReplace] = useState(false)
-  // The card side being drawn, off the page
-  const [drawing, setDrawing] = useState<{ card: Card; back: boolean } | null>(null)
-  const stage = useRef<HTMLDivElement>(null)
+  const { draw, stage, done: doneDrawing } = useCardDrawer()
   const picker = useRef<HTMLInputElement>(null)
   const mode = import.meta.env.DEV ? 'dev' : 'zip'
   const bySet = new Map<string, Card[]>()
@@ -1261,19 +1359,6 @@ function CardFiles(props: { cards: Card[]; onImport: (cards: Card[]) => string }
     if (folder) bySet.set(folder, [...(bySet.get(folder) ?? []), card])
   }
   const skipped = cards.length - [...bySet.values()].reduce((count, list) => count + list.length, 0)
-
-  // Draws one side of a card at the frame's own size, once its pictures have loaded
-  const draw = async (card: Card, back: boolean) => {
-    flushSync(() => setDrawing({ card, back }))
-    const el = stage.current?.querySelector<HTMLElement>('.card')
-    if (!el) throw new Error('Nothing to draw')
-    await document.fonts.ready
-    await Promise.all(
-      [...el.querySelectorAll('img')].map((img) => (img.complete ? null : new Promise((done) => img.addEventListener('load', done, { once: true })))),
-    )
-    await new Promise((done) => setTimeout(done, 150)) // the art's size is worked out once it has loaded
-    return cardImage(el, cardSide(card, back).frame, 'jpg', 1)
-  }
 
   const exportCards = async () => {
     setBusy(true)
@@ -1337,7 +1422,7 @@ function CardFiles(props: { cards: Card[]; onImport: (cards: Card[]) => string }
           : `Could not export: ${error instanceof Error ? error.message : error}`,
       )
     }
-    setDrawing(null)
+    doneDrawing()
     setBusy(false)
   }
 
@@ -1368,7 +1453,7 @@ function CardFiles(props: { cards: Card[]; onImport: (cards: Card[]) => string }
             }
             onClick={exportCards}
           >
-            {busy && drawing ? 'Exporting…' : `Export ${bySet.size === 1 ? [...bySet.keys()][0] : `${bySet.size} sets`}`}
+            {busy && stage ? 'Exporting…' : `Export ${bySet.size === 1 ? [...bySet.keys()][0] : `${bySet.size} sets`}`}
           </button>
           {mode === 'dev' && (
             <label className="toggle filter-label" title="Otherwise the cards shown are added to their set or updated in it">
@@ -1399,11 +1484,7 @@ function CardFiles(props: { cards: Card[]; onImport: (cards: Card[]) => string }
         }}
       />
       {status && <span className="filter-label">{status}</span>}
-      {drawing && (
-        <div className="publish-stage" ref={stage}>
-          <CardFace card={drawing.card} back={drawing.back} />
-        </div>
-      )}
+      {stage}
     </div>
   )
 }
@@ -1413,8 +1494,13 @@ function Showroom(props: {
   onEdit: (card: Card) => void
   onRemove: (card: Card) => void
   onImport: (cards: Card[]) => string
+  // Signed in: the cards made public, the one being drawn, and how to change one
+  published?: Published
+  publishing?: string | null
+  blocked?: boolean
+  onPublic?: (card: Card, makePublic: boolean) => void
 }) {
-  const { cards, onEdit, onRemove, onImport } = props
+  const { cards, onEdit, onRemove, onImport, published, publishing, blocked, onPublic } = props
   const { bar, shown, grid, preview } = useCardFilters(
     'showroom',
     cards.map((card) => ({ item: card, facts: cardFacts(card) })),
@@ -1452,6 +1538,10 @@ function Showroom(props: {
               onFormat={changeFormat}
               onEdit={() => onEdit(card)}
               onRemove={() => onRemove(card)}
+              published={published?.[card.id] ?? null}
+              publishing={publishing === card.id}
+              blocked={blocked}
+              onPublic={onPublic && ((makePublic) => onPublic(card, makePublic))}
             />
           ))}
         </ul>
@@ -1589,6 +1679,164 @@ function Showcase(props: { folder: string }) {
         </ul>
       )}
     </section>
+  )
+}
+
+// A card someone made public, as the server lists it
+type PublicCard = {
+  key: string
+  userId: number
+  cardId: string
+  owner: string
+  entry: ShowcaseCard
+  image: string
+  backImage: string | null
+  publishedAt: string
+  hidden: boolean
+  // Its owner may no longer make cards public
+  ownerBlocked: boolean
+}
+
+const publicImage = (id: string) => `${API_URL}/api/public/images/${id}`
+
+// Everyone's public cards, as a Showcase shows a set: newest first, with the same
+// search and filters, and who made each. Admins can hide a card from it.
+function Community(props: { session: Session | null }) {
+  const { session } = props
+  const [list, setList] = useState<PublicCard[] | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const admin = !!session?.user.isAdmin
+  useEffect(() => {
+    api<{ cards: PublicCard[] }>('/api/public/cards', { token: session?.token })
+      .then((data) => setList(data.cards))
+      .catch((err) => setError(err.message))
+  }, [session?.token])
+  const { bar, shown, grid, preview } = useCardFilters(
+    'community',
+    (list ?? []).map((card) => ({
+      item: card,
+      // The maker's name is searched with the card's
+      facts: (() => {
+        const facts = showcaseFacts(card.entry)
+        return { ...facts, names: [...facts.names, card.owner.toLowerCase()] }
+      })(),
+    })),
+    'Newest first',
+  )
+
+  const hide = async (card: PublicCard, hidden: boolean) => {
+    try {
+      await api(`/api/admin/cards/${card.userId}/${encodeURIComponent(card.cardId)}`, {
+        method: 'PATCH',
+        body: { hidden },
+        token: session?.token,
+      })
+      setList((cards) => cards && cards.map((other) => (other.key === card.key ? { ...other, hidden } : other)))
+    } catch (err) {
+      setError((err as Error).message)
+    }
+  }
+
+  if (error && !list) return <p className="empty-note">{error}</p>
+  if (!list) return <p className="empty-note">Loading…</p>
+  if (list.length === 0)
+    return (
+      <section className="empty">
+        <h2>No public cards yet</h2>
+        <p>Signed in, a card in your Showroom can be made public: it then shows here, for everyone.</p>
+      </section>
+    )
+  return (
+    <section className="showroom">
+      {bar}
+      {error && <p className="account-error">{error}</p>}
+      {shown.length === 0 ? (
+        <p className="empty-note">No card matches these filters.</p>
+      ) : (
+        <ul className={grid}>
+          {shown.map(({ item: card }) => (
+            <CommunityItem
+              key={card.key}
+              card={card}
+              preview={preview}
+              session={admin ? session : null}
+              onHide={(hidden) => hide(card, hidden)}
+            />
+          ))}
+        </ul>
+      )}
+    </section>
+  )
+}
+
+function CommunityItem(props: { card: PublicCard; preview: boolean; session: Session | null; onHide: (hidden: boolean) => void }) {
+  const { card, preview, session, onHide } = props
+  const admin = !!session
+  const [back, setBack] = useState(false)
+  const id = back && card.backImage ? card.backImage : card.image
+  const name = back && card.entry.backName ? card.entry.backName : card.entry.name
+  // Off the tab for everyone else: an admin still sees it, greyed out
+  const off = card.hidden || card.ownerBlocked
+  // Its image isn't public any more, so an admin fetches it signed in
+  const [adminSrc, setAdminSrc] = useState<string | null>(null)
+  useEffect(() => {
+    if (!off || !session) return
+    let url: string | null = null
+    fetch(`${API_URL}/api/admin/public-images/${id}`, { headers: { Authorization: `Bearer ${session.token}` } })
+      .then((res) => (res.ok ? res.blob() : Promise.reject()))
+      .then((blob) => setAdminSrc((url = URL.createObjectURL(blob))))
+      .catch(() => setAdminSrc(null))
+    return () => {
+      if (url) URL.revokeObjectURL(url)
+    }
+  }, [off, session, id])
+  const src = off ? adminSrc : publicImage(id)
+  const image = src && <img className="showcase-image" src={src} alt={name} loading="lazy" />
+
+  return (
+    <li className={off ? 'community-off' : undefined}>
+      {off ? (
+        <div title={card.hidden ? 'Hidden by an admin' : 'Its owner may not make cards public'}>
+          {image ?? <div className="community-placeholder">{name}</div>}
+        </div>
+      ) : (
+        <HoverPreview enabled={preview} preview={<img className="showcase-image" src={src!} alt="" />}>
+          <a href={src!} target="_blank" rel="noopener noreferrer" title="Open the full image">
+            {image}
+          </a>
+        </HoverPreview>
+      )}
+      <p className="community-owner">
+        by{' '}
+        {admin ? (
+          <button className="community-owner-link" type="button" title="Open this account in the Admin panel" onClick={() => openAdminPanel(card.userId)}>
+            {card.owner}
+          </button>
+        ) : (
+          card.owner
+        )}
+        {card.ownerBlocked && <span className="community-flag"> · may not publish</span>}
+      </p>
+      {(card.backImage || admin) && (
+        <div className="showroom-actions">
+          {card.backImage && (
+            <button className="button icon-button" type="button" aria-label="Flip" title="Show the other side" onClick={() => setBack(!back)}>
+              {flipIcon}
+            </button>
+          )}
+          {admin && (
+            <button
+              className="button"
+              type="button"
+              title={card.hidden ? 'Put this card back on the Community tab' : 'Take this card off the Community tab for everyone; its owner keeps it'}
+              onClick={() => onHide(!card.hidden)}
+            >
+              {card.hidden ? 'Show again' : 'Hide'}
+            </button>
+          )}
+        </div>
+      )}
+    </li>
   )
 }
 
@@ -3973,15 +4221,23 @@ function App() {
   // Signed in, the cards are the account's: loaded from it, and each change saved to it.
   // Signed out, they are the ones kept in this browser, as they always were.
   const account = useAccount()
+  const online = useServerOnline()
   const [accountCards, setAccountCards] = useState<'loading' | 'ready' | 'failed'>('loading')
   const [syncError, setSyncError] = useState<string | null>(null)
   const [syncing, setSyncing] = useState(0)
+  // The account's public cards, and the card being drawn to be made public
+  const [published, setPublished] = useState<Published>({})
+  const [publishing, setPublishing] = useState<string | null>(null)
+  const publishedNow = useRef<Published>({})
+  publishedNow.current = published
+  const drawer = useCardDrawer()
   // What the account is known to hold, and the saves waiting their turn
   const synced = useRef<Card[]>([])
   const saving = useRef<Promise<void>>(Promise.resolve())
 
   useEffect(() => {
     setSyncError(null)
+    setPublished({})
     if (!account) {
       setCards(loadCards())
       return
@@ -3991,10 +4247,11 @@ function App() {
     // Not the browser's cards meanwhile: they aren't the account's
     setCards([])
     loadAccountCards(account)
-      .then(({ cards: found }) => {
+      .then(({ cards: found, published: shown }) => {
         if (!live) return
         synced.current = found
         setCards(found)
+        setPublished(shown)
         setAccountCards('ready')
       })
       .catch((err) => {
@@ -4019,8 +4276,12 @@ function App() {
     setSyncing((count) => count + 1)
     saving.current = saving.current
       .then(async () => {
+        const before = new Map(synced.current.map((card) => [card.id, card]))
         await syncAccountCards(account, synced.current, next)
         synced.current = next
+        // A public card changed: the Community tab gets its new look
+        for (const card of next)
+          if (before.get(card.id) !== card && publishedNow.current[card.id]) await showPublic(account, card)
         setSyncError(null)
       })
       .catch((err) =>
@@ -4031,6 +4292,35 @@ function App() {
       .finally(() => setSyncing((count) => count - 1))
     return true
   }
+  // Draws each side of a saved card and makes it public with those images
+  const showPublic = async (session: NonNullable<typeof account>, card: Card) => {
+    const sides: Blob[] = []
+    try {
+      for (const back of backFrameOf(card) ? [false, true] : [false]) sides.push(await drawer.draw(card, back))
+    } finally {
+      drawer.done()
+    }
+    const { hidden } = await publishCard(session, card.id, showcaseEntry(card), sides)
+    setPublished((list) => ({ ...list, [card.id]: { hidden } }))
+  }
+
+  const changePublic = async (card: Card, makePublic: boolean) => {
+    if (!account || publishing) return
+    setPublishing(card.id)
+    try {
+      // Its last change saved first: only a saved card can be made public
+      await saving.current
+      if (makePublic) await showPublic(account, card)
+      else {
+        await unpublishCard(account, card.id)
+        setPublished((list) => Object.fromEntries(Object.entries(list).filter(([id]) => id !== card.id)))
+      }
+    } catch (err) {
+      setSyncError(`Could not make the card ${makePublic ? 'public' : 'private'}: ${(err as Error).message}`)
+    }
+    setPublishing(null)
+  }
+
   // The cards kept in this browser, which can be copied to the account
   const localCount = useMemo(() => (account ? loadCards().length : 0), [account?.token])
   const storageFull = () =>
@@ -4111,7 +4401,9 @@ function App() {
         />
         <h1>SWU Card Creator</h1>
         <nav className="tabs">
-          {tabs.map(({ id, label }) => (
+          {tabs
+            .filter(({ id }) => id !== 'community' || online)
+            .map(({ id, label }) => (
             <a key={id} href={`#${id}`} aria-current={tab === id ? 'page' : undefined}>
               {label}
             </a>
@@ -4124,7 +4416,20 @@ function App() {
           {syncError ?? (accountCards === 'loading' ? 'Loading your cards…' : 'Saving to your account…')}
         </p>
       )}
-      {tab === 'showroom' && <Showroom cards={cards} onEdit={editCard} onRemove={removeCard} onImport={importCards} />}
+      {tab === 'showroom' && (
+        <Showroom
+          cards={cards}
+          onEdit={editCard}
+          onRemove={removeCard}
+          onImport={importCards}
+          published={account ? published : undefined}
+          publishing={publishing}
+          blocked={account?.user.canPublish === false}
+          onPublic={account && accountCards === 'ready' ? changePublic : undefined}
+        />
+      )}
+      {tab === 'community' && <Community session={account} />}
+      {drawer.stage}
       {tab === 'decks' && <DeckBuilder cards={cards.flatMap(deckCardOf)} />}
       {tab === 'projects' && <Projects />}
       {tab === 'creator' && (

@@ -44,6 +44,8 @@ export async function initDB() {
   `)
   // Names are unique whatever their capitals, so no one can pass for Prieur as prieur
   await query(`CREATE UNIQUE INDEX IF NOT EXISTS users_username_lower ON ${SCHEMA}.users (LOWER(username))`)
+  // Whether the account may make cards public; an admin can take it away
+  await query(`ALTER TABLE ${SCHEMA}.users ADD COLUMN IF NOT EXISTS can_publish BOOLEAN NOT NULL DEFAULT TRUE`)
   // A card as the app keeps it, its art naming images below. Ids come from the app,
   // so two accounts may hold a card with the same id (one imported from the other).
   await query(`
@@ -58,6 +60,14 @@ export async function initDB() {
       PRIMARY KEY (user_id, id)
     )
   `)
+  // A public card: its showcase entry (what the Community tab searches and filters by),
+  // the JPG of each side, when it was first made public, and whether an admin hid it
+  await query(`ALTER TABLE ${SCHEMA}.cards ADD COLUMN IF NOT EXISTS public_entry JSONB`)
+  await query(`ALTER TABLE ${SCHEMA}.cards ADD COLUMN IF NOT EXISTS public_image CHAR(64)`)
+  await query(`ALTER TABLE ${SCHEMA}.cards ADD COLUMN IF NOT EXISTS public_back_image CHAR(64)`)
+  await query(`ALTER TABLE ${SCHEMA}.cards ADD COLUMN IF NOT EXISTS published_at TIMESTAMP`)
+  await query(`ALTER TABLE ${SCHEMA}.cards ADD COLUMN IF NOT EXISTS hidden BOOLEAN NOT NULL DEFAULT FALSE`)
+  await query(`CREATE INDEX IF NOT EXISTS cards_public ON ${SCHEMA}.cards (published_at) WHERE is_public`)
   // Art uploaded by an account: the file is on disk, named by the SHA-256 of its bytes
   await query(`
     CREATE TABLE IF NOT EXISTS ${SCHEMA}.images (

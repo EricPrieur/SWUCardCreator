@@ -56,7 +56,8 @@ async function dropOrphanImages(userId) {
        AND i.created_at < NOW() - $2::INTERVAL
        AND NOT EXISTS (
          SELECT 1 FROM ${SCHEMA}.cards c
-         WHERE c.user_id = i.user_id AND c.data::TEXT LIKE '%account:' || i.id || '%'
+         WHERE c.user_id = i.user_id
+           AND (c.data::TEXT LIKE '%account:' || i.id || '%' OR c.public_image = i.id OR c.public_back_image = i.id)
        )
      RETURNING i.id`,
     [userId, ORPHAN_GRACE],
@@ -73,11 +74,17 @@ const router = Router()
 router.get('/cards', verifyToken, async (req, res) => {
   try {
     const { rows } = await query(
-      `SELECT id, data, is_public, updated_at FROM ${SCHEMA}.cards WHERE user_id = $1 ORDER BY created_at`,
+      `SELECT id, data, is_public, hidden, updated_at FROM ${SCHEMA}.cards WHERE user_id = $1 ORDER BY created_at`,
       [req.user.id],
     )
     res.json({
-      cards: rows.map((row) => ({ id: row.id, data: row.data, isPublic: row.is_public, updatedAt: row.updated_at })),
+      cards: rows.map((row) => ({
+        id: row.id,
+        data: row.data,
+        isPublic: row.is_public,
+        hidden: row.hidden,
+        updatedAt: row.updated_at,
+      })),
       usedBytes: await usedBytes(req.user.id),
     })
   } catch (err) {
@@ -126,6 +133,55 @@ router.delete('/cards/:id', verifyToken, async (req, res) => {
     res.json({ usedBytes: await usedBytes(req.user.id) })
   } catch (err) {
     console.error('Card delete error:', err)
+    res.status(500).json({ error: 'Server error' })
+  }
+})
+
+// Makes a card public, or updates what is shown of it: { entry, image, backImage? },
+// its showcase entry and the JPG of each side, uploaded first as images
+router.put('/cards/:id/public', verifyToken, async (req, res) => {
+  const { entry, image, backImage } = req.body ?? {}
+  if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return res.status(400).json({ error: 'Entry required' })
+  if (Buffer.byteLength(JSON.stringify(entry)) > MAX_CARD_BYTES) return res.status(413).json({ error: 'Entry too big' })
+  if (!IMAGE_ID.test(image ?? '') || (backImage != null && !IMAGE_ID.test(backImage)))
+    return res.status(400).json({ error: 'The card’s image is required' })
+
+  try {
+    const { rows: user } = await query(`SELECT can_publish FROM ${SCHEMA}.users WHERE id = $1`, [req.user.id])
+    if (!user[0]?.can_publish)
+      return res.status(403).json({ error: 'An admin has turned off making cards public for this account.' })
+    const images = [image, backImage].filter(Boolean)
+    const { rows: owned } = await query(`SELECT id FROM ${SCHEMA}.images WHERE user_id = $1 AND id = ANY($2)`, [req.user.id, images])
+    if (owned.length !== new Set(images).size) return res.status(400).json({ error: 'The card’s image was not uploaded' })
+    const { rows } = await query(
+      `UPDATE ${SCHEMA}.cards SET is_public = TRUE, public_entry = $3, public_image = $4, public_back_image = $5,
+         published_at = COALESCE(published_at, NOW())
+       WHERE user_id = $1 AND id = $2
+       RETURNING hidden`,
+      [req.user.id, req.params.id, JSON.stringify(entry), image, backImage ?? null],
+    )
+    if (!rows.length) return res.status(404).json({ error: 'Card not found' })
+    await dropOrphanImages(req.user.id)
+    res.json({ isPublic: true, hidden: rows[0].hidden, usedBytes: await usedBytes(req.user.id) })
+  } catch (err) {
+    console.error('Publish error:', err)
+    res.status(500).json({ error: 'Server error' })
+  }
+})
+
+// Makes a card private again; its JPGs go with the next clean-up
+router.delete('/cards/:id/public', verifyToken, async (req, res) => {
+  try {
+    await query(
+      `UPDATE ${SCHEMA}.cards SET is_public = FALSE, public_entry = NULL, public_image = NULL, public_back_image = NULL,
+         published_at = NULL
+       WHERE user_id = $1 AND id = $2`,
+      [req.user.id, req.params.id],
+    )
+    await dropOrphanImages(req.user.id)
+    res.json({ isPublic: false, usedBytes: await usedBytes(req.user.id) })
+  } catch (err) {
+    console.error('Unpublish error:', err)
     res.status(500).json({ error: 'Server error' })
   }
 })

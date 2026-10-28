@@ -969,7 +969,8 @@
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 0.6rem;
+  align-items: center;
+  gap: 0.4rem;
   margin-top: 0.9rem;
 }
 
@@ -994,16 +995,26 @@
   border-radius: 6px 0 0 6px;
 }
 
-.split-button select {
-  padding: 0 0.35rem;
+.split-choice {
+  height: 100%;
+  padding: 0 0.55rem;
   border: 1px solid rgb(232 215 181 / 0.25);
   border-left: 0;
   border-radius: 0 6px 6px 0;
   background: rgb(0 0 0 / 0.3);
   font: inherit;
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   color: var(--sand);
+  white-space: nowrap;
   cursor: pointer;
+}
+
+.split-choice:hover {
+  border-color: var(--sand-dim);
+}
+
+.split-button .check-dropdown {
+  display: flex;
 }
 
 .showroom-note {
@@ -2402,4 +2413,72 @@
 /* A token of the deck's list: only its name, to see it large under the mouse */
 .deck-token-row {
   grid-template-columns: minmax(0, 1fr);
+}
+
+/* Community tab: who made each card, and the cards an admin hid */
+.community-owner {
+  margin: 0.4rem 0 0;
+  font-size: 0.8rem;
+  text-align: center;
+  color: var(--sand-dim);
+}
+
+/* Off the tab for everyone but admins: hidden, or its owner may not publish */
+.community-off .showcase-image {
+  filter: grayscale(1);
+  opacity: 0.45;
+}
+
+.community-owner-link {
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  color: var(--spice);
+  text-decoration: underline dotted;
+  cursor: pointer;
+}
+
+.community-flag {
+  color: #ff8a7a;
+}
+
+/* The account the Admin panel was opened at */
+.admin-focus td {
+  background: rgb(224 138 44 / 0.15);
+}
+
+.community-placeholder {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 5 / 7;
+  padding: 1rem;
+  border: 1px dashed rgb(232 215 181 / 0.3);
+  border-radius: 4.5%;
+  text-align: center;
+  color: var(--sand-dim);
+}
+
+/* An icon in place of a button's word, where a card's buttons are short of room */
+.showroom-actions .icon-button {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.45rem 0.55rem;
+}
+
+/* Public: stays pressed, in colour, while the card is on the Community tab */
+.public-button[aria-pressed='true'] {
+  border-color: var(--spice);
+  background: var(--spice);
+  font-weight: 600;
+  color: var(--night);
+}
+
+.public-button[aria-pressed='true']:hover {
+  border-color: var(--sand);
+}
+
+.public-button:disabled {
+  opacity: 0.6;
+  cursor: default;
 }

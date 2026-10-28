@@ -18,6 +18,11 @@ database with The Chrome Grid without touching its tables.
 | `DELETE /api/cards/:id` | Removes a card |
 | `POST /api/images` | The image file as the body (JPEG, PNG or WebP, 5 MB at most) → `{ id }`, the SHA-256 of its bytes. The same image is kept once. |
 | `GET /api/images/:id` | One of the account's images |
+| `PUT /api/cards/:id/public` | `{ entry, image, backImage? }`: makes a card public with its showcase entry and the JPG of each side (uploaded first as images), or updates them |
+| `DELETE /api/cards/:id/public` | Makes a card private again |
+| `GET /api/public/cards` | Everyone's public cards, newest first; no sign-in needed. Admins also get the hidden ones. |
+| `GET /api/public/images/:id` | The JPG of a public card's side, for anyone |
+| `PATCH /api/admin/cards/:userId/:cardId` | Admins: `{ hidden }`, takes a card off the Community tab or puts it back |
 | `GET /api/health` | `{ ok: true }` |
 
 Signed-in calls send `Authorization: Bearer <token>`; a token lasts 30 days.

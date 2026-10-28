@@ -14,7 +14,7 @@ function secret() {
   return 'swu-card-creator-dev-secret'
 }
 
-const USER_COLUMNS = 'id, username, is_admin, quota_bytes, created_at'
+const USER_COLUMNS = 'id, username, is_admin, quota_bytes, can_publish, created_at'
 
 // What the app is told about an account
 export function userPublic(user) {
@@ -24,6 +24,8 @@ export function userPublic(user) {
     isAdmin: !!user.is_admin,
     // null: no limit
     quotaBytes: user.quota_bytes === null ? null : Number(user.quota_bytes),
+    // May make cards public
+    canPublish: user.can_publish !== false,
     createdAt: user.created_at,
   }
 }
@@ -114,6 +116,19 @@ export function verifyToken(req, res, next) {
   } catch {
     res.status(401).json({ error: 'Invalid token' })
   }
+}
+
+// The account, if a valid token came with the request; anyone may call on without one
+export function optionalUser(req, res, next) {
+  const auth = req.headers.authorization
+  if (auth?.startsWith('Bearer ')) {
+    try {
+      req.user = jwt.verify(auth.slice(7), secret())
+    } catch {
+      // As anyone else, then
+    }
+  }
+  next()
 }
 
 // Admin rights are read from the table, not the token, so taking them away works at once

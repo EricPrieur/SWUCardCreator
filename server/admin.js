@@ -10,7 +10,7 @@ router.get('/users', async (req, res) => {
   try {
     await enforcePermanentAdmins()
     const { rows } = await query(
-      `SELECT u.id, u.username, u.is_admin, u.quota_bytes, u.created_at, u.last_login_at,
+      `SELECT u.id, u.username, u.is_admin, u.quota_bytes, u.can_publish, u.created_at, u.last_login_at,
          COALESCE((SELECT SUM(bytes) FROM ${SCHEMA}.cards c WHERE c.user_id = u.id), 0)
        + COALESCE((SELECT SUM(bytes) FROM ${SCHEMA}.images i WHERE i.user_id = u.id), 0) AS used_bytes,
          (SELECT COUNT(*) FROM ${SCHEMA}.cards c WHERE c.user_id = u.id)::INT AS card_count
@@ -31,12 +31,15 @@ router.get('/users', async (req, res) => {
   }
 })
 
-// Change an account's admin flag or storage limit (quotaBytes null: no limit)
+// Change an account's admin flag, storage limit (quotaBytes null: no limit), or whether
+// it may make cards public
 router.patch('/users/:id', async (req, res) => {
   const id = Number(req.params.id)
-  const { isAdmin, quotaBytes } = req.body ?? {}
+  const { isAdmin, quotaBytes, canPublish } = req.body ?? {}
   if (!Number.isInteger(id)) return res.status(400).json({ error: 'Bad user id' })
   if (isAdmin !== undefined && typeof isAdmin !== 'boolean') return res.status(400).json({ error: 'isAdmin must be true or false' })
+  if (canPublish !== undefined && typeof canPublish !== 'boolean')
+    return res.status(400).json({ error: 'canPublish must be true or false' })
   if (quotaBytes !== undefined && quotaBytes !== null && !(Number.isInteger(quotaBytes) && quotaBytes >= 0))
     return res.status(400).json({ error: 'quotaBytes must be a whole number of bytes, or null' })
 
@@ -48,10 +51,11 @@ router.patch('/users/:id', async (req, res) => {
     const { rows } = await query(
       `UPDATE ${SCHEMA}.users SET
          is_admin = COALESCE($2, is_admin),
-         quota_bytes = CASE WHEN $3 THEN $4::BIGINT ELSE quota_bytes END
+         quota_bytes = CASE WHEN $3 THEN $4::BIGINT ELSE quota_bytes END,
+         can_publish = COALESCE($5, can_publish)
        WHERE id = $1
-       RETURNING id, username, is_admin, quota_bytes, created_at`,
-      [id, isAdmin ?? null, quotaBytes !== undefined, quotaBytes ?? null],
+       RETURNING id, username, is_admin, quota_bytes, can_publish, created_at`,
+      [id, isAdmin ?? null, quotaBytes !== undefined, quotaBytes ?? null, canPublish ?? null],
     )
     res.json({ user: userPublic(rows[0]) })
   } catch (err) {

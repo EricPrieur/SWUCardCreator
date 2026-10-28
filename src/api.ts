@@ -10,6 +10,8 @@ export type User = {
   isAdmin: boolean
   // null: no limit
   quotaBytes: number | null
+  // May make cards public; an admin can turn it off
+  canPublish: boolean
   createdAt: string
 }
 export type Session = { token: string; user: User }
@@ -100,6 +102,13 @@ const subscribeOnline = (listener: () => void) => {
 }
 
 export const useServerOnline = () => useSyncExternalStore(subscribeOnline, () => !!online)
+
+// Asks the account bar to open the Admin panel, at one account if given
+let adminRequest: ((userId?: number) => void) | null = null
+export const onAdminRequest = (listener: ((userId?: number) => void) | null) => {
+  adminRequest = listener
+}
+export const openAdminPanel = (userId?: number) => adminRequest?.(userId)
 
 // The session to save cards to: signed in, with the server there
 export function useAccount() {

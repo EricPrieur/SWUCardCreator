@@ -2,6 +2,7 @@ import express from 'express'
 import authRouter from './auth.js'
 import adminRouter from './admin.js'
 import cardsRouter from './cards.js'
+import publicRouter from './public.js'
 
 // The sites allowed to call this server: the app on GitHub Pages and the dev server
 const DEFAULT_ORIGINS = ['https://ericprieur.github.io', 'http://localhost:5173']
@@ -32,6 +33,8 @@ export function createApp() {
 
   app.get('/api/health', (req, res) => res.json({ ok: true }))
   app.use('/api/auth', authRouter)
+  // Before the admin router, which wants an admin for everything under /api/admin
+  app.use('/api', publicRouter)
   app.use('/api/admin', adminRouter)
   app.use('/api', cardsRouter)
 

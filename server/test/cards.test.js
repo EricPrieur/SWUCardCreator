@@ -137,3 +137,73 @@ test('an account can’t go over its limit', async () => {
   const me = (await call('GET', '/auth/me', undefined, carol)).body
   assert.ok(me.usedBytes > 2000 && me.usedBytes <= 3000)
 })
+
+test('a public card shows to everyone until it is made private or hidden', async () => {
+  const dave = await register('dave')
+  const eve = await register('eve')
+  const art = await call('POST', '/images', png(800, 5), dave)
+  const card = { frameId: 'unit-cunning', name: 'Face Dancer', text: '', trait: '', art: { src: `account:${art.body.id}` } }
+  await call('PUT', '/cards/fd', { data: card }, dave)
+
+  const front = await call('POST', '/images', webp(300), dave)
+  const entry = { id: 'fd', image: 'Face Dancer', name: 'Face Dancer', type: 'Unit', aspects: ['Cunning'], traits: [] }
+  // Only its owner can make it public, with images the owner uploaded
+  assert.equal((await call('PUT', '/cards/fd/public', { entry, image: front.body.id }, eve)).status, 400)
+  assert.equal((await call('PUT', '/cards/nope/public', { entry, image: front.body.id }, dave)).status, 404)
+  assert.equal((await call('PUT', '/cards/fd/public', { entry, image: front.body.id }, dave)).status, 200)
+
+  // Seen without signing in, image and all; the source art stays private
+  const list = (await call('GET', '/public/cards')).body.cards
+  assert.equal(list.length, 1)
+  assert.equal(list[0].owner, 'dave')
+  assert.equal(list[0].entry.name, 'Face Dancer')
+  assert.equal((await call('GET', `/public/images/${front.body.id}`)).status, 200)
+  assert.equal((await call('GET', `/public/images/${art.body.id}`)).status, 404)
+  assert.equal((await call('GET', '/cards', undefined, dave)).body.cards[0].isPublic, true)
+
+  // An admin can hide it, and still sees it, marked
+  const admin = (await call('POST', '/auth/register', { username: 'prieur', password: 'longenough' })).body.token
+  const key = `/admin/cards/${list[0].userId}/fd`
+  assert.equal((await call('PATCH', key, { hidden: true }, eve)).status, 403)
+  assert.equal((await call('PATCH', key, { hidden: true }, admin)).status, 200)
+  assert.equal((await call('GET', '/public/cards')).body.cards.length, 0)
+  assert.equal((await call('GET', `/public/images/${front.body.id}`)).status, 404)
+  assert.equal((await call('GET', '/public/cards', undefined, admin)).body.cards[0].hidden, true)
+  await call('PATCH', key, { hidden: false }, admin)
+
+  // Private again: gone from the list, and its JPG freed
+  assert.equal((await call('DELETE', '/cards/fd/public', undefined, dave)).status, 200)
+  assert.equal((await call('GET', '/public/cards')).body.cards.length, 0)
+  assert.equal((await call('GET', `/images/${front.body.id}`, undefined, dave)).status, 404)
+  assert.equal((await call('GET', `/images/${art.body.id}`, undefined, dave)).status, 200)
+})
+
+test('an admin can stop an account making cards public', async () => {
+  const frank = await register('frank')
+  const admin = (await call('POST', '/auth/login', { username: 'prieur', password: 'longenough' })).body.token
+  const me = (await call('GET', '/auth/me', undefined, frank)).body.user
+  assert.equal(me.canPublish, true)
+
+  await call('PUT', '/cards/f1', { data: { frameId: 'event-cunning', name: 'Coriolis Storm', text: '', trait: '' } }, frank)
+  const front = await call('POST', '/images', webp(400), frank)
+  const entry = { id: 'f1', image: 'Coriolis Storm', name: 'Coriolis Storm', type: 'Event', aspects: [], traits: [] }
+  assert.equal((await call('PUT', '/cards/f1/public', { entry, image: front.body.id }, frank)).status, 200)
+
+  assert.equal((await call('PATCH', `/admin/users/${me.id}`, { canPublish: 'no' }, admin)).status, 400)
+  const off = await call('PATCH', `/admin/users/${me.id}`, { canPublish: false }, admin)
+  assert.equal(off.body.user.canPublish, false)
+  assert.equal((await call('GET', '/auth/me', undefined, frank)).body.user.canPublish, false)
+
+  // Its cards leave the tab for everyone but admins, who can still load the image
+  assert.ok(!(await call('GET', '/public/cards')).body.cards.some((card) => card.owner === 'frank'))
+  assert.equal((await call('GET', `/public/images/${front.body.id}`)).status, 404)
+  const seen = (await call('GET', '/public/cards', undefined, admin)).body.cards.find((card) => card.owner === 'frank')
+  assert.equal(seen.ownerBlocked, true)
+  assert.equal((await call('GET', `/admin/public-images/${front.body.id}`, undefined, admin)).status, 200)
+  assert.equal((await call('GET', `/admin/public-images/${front.body.id}`, undefined, frank)).status, 403)
+  // ...and it can't make another public
+  assert.equal((await call('PUT', '/cards/f1/public', { entry, image: front.body.id }, frank)).status, 403)
+
+  await call('PATCH', `/admin/users/${me.id}`, { canPublish: true }, admin)
+  assert.ok((await call('GET', '/public/cards')).body.cards.some((card) => card.owner === 'frank'))
+})

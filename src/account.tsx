@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
-import { api, ApiError, setSession, useServerOnline, useSession, type Session, type User } from './api'
+import { api, ApiError, onAdminRequest, setSession, useServerOnline, useSession, type Session, type User } from './api'
 
 type AdminUser = User & { lastLoginAt: string | null; usedBytes: number; cardCount: number; permanent: boolean }
 
@@ -186,10 +186,16 @@ function SettingsModal(props: {
 
 const MB = 1024 * 1024
 
-function AdminModal(props: { session: Session; onClose: () => void }) {
-  const { session, onClose } = props
+function AdminModal(props: { session: Session; focus?: number; onClose: () => void }) {
+  const { session, focus, onClose } = props
   const [users, setUsers] = useState<AdminUser[] | null>(null)
   const [error, setError] = useState<string | null>(null)
+  // The account asked for, scrolled to and marked once the list is in
+  const focused = useRef<HTMLTableRowElement>(null)
+  const loaded = !!users
+  useEffect(() => {
+    focused.current?.scrollIntoView({ block: 'center' })
+  }, [loaded])
 
   useEffect(() => {
     api<{ users: AdminUser[] }>('/api/admin/users', { token: session.token })
@@ -197,7 +203,7 @@ function AdminModal(props: { session: Session; onClose: () => void }) {
       .catch((err) => setError(err.message))
   }, [session.token])
 
-  const change = async (user: AdminUser, body: { isAdmin?: boolean; quotaBytes?: number | null }) => {
+  const change = async (user: AdminUser, body: { isAdmin?: boolean; quotaBytes?: number | null; canPublish?: boolean }) => {
     setError(null)
     try {
       const data = await api<{ user: User }>(`/api/admin/users/${user.id}`, { method: 'PATCH', body, token: session.token })
@@ -219,6 +225,7 @@ function AdminModal(props: { session: Session; onClose: () => void }) {
               <tr>
                 <th>User</th>
                 <th>Admin</th>
+                <th title="May make cards public">Public?</th>
                 <th>Cards</th>
                 <th>Storage</th>
                 <th>Joined</th>
@@ -227,7 +234,7 @@ function AdminModal(props: { session: Session; onClose: () => void }) {
             </thead>
             <tbody>
               {users.map((user) => (
-                <tr key={user.id}>
+                <tr key={user.id} ref={user.id === focus ? focused : undefined} className={user.id === focus ? 'admin-focus' : undefined}>
                   <td>
                     {user.username}
                     {user.permanent && <span className="admin-badge">permanent</span>}
@@ -239,6 +246,16 @@ function AdminModal(props: { session: Session; onClose: () => void }) {
                       checked={user.isAdmin}
                       disabled={user.permanent}
                       onChange={(event) => change(user, { isAdmin: event.target.checked })}
+                    />
+                  </td>
+                  <td>
+                    <input
+                      type="checkbox"
+                      aria-label={`${user.username} may make cards public`}
+                      title="Off: their cards leave the Community tab, and they can't make others public"
+                      checked={user.canPublish}
+                      disabled={user.permanent}
+                      onChange={(event) => change(user, { canPublish: event.target.checked })}
                     />
                   </td>
                   <td>{user.cardCount}</td>
@@ -300,6 +317,17 @@ export function AccountBar(props: { localCards: number; onCopyLocal: () => Promi
   const session = useSession()
   const online = useServerOnline()
   const [open, setOpen] = useState<'login' | 'register' | 'settings' | 'admin' | null>(null)
+  // The account the Admin panel opens at, when asked from elsewhere on the page
+  const [focus, setFocus] = useState<number | undefined>()
+  const isAdmin = !!session?.user.isAdmin
+  useEffect(() => {
+    if (!isAdmin) return
+    onAdminRequest((userId) => {
+      setFocus(userId)
+      setOpen('admin')
+    })
+    return () => onAdminRequest(null)
+  }, [isAdmin])
 
   // A token the server no longer takes (expired, or the account removed) signs out;
   // otherwise the account is read again, in case an admin changed it
@@ -324,7 +352,14 @@ export function AccountBar(props: { localCards: number; onCopyLocal: () => Promi
             </span>
           </button>
           {session.user.isAdmin && (
-            <button className="chip" type="button" onClick={() => setOpen('admin')}>
+            <button
+              className="chip"
+              type="button"
+              onClick={() => {
+                setFocus(undefined)
+                setOpen('admin')
+              }}
+            >
               Admin
             </button>
           )}
@@ -363,7 +398,7 @@ export function AccountBar(props: { localCards: number; onCopyLocal: () => Promi
           onClose={() => setOpen(null)}
         />
       )}
-      {open === 'admin' && session && <AdminModal session={session} onClose={() => setOpen(null)} />}
+      {open === 'admin' && session && <AdminModal session={session} focus={focus} onClose={() => setOpen(null)} />}
     </div>
   )
 }
