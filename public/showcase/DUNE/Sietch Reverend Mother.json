@@ -1,20 +1,20 @@
 {
-  "frameId": "unit-cunning-vigilance-heroism",
-  "name": "Sietch Reverend Mother",
-  "trait": "Fremen, Bene Gesserit",
-  "text": "[When Played:] Choose a [{Fremen}] or [{Bene Gesserit}] unit in your discard pile other than a Sietch Reverend Mother. Use its [When Played] ability as if it were this unit's.\n[When Defeated:] Return another [{Fremen}] or [{Bene Gesserit}] unit from your discard pile to your hand.",
-  "setCode": "DUNE",
-  "language": "EN",
-  "rarity": "R",
-  "cost": 5,
-  "art": {
-    "src": "Sietch Reverend Mother (art).webp",
-    "zoom": 1.2,
-    "x": -6,
-    "y": -10
-  },
-  "id": "a30de52b-5eea-4820-9878-d0a527224299",
-  "power": 3,
   "hp": 6,
-  "number": "022"
+  "id": "a30de52b-5eea-4820-9878-d0a527224299",
+  "art": {
+    "x": -6,
+    "y": -10,
+    "src": "Sietch Reverend Mother (art).webp",
+    "zoom": 1.2
+  },
+  "cost": 5,
+  "name": "Sietch Reverend Mother",
+  "text": "[When Played:] Choose a [{Fremen}] or [{Bene Gesserit}] unit in your discard pile other than a Sietch Reverend Mother. Use its [When Played] ability as if it were this unit's.\n[When Defeated:] Return another [{Fremen}] or [{Bene Gesserit}] unit from your discard pile to your hand.",
+  "power": 3,
+  "trait": "Fremen, Bene Gesserit",
+  "number": "026",
+  "rarity": "R",
+  "frameId": "unit-cunning-vigilance-heroism",
+  "setCode": "DUNE",
+  "language": "EN"
 }

@@ -1,19 +1,19 @@
 {
-  "frameId": "event-vigilance",
-  "name": "War of Assassins",
-  "trait": "Tactic",
-  "text": "You may defeat 2 friendly Spice tokens. If you do, defeat a unit. Otherwise, defeat a non-leader unit.",
-  "setCode": "DUNE",
-  "language": "EN",
-  "rarity": "C",
-  "cost": 5,
   "id": "87577ef3-b817-4ae7-8b97-3c6d88659254",
-  "number": "041",
   "art": {
-    "src": "War of Assassins (art).webp",
-    "zoom": 1,
     "x": 0,
     "y": 38,
+    "src": "War of Assassins (art).webp",
+    "zoom": 1,
     "rotate": 0
-  }
+  },
+  "cost": 5,
+  "name": "War of Assassins",
+  "text": "You may defeat 2 friendly Spice tokens. If you do, defeat a unit. Otherwise, defeat a non-leader unit.",
+  "trait": "Tactic",
+  "number": "045",
+  "rarity": "C",
+  "frameId": "event-vigilance",
+  "setCode": "DUNE",
+  "language": "EN"
 }

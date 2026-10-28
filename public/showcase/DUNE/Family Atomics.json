@@ -1,19 +1,19 @@
 {
-  "frameId": "event-vigilance-aggression",
-  "name": "Family Atomics",
-  "trait": "Tactic",
-  "text": "Choose one:\n• Defeat an upgrade. If it was a Fortification, draw a card.\n• Pay [3]. If you do, defeat a non-leader unit and deal 3 damage to your base.",
-  "setCode": "DUNE",
-  "language": "EN",
-  "rarity": "R",
-  "cost": 2,
+  "id": "ba3e5657-3bbe-45ef-907d-d553845d74a0",
   "art": {
-    "src": "Family Atomics (art).webp",
-    "zoom": 1,
     "x": 0,
     "y": 0,
+    "src": "Family Atomics (art).webp",
+    "zoom": 1,
     "rotate": 0
   },
-  "id": "ba3e5657-3bbe-45ef-907d-d553845d74a0",
-  "number": "023"
+  "cost": 2,
+  "name": "Family Atomics",
+  "text": "Choose one:\n• Defeat an upgrade. If it was a Fortification, draw a card.\n• Pay [3]. If you do, defeat a non-leader unit and deal 3 damage to your base.",
+  "trait": "Tactic",
+  "number": "027",
+  "rarity": "R",
+  "frameId": "event-vigilance-aggression",
+  "setCode": "DUNE",
+  "language": "EN"
 }

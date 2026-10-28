@@ -1,31 +1,31 @@
 {
-  "frameId": "leader-command-heroism",
-  "name": "Duke Leto Atreides",
-  "trait": "Atreides, Official",
-  "text": "[When you play a unit:] You may exhaust this leader and either pay [1] or defeat a friendly Spice token. If you do, give an Experience token to that unit.",
-  "setCode": "DUNE",
-  "language": "EN",
-  "rarity": "R",
-  "art": {
-    "src": "Duke Leto Atreides - Duke of House Atreides (art).webp",
-    "zoom": 0.8,
-    "x": -22,
-    "y": 21
-  },
-  "backArt": {
-    "src": "Duke Leto Atreides - Duke of House Atreides (unit) (art).webp",
-    "zoom": 1,
-    "x": 0,
-    "y": 4,
-    "rotate": 0
-  },
-  "backName": "Duke Leto Atreides",
-  "backSubtitle": "Duke of House Atreides",
-  "cost": 6,
-  "power": 5,
   "hp": 7,
   "id": "9f32c1fe-bf5c-4791-9ea3-fe9c4d18967f",
-  "number": "006",
+  "art": {
+    "x": -22,
+    "y": 21,
+    "src": "Duke Leto Atreides - Duke of House Atreides (art).webp",
+    "zoom": 0.8
+  },
+  "cost": 6,
+  "name": "Duke Leto Atreides",
+  "text": "[When you play a unit:] You may exhaust this leader and either pay [1] or defeat a friendly Spice token. If you do, give an Experience token to that unit.",
+  "power": 5,
+  "trait": "Atreides, Official",
+  "number": "008",
+  "rarity": "R",
+  "backArt": {
+    "x": 0,
+    "y": 4,
+    "src": "Duke Leto Atreides - Duke of House Atreides (unit) (art).webp",
+    "zoom": 1,
+    "rotate": 0
+  },
+  "frameId": "leader-command-heroism",
+  "setCode": "DUNE",
+  "backName": "Duke Leto Atreides",
+  "backText": "<If you control another [{Atreides}] unit, this unit gains [Sentinel].>\n[When Defeated:] Defeat an enemy non-leader unit.",
+  "language": "EN",
   "subtitle": "Duke of House Atreides",
-  "backText": "<If you control another [{Atreides}] unit, this unit gains [Sentinel].>\n[When Defeated:] Defeat an enemy non-leader unit."
+  "backSubtitle": "Duke of House Atreides"
 }

@@ -1,21 +1,21 @@
 {
-  "frameId": "unit-cunning-space",
-  "name": "Spotter 'Thopter",
-  "trait": "Vehicle, Fighter",
-  "text": "[When Played/On Attack:] If you control an [{Arrakis}] base and a [{Harvester}] [{Vehicle}] unit, create a Spice token.",
-  "setCode": "DUNE",
-  "language": "EN",
-  "rarity": "C",
-  "cost": 1,
-  "power": 1,
   "hp": 2,
+  "id": "dbe5e25f-c7e4-4183-a524-baa61403c2bb",
   "art": {
-    "src": "Spotter 'Thopter (art).webp",
-    "zoom": 1,
     "x": 0,
     "y": -16,
+    "src": "Spotter 'Thopter (art).webp",
+    "zoom": 1,
     "rotate": 0
   },
-  "id": "dbe5e25f-c7e4-4183-a524-baa61403c2bb",
-  "number": "110"
+  "cost": 1,
+  "name": "Spotter 'Thopter",
+  "text": "[When Played/On Attack:] If you control an [{Arrakis}] base and a [{Harvester}] [{Vehicle}] unit, create a Spice token.",
+  "power": 1,
+  "trait": "Vehicle, Fighter",
+  "number": "114",
+  "rarity": "C",
+  "frameId": "unit-cunning-space",
+  "setCode": "DUNE",
+  "language": "EN"
 }

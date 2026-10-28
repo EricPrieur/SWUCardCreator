@@ -1,0 +1,32 @@
+{
+  "hp": 5,
+  "id": "1091df90-0323-4117-b6aa-d015e0fbfd86",
+  "cost": 4,
+  "name": "Chani",
+  "text": "[When you play a [{Fremen}] unit or create a [{Fremen}] token:] You may exhaust this leader. If you do, deal 1 damage to an enemy base.",
+  "block": "",
+  "power": 2,
+  "trait": "Fremen",
+  "artist": "",
+  "number": "011",
+  "rarity": "C",
+  "frameId": "leader-aggression-heroism",
+  "setCode": "DUNE",
+  "backText": "While you control an [{Arrakis}] base, this unit gains [Hidden].\n[When you play a [{Fremen}] unit or create a [{Fremen}] token:] Deal 1 damage to an enemy unit or base.",
+  "language": "EN",
+  "subtitle": "Sihaya",
+  "backTrait": "Fremen",
+  "art": {
+    "src": "Chani - Sihaya (art).webp",
+    "zoom": 0.8,
+    "x": -26,
+    "y": 30
+  },
+  "backArt": {
+    "src": "Chani - Sihaya (unit) (art).webp",
+    "zoom": 0.9,
+    "x": 0,
+    "y": -2,
+    "rotate": 0
+  }
+}

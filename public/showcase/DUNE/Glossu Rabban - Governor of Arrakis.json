@@ -1,31 +1,31 @@
 {
-  "frameId": "leader-aggression-villainy",
-  "name": "Glossu Rabban",
-  "trait": "Harkonnen, Official",
-  "text": "[Action [[Arrow]]:] Choose a friendly unit. Deal 1 damage to it. Then, attack with it. It gets [+1/+0] for this attack, or [+2/+0] instead if it's a [{Harkonnen}] unit.",
-  "artist": "",
-  "block": "",
-  "setCode": "DUNE",
-  "language": "EN",
-  "rarity": "C",
-  "subtitle": "Governor of Arrakis",
-  "cost": 5,
-  "power": 4,
   "hp": 6,
   "id": "0eea4382-6661-4450-bdb5-99cbcdc26045",
   "art": {
-    "src": "Glossu Rabban - Governor of Arrakis (art).webp",
-    "zoom": 0.9,
     "x": -14,
-    "y": 33
+    "y": 33,
+    "src": "Glossu Rabban - Governor of Arrakis (art).webp",
+    "zoom": 0.9
   },
-  "backText": "[Overwhelm]\nWhen another friendly unit attacks: You may deal 1 damage to it. If you do, it gets [+1/+0] for this attack, or [+2/+0] instead if it's a [{Harkonnen}] unit.",
+  "cost": 5,
+  "name": "Glossu Rabban",
+  "text": "[Action [[Arrow]]:] Choose a friendly unit. Deal 1 damage to it. Then, attack with it. It gets [+1/+0] for this attack, or [+2/+0] instead if it's a [{Harkonnen}] unit.",
+  "block": "",
+  "power": 4,
+  "trait": "Harkonnen, Official",
+  "artist": "",
+  "number": "009",
+  "rarity": "C",
   "backArt": {
-    "src": "Glossu Rabban - Governor of Arrakis (unit) (art).webp",
-    "zoom": 1,
     "x": 0,
-    "y": 8
+    "y": 8,
+    "src": "Glossu Rabban - Governor of Arrakis (unit) (art).webp",
+    "zoom": 1
   },
-  "backTrait": "Harkonnen, Official",
-  "number": "007"
+  "frameId": "leader-aggression-villainy",
+  "setCode": "DUNE",
+  "backText": "[Overwhelm]\nWhen another friendly unit attacks: You may deal 1 damage to it. If you do, it gets [+1/+0] for this attack, or [+2/+0] instead if it's a [{Harkonnen}] unit.",
+  "language": "EN",
+  "subtitle": "Governor of Arrakis",
+  "backTrait": "Harkonnen, Official"
 }

@@ -1,22 +1,22 @@
 {
-  "frameId": "unit-cunning",
-  "name": "Esmar Tuek",
-  "trait": "Underworld",
-  "text": "[When Played:] If you control a [Command] unit, give 2 Experience tokens to a friendly [{Underworld}] unit. Then, if you control an [Aggression] unit, this unit may deal damage equal to its power to a unit.",
-  "setCode": "DUNE",
-  "language": "EN",
-  "rarity": "R",
-  "unique": true,
-  "art": {
-    "src": "Esmar Tuek - Smuggler Chief (art).webp",
-    "zoom": 1.1,
-    "x": 5,
-    "y": 8
-  },
-  "subtitle": "Smuggler Chief",
-  "cost": 4,
-  "power": 3,
   "hp": 4,
   "id": "60349849-6284-4098-be3d-df0495ecd485",
-  "number": "116"
+  "art": {
+    "x": 5,
+    "y": 8,
+    "src": "Esmar Tuek - Smuggler Chief (art).webp",
+    "zoom": 1.1
+  },
+  "cost": 4,
+  "name": "Esmar Tuek",
+  "text": "[When Played:] If you control a [Command] unit, give 2 Experience tokens to a friendly [{Underworld}] unit. Then, if you control an [Aggression] unit, this unit may deal damage equal to its power to a unit.",
+  "power": 3,
+  "trait": "Underworld",
+  "number": "120",
+  "rarity": "R",
+  "unique": true,
+  "frameId": "unit-cunning",
+  "setCode": "DUNE",
+  "language": "EN",
+  "subtitle": "Smuggler Chief"
 }

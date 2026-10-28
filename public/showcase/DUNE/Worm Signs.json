@@ -1,18 +1,18 @@
 {
-  "frameId": "event-cunning",
-  "name": "Worm Signs",
-  "trait": "Disaster",
-  "text": "If you control an [{Arrakis}] base, choose a non-[{Fremen}] non-leader ground unit. Its controller chooses one:\n• Return it to its owner's hand.\n• Defeat it when the next regroup phase starts.",
-  "setCode": "DUNE",
-  "language": "EN",
-  "rarity": "C",
+  "id": "12db351f-b35c-4c9a-a158-ee4acefdddb5",
   "art": {
-    "src": "Worm Signs (art).webp",
-    "zoom": 1,
     "x": 0,
-    "y": 33
+    "y": 33,
+    "src": "Worm Signs (art).webp",
+    "zoom": 1
   },
   "cost": 3,
-  "id": "12db351f-b35c-4c9a-a158-ee4acefdddb5",
-  "number": "120"
+  "name": "Worm Signs",
+  "text": "If you control an [{Arrakis}] base, choose a non-[{Fremen}] non-leader ground unit. Its controller chooses one:\n• Return it to its owner's hand.\n• Defeat it when the next regroup phase starts.",
+  "trait": "Disaster",
+  "number": "124",
+  "rarity": "C",
+  "frameId": "event-cunning",
+  "setCode": "DUNE",
+  "language": "EN"
 }

@@ -1,18 +1,18 @@
 {
-  "frameId": "event-aggression",
-  "name": "Amtal Rule",
-  "trait": "Tactic",
-  "text": "Attack with a ground unit, even if it's exhausted. It can't attack bases for this attack. If it's a [{Ginaz}] unit, it deals its combat damage before the defender.",
-  "setCode": "DUNE",
-  "language": "EN",
-  "rarity": "C",
+  "id": "770780f5-6d3b-4899-9e76-924fbeb1dd7c",
   "art": {
-    "src": "Amtal Rule (art).webp",
-    "zoom": 1,
     "x": -1,
-    "y": 35
+    "y": 35,
+    "src": "Amtal Rule (art).webp",
+    "zoom": 1
   },
   "cost": 1,
-  "id": "770780f5-6d3b-4899-9e76-924fbeb1dd7c",
-  "number": "095"
+  "name": "Amtal Rule",
+  "text": "Attack with a ground unit, even if it's exhausted. It can't attack bases for this attack. If it's a [{Ginaz}] unit, it deals its combat damage before the defender.",
+  "trait": "Tactic",
+  "number": "099",
+  "rarity": "C",
+  "frameId": "event-aggression",
+  "setCode": "DUNE",
+  "language": "EN"
 }

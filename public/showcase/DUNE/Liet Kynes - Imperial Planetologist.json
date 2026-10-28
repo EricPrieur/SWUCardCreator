@@ -1,22 +1,22 @@
 {
-  "frameId": "unit-cunning-vigilance",
+  "hp": 5,
+  "id": "455a5bb1-a533-49c5-8a0e-aea9434c45df",
+  "art": {
+    "x": 0,
+    "y": 16,
+    "src": "Liet Kynes - Imperial Planetologist (art).webp",
+    "zoom": 1.1
+  },
+  "cost": 4,
   "name": "Liet Kynes",
-  "trait": "Fremen, Emperor",
   "text": "[When Played/On Attack:] You may defeat a friendly Spice token. If you do, heal 3 damage from your base.\n[When Defeated:] Create 2 Spice tokens.",
-  "setCode": "DUNE",
-  "language": "EN",
+  "power": 3,
+  "trait": "Fremen, Emperor",
+  "number": "025",
   "rarity": "R",
   "unique": true,
-  "subtitle": "Imperial Planetologist",
-  "cost": 4,
-  "power": 3,
-  "hp": 5,
-  "art": {
-    "src": "Liet Kynes - Imperial Planetologist (art).webp",
-    "zoom": 1.1,
-    "x": 0,
-    "y": 16
-  },
-  "id": "455a5bb1-a533-49c5-8a0e-aea9434c45df",
-  "number": "021"
+  "frameId": "unit-cunning-vigilance",
+  "setCode": "DUNE",
+  "language": "EN",
+  "subtitle": "Imperial Planetologist"
 }

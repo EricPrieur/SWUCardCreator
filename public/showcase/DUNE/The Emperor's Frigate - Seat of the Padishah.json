@@ -1,22 +1,22 @@
 {
-  "frameId": "unit-vigilance-villainy-space",
+  "hp": 7,
+  "id": "4c695697-e0e3-4903-a8d9-fdfcfacf0245",
+  "art": {
+    "x": 0,
+    "y": -15,
+    "src": "The Emperor's Frigate - Seat of the Padishah (art).webp",
+    "zoom": 1
+  },
+  "cost": 6,
   "name": "The Emperor's Frigate",
-  "trait": "Emperor, Vehicle, Capital Ship",
   "text": "[Sentinel]\nEnemy ground units get [-1/-0] while attacking a base.\n[When Played:] Search the top 5 cards of your deck for an [{Emperor}] card, reveal it and draw it.",
-  "setCode": "DUNE",
-  "language": "EN",
+  "power": 4,
+  "trait": "Emperor, Vehicle, Capital Ship",
+  "number": "030",
   "rarity": "R",
   "unique": true,
-  "cost": 6,
-  "power": 4,
-  "hp": 7,
-  "subtitle": "Seat of the Padishah",
-  "art": {
-    "src": "The Emperor's Frigate - Seat of the Padishah (art).webp",
-    "zoom": 1,
-    "x": 0,
-    "y": -15
-  },
-  "id": "4c695697-e0e3-4903-a8d9-fdfcfacf0245",
-  "number": "026"
+  "frameId": "unit-vigilance-villainy-space",
+  "setCode": "DUNE",
+  "language": "EN",
+  "subtitle": "Seat of the Padishah"
 }

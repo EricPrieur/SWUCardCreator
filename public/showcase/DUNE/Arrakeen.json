@@ -1,18 +1,18 @@
 {
-  "frameId": "base-command-text",
-  "name": "Arrakeen",
-  "trait": "Arrakis",
-  "text": "You start the game with a [Spice Token].",
-  "art": {
-    "src": "Arrakeen (art).webp",
-    "zoom": 1.1,
-    "x": 0,
-    "y": -15
-  },
   "hp": 28,
   "id": "003c87be-36d7-4aae-813f-c949e1c29ae1",
-  "setCode": "DUNE",
-  "language": "EN",
+  "art": {
+    "x": 0,
+    "y": -15,
+    "src": "Arrakeen (art).webp",
+    "zoom": 1.1
+  },
+  "name": "Arrakeen",
+  "text": "You start the game with a [Spice Token].",
+  "trait": "Arrakis",
+  "number": "016",
   "rarity": "C",
-  "number": "012"
+  "frameId": "base-command-text",
+  "setCode": "DUNE",
+  "language": "EN"
 }

@@ -1,22 +1,22 @@
 {
-  "frameId": "unit-aggression-villainy",
-  "name": "Piter De Vries",
-  "trait": "Harkonnen, Mentat",
-  "text": "[When Played:] Draw 2 cards, then put a card from your hand on the top or bottom of your deck or discard it.\n[PLOT]\n[When Played using Plot:] Give a Weakness token to each enemy unit. Then, defeat this unit.",
-  "setCode": "DUNE",
-  "language": "EN",
-  "rarity": "R",
-  "art": {
-    "src": "Piter De Vries - Twisted Mentat (art).webp",
-    "zoom": 0.9,
-    "x": 2,
-    "y": 6
-  },
-  "cost": 5,
-  "power": 4,
   "hp": 7,
   "id": "fb538d7b-bb48-4147-8aee-0f92e7febf53",
+  "art": {
+    "x": 2,
+    "y": 6,
+    "src": "Piter De Vries - Twisted Mentat (art).webp",
+    "zoom": 0.9
+  },
+  "cost": 5,
+  "name": "Piter De Vries",
+  "text": "[When Played:] Draw 2 cards, then put a card from your hand on the top or bottom of your deck or discard it.\n[PLOT]\n[When Played using Plot:] Give a Weakness token to each enemy unit. Then, defeat this unit.",
+  "power": 4,
+  "trait": "Harkonnen, Mentat",
+  "number": "087",
+  "rarity": "R",
   "unique": true,
-  "subtitle": "Twisted Mentat",
-  "number": "083"
+  "frameId": "unit-aggression-villainy",
+  "setCode": "DUNE",
+  "language": "EN",
+  "subtitle": "Twisted Mentat"
 }

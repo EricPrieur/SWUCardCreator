@@ -1,20 +1,20 @@
 {
-  "frameId": "unit-command",
-  "name": "Imperial Spy",
-  "trait": "Emperor, Spy",
-  "text": "[Hidden]\n[When Played/On Attack:] Look at the top card of an opponent's deck. You may put it on the bottom of their deck or discard it.",
-  "setCode": "DUNE",
-  "language": "EN",
-  "rarity": "C",
-  "cost": 2,
-  "power": 2,
   "hp": 3,
-  "art": {
-    "src": "Imperial Spy (art).webp",
-    "zoom": 1,
-    "x": 0,
-    "y": 8
-  },
   "id": "7e3fc552-6c87-4d05-913f-17f5ab9f2f47",
-  "number": "066"
+  "art": {
+    "x": 0,
+    "y": 8,
+    "src": "Imperial Spy (art).webp",
+    "zoom": 1
+  },
+  "cost": 2,
+  "name": "Imperial Spy",
+  "text": "[Hidden]\n[When Played/On Attack:] Look at the top card of an opponent's deck. You may put it on the bottom of their deck or discard it.",
+  "power": 2,
+  "trait": "Emperor, Spy",
+  "number": "070",
+  "rarity": "C",
+  "frameId": "unit-command",
+  "setCode": "DUNE",
+  "language": "EN"
 }

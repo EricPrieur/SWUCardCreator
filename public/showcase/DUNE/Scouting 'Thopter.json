@@ -1,20 +1,20 @@
 {
-  "frameId": "unit-neutral-space",
-  "name": "Scouting 'Thopter",
-  "trait": "Vehicle, Fighter",
-  "text": "[RAID 1]\n[When Played/On Attack:] Look at the top card of your deck. You may put it on the bottom of your deck or discard it.",
-  "setCode": "DUNE",
-  "language": "EN",
-  "rarity": "C",
-  "art": {
-    "src": "Scouting 'Thopter (art).webp",
-    "zoom": 1,
-    "x": 0,
-    "y": 0
-  },
-  "cost": 1,
-  "power": 1,
   "hp": 1,
   "id": "9a4481da-e820-4e55-9ab8-62190c22eb0d",
-  "number": "125"
+  "art": {
+    "x": 0,
+    "y": 0,
+    "src": "Scouting 'Thopter (art).webp",
+    "zoom": 1
+  },
+  "cost": 1,
+  "name": "Scouting 'Thopter",
+  "text": "[RAID 1]\n[When Played/On Attack:] Look at the top card of your deck. You may put it on the bottom of your deck or discard it.",
+  "power": 1,
+  "trait": "Vehicle, Fighter",
+  "number": "129",
+  "rarity": "C",
+  "frameId": "unit-neutral-space",
+  "setCode": "DUNE",
+  "language": "EN"
 }

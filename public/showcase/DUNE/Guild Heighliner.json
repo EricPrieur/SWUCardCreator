@@ -1,29 +1,29 @@
 {
-  "frameId": "unit-neutral-space",
-  "name": "Guild Heighliner",
-  "trait": "Spacing Guild, Vehicle, Capital Ship",
-  "text": "As you play this unit, you may defeat any number of friendly Spice tokens. It costs [1] less for each Spice token defeated this way.\n[When Played:] Play any number of ground units from your hand with a combined cost of [#8] or less for free. They gain [Ambush] for this phase.",
-  "setCode": "DUNE",
-  "language": "EN",
-  "rarity": "L",
-  "art": {
-    "src": "Guild Heighliner (art).webp",
-    "zoom": 0.8,
-    "x": 0,
-    "y": -8
-  },
-  "cost": 10,
-  "power": 2,
   "hp": 10,
   "id": "50ddfd6c-0845-40ee-9aaa-31fa2f085950",
-  "number": "129",
+  "art": {
+    "x": 0,
+    "y": -8,
+    "src": "Guild Heighliner (art).webp",
+    "zoom": 0.8
+  },
+  "cost": 10,
   "look": {
-    "frameOpacity": 0,
-    "panelFill": 0.25,
-    "panelBlur": 0,
     "textGlow": 0,
     "lightText": true,
+    "panelBlur": 0,
+    "panelFill": 0.25,
     "solidText": false,
-    "solidIcons": true
-  }
+    "solidIcons": true,
+    "frameOpacity": 0
+  },
+  "name": "Guild Heighliner",
+  "text": "As you play this unit, you may defeat any number of friendly Spice tokens. It costs [1] less for each Spice token defeated this way.\n[When Played:] Play any number of ground units from your hand with a combined cost of [#8] or less for free. They gain [Ambush] for this phase.",
+  "power": 2,
+  "trait": "Spacing Guild, Vehicle, Capital Ship",
+  "number": "133",
+  "rarity": "L",
+  "frameId": "unit-neutral-space",
+  "setCode": "DUNE",
+  "language": "EN"
 }

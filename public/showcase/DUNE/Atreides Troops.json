@@ -1,20 +1,20 @@
 {
-  "frameId": "unit-command-heroism",
-  "name": "Atreides Troops",
-  "trait": "Atreides, Trooper",
-  "text": "While you control another [{Atreides}] unit, this unit gains [Restore 1].",
-  "setCode": "DUNE",
-  "language": "EN",
-  "rarity": "C",
-  "cost": 2,
-  "power": 2,
   "hp": 4,
-  "art": {
-    "src": "Atreides Troops (art).webp",
-    "zoom": 1,
-    "x": -2,
-    "y": -13
-  },
   "id": "e054215f-523f-41c0-ad88-92761d8cd392",
-  "number": "052"
+  "art": {
+    "x": -2,
+    "y": -13,
+    "src": "Atreides Troops (art).webp",
+    "zoom": 1
+  },
+  "cost": 2,
+  "name": "Atreides Troops",
+  "text": "While you control another [{Atreides}] unit, this unit gains [Restore 1].",
+  "power": 2,
+  "trait": "Atreides, Trooper",
+  "number": "056",
+  "rarity": "C",
+  "frameId": "unit-command-heroism",
+  "setCode": "DUNE",
+  "language": "EN"
 }

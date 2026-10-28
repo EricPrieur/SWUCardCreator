@@ -1,28 +1,28 @@
 {
-  "frameId": "unit-neutral",
-  "name": "Shai-Hulud",
-  "trait": "Creature",
-  "text": "[Overwhelm]\n[When Played:] If you control an [{Arrakis}] base, return each non-leader [{Fremen}] unit to its owner's hand. Then defeat each other ground unit that isn't a [{Fremen}] unit.\n[When this unit completes an attack:] Return it to the bottom of its owner's deck.",
-  "cost": 9,
-  "power": 10,
   "hp": 10,
-  "art": {
-    "src": "Shai-Hulud (art).webp",
-    "zoom": 1.2,
-    "x": 1,
-    "y": 8
-  },
   "id": "4a4aba7b-326d-4fdd-a304-565bb32e0652",
-  "setCode": "DUNE",
-  "language": "EN",
-  "rarity": "L",
-  "number": "128",
+  "art": {
+    "x": 1,
+    "y": 8,
+    "src": "Shai-Hulud (art).webp",
+    "zoom": 1.2
+  },
+  "cost": 9,
   "look": {
-    "frameOpacity": 0,
-    "panelFill": 0.5,
-    "panelBlur": 0,
     "textGlow": 0,
     "lightText": true,
-    "solidIcons": true
-  }
+    "panelBlur": 0,
+    "panelFill": 0.5,
+    "solidIcons": true,
+    "frameOpacity": 0
+  },
+  "name": "Shai-Hulud",
+  "text": "[Overwhelm]\n[When Played:] If you control an [{Arrakis}] base, return each non-leader [{Fremen}] unit to its owner's hand. Then defeat each other ground unit that isn't a [{Fremen}] unit.\n[When this unit completes an attack:] Return it to the bottom of its owner's deck.",
+  "power": 10,
+  "trait": "Creature",
+  "number": "132",
+  "rarity": "L",
+  "frameId": "unit-neutral",
+  "setCode": "DUNE",
+  "language": "EN"
 }

@@ -1,20 +1,20 @@
 {
-  "frameId": "unit-aggression",
-  "name": "Ginaz Mercenary",
-  "trait": "Underworld, Ginaz",
-  "text": "[On Attack:] You may defeat a friendly Spice token. If you do, this unit gets [+2/+0] for this attack.",
-  "setCode": "DUNE",
-  "language": "EN",
-  "rarity": "U",
-  "cost": 2,
-  "power": 3,
   "hp": 2,
-  "art": {
-    "src": "Ginaz Mercenary (art).webp",
-    "zoom": 1,
-    "x": 0,
-    "y": -4
-  },
   "id": "1a8f71ce-8cef-451c-97c1-53ffeb094a2f",
-  "number": "092"
+  "art": {
+    "x": 0,
+    "y": -4,
+    "src": "Ginaz Mercenary (art).webp",
+    "zoom": 1
+  },
+  "cost": 2,
+  "name": "Ginaz Mercenary",
+  "text": "[On Attack:] You may defeat a friendly Spice token. If you do, this unit gets [+2/+0] for this attack.",
+  "power": 3,
+  "trait": "Underworld, Ginaz",
+  "number": "096",
+  "rarity": "U",
+  "frameId": "unit-aggression",
+  "setCode": "DUNE",
+  "language": "EN"
 }

@@ -1,20 +1,20 @@
 {
-  "frameId": "unit-cunning",
-  "name": "Smuggler's Harvester",
-  "trait": "Underworld, Vehicle, Harvester",
-  "text": "[Hidden]\n[When Played/On Attack:] If you control an [{Arrakis}] base, create a Spice token.\n",
-  "setCode": "DUNE",
-  "language": "EN",
-  "rarity": "C",
-  "art": {
-    "src": "Smuggler's Harvester (art).webp",
-    "zoom": 1,
-    "x": -4,
-    "y": -26
-  },
-  "cost": 3,
-  "power": 1,
   "hp": 6,
   "id": "b3964be1-09b4-4e99-ab76-7fc7edf517a7",
-  "number": "113"
+  "art": {
+    "x": -4,
+    "y": -26,
+    "src": "Smuggler's Harvester (art).webp",
+    "zoom": 1
+  },
+  "cost": 3,
+  "name": "Smuggler's Harvester",
+  "text": "[Hidden]\n[When Played/On Attack:] If you control an [{Arrakis}] base, create a Spice token.\n",
+  "power": 1,
+  "trait": "Underworld, Vehicle, Harvester",
+  "number": "117",
+  "rarity": "C",
+  "frameId": "unit-cunning",
+  "setCode": "DUNE",
+  "language": "EN"
 }

@@ -1,20 +1,20 @@
 {
-  "frameId": "unit-aggression-villainy",
-  "name": "Hunter Seeker",
-  "trait": "Harkonnen, Drone",
-  "text": "When an enemy ground unit attacks: Defeat this unit. If you do, deal 3 damage to the attacking unit.",
+  "hp": 1,
+  "id": "f9d41a1c-ed50-4f7e-9f89-a8de4964c490",
   "art": {
-    "src": "Hunter Seeker (art).webp",
-    "zoom": 0.9,
     "x": 1,
-    "y": -19
+    "y": -19,
+    "src": "Hunter Seeker (art).webp",
+    "zoom": 0.9
   },
   "cost": 1,
-  "id": "f9d41a1c-ed50-4f7e-9f89-a8de4964c490",
+  "name": "Hunter Seeker",
+  "text": "When an enemy ground unit attacks: Defeat this unit. If you do, deal 3 damage to the attacking unit.",
   "power": 1,
-  "hp": 1,
-  "setCode": "DUNE",
-  "language": "EN",
+  "trait": "Harkonnen, Drone",
+  "number": "077",
   "rarity": "C",
-  "number": "073"
+  "frameId": "unit-aggression-villainy",
+  "setCode": "DUNE",
+  "language": "EN"
 }

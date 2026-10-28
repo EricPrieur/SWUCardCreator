@@ -1,20 +1,20 @@
 {
-  "frameId": "unit-command-villainy",
-  "name": "Sardaukar Bashar",
-  "trait": "Emperor, Sardaukar, Official",
-  "text": "As an additional cost to play this unit, defeat a friendly Spice token.\n[When Played:] Give an Experience token to another friendly [{Trooper}] unit. If it's a [{Sardaukar}] unit, ready it.",
-  "setCode": "DUNE",
-  "language": "EN",
-  "rarity": "U",
-  "art": {
-    "src": "Sardaukar Bashar (art).webp",
-    "zoom": 1.5,
-    "x": -1,
-    "y": -64
-  },
-  "cost": 3,
-  "power": 3,
   "hp": 4,
   "id": "972f8a5d-d416-4210-909d-341c7ff2bd45",
-  "number": "047"
+  "art": {
+    "x": -1,
+    "y": -64,
+    "src": "Sardaukar Bashar (art).webp",
+    "zoom": 1.5
+  },
+  "cost": 3,
+  "name": "Sardaukar Bashar",
+  "text": "As an additional cost to play this unit, defeat a friendly Spice token.\n[When Played:] Give an Experience token to another friendly [{Trooper}] unit. If it's a [{Sardaukar}] unit, ready it.",
+  "power": 3,
+  "trait": "Emperor, Sardaukar, Official",
+  "number": "051",
+  "rarity": "U",
+  "frameId": "unit-command-villainy",
+  "setCode": "DUNE",
+  "language": "EN"
 }

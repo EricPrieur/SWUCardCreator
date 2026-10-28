@@ -1,20 +1,20 @@
 {
-  "frameId": "unit-token-text-neutral",
-  "name": "Fremen",
-  "trait": "Fremen, Trooper",
-  "text": "While you control an [{Arrakis}] base, this unit gains [Raid 1].",
-  "setCode": "DUNE",
-  "language": "EN",
-  "rarity": "",
-  "art": {
-    "src": "Fremen (art).webp",
-    "zoom": 0.9,
-    "x": 0,
-    "y": 7
-  },
-  "cost": 1,
-  "power": 2,
   "hp": 1,
   "id": "631c4fe6-a97d-4e54-bd4c-a75ac91b31e4",
-  "number": "001"
+  "art": {
+    "x": 0,
+    "y": 7,
+    "src": "Fremen (art).webp",
+    "zoom": 0.9
+  },
+  "cost": 1,
+  "name": "Fremen",
+  "text": "While you control an [{Arrakis}] base, this unit gains [Raid 1].",
+  "power": 2,
+  "trait": "Fremen, Trooper",
+  "number": "001",
+  "rarity": "",
+  "frameId": "unit-token-text-neutral",
+  "setCode": "DUNE",
+  "language": "EN"
 }

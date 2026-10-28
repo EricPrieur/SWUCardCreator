@@ -1,20 +1,20 @@
 {
-  "frameId": "unit-command",
-  "name": "Spice Harvester",
-  "trait": "Vehicle, Harvester",
-  "text": "[When Played/On Attack:] If you control an [{Arrakis}] base, create a Spice token.\n\n[When the regroup phase starts:] You may defeat 3 friendly Spice tokens. If you do, put the top card of your deck into play as a resource.",
-  "setCode": "DUNE",
-  "language": "EN",
-  "rarity": "C",
-  "art": {
-    "src": "Spice Harvester (art).webp",
-    "zoom": 1,
-    "x": 3,
-    "y": -23
-  },
-  "cost": 4,
-  "power": 2,
   "hp": 7,
   "id": "3f4a5f78-4647-438a-b66e-31c29de340b5",
-  "number": "068"
+  "art": {
+    "x": 3,
+    "y": -23,
+    "src": "Spice Harvester (art).webp",
+    "zoom": 1
+  },
+  "cost": 4,
+  "name": "Spice Harvester",
+  "text": "[When Played/On Attack:] If you control an [{Arrakis}] base, create a Spice token.\n\n[When the regroup phase starts:] You may defeat 3 friendly Spice tokens. If you do, put the top card of your deck into play as a resource.",
+  "power": 2,
+  "trait": "Vehicle, Harvester",
+  "number": "072",
+  "rarity": "C",
+  "frameId": "unit-command",
+  "setCode": "DUNE",
+  "language": "EN"
 }

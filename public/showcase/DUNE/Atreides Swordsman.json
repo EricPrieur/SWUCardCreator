@@ -1,20 +1,20 @@
 {
-  "frameId": "unit-command-heroism",
-  "name": "Atreides Swordsman",
-  "trait": "Atreides, Trooper",
-  "text": "[On Attack:] Defeat all upgrades on the defending unit.",
-  "setCode": "DUNE",
-  "language": "EN",
-  "rarity": "U",
-  "cost": 3,
-  "power": 3,
   "hp": 4,
   "id": "a4451be5-74d6-47ca-88ab-e6244af0f228",
-  "number": "058",
   "art": {
-    "src": "Atreides Swordsman (art).webp",
-    "zoom": 1.3,
     "x": 10,
-    "y": -14
-  }
+    "y": -14,
+    "src": "Atreides Swordsman (art).webp",
+    "zoom": 1.3
+  },
+  "cost": 3,
+  "name": "Atreides Swordsman",
+  "text": "[On Attack:] Defeat all upgrades on the defending unit.",
+  "power": 3,
+  "trait": "Atreides, Trooper",
+  "number": "062",
+  "rarity": "U",
+  "frameId": "unit-command-heroism",
+  "setCode": "DUNE",
+  "language": "EN"
 }

@@ -1,28 +1,28 @@
 {
-  "frameId": "unit-cunning-heroism",
-  "name": "Fremen Warrior",
-  "trait": "Fremen, Trooper",
-  "text": "While you control an [Arrakis] base, this unit gains [HIDDEN].",
-  "art": {
-    "src": "Fremen Warrior (art).webp",
-    "zoom": 1.02,
-    "x": 0,
-    "y": 1
-  },
-  "look": {
-    "frameOpacity": 1,
-    "panelFill": 0,
-    "panelBlur": 0,
-    "textGlow": 0,
-    "lightText": false
-  },
-  "cost": 1,
-  "power": 3,
   "hp": 1,
   "id": "0cd1cd92-e363-4058-8c5c-6dcb216491ad",
+  "art": {
+    "x": 0,
+    "y": 1,
+    "src": "Fremen Warrior (art).webp",
+    "zoom": 1.02
+  },
+  "cost": 1,
+  "look": {
+    "textGlow": 0,
+    "lightText": false,
+    "panelBlur": 0,
+    "panelFill": 0,
+    "frameOpacity": 1
+  },
+  "name": "Fremen Warrior",
+  "text": "While you control an [Arrakis] base, this unit gains [HIDDEN].",
+  "power": 3,
+  "trait": "Fremen, Trooper",
+  "number": "106",
+  "rarity": "C",
   "unique": false,
+  "frameId": "unit-cunning-heroism",
   "setCode": "DUNE",
-  "language": "EN",
-  "number": "102",
-  "rarity": "C"
+  "language": "EN"
 }

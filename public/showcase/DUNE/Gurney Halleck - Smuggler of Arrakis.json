@@ -1,29 +1,29 @@
 {
-  "frameId": "leader-cunning-heroism",
-  "name": "Gurney Halleck",
-  "trait": "Atreides, Underworld",
-  "text": "[Action [Arrow]:] Defeat a friendly Spice token. If you do, choose one:\n• Play a card using Smuggle. It costs [2] less.\n• Give an Experience token to a friendly [{Underworld}] unit.",
-  "setCode": "DUNE",
-  "language": "EN",
-  "rarity": "R",
-  "backName": "Gurney Halleck",
-  "subtitle": "Smuggler of Arrakis",
-  "cost": 5,
-  "power": 4,
   "hp": 5,
-  "backText": "[On Attack:] You may defeat a friendly Spice token. If you do, choose one:\n• Play a card using Smuggle. It costs [2] less.\n• Give an Experience token to a friendly [{Underworld}] unit.",
   "id": "9218a637-8808-4998-b56f-8bc38d6ccffa",
   "art": {
-    "src": "Gurney Halleck - Smuggler of Arrakis (art).webp",
-    "zoom": 0.8,
     "x": -23,
-    "y": 25
+    "y": 25,
+    "src": "Gurney Halleck - Smuggler of Arrakis (art).webp",
+    "zoom": 0.8
   },
+  "cost": 5,
+  "name": "Gurney Halleck",
+  "text": "[Action [Arrow]:] Defeat a friendly Spice token. If you do, choose one:\n• Play a card using Smuggle. It costs [2] less.\n• Give an Experience token to a friendly [{Underworld}] unit.",
+  "power": 4,
+  "trait": "Atreides, Underworld",
+  "number": "013",
+  "rarity": "R",
   "backArt": {
-    "src": "Gurney Halleck - Smuggler of Arrakis (unit) (art).webp",
-    "zoom": 1.1,
     "x": 0,
-    "y": 11
+    "y": 11,
+    "src": "Gurney Halleck - Smuggler of Arrakis (unit) (art).webp",
+    "zoom": 1.1
   },
-  "number": "009"
+  "frameId": "leader-cunning-heroism",
+  "setCode": "DUNE",
+  "backName": "Gurney Halleck",
+  "backText": "[On Attack:] You may defeat a friendly Spice token. If you do, choose one:\n• Play a card using Smuggle. It costs [2] less.\n• Give an Experience token to a friendly [{Underworld}] unit.",
+  "language": "EN",
+  "subtitle": "Smuggler of Arrakis"
 }

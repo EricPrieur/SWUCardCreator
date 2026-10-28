@@ -1,22 +1,22 @@
 {
-  "frameId": "unit-aggression-villainy-space",
-  "name": "Rabban's Gunship",
-  "trait": "Harkonnen, Vehicle, Fighter",
-  "text": "[When you play a [{Harkonnen}] unit (including this one):] You may deal 1 damage to a friendly unit. If you do, deal 2 damage to a ground unit or base.",
-  "setCode": "DUNE",
-  "language": "EN",
-  "rarity": "R",
-  "art": {
-    "src": "Rabban's Gunship - Fist of the Beast (art).webp",
-    "zoom": 0.9,
-    "x": 1,
-    "y": -5
-  },
-  "unique": true,
-  "subtitle": "Fist of the Beast",
-  "cost": 4,
-  "power": 4,
   "hp": 4,
   "id": "2c8983ce-812a-4ad1-a542-5a1a585a92a1",
-  "number": "080"
+  "art": {
+    "x": 1,
+    "y": -5,
+    "src": "Rabban's Gunship - Fist of the Beast (art).webp",
+    "zoom": 0.9
+  },
+  "cost": 4,
+  "name": "Rabban's Gunship",
+  "text": "[When you play a [{Harkonnen}] unit (including this one):] You may deal 1 damage to a friendly unit. If you do, deal 2 damage to a ground unit or base.",
+  "power": 4,
+  "trait": "Harkonnen, Vehicle, Fighter",
+  "number": "084",
+  "rarity": "R",
+  "unique": true,
+  "frameId": "unit-aggression-villainy-space",
+  "setCode": "DUNE",
+  "language": "EN",
+  "subtitle": "Fist of the Beast"
 }

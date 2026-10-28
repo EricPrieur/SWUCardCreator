@@ -1,0 +1,31 @@
+{
+  "hp": 8,
+  "id": "ee642423-bbd2-4021-ba64-b40144982363",
+  "cost": 7,
+  "name": "Reverend Mother Mohiam",
+  "text": "[Action [[1, Arrow]]:] Choose an enemy non-leader unit. Its controller may discard a card from their hand. If they don't, deal 2 damage to it.",
+  "block": "",
+  "power": 4,
+  "trait": "Bene Gesserit, Emperor",
+  "artist": "",
+  "number": "003",
+  "rarity": "C",
+  "frameId": "leader-vigilance-villainy",
+  "setCode": "DUNE",
+  "backText": "[Sentinel]\n[On Attack:] Choose an enemy non-leader unit. Its controller may discard a card from their hand. If they don't, defeat it.",
+  "language": "EN",
+  "subtitle": "Pain or Death",
+  "backTrait": "Bene Gesserit, Emperor",
+  "art": {
+    "src": "Reverend Mother Mohiam - Pain or Death (art).webp",
+    "zoom": 0.7,
+    "x": -25,
+    "y": 23
+  },
+  "backArt": {
+    "src": "Reverend Mother Mohiam - Pain or Death (unit) (art).webp",
+    "zoom": 0.9,
+    "x": -1,
+    "y": 7
+  }
+}

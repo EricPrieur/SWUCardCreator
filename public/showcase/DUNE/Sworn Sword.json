@@ -1,20 +1,20 @@
 {
-  "frameId": "upgrade-command-heroism",
-  "name": "Sworn Sword",
-  "trait": "Atreides",
-  "text": "Attach to a non-[{Vehicle}] unit.\nAttached unit gains [Sentinel] and the [{Atreides}] trait.\n[When Played:] If attached unit has the [{Atreides}] trait printed on it, give an Experience token to it.",
-  "setCode": "DUNE",
-  "language": "EN",
-  "rarity": "C",
-  "cost": 2,
-  "power": 0,
   "hp": 1,
-  "art": {
-    "src": "Sworn Sword (art).webp",
-    "zoom": 1.1,
-    "x": 0,
-    "y": -9
-  },
   "id": "ad5da231-ec92-461b-bd4d-7fc70413b7fa",
-  "number": "065"
+  "art": {
+    "x": 0,
+    "y": -9,
+    "src": "Sworn Sword (art).webp",
+    "zoom": 1.1
+  },
+  "cost": 2,
+  "name": "Sworn Sword",
+  "text": "Attach to a non-[{Vehicle}] unit.\nAttached unit gains [Sentinel] and the [{Atreides}] trait.\n[When Played:] If attached unit has the [{Atreides}] trait printed on it, give an Experience token to it.",
+  "power": 0,
+  "trait": "Atreides",
+  "number": "069",
+  "rarity": "C",
+  "frameId": "upgrade-command-heroism",
+  "setCode": "DUNE",
+  "language": "EN"
 }

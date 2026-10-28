@@ -1,20 +1,20 @@
 {
-  "frameId": "unit-vigilance",
-  "name": "Prana-Bindu Adept",
-  "trait": "Bene Gesserit",
-  "text": "[Sentinel]\nWhen this unit is attacked: Discard the top card of your deck. If it's a [{Bene Gesserit}] card, the attacking unit gets [-2/-0] for this attack.",
-  "setCode": "DUNE",
-  "language": "EN",
-  "rarity": "C",
-  "cost": 4,
-  "power": 3,
   "hp": 5,
-  "art": {
-    "src": "Prana-Bindu Adept (art).webp",
-    "zoom": 1.1,
-    "x": 0,
-    "y": 13
-  },
   "id": "a11b3db0-22ce-4c86-8a19-e7eb86ac884a",
-  "number": "037"
+  "art": {
+    "x": 0,
+    "y": 13,
+    "src": "Prana-Bindu Adept (art).webp",
+    "zoom": 1.1
+  },
+  "cost": 4,
+  "name": "Prana-Bindu Adept",
+  "text": "[Sentinel]\nWhen this unit is attacked: Discard the top card of your deck. If it's a [{Bene Gesserit}] card, the attacking unit gets [-2/-0] for this attack.",
+  "power": 3,
+  "trait": "Bene Gesserit",
+  "number": "041",
+  "rarity": "C",
+  "frameId": "unit-vigilance",
+  "setCode": "DUNE",
+  "language": "EN"
 }

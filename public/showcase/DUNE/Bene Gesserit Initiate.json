@@ -1,20 +1,20 @@
 {
-  "frameId": "unit-vigilance",
-  "name": "Bene Gesserit Initiate",
-  "trait": "Bene Gesserit",
-  "text": "[Restore 1]\n[When Played:] Each opponent discards a card from their hand.",
-  "cost": 2,
-  "power": 2,
   "hp": 1,
-  "art": {
-    "src": "Bene Gesserit Initiate (art).webp",
-    "zoom": 1,
-    "x": 5,
-    "y": 8
-  },
   "id": "60353644-d070-42b3-b22d-ba4e441f39fb",
-  "setCode": "DUNE",
-  "language": "EN",
+  "art": {
+    "x": 5,
+    "y": 8,
+    "src": "Bene Gesserit Initiate (art).webp",
+    "zoom": 1
+  },
+  "cost": 2,
+  "name": "Bene Gesserit Initiate",
+  "text": "[Restore 1]\n[When Played:] Each opponent discards a card from their hand.",
+  "power": 2,
+  "trait": "Bene Gesserit",
+  "number": "035",
   "rarity": "C",
-  "number": "031"
+  "frameId": "unit-vigilance",
+  "setCode": "DUNE",
+  "language": "EN"
 }

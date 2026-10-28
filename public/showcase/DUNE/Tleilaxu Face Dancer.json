@@ -1,20 +1,20 @@
 {
-  "id": "79be048c-39d3-4ea5-9d43-f65f1c5e147b",
-  "frameId": "unit-cunning-villainy",
-  "name": "Tleilaxu Face Dancer",
-  "trait": "Tleilaxu",
-  "setCode": "DUNE",
-  "language": "EN",
-  "rarity": "U",
-  "number": "100",
-  "cost": 4,
-  "power": 0,
   "hp": 1,
-  "text": "[Sentinel]\n[When Played:] Choose another unit. Give this unit Experience tokens equal to half the total of that unit's power and HP, rounded down.",
+  "id": "79be048c-39d3-4ea5-9d43-f65f1c5e147b",
   "art": {
-    "src": "Tleilaxu Face Dancer (art).webp",
-    "zoom": 1,
     "x": 0,
-    "y": 0
-  }
+    "y": 0,
+    "src": "Tleilaxu Face Dancer (art).webp",
+    "zoom": 1
+  },
+  "cost": 4,
+  "name": "Tleilaxu Face Dancer",
+  "text": "[Sentinel]\n[When Played:] Choose another unit. Give this unit Experience tokens equal to half the total of that unit's power and HP, rounded down.",
+  "power": 0,
+  "trait": "Tleilaxu",
+  "number": "104",
+  "rarity": "U",
+  "frameId": "unit-cunning-villainy",
+  "setCode": "DUNE",
+  "language": "EN"
 }

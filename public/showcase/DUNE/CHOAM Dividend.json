@@ -1,18 +1,18 @@
 {
-  "frameId": "event-command",
-  "name": "CHOAM Dividend",
-  "trait": "Supply",
-  "text": "While playing this event, you may defeat a friendly Spice token. If you do, it costs [1] less.\nPut this event into play as a resource.",
-  "setCode": "DUNE",
-  "language": "EN",
-  "rarity": "C",
-  "cost": 4,
   "id": "95717e4a-5015-40f5-8133-026ecc95dc44",
-  "number": "071",
   "art": {
-    "src": "CHOAM Dividend (art).webp",
-    "zoom": 1,
     "x": 0,
-    "y": 0
-  }
+    "y": 0,
+    "src": "CHOAM Dividend (art).webp",
+    "zoom": 1
+  },
+  "cost": 4,
+  "name": "CHOAM Dividend",
+  "text": "While playing this event, you may defeat a friendly Spice token. If you do, it costs [1] less.\nPut this event into play as a resource.",
+  "trait": "Supply",
+  "number": "075",
+  "rarity": "C",
+  "frameId": "event-command",
+  "setCode": "DUNE",
+  "language": "EN"
 }

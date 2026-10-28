@@ -1,20 +1,20 @@
 {
-  "frameId": "unit-neutral",
-  "name": "CHOAM Spice Broker",
-  "trait": "CHOAM, Official",
-  "text": "[When Played:] Create a Spice token. Then, you may pay [2]. If you do, create another Spice token.",
-  "setCode": "DUNE",
-  "language": "EN",
-  "rarity": "C",
-  "art": {
-    "src": "CHOAM Spice Broker (art).webp",
-    "zoom": 1,
-    "x": 0,
-    "y": 0
-  },
-  "cost": 3,
-  "power": 3,
   "hp": 3,
   "id": "fb6a9b51-2fc4-4a7e-8a4e-2ae98ffe5d2d",
-  "number": "126"
+  "art": {
+    "x": 0,
+    "y": 0,
+    "src": "CHOAM Spice Broker (art).webp",
+    "zoom": 1
+  },
+  "cost": 3,
+  "name": "CHOAM Spice Broker",
+  "text": "[When Played:] Create a Spice token. Then, you may pay [2]. If you do, create another Spice token.",
+  "power": 3,
+  "trait": "CHOAM, Official",
+  "number": "130",
+  "rarity": "C",
+  "frameId": "unit-neutral",
+  "setCode": "DUNE",
+  "language": "EN"
 }

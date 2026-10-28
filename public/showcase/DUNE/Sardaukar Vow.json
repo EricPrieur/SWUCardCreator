@@ -1,20 +1,20 @@
 {
-  "frameId": "upgrade-command-villainy",
-  "name": "Sardaukar Vow",
-  "trait": "Sardaukar",
-  "text": "Attach to a non-[{Vehicle}] unit.\nAttached unit gains [Sentinel].\n[When Played:] If attached unit is a [{Sardaukar}] unit, give a Shield token to it.",
-  "setCode": "DUNE",
-  "language": "EN",
-  "rarity": "U",
-  "cost": 2,
-  "power": 1,
   "hp": 0,
   "id": "ef288baa-d8ab-48ff-8e07-9b1558de7edb",
   "art": {
-    "src": "Sardaukar Vow (art).webp",
-    "zoom": 1.4,
     "x": 0,
-    "y": -24
+    "y": -24,
+    "src": "Sardaukar Vow (art).webp",
+    "zoom": 1.4
   },
-  "number": "050"
+  "cost": 2,
+  "name": "Sardaukar Vow",
+  "text": "Attach to a non-[{Vehicle}] unit.\nAttached unit gains [Sentinel].\n[When Played:] If attached unit is a [{Sardaukar}] unit, give a Shield token to it.",
+  "power": 1,
+  "trait": "Sardaukar",
+  "number": "054",
+  "rarity": "U",
+  "frameId": "upgrade-command-villainy",
+  "setCode": "DUNE",
+  "language": "EN"
 }

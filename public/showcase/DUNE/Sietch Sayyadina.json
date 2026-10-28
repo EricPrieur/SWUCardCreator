@@ -1,20 +1,20 @@
 {
-  "frameId": "unit-cunning-heroism",
-  "name": "Sietch Sayyadina",
-  "trait": "Fremen",
-  "text": "[Restore 1]\n[When Played:] Draw a card. Then, discard a card from your hand.",
-  "setCode": "DUNE",
-  "language": "EN",
-  "rarity": "C",
-  "cost": 2,
-  "power": 2,
   "hp": 3,
-  "art": {
-    "src": "Sietch Sayyadina (art).webp",
-    "zoom": 1.2,
-    "x": 3,
-    "y": -18
-  },
   "id": "b8a0ba1b-4f51-40f2-8681-59ca4b921de6",
-  "number": "103"
+  "art": {
+    "x": 3,
+    "y": -18,
+    "src": "Sietch Sayyadina (art).webp",
+    "zoom": 1.2
+  },
+  "cost": 2,
+  "name": "Sietch Sayyadina",
+  "text": "[Restore 1]\n[When Played:] Draw a card. Then, discard a card from your hand.",
+  "power": 2,
+  "trait": "Fremen",
+  "number": "107",
+  "rarity": "C",
+  "frameId": "unit-cunning-heroism",
+  "setCode": "DUNE",
+  "language": "EN"
 }

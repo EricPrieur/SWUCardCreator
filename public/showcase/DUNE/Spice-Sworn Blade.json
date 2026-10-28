@@ -1,22 +1,22 @@
 {
-  "frameId": "unit-aggression",
-  "name": "Spice-Sworn Blade",
-  "trait": "Underworld, Trooper",
-  "text": "You may play this unit from your hand or discard pile for free by defeating a friendly Spice token.",
-  "artist": "",
-  "setCode": "DUNE",
-  "language": "EN",
-  "rarity": "U",
-  "cost": 1,
-  "power": 2,
   "hp": 1,
+  "id": "d9cd0927-2c13-4cfd-b6d5-6f247e8ef56b",
   "art": {
-    "src": "Spice-Sworn Blade (art).webp",
-    "zoom": 1,
     "x": 0,
     "y": 3,
+    "src": "Spice-Sworn Blade (art).webp",
+    "zoom": 1,
     "rotate": 0
   },
-  "id": "d9cd0927-2c13-4cfd-b6d5-6f247e8ef56b",
-  "number": "090"
+  "cost": 1,
+  "name": "Spice-Sworn Blade",
+  "text": "You may play this unit from your hand or discard pile for free by defeating a friendly Spice token.",
+  "power": 2,
+  "trait": "Underworld, Trooper",
+  "artist": "",
+  "number": "094",
+  "rarity": "U",
+  "frameId": "unit-aggression",
+  "setCode": "DUNE",
+  "language": "EN"
 }

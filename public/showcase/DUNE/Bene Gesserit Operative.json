@@ -1,20 +1,20 @@
 {
-  "frameId": "unit-vigilance",
-  "name": "Bene Gesserit Operative",
-  "trait": "Bene Gesserit, Spy",
-  "text": "[Saboteur]\n[Hidden]\n[On Attack:] If this unit is attacking a base, that base's controller discards a card from their hand.",
-  "setCode": "DUNE",
-  "language": "EN",
-  "rarity": "U",
-  "art": {
-    "src": "Bene Gesserit Operative (art).webp",
-    "zoom": 1,
-    "x": 0,
-    "y": -11
-  },
-  "cost": 3,
-  "power": 3,
   "hp": 3,
   "id": "5340e3f4-3941-402c-ae35-7cc97cd0ec57",
-  "number": "034"
+  "art": {
+    "x": 0,
+    "y": -11,
+    "src": "Bene Gesserit Operative (art).webp",
+    "zoom": 1
+  },
+  "cost": 3,
+  "name": "Bene Gesserit Operative",
+  "text": "[Saboteur]\n[Hidden]\n[On Attack:] If this unit is attacking a base, that base's controller discards a card from their hand.",
+  "power": 3,
+  "trait": "Bene Gesserit, Spy",
+  "number": "038",
+  "rarity": "U",
+  "frameId": "unit-vigilance",
+  "setCode": "DUNE",
+  "language": "EN"
 }

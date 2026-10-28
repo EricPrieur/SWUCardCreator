@@ -1,18 +1,18 @@
 {
-  "frameId": "base-cunning-text",
-  "name": "Imperial Basin",
-  "trait": "Arrakis",
-  "text": "You start the game with a [Spice Token].",
-  "art": {
-    "src": "Imperial Basin (art).webp",
-    "zoom": 1,
-    "x": 0,
-    "y": 0
-  },
   "hp": 28,
   "id": "ede5069e-07b3-459b-b0ea-035771cda18a",
-  "setCode": "DUNE",
-  "language": "EN",
+  "art": {
+    "x": 0,
+    "y": 0,
+    "src": "Imperial Basin (art).webp",
+    "zoom": 1
+  },
+  "name": "Imperial Basin",
+  "text": "You start the game with a [Spice Token].",
+  "trait": "Arrakis",
+  "number": "018",
   "rarity": "C",
-  "number": "014"
+  "frameId": "base-cunning-text",
+  "setCode": "DUNE",
+  "language": "EN"
 }

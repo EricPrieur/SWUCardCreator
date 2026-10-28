@@ -1,28 +1,28 @@
 {
-  "frameId": "unit-command-villainy",
-  "name": "Sardaukar Legion",
-  "trait": "Emperor, Sardaukar, Trooper",
-  "text": "As an additional cost to play this unit, defeat a friendly Spice token.\n[When Played:] Search the top 10 cards of your deck for any number of [{Sardaukar}] units and reveal them. You may defeat up to 3 friendly Spice tokens. Play any number of the revealed units with a combined cost of [#2] or less for each Spice token defeated this way, for free, ignoring their additional costs.",
-  "setCode": "DUNE",
-  "language": "EN",
-  "rarity": "L",
-  "cost": 7,
-  "power": 5,
   "hp": 6,
   "id": "57613afc-674d-40aa-afbc-5dadccaca9d7",
   "art": {
-    "src": "Sardaukar Legion (art).webp",
-    "zoom": 1,
     "x": 0,
-    "y": 0
+    "y": 0,
+    "src": "Sardaukar Legion (art).webp",
+    "zoom": 1
   },
-  "number": "049",
+  "cost": 7,
   "look": {
-    "frameOpacity": 0,
-    "panelFill": 0.5,
-    "panelBlur": 0,
     "textGlow": 0,
     "lightText": true,
-    "solidIcons": true
-  }
+    "panelBlur": 0,
+    "panelFill": 0.5,
+    "solidIcons": true,
+    "frameOpacity": 0
+  },
+  "name": "Sardaukar Legion",
+  "text": "As an additional cost to play this unit, defeat a friendly Spice token.\n[When Played:] Search the top 10 cards of your deck for any number of [{Sardaukar}] units and reveal them. You may defeat up to 3 friendly Spice tokens. Play any number of the revealed units with a combined cost of [#2] or less for each Spice token defeated this way, for free, ignoring their additional costs.",
+  "power": 5,
+  "trait": "Emperor, Sardaukar, Trooper",
+  "number": "053",
+  "rarity": "L",
+  "frameId": "unit-command-villainy",
+  "setCode": "DUNE",
+  "language": "EN"
 }

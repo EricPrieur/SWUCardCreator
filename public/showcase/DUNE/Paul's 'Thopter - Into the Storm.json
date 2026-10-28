@@ -1,22 +1,22 @@
 {
-  "frameId": "unit-command-heroism-space",
+  "hp": 2,
+  "id": "680f6509-d960-4bc8-8143-5a83e10962e6",
+  "art": {
+    "x": 0,
+    "y": -13,
+    "src": "Paul's 'Thopter - Into the Storm (art).webp",
+    "zoom": 0.6
+  },
+  "cost": 2,
   "name": "Paul's 'Thopter",
-  "trait": "Atreides, Vehicle, Fighter",
   "text": "[When Defeated:] You may play an [{Atreides}] ground unit that costs [#2] or less from your discard pile for free.",
-  "setCode": "DUNE",
-  "language": "EN",
+  "power": 2,
+  "trait": "Atreides, Vehicle, Fighter",
+  "number": "059",
   "rarity": "R",
   "unique": true,
-  "subtitle": "Into the Storm",
-  "cost": 2,
-  "power": 2,
-  "hp": 2,
-  "art": {
-    "src": "Paul's 'Thopter - Into the Storm (art).webp",
-    "zoom": 0.6,
-    "x": 0,
-    "y": -13
-  },
-  "id": "680f6509-d960-4bc8-8143-5a83e10962e6",
-  "number": "055"
+  "frameId": "unit-command-heroism-space",
+  "setCode": "DUNE",
+  "language": "EN",
+  "subtitle": "Into the Storm"
 }

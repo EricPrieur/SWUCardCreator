@@ -1,29 +1,29 @@
 {
-  "frameId": "unit-command-heroism",
-  "name": "Duncan Idaho",
-  "trait": "Atreides, Ginaz, Trooper",
-  "text": "[Sentinel]\n[When Defeated:] If this unit was defending and you control Paul Atreides or Lady Jessica, you may defeat the attacking unit.",
-  "art": {
-    "zoom": 1.11,
-    "x": -4,
-    "y": 6,
-    "src": "Duncan Idaho - Swordmaster of the Ginaz (art).webp"
-  },
-  "look": {
-    "frameOpacity": 1,
-    "panelFill": 0,
-    "panelBlur": 0,
-    "textGlow": 0,
-    "lightText": false
-  },
-  "unique": true,
-  "cost": 4,
-  "power": 4,
   "hp": 5,
   "id": "545c197a-a169-40f8-a066-7bc6a0e02752",
+  "art": {
+    "x": -4,
+    "y": 6,
+    "src": "Duncan Idaho - Swordmaster of the Ginaz (art).webp",
+    "zoom": 1.11
+  },
+  "cost": 4,
+  "look": {
+    "textGlow": 0,
+    "lightText": false,
+    "panelBlur": 0,
+    "panelFill": 0,
+    "frameOpacity": 1
+  },
+  "name": "Duncan Idaho",
+  "text": "[Sentinel]\n[When Defeated:] If this unit was defending and you control Paul Atreides or Lady Jessica, you may defeat the attacking unit.",
+  "power": 4,
+  "trait": "Atreides, Ginaz, Trooper",
+  "number": "063",
+  "rarity": "U",
+  "unique": true,
+  "frameId": "unit-command-heroism",
   "setCode": "DUNE",
   "language": "EN",
-  "rarity": "U",
-  "subtitle": "Swordmaster of the Ginaz",
-  "number": "059"
+  "subtitle": "Swordmaster of the Ginaz"
 }

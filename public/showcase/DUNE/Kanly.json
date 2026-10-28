@@ -1,18 +1,18 @@
 {
-  "frameId": "event-aggression",
-  "name": "Kanly",
-  "trait": "Tactic",
-  "text": "Deal 2 damage to a unit. Then, you may defeat a friendly non-leader unit. If you do, deal damage equal to its power to the same unit.",
-  "setCode": "DUNE",
-  "language": "EN",
-  "rarity": "C",
+  "id": "bee6cf10-abef-4eec-9398-c9f79a5ebf7d",
   "art": {
-    "src": "Kanly (art).webp",
-    "zoom": 1,
     "x": -4,
-    "y": 37
+    "y": 37,
+    "src": "Kanly (art).webp",
+    "zoom": 1
   },
   "cost": 2,
-  "id": "bee6cf10-abef-4eec-9398-c9f79a5ebf7d",
-  "number": "096"
+  "name": "Kanly",
+  "text": "Deal 2 damage to a unit. Then, you may defeat a friendly non-leader unit. If you do, deal damage equal to its power to the same unit.",
+  "trait": "Tactic",
+  "number": "100",
+  "rarity": "C",
+  "frameId": "event-aggression",
+  "setCode": "DUNE",
+  "language": "EN"
 }

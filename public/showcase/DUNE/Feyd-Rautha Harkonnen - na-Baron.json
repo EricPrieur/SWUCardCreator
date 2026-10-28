@@ -1,30 +1,30 @@
 {
-  "id": "bde1d101-2de5-4f97-9932-6ace9c542dd0",
-  "frameId": "unit-aggression-villainy",
-  "name": "Feyd-Rautha Harkonnen",
-  "subtitle": "na-Baron",
-  "unique": true,
-  "trait": "Harkonnen, Official",
-  "setCode": "DUNE",
-  "language": "EN",
-  "rarity": "L",
-  "number": "081",
-  "cost": 5,
-  "power": 5,
   "hp": 5,
-  "text": "[Sentinel]\n[When this unit attacks or is attacked:] Give a Weakness token to the other unit in the combat.",
+  "id": "bde1d101-2de5-4f97-9932-6ace9c542dd0",
   "art": {
-    "src": "Feyd-Rautha Harkonnen - na-Baron (art).webp",
-    "zoom": 1,
     "x": -1,
-    "y": 4
+    "y": 4,
+    "src": "Feyd-Rautha Harkonnen - na-Baron (art).webp",
+    "zoom": 1
   },
+  "cost": 5,
   "look": {
-    "frameOpacity": 0,
-    "panelFill": 0.5,
-    "panelBlur": 0,
     "textGlow": 0,
     "lightText": true,
-    "solidIcons": true
-  }
+    "panelBlur": 0,
+    "panelFill": 0.5,
+    "solidIcons": true,
+    "frameOpacity": 0
+  },
+  "name": "Feyd-Rautha Harkonnen",
+  "text": "[Sentinel]\n[When this unit attacks or is attacked:] Give a Weakness token to the other unit in the combat.",
+  "power": 5,
+  "trait": "Harkonnen, Official",
+  "number": "085",
+  "rarity": "L",
+  "unique": true,
+  "frameId": "unit-aggression-villainy",
+  "setCode": "DUNE",
+  "language": "EN",
+  "subtitle": "na-Baron"
 }

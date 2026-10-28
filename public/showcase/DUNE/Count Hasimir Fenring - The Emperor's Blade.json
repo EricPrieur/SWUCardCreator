@@ -1,22 +1,22 @@
 {
+  "hp": 4,
   "id": "ea4afbda-5e49-4a0c-8d15-1dede4a6fd49",
-  "frameId": "unit-cunning-villainy",
+  "art": {
+    "x": 0,
+    "y": 6,
+    "src": "Count Hasimir Fenring - The Emperor's Blade (art).webp",
+    "zoom": 1
+  },
+  "cost": 5,
   "name": "Count Hasimir Fenring",
-  "subtitle": "The Emperor's Blade",
-  "unique": true,
+  "text": "[Ambush]\nWhile attacking, this unit deals combat damage before the defender.\nThis unit can't attack units named Paul Atreides.",
+  "power": 4,
   "trait": "Emperor, Spy",
+  "number": "105",
+  "rarity": "R",
+  "unique": true,
+  "frameId": "unit-cunning-villainy",
   "setCode": "DUNE",
   "language": "EN",
-  "rarity": "R",
-  "number": "101",
-  "cost": 5,
-  "power": 4,
-  "hp": 4,
-  "text": "[Ambush]\nWhile attacking, this unit deals combat damage before the defender.\nThis unit can't attack units named Paul Atreides.",
-  "art": {
-    "src": "Count Hasimir Fenring - The Emperor's Blade (art).webp",
-    "zoom": 1,
-    "x": 0,
-    "y": 6
-  }
+  "subtitle": "The Emperor's Blade"
 }

@@ -1,18 +1,18 @@
 {
-  "frameId": "event-command-cunning-heroism",
-  "name": "Desert Power",
-  "trait": "Atreides, Fremen, Tactic",
-  "text": "Create 2 Fremen tokens and ready them.",
-  "setCode": "DUNE",
-  "language": "EN",
-  "rarity": "R",
-  "cost": 4,
-  "art": {
-    "src": "Desert Power (art).webp",
-    "zoom": 1,
-    "x": 2,
-    "y": 39
-  },
   "id": "f80f1ac5-eac8-42e1-85df-a934743febb0",
-  "number": "024"
+  "art": {
+    "x": 2,
+    "y": 39,
+    "src": "Desert Power (art).webp",
+    "zoom": 1
+  },
+  "cost": 4,
+  "name": "Desert Power",
+  "text": "Create 2 Fremen tokens and ready them.",
+  "trait": "Atreides, Fremen, Tactic",
+  "number": "028",
+  "rarity": "R",
+  "frameId": "event-command-cunning-heroism",
+  "setCode": "DUNE",
+  "language": "EN"
 }

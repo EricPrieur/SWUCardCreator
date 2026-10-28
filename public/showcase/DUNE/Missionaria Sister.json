@@ -1,21 +1,21 @@
 {
-  "frameId": "unit-vigilance",
-  "name": "Missionaria Sister",
-  "trait": "Bene Gesserit",
-  "text": "[When Played:] If you control an [{Arrakis}] base, create a Fremen token.",
-  "setCode": "DUNE",
-  "language": "EN",
-  "rarity": "C",
-  "cost": 2,
-  "power": 1,
   "hp": 3,
+  "id": "bad799dd-a5f5-4d51-a7a6-928bca64ea46",
   "art": {
-    "src": "Missionaria Sister (art).webp",
-    "zoom": 1,
     "x": 0,
     "y": -6,
+    "src": "Missionaria Sister (art).webp",
+    "zoom": 1,
     "rotate": 0
   },
-  "id": "bad799dd-a5f5-4d51-a7a6-928bca64ea46",
-  "number": "032"
+  "cost": 2,
+  "name": "Missionaria Sister",
+  "text": "[When Played:] If you control an [{Arrakis}] base, create a Fremen token.",
+  "power": 1,
+  "trait": "Bene Gesserit",
+  "number": "036",
+  "rarity": "C",
+  "frameId": "unit-vigilance",
+  "setCode": "DUNE",
+  "language": "EN"
 }

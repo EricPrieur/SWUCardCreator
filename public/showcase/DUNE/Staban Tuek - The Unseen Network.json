@@ -1,22 +1,22 @@
 {
-  "frameId": "unit-cunning",
+  "hp": 5,
+  "id": "58945d01-75d0-4adb-be9f-f4230c5aba08",
+  "art": {
+    "x": 0,
+    "y": 16,
+    "src": "Staban Tuek - The Unseen Network (art).webp",
+    "zoom": 1
+  },
+  "cost": 5,
   "name": "Staban Tuek",
-  "trait": "Underworld",
   "text": "[Hidden]\n[Smuggle] [[6 Cunning]]\n[When Played:] Draw a card.\nWhenever an opponent defeats a Spice token, create a Spice token. Use this ability only once each round.",
+  "power": 4,
+  "trait": "Underworld",
+  "number": "121",
+  "rarity": "R",
+  "unique": true,
+  "frameId": "unit-cunning",
   "setCode": "DUNE",
   "language": "EN",
-  "rarity": "R",
-  "cost": 5,
-  "power": 4,
-  "hp": 5,
-  "unique": true,
-  "subtitle": "The Unseen Network",
-  "art": {
-    "src": "Staban Tuek - The Unseen Network (art).webp",
-    "zoom": 1,
-    "x": 0,
-    "y": 16
-  },
-  "id": "58945d01-75d0-4adb-be9f-f4230c5aba08",
-  "number": "117"
+  "subtitle": "The Unseen Network"
 }

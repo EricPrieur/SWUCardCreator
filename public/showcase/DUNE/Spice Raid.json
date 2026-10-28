@@ -1,18 +1,18 @@
 {
-  "frameId": "event-aggression",
-  "name": "Spice Raid",
-  "trait": "Supply, Tactic",
-  "text": "Deal 2 damage to a ground unit. If that unit is defeated this way, create a Spice token.",
-  "setCode": "DUNE",
-  "language": "EN",
-  "rarity": "C",
+  "id": "df991edb-41a1-485e-b3ed-a9553a96f4f3",
   "art": {
-    "src": "Spice Raid (art).webp",
-    "zoom": 1,
     "x": 0,
-    "y": 0
+    "y": 0,
+    "src": "Spice Raid (art).webp",
+    "zoom": 1
   },
   "cost": 2,
-  "id": "df991edb-41a1-485e-b3ed-a9553a96f4f3",
-  "number": "097"
+  "name": "Spice Raid",
+  "text": "Deal 2 damage to a ground unit. If that unit is defeated this way, create a Spice token.",
+  "trait": "Supply, Tactic",
+  "number": "101",
+  "rarity": "C",
+  "frameId": "event-aggression",
+  "setCode": "DUNE",
+  "language": "EN"
 }

@@ -1,20 +1,20 @@
 {
-  "frameId": "unit-cunning-heroism",
-  "name": "Sietch Raiders",
-  "trait": "Fremen, Trooper",
-  "text": "While you control an [{Arrakis}] base, this unit gains [Ambush] and [Hidden].",
-  "setCode": "DUNE",
-  "language": "EN",
-  "rarity": "C",
-  "art": {
-    "src": "Sietch Raiders (art).webp",
-    "zoom": 1,
-    "x": 0,
-    "y": -7
-  },
-  "cost": 4,
-  "power": 4,
   "hp": 4,
   "id": "6016d1f0-bb83-4a96-99e8-d6056a0413f9",
-  "number": "106"
+  "art": {
+    "x": 0,
+    "y": -7,
+    "src": "Sietch Raiders (art).webp",
+    "zoom": 1
+  },
+  "cost": 4,
+  "name": "Sietch Raiders",
+  "text": "While you control an [{Arrakis}] base, this unit gains [Ambush] and [Hidden].",
+  "power": 4,
+  "trait": "Fremen, Trooper",
+  "number": "110",
+  "rarity": "C",
+  "frameId": "unit-cunning-heroism",
+  "setCode": "DUNE",
+  "language": "EN"
 }

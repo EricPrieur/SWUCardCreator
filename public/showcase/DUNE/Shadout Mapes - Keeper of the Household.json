@@ -1,23 +1,23 @@
 {
-  "frameId": "unit-vigilance-heroism",
-  "name": "Shadout Mapes",
-  "trait": "Fremen",
-  "text": "[Sentinel]\n[When Defeated:] Give an Experience token to a friendly unit.",
-  "setCode": "DUNE",
-  "language": "EN",
-  "rarity": "U",
-  "unique": true,
-  "subtitle": "Keeper of the Household",
-  "cost": 2,
-  "power": 1,
   "hp": 4,
   "id": "b8c8468e-bac1-42e2-abb0-57b317523ad7",
   "art": {
-    "src": "Shadout Mapes - Keeper of the Household (art).webp",
-    "zoom": 1,
     "x": 0,
     "y": -7,
+    "src": "Shadout Mapes - Keeper of the Household (art).webp",
+    "zoom": 1,
     "rotate": 0
   },
-  "number": "030"
+  "cost": 2,
+  "name": "Shadout Mapes",
+  "text": "[Sentinel]\n[When Defeated:] Give an Experience token to a friendly unit.",
+  "power": 1,
+  "trait": "Fremen",
+  "number": "034",
+  "rarity": "U",
+  "unique": true,
+  "frameId": "unit-vigilance-heroism",
+  "setCode": "DUNE",
+  "language": "EN",
+  "subtitle": "Keeper of the Household"
 }

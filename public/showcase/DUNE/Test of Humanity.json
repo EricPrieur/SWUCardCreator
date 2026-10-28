@@ -1,19 +1,19 @@
 {
-  "frameId": "event-vigilance-villainy",
-  "name": "Test of Humanity",
-  "trait": "Bene Gesserit",
-  "text": "Choose an enemy non-leader unit. Its controller may discard 2 cards from their hand. If they don't, defeat that unit.",
-  "setCode": "DUNE",
-  "language": "EN",
-  "rarity": "R",
-  "cost": 3,
+  "id": "83aa12f2-2533-43de-8416-029bcbf1f53d",
   "art": {
-    "src": "Test of Humanity (art).webp",
-    "zoom": 1,
     "x": 0,
     "y": 0,
+    "src": "Test of Humanity (art).webp",
+    "zoom": 1,
     "rotate": 0
   },
-  "id": "83aa12f2-2533-43de-8416-029bcbf1f53d",
-  "number": "028"
+  "cost": 3,
+  "name": "Test of Humanity",
+  "text": "Choose an enemy non-leader unit. Its controller may discard 2 cards from their hand. If they don't, defeat that unit.",
+  "trait": "Bene Gesserit",
+  "number": "032",
+  "rarity": "R",
+  "frameId": "event-vigilance-villainy",
+  "setCode": "DUNE",
+  "language": "EN"
 }

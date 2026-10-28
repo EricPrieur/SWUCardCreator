@@ -1,19 +1,19 @@
 {
-  "frameId": "event-vigilance",
-  "name": "Seduction",
-  "trait": "Bene Gesserit",
-  "text": "Choose an enemy non-leader unit. If it costs the same as or less than a friendly [Bene Gesserit] unit, take control of it and ready it. Otherwise, exhaust it. At the start of the regroup phase, its owner takes control of it.",
-  "setCode": "DUNE",
-  "language": "EN",
-  "rarity": "R",
+  "id": "97c40df3-3fac-4466-8783-7b3a26918f95",
   "art": {
-    "src": "Seduction (art).webp",
-    "zoom": 1,
     "x": -1,
     "y": 54,
+    "src": "Seduction (art).webp",
+    "zoom": 1,
     "rotate": 0
   },
   "cost": 4,
-  "id": "97c40df3-3fac-4466-8783-7b3a26918f95",
-  "number": "040"
+  "name": "Seduction",
+  "text": "Choose an enemy non-leader unit. If it costs the same as or less than a friendly [Bene Gesserit] unit, take control of it and ready it. Otherwise, exhaust it. At the start of the regroup phase, its owner takes control of it.",
+  "trait": "Bene Gesserit",
+  "number": "044",
+  "rarity": "R",
+  "frameId": "event-vigilance",
+  "setCode": "DUNE",
+  "language": "EN"
 }

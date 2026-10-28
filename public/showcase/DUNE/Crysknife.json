@@ -1,21 +1,21 @@
 {
-  "frameId": "upgrade-aggression",
-  "name": "Crysknife",
-  "trait": "Fremen, Item, Weapon",
-  "text": "Attach to a non-[{Vehicle}] unit.\n[When Played:] Deal 1 damage to a ground unit.\nYou may play this upgrade from your discard pile if you attach it to a [{Fremen}] unit.",
+  "hp": 0,
+  "id": "7484d1ed-3110-4f06-aa0d-5090d4e04815",
   "art": {
-    "src": "Crysknife (art).webp",
-    "zoom": 1.1,
     "x": -11,
     "y": -13,
+    "src": "Crysknife (art).webp",
+    "zoom": 1.1,
     "rotate": 33
   },
   "cost": 1,
-  "hp": 0,
+  "name": "Crysknife",
+  "text": "Attach to a non-[{Vehicle}] unit.\n[When Played:] Deal 1 damage to a ground unit.\nYou may play this upgrade from your discard pile if you attach it to a [{Fremen}] unit.",
   "power": 1,
-  "id": "7484d1ed-3110-4f06-aa0d-5090d4e04815",
-  "setCode": "DUNE",
-  "language": "EN",
+  "trait": "Fremen, Item, Weapon",
+  "number": "103",
   "rarity": "C",
-  "number": "099"
+  "frameId": "upgrade-aggression",
+  "setCode": "DUNE",
+  "language": "EN"
 }

@@ -1,20 +1,20 @@
 {
-  "frameId": "unit-aggression",
-  "name": "Ginaz Swordmaster",
-  "trait": "Ginaz, Trooper",
-  "text": "[Ambush]\n[On Attack:] If you control another [{Ginaz}] unit, this unit deals its combat damage before the defender.",
-  "setCode": "DUNE",
-  "language": "EN",
-  "rarity": "U",
-  "cost": 4,
-  "power": 4,
   "hp": 4,
-  "art": {
-    "src": "Ginaz Swordmaster (art).webp",
-    "zoom": 1,
-    "x": 0,
-    "y": -6
-  },
   "id": "650c2968-1ee1-476e-b340-a4d1c8167720",
-  "number": "093"
+  "art": {
+    "x": 0,
+    "y": -6,
+    "src": "Ginaz Swordmaster (art).webp",
+    "zoom": 1
+  },
+  "cost": 4,
+  "name": "Ginaz Swordmaster",
+  "text": "[Ambush]\n[On Attack:] If you control another [{Ginaz}] unit, this unit deals its combat damage before the defender.",
+  "power": 4,
+  "trait": "Ginaz, Trooper",
+  "number": "097",
+  "rarity": "U",
+  "frameId": "unit-aggression",
+  "setCode": "DUNE",
+  "language": "EN"
 }

@@ -1,30 +1,30 @@
 {
-  "frameId": "unit-command-heroism",
-  "name": "Lady Jessica",
-  "trait": "Bene Gesserit, Atreides",
-  "text": "[Restore 3]\n[When Played/On Attack:] Look at an opponent's hand and name a card. This phase, opponents can't play the named card. Draw a card.",
-  "art": {
-    "src": "Lady Jessica - Mother of the Kwisatz Haderach (art).webp",
-    "zoom": 1.11,
-    "x": 3,
-    "y": 7
-  },
-  "unique": true,
-  "id": "26bb822f-2e58-4918-856a-ff80b4fcef7e",
-  "cost": 6,
-  "power": 4,
   "hp": 7,
-  "setCode": "DUNE",
-  "language": "EN",
-  "rarity": "L",
-  "subtitle": "Mother of the Kwisatz Haderach",
-  "number": "062",
+  "id": "26bb822f-2e58-4918-856a-ff80b4fcef7e",
+  "art": {
+    "x": 3,
+    "y": 7,
+    "src": "Lady Jessica - Mother of the Kwisatz Haderach (art).webp",
+    "zoom": 1.11
+  },
+  "cost": 6,
   "look": {
-    "frameOpacity": 0,
-    "panelFill": 0.5,
-    "panelBlur": 0,
     "textGlow": 0,
     "lightText": true,
-    "solidIcons": true
-  }
+    "panelBlur": 0,
+    "panelFill": 0.5,
+    "solidIcons": true,
+    "frameOpacity": 0
+  },
+  "name": "Lady Jessica",
+  "text": "[Restore 3]\n[When Played/On Attack:] Look at an opponent's hand and name a card. This phase, opponents can't play the named card. Draw a card.",
+  "power": 4,
+  "trait": "Bene Gesserit, Atreides",
+  "number": "066",
+  "rarity": "L",
+  "unique": true,
+  "frameId": "unit-command-heroism",
+  "setCode": "DUNE",
+  "language": "EN",
+  "subtitle": "Mother of the Kwisatz Haderach"
 }

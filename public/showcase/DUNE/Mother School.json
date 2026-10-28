@@ -1,19 +1,19 @@
 {
-  "setCode": "DUNE",
-  "language": "EN",
-  "rarity": "R",
   "hp": 25,
   "id": "beff91f2-cb66-4a0b-b75c-eb6641f2e98a",
-  "number": "018",
-  "frameId": "base-cunning-text",
-  "backFrameId": "base-vigilance-text",
-  "name": "Mother School",
-  "trait": "Wallach IX",
-  "text": "[When you defeat a friendly Spice token:] Look at the top card of your deck. You may discard it.",
   "art": {
-    "src": "Mother School (art).webp",
-    "zoom": 1,
     "x": -1,
-    "y": -28
-  }
+    "y": -28,
+    "src": "Mother School (art).webp",
+    "zoom": 1
+  },
+  "name": "Mother School",
+  "text": "[When you defeat a friendly Spice token:] Look at the top card of your deck. You may discard it.",
+  "trait": "Wallach IX",
+  "number": "022",
+  "rarity": "R",
+  "frameId": "base-cunning-text",
+  "setCode": "DUNE",
+  "language": "EN",
+  "backFrameId": "base-vigilance-text"
 }

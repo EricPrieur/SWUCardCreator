@@ -1,0 +1,31 @@
+{
+  "hp": 6,
+  "id": "c46dd839-5925-4d9c-941d-d2193196512f",
+  "art": {
+    "x": -27,
+    "y": 49,
+    "src": "Count Hasimir Fenring - The Emperor's Shadow (art).webp",
+    "zoom": 1
+  },
+  "cost": 6,
+  "name": "Count Hasimir Fenring",
+  "text": "[When a friendly unit deals combat damage to an enemy base:] You may exhaust this leader and defeat a friendly Spice token. If you do, look at that player's hand. You may discard a card from it. If you do, that player draws a card.",
+  "block": "",
+  "power": 4,
+  "trait": "Underworld, Emperor, Spy",
+  "artist": "",
+  "number": "012",
+  "rarity": "C",
+  "backArt": {
+    "x": -1,
+    "y": 21,
+    "src": "Count Hasimir Fenring - The Emperor's Shadow (unit) (art).webp",
+    "zoom": 1.2
+  },
+  "frameId": "leader-cunning-villainy",
+  "setCode": "DUNE",
+  "backText": "[Saboteur]\n[When Deployed:] Look at an opponent's hand and discard a card from it.\nOnce each round, when a friendly unit deals combat damage to an enemy base: You may defeat a friendly Spice token. If you do, look at that player's hand. You may discard a card from it. If you do, that player draws a card.",
+  "language": "EN",
+  "subtitle": "The Emperor's Shadow",
+  "backTrait": "Underworld, Emperor, Spy"
+}

@@ -1,20 +1,20 @@
 {
-  "frameId": "upgrade-heroism",
-  "name": "Litany Against Fear",
-  "trait": "Bene Gesserit, Learned",
-  "text": "Attached unit can't be defeated by enemy card abilities.",
-  "setCode": "DUNE",
-  "language": "EN",
-  "rarity": "C",
-  "art": {
-    "src": "Litany Against Fear (art).webp",
-    "zoom": 1,
-    "x": 1,
-    "y": -10
-  },
-  "cost": 2,
-  "power": 2,
   "hp": 2,
   "id": "a94e0500-7d5e-4848-b52a-c62bb03104cd",
-  "number": "124"
+  "art": {
+    "x": 1,
+    "y": -10,
+    "src": "Litany Against Fear (art).webp",
+    "zoom": 1
+  },
+  "cost": 2,
+  "name": "Litany Against Fear",
+  "text": "Attached unit can't be defeated by enemy card abilities.",
+  "power": 2,
+  "trait": "Bene Gesserit, Learned",
+  "number": "128",
+  "rarity": "C",
+  "frameId": "upgrade-heroism",
+  "setCode": "DUNE",
+  "language": "EN"
 }

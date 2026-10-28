@@ -1,20 +1,20 @@
 {
-  "frameId": "unit-cunning",
-  "name": "Black Market Fence",
-  "trait": "Underworld",
-  "text": "[When Played:] You may take control of a non-unique [{Item}] upgrade or a token upgrade and attach it to a friendly unit.",
-  "setCode": "DUNE",
-  "language": "EN",
-  "rarity": "U",
-  "cost": 4,
-  "power": 3,
   "hp": 4,
-  "art": {
-    "src": "Black Market Fence (art).webp",
-    "zoom": 1,
-    "x": 0,
-    "y": -6
-  },
   "id": "04248bb9-9b38-4fe3-b171-ef47ceda7294",
-  "number": "115"
+  "art": {
+    "x": 0,
+    "y": -6,
+    "src": "Black Market Fence (art).webp",
+    "zoom": 1
+  },
+  "cost": 4,
+  "name": "Black Market Fence",
+  "text": "[When Played:] You may take control of a non-unique [{Item}] upgrade or a token upgrade and attach it to a friendly unit.",
+  "power": 3,
+  "trait": "Underworld",
+  "number": "119",
+  "rarity": "U",
+  "frameId": "unit-cunning",
+  "setCode": "DUNE",
+  "language": "EN"
 }

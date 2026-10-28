@@ -1,23 +1,23 @@
 {
-  "frameId": "unit-cunning-space",
-  "name": "Tuek's Lighter",
-  "trait": "Underworld, Vehicle, Transport",
-  "text": "[Raid 1]\n[When you defeat a friendly Spice token:] You may ready this unit. Use this ability only once each round.",
-  "setCode": "DUNE",
-  "language": "EN",
-  "rarity": "U",
-  "unique": true,
-  "subtitle": "Smuggler's Run",
-  "cost": 3,
-  "power": 2,
   "hp": 3,
+  "id": "abacdb60-bcc1-45e5-94e9-ee3ebe98472e",
   "art": {
-    "src": "Tuek's Lighter - Smuggler's Run (art).webp",
-    "zoom": 0.9,
     "x": 0,
     "y": 0,
+    "src": "Tuek's Lighter - Smuggler's Run (art).webp",
+    "zoom": 0.9,
     "rotate": 0
   },
-  "id": "abacdb60-bcc1-45e5-94e9-ee3ebe98472e",
-  "number": "114"
+  "cost": 3,
+  "name": "Tuek's Lighter",
+  "text": "[Raid 1]\n[When you defeat a friendly Spice token:] You may ready this unit. Use this ability only once each round.",
+  "power": 2,
+  "trait": "Underworld, Vehicle, Transport",
+  "number": "118",
+  "rarity": "U",
+  "unique": true,
+  "frameId": "unit-cunning-space",
+  "setCode": "DUNE",
+  "language": "EN",
+  "subtitle": "Smuggler's Run"
 }

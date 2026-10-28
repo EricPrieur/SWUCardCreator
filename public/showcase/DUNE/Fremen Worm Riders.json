@@ -1,21 +1,21 @@
 {
-  "frameId": "unit-cunning-heroism",
-  "name": "Fremen Worm Riders",
-  "trait": "Fremen, Creature",
-  "text": "[Overwhelm]\nWhile you control an [{Arrakis}] base, this unit gains [Ambush].\n[When Defeated:] Put this card on the bottom of its owner's deck.",
-  "artist": "",
-  "setCode": "DUNE",
-  "language": "EN",
-  "rarity": "R",
-  "art": {
-    "src": "Fremen Worm Riders (art).webp",
-    "zoom": 0.8,
-    "x": 0,
-    "y": 0
-  },
-  "cost": 7,
-  "power": 7,
   "hp": 7,
   "id": "c354b308-81c7-4dc7-9232-c4fa66363c32",
-  "number": "107"
+  "art": {
+    "x": 0,
+    "y": 0,
+    "src": "Fremen Worm Riders (art).webp",
+    "zoom": 0.8
+  },
+  "cost": 7,
+  "name": "Fremen Worm Riders",
+  "text": "[Overwhelm]\nWhile you control an [{Arrakis}] base, this unit gains [Ambush].\n[When Defeated:] Put this card on the bottom of its owner's deck.",
+  "power": 7,
+  "trait": "Fremen, Creature",
+  "artist": "",
+  "number": "111",
+  "rarity": "R",
+  "frameId": "unit-cunning-heroism",
+  "setCode": "DUNE",
+  "language": "EN"
 }

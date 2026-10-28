@@ -1,20 +1,20 @@
 {
-  "frameId": "unit-aggression-villainy-space",
-  "name": "Harkonnen Assault 'Thopter",
-  "trait": "Harkonnen, Vehicle, Fighter",
-  "text": "",
-  "setCode": "DUNE",
-  "language": "EN",
-  "rarity": "C",
-  "cost": 2,
-  "power": 3,
   "hp": 1,
   "id": "31c94086-879b-4776-9223-c4f626cc4029",
-  "number": "076",
   "art": {
-    "src": "Harkonnen Assault 'Thopter (art).webp",
-    "zoom": 0.9,
     "x": 1,
-    "y": -5
-  }
+    "y": -5,
+    "src": "Harkonnen Assault 'Thopter (art).webp",
+    "zoom": 0.9
+  },
+  "cost": 2,
+  "name": "Harkonnen Assault 'Thopter",
+  "text": "",
+  "power": 3,
+  "trait": "Harkonnen, Vehicle, Fighter",
+  "number": "080",
+  "rarity": "C",
+  "frameId": "unit-aggression-villainy-space",
+  "setCode": "DUNE",
+  "language": "EN"
 }

@@ -1,23 +1,23 @@
 {
+  "hp": 3,
+  "id": "ae107fcd-e27d-49b8-95b8-d9d010086222",
+  "art": {
+    "x": 0,
+    "y": 17,
+    "src": "Dr. Wellington Yueh - Suk Doctor (art).webp",
+    "zoom": 1,
+    "rotate": 0
+  },
+  "cost": 1,
+  "name": "Dr. Wellington Yueh",
+  "text": "[When Played:] Heal 2 damage from a unit or base.\n[When Defeated:] Exhaust your leader. Defeat each Shield token on friendly units.",
+  "power": 2,
+  "trait": "Atreides, Suk",
+  "number": "055",
+  "rarity": "R",
+  "unique": true,
   "frameId": "unit-command-heroism",
   "setCode": "DUNE",
   "language": "EN",
-  "id": "ae107fcd-e27d-49b8-95b8-d9d010086222",
-  "name": "Dr. Wellington Yueh",
-  "subtitle": "Suk Doctor",
-  "unique": true,
-  "trait": "Atreides, Suk",
-  "rarity": "R",
-  "number": "051",
-  "cost": 1,
-  "power": 2,
-  "hp": 3,
-  "text": "[When Played:] Heal 2 damage from a unit or base.\n[When Defeated:] Exhaust your leader. Defeat each Shield token on friendly units.",
-  "art": {
-    "src": "Dr. Wellington Yueh - Suk Doctor (art).webp",
-    "zoom": 1,
-    "x": 0,
-    "y": 17,
-    "rotate": 0
-  }
+  "subtitle": "Suk Doctor"
 }

@@ -1,0 +1,31 @@
+{
+  "hp": 6,
+  "id": "14f1e472-1d10-42d2-8975-608ab68bf118",
+  "art": {
+    "x": -25,
+    "y": 38,
+    "src": "Princess Irulan - Daughter of the Emperor (art).webp",
+    "zoom": 0.9
+  },
+  "cost": 5,
+  "name": "Princess Irulan",
+  "text": "[When you play an [{Emperor}] unit:] You may exhaust this leader. If you do, give a Shield token to that unit.",
+  "block": "",
+  "power": 2,
+  "trait": "Emperor, Corrino, Bene Gesserit",
+  "artist": "",
+  "number": "004",
+  "rarity": "C",
+  "backArt": {
+    "x": 1,
+    "y": 12,
+    "src": "Princess Irulan - Daughter of the Emperor (unit) (art).webp",
+    "zoom": 1
+  },
+  "frameId": "leader-vigilance-villainy",
+  "setCode": "DUNE",
+  "backText": "[When Deployed:] Give a Shield token to a friendly [{Emperor}] unit.\nFriendly [{Emperor}] units with a Shield get [+1/+0].",
+  "language": "EN",
+  "subtitle": "Daughter of the Emperor",
+  "backTrait": "Emperor, Corrino, Bene Gesserit"
+}

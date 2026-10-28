@@ -1,18 +1,18 @@
 {
-  "frameId": "event-aggression-villainy",
-  "name": "Sabotage",
-  "trait": "Tactic",
-  "text": "Choose one:\n• Defeat an upgrade.\n• Deal 2 damage to a base.",
-  "setCode": "DUNE",
-  "language": "EN",
-  "rarity": "U",
-  "cost": 1,
-  "art": {
-    "src": "Sabotage (art).webp",
-    "zoom": 1.1,
-    "x": 0,
-    "y": 18
-  },
   "id": "0259bc37-e0a4-4b2c-8b49-21bb04637b54",
-  "number": "085"
+  "art": {
+    "x": 0,
+    "y": 18,
+    "src": "Sabotage (art).webp",
+    "zoom": 1.1
+  },
+  "cost": 1,
+  "name": "Sabotage",
+  "text": "Choose one:\n• Defeat an upgrade.\n• Deal 2 damage to a base.",
+  "trait": "Tactic",
+  "number": "089",
+  "rarity": "U",
+  "frameId": "event-aggression-villainy",
+  "setCode": "DUNE",
+  "language": "EN"
 }
