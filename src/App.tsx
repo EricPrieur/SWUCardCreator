@@ -1708,10 +1708,77 @@ type PublicCard = {
   ownerBlocked: boolean
 }
 
+// A public card the Community tab can show; an older or odd one is left out rather than
+// breaking the tab
+const showable = (card: PublicCard) => {
+  const entry = card.entry as Partial<ShowcaseCard> | null
+  return (
+    !!entry &&
+    typeof entry.name === 'string' &&
+    typeof entry.type === 'string' &&
+    Array.isArray(entry.traits) &&
+    Array.isArray(entry.aspects) &&
+    (entry.backAspects == null || Array.isArray(entry.backAspects))
+  )
+}
+
 const publicImage = (id: string) => `${API_URL}/api/public/images/${id}`
 
 // Everyone's public cards, as a Showcase shows a set: newest first, with the same
 // search and filters, and who made each. Admins can hide a card from it.
+// When this browser last looked at the Community tab: the newest card it showed then
+const COMMUNITY_SEEN = 'dune-unlimited.community-seen'
+
+const newestPublished = (cards: PublicCard[]) => Math.max(0, ...cards.map((card) => Date.parse(card.publishedAt)))
+
+function communitySeen() {
+  try {
+    const seen = localStorage.getItem(COMMUNITY_SEEN)
+    return seen === null ? 0 : Number(seen)
+  } catch {
+    return 0
+  }
+}
+
+function markCommunitySeen(cards: PublicCard[]) {
+  const newest = newestPublished(cards)
+  if (newest <= communitySeen()) return
+  try {
+    localStorage.setItem(COMMUNITY_SEEN, String(newest))
+  } catch {
+    // Shown as new again next time, then
+  }
+}
+
+// The cards made public since the Community tab was last looked at, other than the
+// account's own and those only admins see. Asked when the page opens, then every few minutes.
+function useCommunityNew(session: Session | null, online: boolean, looking: boolean) {
+  const [count, setCount] = useState(0)
+  useEffect(() => {
+    if (!online || looking) {
+      setCount(0)
+      return
+    }
+    const check = () =>
+      api<{ cards: PublicCard[] }>('/api/public/cards', { token: session?.token })
+        .then(({ cards }) => {
+          const seen = communitySeen()
+          setCount(
+            cards.filter(
+              (card) =>
+                showable(card) &&
+                !card.hidden && !card.ownerBlocked && card.userId !== session?.user.id && Date.parse(card.publishedAt) > seen,
+            ).length,
+          )
+        })
+        .catch(() => {})
+    check()
+    const timer = window.setInterval(check, 5 * 60 * 1000)
+    return () => window.clearInterval(timer)
+  }, [online, looking, session?.token])
+  return count
+}
+
 function Community(props: { session: Session | null }) {
   const { session } = props
   const [list, setList] = useState<PublicCard[] | null>(null)
@@ -1719,7 +1786,11 @@ function Community(props: { session: Session | null }) {
   const admin = !!session?.user.isAdmin
   useEffect(() => {
     api<{ cards: PublicCard[] }>('/api/public/cards', { token: session?.token })
-      .then((data) => setList(data.cards))
+      .then((data) => {
+        setList(data.cards.filter(showable))
+        // Seen now: the tab's count starts again from these
+        markCommunitySeen(data.cards)
+      })
       .catch((err) => setError(err.message))
   }, [session?.token])
   const { bar, shown, grid, preview } = useCardFilters(
@@ -4278,6 +4349,7 @@ function App() {
   // Signed out, they are the ones kept in this browser, as they always were.
   const account = useAccount()
   const online = useServerOnline()
+  const communityNew = useCommunityNew(account, online, tab === 'community')
   const [accountCards, setAccountCards] = useState<'loading' | 'ready' | 'failed'>('loading')
   const [syncError, setSyncError] = useState<string | null>(null)
   const [syncing, setSyncing] = useState(0)
@@ -4479,6 +4551,11 @@ function App() {
             .map(({ id, label }) => (
             <a key={id} href={`#${id}`} aria-current={tab === id ? 'page' : undefined}>
               {label}
+              {id === 'community' && communityNew > 0 && (
+                <span className="tab-count" title={`${communityNew} new card${communityNew === 1 ? '' : 's'} since you last looked`}>
+                  {communityNew > 99 ? '99+' : communityNew}
+                </span>
+              )}
             </a>
           ))}
         </nav>

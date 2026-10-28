@@ -137,11 +137,25 @@ router.delete('/cards/:id', verifyToken, async (req, res) => {
   }
 })
 
+// The fields of a showcase entry the Community tab reads, so one card can't break the tab
+const isEntry = (entry) =>
+  !!entry &&
+  typeof entry === 'object' &&
+  !Array.isArray(entry) &&
+  typeof entry.name === 'string' &&
+  typeof entry.type === 'string' &&
+  Array.isArray(entry.traits) &&
+  entry.traits.every((trait) => typeof trait === 'string') &&
+  Array.isArray(entry.aspects) &&
+  (entry.backName == null || typeof entry.backName === 'string') &&
+  (entry.backAspects == null || Array.isArray(entry.backAspects)) &&
+  (entry.text == null || typeof entry.text === 'string')
+
 // Makes a card public, or updates what is shown of it: { entry, image, backImage? },
 // its showcase entry and the JPG of each side, uploaded first as images
 router.put('/cards/:id/public', verifyToken, async (req, res) => {
   const { entry, image, backImage } = req.body ?? {}
-  if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return res.status(400).json({ error: 'Entry required' })
+  if (!isEntry(entry)) return res.status(400).json({ error: 'Entry required' })
   if (Buffer.byteLength(JSON.stringify(entry)) > MAX_CARD_BYTES) return res.status(413).json({ error: 'Entry too big' })
   if (!IMAGE_ID.test(image ?? '') || (backImage != null && !IMAGE_ID.test(backImage)))
     return res.status(400).json({ error: 'The card’s image is required' })

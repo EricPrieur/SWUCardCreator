@@ -150,6 +150,8 @@ test('a public card shows to everyone until it is made private or hidden', async
   // Only its owner can make it public, with images the owner uploaded
   assert.equal((await call('PUT', '/cards/fd/public', { entry, image: front.body.id }, eve)).status, 400)
   assert.equal((await call('PUT', '/cards/nope/public', { entry, image: front.body.id }, dave)).status, 404)
+  // An entry missing what the Community tab reads is refused
+  assert.equal((await call('PUT', '/cards/fd/public', { entry: { name: 'Face Dancer' }, image: front.body.id }, dave)).status, 400)
   assert.equal((await call('PUT', '/cards/fd/public', { entry, image: front.body.id }, dave)).status, 200)
 
   // Seen without signing in, image and all; the source art stays private
