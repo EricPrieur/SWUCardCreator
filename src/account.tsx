@@ -23,6 +23,9 @@ export function formatBytes(bytes: number) {
 
 const formatDate = (date: string | null) => (date ? new Date(date).toLocaleDateString() : '—')
 
+// The project's Discord server, as The Chrome Grid has its own
+const DISCORD_INVITE = 'https://discord.gg/5aMudhGRW5'
+
 const discordIcon = (
   <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true">
     <path d="M19.6 5.3A17 17 0 0 0 15.4 4l-.5 1a15.7 15.7 0 0 0-5.8 0l-.5-1a17 17 0 0 0-4.2 1.3C1.7 9.3 1 13.2 1.3 17a17 17 0 0 0 5.2 2.6l1.1-1.8a11 11 0 0 1-1.7-.8l.4-.3a12.2 12.2 0 0 0 11.4 0l.4.3-1.7.8 1.1 1.8a17 17 0 0 0 5.2-2.6c.4-4.4-.7-8.3-3-11.7zM8.7 14.7c-1 0-1.9-1-1.9-2.1s.8-2.1 1.9-2.1 1.9 1 1.9 2.1-.8 2.1-1.9 2.1zm6.6 0c-1 0-1.9-1-1.9-2.1s.8-2.1 1.9-2.1 1.9 1 1.9 2.1-.8 2.1-1.9 2.1z" />
@@ -444,40 +447,47 @@ export function AccountBar(props: { localCards: number; onCopyLocal: () => Promi
     if (signedIn) setOpen((now) => (now === 'login' || now === 'register' ? null : now))
   }, [signedIn])
 
-  if (!online) return null
   return (
     <div className="account-bar">
-      {session ? (
-        <>
-          <button className="account-name" type="button" title="Open account settings" onClick={() => setOpen('settings')}>
-            {session.user.username}
-            <span className="account-gear" aria-hidden="true">
-              ⚙
-            </span>
-          </button>
-          {session.user.isAdmin && (
-            <button
-              className="chip"
-              type="button"
-              onClick={() => {
-                setFocus(undefined)
-                setOpen('admin')
-              }}
-            >
-              Admin
-            </button>
+      {online && (
+        <div className="account-bar-row">
+          {session ? (
+            <>
+              <button className="account-name" type="button" title="Open account settings" onClick={() => setOpen('settings')}>
+                {session.user.username}
+                <span className="account-gear" aria-hidden="true">
+                  ⚙
+                </span>
+              </button>
+              {session.user.isAdmin && (
+                <button
+                  className="chip"
+                  type="button"
+                  onClick={() => {
+                    setFocus(undefined)
+                    setOpen('admin')
+                  }}
+                >
+                  Admin
+                </button>
+              )}
+            </>
+          ) : (
+            <>
+              <button className="chip" type="button" onClick={() => setOpen('login')}>
+                Log In
+              </button>
+              <button className="chip" type="button" onClick={() => setOpen('register')}>
+                Register
+              </button>
+            </>
           )}
-        </>
-      ) : (
-        <>
-          <button className="chip" type="button" onClick={() => setOpen('login')}>
-            Log In
-          </button>
-          <button className="chip" type="button" onClick={() => setOpen('register')}>
-            Register
-          </button>
-        </>
+        </div>
       )}
+      <a className="discord-join" href={DISCORD_INVITE} target="_blank" rel="noopener noreferrer">
+        {discordIcon}
+        Join the Discord for feedback
+      </a>
 
       {(open === 'login' || open === 'register') && (
         <AuthModal

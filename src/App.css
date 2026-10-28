@@ -21,8 +21,32 @@
   top: 1rem;
   right: 1rem;
   display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+
+.account-bar-row {
+  display: flex;
   align-items: center;
   gap: 0.5rem;
+}
+
+/* Under the account buttons, as on The Chrome Grid */
+.discord-join {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.03em;
+  color: #7289da;
+  text-decoration: none;
+  transition: color 0.2s, text-shadow 0.2s;
+}
+
+.discord-join:hover {
+  color: #99aaf5;
+  text-shadow: 0 0 10px rgb(114 137 218 / 0.5);
 }
 
 .account-name {
