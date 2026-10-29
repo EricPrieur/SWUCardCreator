@@ -4,7 +4,7 @@ import { useAccount, type Session } from './api'
 import { Modal } from './account'
 import { loadAccountDecks } from './accountCards'
 import { loadDecks, type Deck } from './cards'
-import { chooseAction } from '../server/engine/ai.ts'
+import { chooseAction, CURVE_TOP, deckPlan } from '../server/engine/ai.ts'
 import { cardDef, randomDeck, type SavedCard } from '../server/engine/cards.ts'
 import { applyAction, createGame } from '../server/engine/game.ts'
 import { scriptStatus } from '../server/engine/scripts.ts'
@@ -168,6 +168,21 @@ function DeckPicker(props: {
   )
 }
 
+// The AI answers greetings and the like in kind
+const replies: [RegExp, string[]][] = [
+  [/\b(gl ?hf|glhf|good luck|have fun)\b/i, ['gl hf!', 'glhf', 'Good luck, have fun!', 'You too, gl hf']],
+  [/\b(gg|good game|well played|wp)\b/i, ['gg', 'gg wp', 'Good game!', 'gg, well played']],
+  [/\b(nice|great|good) (play|move|one)\b/i, ['Thanks!', 'ty', 'Thanks, I liked that one']],
+  [/^(hi|hello|hey|yo)\b/i, ['Hi!', 'Hello!', 'Hey there']],
+  [/\b(thinking|hmm+)\b/i, ['Take your time', 'No rush']],
+  [/\b(sorry|oops)\b/i, ['No worries', 'np']],
+  [/\b(thanks|thank you|ty)\b/i, ['np', 'Anytime']],
+]
+function replyTo(text: string) {
+  const answers = replies.find(([pattern]) => pattern.test(text))?.[1]
+  return answers?.[Math.floor(Math.random() * answers.length)]
+}
+
 export function Simulator() {
   const account = useAccount()
   const [view, setView] = useState<'ai' | 'online'>('ai')
@@ -316,6 +331,8 @@ const DRAW_FLIGHT = 380
 const SOUND_KEY = 'dune-unlimited.simulator.sound'
 const drawSound = asset('/sim/sounds/card-draw.ogg')
 const clickSound = asset('/sim/sounds/click.ogg')
+// CCG Quest's Vanish puff
+const vanishSound = asset('/sim/sounds/vanish.ogg')
 // A pile's cards shown smaller the more there are of them, to fit the window
 const pileSize = (count: number) => (count <= 6 ? 'large' : count <= 12 ? 'medium' : count <= 24 ? 'small' : 'tiny')
 
@@ -324,6 +341,18 @@ const SPICE_PILE = 5
 // Each token in the pile a little off the one under it, always the same, as a pile is: never
 // further left than the gap to the base
 const SPICE_SHIFT = [0, 0.6, -0.3, 0.9, 0.2]
+
+// The puffs of smoke around a Hidden unit: where each sits (% of the card) and which way it drifts
+const SMOKE = [
+  { x: -12, y: -10, dx: 8, dy: 6 },
+  { x: 50, y: -14, dx: -6, dy: 8 },
+  { x: -18, y: 32, dx: 10, dy: -4 },
+  { x: 62, y: 28, dx: -10, dy: 4 },
+  { x: -10, y: 70, dx: 6, dy: -8 },
+  { x: 55, y: 74, dx: -8, dy: -6 },
+  { x: 20, y: 86, dx: 4, dy: -10 },
+  { x: 22, y: 20, dx: -4, dy: 6 },
+]
 
 let soundOn = (() => {
   try {
@@ -379,6 +408,12 @@ function Table(props: {
   // The last card each player played, which the engine doesn't keep
   const [last, setLast] = useState<[string | null, string | null]>([null, null])
   const [chat, setChat] = useState<{ who: 'me' | 'opp'; text: string }[]>([])
+  // What you say, and the AI's answer to the usual things players say
+  const say = (text: string) => {
+    setChat((now) => [...now, { who: 'me', text }])
+    const reply = replyTo(text)
+    if (reply) window.setTimeout(() => setChat((now) => [...now, { who: 'opp', text: reply }]), 800 + Math.random() * 1200)
+  }
   const [sound, setSound] = useState(soundOn)
   // Leaving or conceding, asked before it is done
   const [asking, setAsking] = useState<'leave' | 'concede' | null>(null)
@@ -392,6 +427,21 @@ function Table(props: {
   // A pile opened to see each card in it: your resources, face up, to play one using Smuggle,
   // or either discard pile
   const [pileOpen, setPileOpen] = useState<'resources' | 'discard-me' | 'discard-opp' | null>(null)
+  // An open pile closes with a click anywhere outside it, or Escape
+  const pileWindow = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!pileOpen) return
+    const outside = (event: MouseEvent) => {
+      if (!pileWindow.current?.contains(event.target as Node)) setPileOpen(null)
+    }
+    const escape = (event: KeyboardEvent) => event.key === 'Escape' && setPileOpen(null)
+    document.addEventListener('mousedown', outside)
+    document.addEventListener('keydown', escape)
+    return () => {
+      document.removeEventListener('mousedown', outside)
+      document.removeEventListener('keydown', escape)
+    }
+  }, [pileOpen])
   const [menu, setMenu] = useState<{ card: string; landscape?: boolean; options: { label: string; run: () => void }[] } | null>(null)
 
   // Each click on something that answers it clicks
@@ -404,8 +454,27 @@ function Table(props: {
   }, [])
 
   const view = useMemo(() => viewFor(game, YOU), [game])
+  // The names of the cards in this game, to find in the log: each name's card, one in a
+  // player's deck before another of that name, and a pattern that finds them, longest first
+  const cardNames = useMemo(() => {
+    const decks = new Set(
+      game.players.flatMap((pl) => [pl.leader, pl.base, ...pl.deck, ...pl.hand, ...pl.discard, ...pl.units, ...pl.resources.map((r) => r.card)].map((c) => c.def)),
+    )
+    const byName = new Map<string, string>()
+    for (const d of Object.values(game.defs)) if (!byName.has(d.name) || decks.has(d.id)) byName.set(d.name, d.id)
+    const names = [...byName.keys()].sort((a, b) => b.length - a.length).map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+    return { byName, pattern: new RegExp(`(?<![\\w'])(${names.join('|')})(?![\\w'])`) }
+  }, [game.defs, game.players])
   const me = view.players[YOU]
   const opp = view.players[AI]
+
+  // A unit that goes Hidden vanishes in a puff
+  const hiddenUnits = view.players.flatMap((side) => side.units.filter((u) => u.hidden).map((u) => u.id))
+  const wasHidden = useRef<string[]>(hiddenUnits)
+  useEffect(() => {
+    if (hiddenUnits.some((id) => !wasHidden.current.includes(id))) play(vanishSound, 0.6)
+    wasHidden.current = hiddenUnits
+  })
   const defOf = (id: string) => game.defs[id]
   const mine = view.waitingFor.includes(YOU)
   // A question an ability asks you: what you may pick, on the board or among cards shown apart
@@ -512,6 +581,8 @@ function Table(props: {
 
   // What the phase asks of you, and the buttons that answer it (always at the bottom right)
   const pickCount = asked ? 0 : mine && view.phase === 'resource' ? Math.min(2, me.handCount) : mine && view.phase === 'regroup' ? 1 : 0
+  // The cards picked from the hand, by name: "Chani and Fremen Worm Riders"
+  const pickedNames = picked.map((id) => defOf(me.hand?.find((c) => c.id === id)?.def ?? '')?.name ?? '').join(' and ')
   const attackActions = view.actions.filter((a) => a.type === 'attack')
   const attacker = mode?.kind === 'attack' ? me.units.find((u) => u.id === mode.attacker) : undefined
   const attachCard =
@@ -575,10 +646,14 @@ function Table(props: {
       ]
       break
     case 'resource':
-      prompt = mine ? `Choose ${pickCount} cards to resource (${picked.length}/${pickCount})` : waitText
+      prompt = !mine
+        ? waitText
+        : picked.length === pickCount
+          ? `Resourcing ${pickedNames}: done choosing?`
+          : `Choose ${pickCount} cards to resource (${picked.length}/${pickCount})${picked.length ? `: ${pickedNames}` : ''}`
       buttons = [
         {
-          label: 'Done',
+          label: 'Done Choosing Resources',
           kind: 'go',
           disabled: !mine || picked.length !== pickCount,
           onClick: () => act(YOU, { type: 'resource', cards: picked }),
@@ -586,11 +661,11 @@ function Table(props: {
       ]
       break
     case 'regroup':
-      prompt = mine ? `Regroup: choose a card to resource, or skip (${picked.length}/1)` : waitText
+      prompt = !mine ? waitText : picked.length ? `Regroup: resource ${pickedNames}?` : 'Regroup: choose a card to resource, or skip'
       buttons = [
         { label: 'Skip', disabled: !mine, onClick: () => act(YOU, { type: 'resource', cards: [] }) },
         {
-          label: 'Resource',
+          label: picked.length ? 'Resource It' : 'Resource',
           kind: 'go',
           disabled: !mine || picked.length !== 1,
           onClick: () => act(YOU, { type: 'resource', cards: picked }),
@@ -666,6 +741,8 @@ function Table(props: {
   const clickHand = (id: string) => {
     if (asked) {
       if (askedOn(id)) pickAnswer(id)
+      // "Play it now?": the card answers yes
+      else if (asked.play?.card === id) answer(['yes'])
       return
     }
     if (pickCount) {
@@ -707,6 +784,7 @@ function Table(props: {
       mode?.kind === 'attack' && !ours && arena === attacker?.arena && !target && 'blocked',
       attacker?.id === u.id && 'attacker',
       ready && 'can-act',
+      u.hidden && 'hidden',
     ]
     const tags = [
       keywords.sentinel && 'Sentinel',
@@ -714,7 +792,8 @@ function Table(props: {
       keywords.overwhelm && 'Overwhelm',
       keywords.grit && 'Grit',
       keywords.ambush && 'Ambush',
-      keywords.hidden && 'Hidden',
+      // Only while it protects the unit: the phase it entered play
+      u.hidden && 'Hidden',
       keywords.raid && `Raid ${keywords.raid}`,
       keywords.restore && `Restore ${keywords.restore}`,
     ].filter(Boolean)
@@ -729,6 +808,24 @@ function Table(props: {
           onClick={() => clickUnit(u.id)}
         >
           <img src={img(image ?? '')} alt={d.name} />
+          {u.hidden && (
+            <span className="sim-smoke" aria-hidden="true" title="Hidden: it can't be attacked this phase">
+              {SMOKE.map((puff, i) => (
+                <i
+                  key={i}
+                  style={
+                    {
+                      left: `${puff.x}%`,
+                      top: `${puff.y}%`,
+                      '--dx': `${puff.dx}%`,
+                      '--dy': `${puff.dy}%`,
+                      animationDelay: `${-i * 0.9}s`,
+                    } as React.CSSProperties
+                  }
+                />
+              ))}
+            </span>
+          )}
           {!!tags.length && (
             <span className="sim-tags">
               {tags.map((tag) => (
@@ -832,6 +929,7 @@ function Table(props: {
                     'sim-hand-card',
                     !pickCount && !mode && !asked && playsOf(c.id).length && 'playable',
                     askedOn(c.id) && (harmful ? 'asked harm' : 'asked'),
+                    asked?.play?.card === c.id && 'asked',
                     picked.includes(c.id) && 'picked',
                     mode?.kind === 'attach' && mode.card === c.id && 'picked',
                     pickCount && 'pickable',
@@ -843,6 +941,7 @@ function Table(props: {
                   onClick={() => clickHand(c.id)}
                 >
                   <img src={img(imageOf(c.def) ?? '')} alt={defOf(c.def).name} />
+                  {priceBadge(c.id, defOf(c.def).cost)}
                 </button>
               ))
             : Array.from({ length: side.handCount }, (_, i) => (
@@ -950,14 +1049,79 @@ function Table(props: {
     </div>
   )
 
-  // A player's name, where a line starts with it, in their colour
+  // What a card in your hand costs now, over its printed cost when that has changed: green when
+  // less, red when more (aspects missing). A "play it now?" question shows the cost it offers.
+  const priceBadge = (id: string, cost: number) => {
+    const price = asked?.play?.card === id ? asked.play.cost : me.prices?.[id]
+    if (price === undefined || price === cost) return null
+    return (
+      <span className={`sim-price ${price < cost ? 'less' : 'more'}`} title={`Costs ${price} now (printed ${cost})`}>
+        {price}
+      </span>
+    )
+  }
+
+  // The cards a player revealed last, small, beside the last card they played, until they reveal others
+  const revealedCards = (side: SideView, who: string) =>
+    side.revealed && (
+      <div className="sim-revealed" title={`Last revealed by ${who}, for ${defOf(side.revealed.by).name}`}>
+        <span>Revealed</span>
+        <div>
+          {side.revealed.cards.map((card, i) => (
+            <img key={i} src={img(imageOf(card) ?? '')} alt={defOf(card).name} onMouseEnter={look(imageOf(card))} onMouseLeave={leave} />
+          ))}
+        </div>
+      </div>
+    )
+
+  // The AI's deck analysis, made as the game starts: its cards by cost, and the resources it aims
+  // for (its leader's cost, or its dearest card's)
+  // (made once: the same game's turns share it)
+  const plan = deckPlan(game, AI)
+  const tallest = Math.max(1, ...plan.curve)
+  const deckAnalysis = (
+    <section
+      className="sim-plan"
+      title={`${opp.name}'s deck: average cost ${plan.average.toFixed(1)}. Leader deploys at ${plan.leader}, dearest card ${plan.top}: it aims for ${plan.target} resources.`}
+    >
+      <h2>{opp.name}'s deck</h2>
+      <div className="sim-curve">
+        {plan.curve.map((count, cost) => (
+          <div key={cost} className={cost === Math.min(plan.target, CURVE_TOP) ? 'target' : undefined}>
+            <i>{count || ''}</i>
+            <span style={{ height: `${(count / tallest) * 100}%` }} />
+            <b>
+              {cost}
+              {cost === CURVE_TOP && '+'}
+            </b>
+          </div>
+        ))}
+      </div>
+      <p>
+        Average {plan.average.toFixed(1)} · aims for {plan.target} resources
+      </p>
+    </section>
+  )
+
+  // A log line: the player's name, where it starts with it, in their colour; each card named in
+  // it shown when hovered
   const logLine = (text: string, player?: PlayerId) => {
     const name = player === undefined ? '' : view.players[player].name
-    if (!name || !text.startsWith(name)) return text
+    const named = !!name && text.startsWith(name)
+    const rest = named ? text.slice(name.length) : text
     return (
       <>
-        <b className={player === YOU ? 'me' : 'opp'}>{name}</b>
-        {text.slice(name.length)}
+        {named && <b className={player === YOU ? 'me' : 'opp'}>{name}</b>}
+        {rest.split(cardNames.pattern).map((part, i) => {
+          const card = i % 2 ? cardNames.byName.get(part) : undefined
+          if (!card) return part
+          const image = imageOf(card)
+          return (
+            <span key={i} className="sim-log-card" onMouseEnter={look(image, defOf(card).type === 'leader' || defOf(card).type === 'base')} onMouseLeave={leave}>
+              {part}
+            </span>
+          )
+        })}
       </>
     )
   }
@@ -1008,19 +1172,31 @@ function Table(props: {
           }
         : { title: '', stacks: [] }
 
-  // The card that asks, named first in its question: hovered, it is shown
+  // The card that asks, named first in its question, and the card it asks about (the top card
+  // of a deck): hovered, they are shown
   const asker = asked?.source ? defOf(asked.source) : undefined
-  const promptText =
-    asker && prompt.startsWith(asker.name) ? (
-      <>
-        <b className="sim-asker" onMouseEnter={look(imageOf(asker.id), asker.type === 'leader' || asker.type === 'base')} onMouseLeave={leave}>
-          {asker.name}
-        </b>
-        {prompt.slice(asker.name.length)}
-      </>
-    ) : (
-      prompt
-    )
+  const about = asked?.card ? defOf(asked.card) : undefined
+  const named = (card: CardDef) => (
+    <b className="sim-asker" onMouseEnter={look(imageOf(card.id), card.type === 'leader' || card.type === 'base')} onMouseLeave={leave}>
+      {card.name}
+    </b>
+  )
+  const rest = asker && prompt.startsWith(asker.name) ? prompt.slice(asker.name.length) : prompt
+  const at = about ? rest.indexOf(about.name) : -1
+  const promptText = (
+    <>
+      {rest !== prompt && named(asker!)}
+      {at < 0 ? (
+        rest
+      ) : (
+        <>
+          {rest.slice(0, at)}
+          {named(about!)}
+          {rest.slice(at + about!.name.length)}
+        </>
+      )}
+    </>
+  )
 
   const result =
     view.winner === null ? '' : view.winner === 'draw' ? 'Draw' : view.winner === YOU ? 'Victory' : 'Defeat'
@@ -1040,14 +1216,14 @@ function Table(props: {
           onSubmit={(event) => {
             event.preventDefault()
             if (!message.trim()) return
-            setChat((now) => [...now, { who: 'me', text: message.trim() }])
+            say(message.trim())
             setMessage('')
           }}
         >
           <input value={message} onChange={(event) => setMessage(event.target.value)} placeholder="Say something" />
           <div className="sim-quick">
             {['gg', 'gl hf', 'thinking…', 'nice play'].map((text) => (
-              <button key={text} type="button" onClick={() => setChat((now) => [...now, { who: 'me', text }])}>
+              <button key={text} type="button" onClick={() => say(text)}>
                 {text}
               </button>
             ))}
@@ -1083,12 +1259,14 @@ function Table(props: {
           )}
           <div className="sim-last">
             {lastCard(last[AI], opp.name)}
+            {revealedCards(opp, opp.name)}
             <div className={`sim-initiative-track ${view.initiative === YOU ? 'me' : 'opp'}`}>
               {/* No one holds it until the first player is chosen */}
               <span hidden={view.phase === 'first'} className={`sim-initiative${view.initiativeTaken ? ' taken' : ''}`} title={view.initiativeTaken ? 'Claimed this round' : undefined}>
                 Initiative
               </span>
             </div>
+            {revealedCards(me, 'you')}
             {lastCard(last[YOU], 'you')}
           </div>
         </div>
@@ -1124,6 +1302,7 @@ function Table(props: {
             Leave
           </button>
         </div>
+        {deckAnalysis}
         <h2>Log</h2>
         <ol ref={(list) => list?.scrollTo(0, list.scrollHeight)}>
           {view.log.map((entry, i) => (
@@ -1135,7 +1314,10 @@ function Table(props: {
       </aside>
 
       {pileOpen && (
-        <div className="sim-choice">
+        <div className="sim-choice sim-pile-window" ref={pileWindow}>
+          <button type="button" className="sim-close" aria-label="Close" title="Close" onClick={() => setPileOpen(null)}>
+            ×
+          </button>
           <p>{opened.title}</p>
           <div className={`sim-choice-cards size-${pileSize(opened.stacks.length)}`}>
             {opened.stacks.map((stack) => (
@@ -1156,11 +1338,6 @@ function Table(props: {
                 )}
               </button>
             ))}
-          </div>
-          <div className="sim-choice-buttons">
-            <button type="button" className="sim-button" onClick={() => setPileOpen(null)}>
-              Close
-            </button>
           </div>
         </div>
       )}

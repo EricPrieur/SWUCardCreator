@@ -1,6 +1,6 @@
-import { abilityLabel, handRevealed, hpOf, keywordsOf, legalActions, powerOf, seesTopCard, waitingFor } from './game.ts'
+import { abilityLabel, handPrice, handRevealed, hpOf, isHidden, keywordsOf, legalActions, powerOf, seesTopCard, waitingFor } from './game.ts'
 import { scriptStatus } from './scripts.ts'
-import type { Action, CardDef, GameState, Inst, Keywords, LogEntry, Phase, PlayerId, Prompt, UnitState } from './types.ts'
+import type { Action, CardDef, GameState, Inst, Keywords, LogEntry, Phase, PlayerId, Prompt, UnitState, Revealed } from './types.ts'
 
 // What one player is shown of the game: the open information, their own hand and resources,
 // and only the size of everything hidden (the opponent's hand and resources, both decks)
@@ -20,8 +20,13 @@ export type SideView = {
   // card is null for the opponent's: resources are facedown
   resources: { card: Inst | null; exhausted: boolean }[]
   // With their power, HP and keywords as they are now, upgrades and all
-  units: (UnitState & { power: number; hp: number; keywords: Keywords })[]
+  // hidden: Hidden keeps it from being attacked now, the phase it entered play
+  units: (UnitState & { power: number; hp: number; keywords: Keywords; hidden: boolean })[]
   spice: Inst[]
+  // The cards they revealed last (from their deck, say), and the card that revealed them
+  revealed: Revealed | null
+  // Yours: what each card in your hand costs you to play now
+  prices?: Record<string, number>
 }
 
 export type PlayerView = {
@@ -59,8 +64,10 @@ export function viewFor(state: GameState, you: PlayerId): PlayerView {
       drawn: player.drawn,
       discard: player.discard.map((c) => ({ ...c })),
       resources: player.resources.map((r) => ({ card: mine ? { ...r.card } : null, exhausted: r.exhausted })),
-      units: player.units.map((u) => ({ ...structuredClone(u), power: powerOf(state, u), hp: hpOf(state, u), keywords: keywordsOf(state, u) })),
+      units: player.units.map((u) => ({ ...structuredClone(u), power: powerOf(state, u), hp: hpOf(state, u), keywords: keywordsOf(state, u), hidden: isHidden(state, u) })),
       spice: player.spice.map((t) => ({ ...t })),
+      revealed: state.revealed?.[p as PlayerId] ?? null,
+      ...(mine && { prices: Object.fromEntries(player.hand.map((c) => [c.id, handPrice(state, p as PlayerId, state.defs[c.def])])) }),
     }
   }) as [SideView, SideView]
 

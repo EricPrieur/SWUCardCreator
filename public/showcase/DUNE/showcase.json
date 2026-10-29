@@ -161,7 +161,7 @@
       "set": "DUNE",
       "number": "007",
       "arena": "Ground",
-      "rarity": "C"
+      "rarity": "R"
     },
     {
       "id": "9f32c1fe-bf5c-4791-9ea3-fe9c4d18967f",
@@ -187,7 +187,7 @@
       "set": "DUNE",
       "number": "008",
       "arena": "Ground",
-      "rarity": "R"
+      "rarity": "C"
     },
     {
       "id": "0eea4382-6661-4450-bdb5-99cbcdc26045",
@@ -239,7 +239,7 @@
       "set": "DUNE",
       "number": "010",
       "arena": "Ground",
-      "rarity": "C"
+      "rarity": "R"
     },
     {
       "id": "1091df90-0323-4117-b6aa-d015e0fbfd86",
@@ -673,7 +673,7 @@
         "Bene Gesserit",
         "Emperor"
       ],
-      "text": "opponents play with their hands revealed.\nwhen played: discard any number of cards from your hand. for each card discarded this way, choose a card in each opponent's hand. they discard it.",
+      "text": "opponents play with their hands revealed.\nwhen played: discard any number of bene gesserit cards from your hand. for each card discarded this way, choose a card in each opponent's hand. they discard it.",
       "set": "DUNE",
       "number": "031",
       "arena": "Ground",
@@ -1351,7 +1351,7 @@
         "Bene Gesserit",
         "Atreides"
       ],
-      "text": "restore 3\nwhen played/on attack: look at an opponent's hand and name a card. this phase, opponents can't play the named card. draw a card.",
+      "text": "restore 3\nwhen played/on attack: look at an opponent's hand and choose a card in it. this phase, they can't play cards with that name. draw a card.",
       "set": "DUNE",
       "number": "066",
       "arena": "Ground",

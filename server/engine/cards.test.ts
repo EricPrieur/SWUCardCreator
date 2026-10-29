@@ -1,5 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import { chooseAction } from './ai.ts'
 import { applyAction, createGame, legalActions, powerOf } from './game.ts'
 import { readText } from './cards.ts'
 import { scripts } from './scripts.ts'
@@ -24,7 +25,7 @@ const card = (id: string, extra: Partial<CardDef>): CardDef => ({
 })
 const scripted = (name: string, subtitle?: string) => {
   const script = scripts.find((s) => s.name === name && (subtitle === undefined || s.subtitle === subtitle))!
-  return { name, subtitle: script.subtitle, ...readText(script.text), text: script.text }
+  return { name, subtitle: script.subtitle, ...readText(script.text), text: script.text, backText: script.backText }
 }
 
 const defs: CardDef[] = [
@@ -33,6 +34,7 @@ const defs: CardDef[] = [
   card('plain', { type: 'base', hp: 30 }),
   card('big', { cost: 5, power: 5, hp: 5 }),
   card('small', { cost: 2, power: 2, hp: 2 }),
+  card('frail', { cost: 1, power: 2, hp: 1 }),
   card('fremen', { cost: 2, power: 2, hp: 3, traits: ['Fremen'] }),
   card('sister', { cost: 3, power: 2, hp: 3, traits: ['Bene Gesserit'] }),
   card('paul', { name: 'Paul Atreides', subtitle: 'Test', unique: true, cost: 3, power: 3, hp: 4, traits: ['Atreides'] }),
@@ -52,6 +54,10 @@ const defs: CardDef[] = [
   card('shuttle', { ...scripted('Bene Gesserit Shuttle'), cost: 3, power: 2, hp: 4, arena: 'space' }),
   card('mohiam', { ...scripted('Reverend Mother Mohiam', "The Emperor's Truthsayer"), cost: 7, power: 4, hp: 8 }),
   card('signs', { ...scripted('Worm Signs'), type: 'event', cost: 3, arena: undefined }),
+  card('rabban', { ...scripted('Glossu Rabban', 'Governor of Arrakis'), type: 'leader', cost: 5, unit: { power: 4, hp: 6, arena: 'ground', keywords: {} } }),
+  card('troops', { ...scripted('Harkonnen Troops'), cost: 1, power: 2, hp: 1, traits: ['Harkonnen', 'Trooper'] }),
+  card('sergeant', { ...scripted('Harkonnen Sergeant'), cost: 3, power: 3, hp: 3 }),
+  card('kanly', { ...scripted('Kanly'), type: 'event', cost: 2, arena: undefined }),
   card('pawn', { name: 'Pawn of the Sisterhood', type: 'upgrade', cost: 2, arena: undefined, text: 'Attach to a non-[{Bene Gesserit}], non-[{Vehicle}] unit.\nAttached unit gains [Sentinel].' }),
 ]
 
@@ -210,6 +216,7 @@ test('Bene Gesserit Shuttle searches the top 5 cards for a Bene Gesserit unit', 
   const deck = state.players[0].deck.map((c) => c.id)
   assert.equal(deck[0], 'k5')
   assert.deepEqual([...deck.slice(1)].sort(), ['k0', 'k1', 'k3', 'k4'], 'the rest go to the bottom, shuffled')
+  assert.deepEqual(state.revealed?.[0], { cards: ['sister'], by: 'shuttle' }, 'both players see what was revealed')
 })
 
 test("Reverend Mother Mohiam: opponents play with their hands revealed", () => {
@@ -233,4 +240,49 @@ test('Pawn of the Sisterhood attaches to neither a Bene Gesserit unit nor a Vehi
   const state = table({ units0: ['sister', 'small'], hand0: ['pawn'] })
   const targets = legalActions(state, 0).flatMap((a) => (a.type === 'play' ? [a.attachTo] : []))
   assert.deepEqual(targets, ['u01'])
+})
+
+test("The AI doesn't use Glossu Rabban on a unit the damage would defeat, but does on one it doesn't", () => {
+  const rabban = (unit: string) => {
+    const state = table({ units0: [unit] })
+    state.players[0].leader.def = 'rabban'
+    // Too few resources to deploy him
+    state.players[0].resources = []
+    return chooseAction(state, 0)
+  }
+  assert.deepEqual(rabban('frail'), { type: 'attack', attacker: 'u00', target: 'base' })
+  assert.deepEqual(rabban('small'), { type: 'ability', source: 'leader', index: 0 })
+})
+
+test('The AI trades Harkonnen Troops for two Fremen tokens: one in combat, one as it is defeated', () => {
+  let state = table({ units0: ['troops'], units1: ['frail', 'frail'] })
+  state.players[0].resources = []
+  const attack = chooseAction(state, 0)!
+  assert.equal(attack.type, 'attack')
+  assert.notEqual(attack.type === 'attack' && attack.target, 'base')
+  state = act(state, 0, attack)
+  while (state.prompt) state = act(state, state.prompt.player, chooseAction(state, state.prompt.player)!)
+  assert.equal(state.players[1].units.length, 0)
+})
+
+test('Kanly: a friendly unit may still be defeated once the target is gone, for its When Defeated ability', () => {
+  let state = table({ units0: ['troops'], units1: ['frail', 'small'], hand0: ['kanly'] })
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  state = answer(state, 'u10')
+  assert.equal(state.players[1].units.length, 1, 'the target is defeated')
+  assert.deepEqual(state.prompt!.options.map((o) => o.id), ['u00'])
+  state = answer(state, 'u00')
+  // Harkonnen Troops' When Defeated: 1 damage
+  state = answer(state, 'u11')
+  assert.equal(state.players[0].units.length, 0)
+  assert.equal(state.players[1].units[0].damage, 1)
+})
+
+test('Harkonnen Sergeant offers the Trooper it draws at its cost then, played by clicking it', () => {
+  let state = table({ hand0: ['sergeant'], deck0: ['big', 'troops', 'big', 'big', 'big', 'big'] })
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  state = answer(state, 'k1')
+  assert.deepEqual(state.prompt!.play, { card: 'k1', cost: 0 })
+  state = answer(state, 'yes')
+  assert.ok(state.players[0].units.some((u) => u.id === 'k1'))
 })

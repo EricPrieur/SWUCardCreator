@@ -41,6 +41,9 @@ export type ActionAbility = {
 }
 
 export type Abilities = {
+  // When a triggered ability triggers at all ("Whenever a friendly Harkonnen unit is
+  // defeated", once each round): otherwise it isn't, and isn't among those to order
+  triggersIf?: { [K in keyof Abilities]?: (g: Game, self: Self) => boolean }
   // An event's text
   play?: Ability
   whenPlayed?: Ability
@@ -139,6 +142,10 @@ function discardOr(g: Game, self: Self, count: number, otherwise: (unitId: strin
 }
 
 // "Look at the top card of your deck. You may put it on the bottom of your deck or discard it."
+// Glossu Rabban: the AI's strongest unit that can attack and survives 1 damage
+const rabbanPick = (g: Game, self: Self) =>
+  friendlyIds(g, self, (u) => g.canAttack(u.id) && g.hp(u) - u.damage > 1).sort((a, b) => g.power(g.unit(b)!) - g.power(g.unit(a)!))[0]
+
 function scout(g: Game, self: Self) {
   const [top] = g.top(self.controller, 1)
   if (!top) return
@@ -204,15 +211,14 @@ const dune: CardScript[] = [
         {
           label: 'hurt a unit to attack with it',
           exhaust: true,
-          can: (g, self) => g.units((u) => g.controller(u) === self.controller).length > 0,
+          // Only a unit that can then attack: one that can't would take the damage for nothing
+          can: (g, self) => friendlyIds(g, self, (u) => g.canAttack(u.id)).length > 0,
           run: (g, self) => {
-            const id = g.chooseOne(
-              self.controller,
-              'Glossu Rabban: choose a friendly unit to deal 1 damage to, then attack with',
-              unitIds(g, (u) => g.controller(u) === self.controller),
-              // The AI picks a ready unit that survives the damage
-              { ai: 'help', source: self.def.id },
-            )
+            const ready = friendlyIds(g, self, (u) => g.canAttack(u.id))
+            const id = g.chooseOne(self.controller, 'Glossu Rabban: choose a friendly unit to deal 1 damage to, then attack with', ready, {
+              ai: rabbanPick(g, self) ?? ready[0],
+              source: self.def.id,
+            })
             if (!id) return
             g.damage(id, 1, self)
             const unit = g.unit(id)
@@ -412,19 +418,27 @@ const dune: CardScript[] = [
       play: (g, self) => {
         const target = g.chooseOne(self.controller, 'Kanly: deal 2 damage to a unit', unitIds(g, () => true), { ai: 'harm', source: self.def.id })
         if (!target) return
+        const name = g.name(target)
         g.damage(target, 2, self)
-        if (!g.unit(target)) return
+        // A unit may be defeated even once the target is gone (for its When Defeated ability, say):
+        // only the damage needs the target still in play
         const friends = unitIds(g, (u) => g.controller(u) === self.controller && !u.leader)
-        const sacrifice = g.chooseOne(self.controller, `Kanly: you may defeat a friendly non-leader unit to deal its power to ${g.name(target)}`, friends, {
-          optional: true,
-          // The AI keeps its units
-          ai: 'none',
-          source: self.def.id,
-        })
+        const there = !!g.unit(target)
+        const sacrifice = g.chooseOne(
+          self.controller,
+          there ? `Kanly: you may defeat a friendly non-leader unit to deal its power to ${name}` : `Kanly: ${name} is defeated; you may still defeat a friendly non-leader unit`,
+          friends,
+          {
+            optional: true,
+            // The AI keeps its units (unless trying its answers shows one is worth giving up)
+            ai: 'none',
+            source: self.def.id,
+          },
+        )
         if (!sacrifice) return
         const power = g.power(g.unit(sacrifice)!)
         g.defeat(sacrifice)
-        g.damage(target, power, self)
+        if (g.unit(target)) g.damage(target, power, self)
       },
     },
   },
@@ -650,6 +664,7 @@ const dune: CardScript[] = [
     name: 'Harkonnen Gladiator Arena',
     text: '[When you defeat a friendly Spice token:] A friendly unit gains [Raid 1] for this phase.',
     front: {
+      triggersIf: { whenSpiceDefeated: (_g, self) => youDefeatSpice(self) },
       whenSpiceDefeated: (g, self) => {
         if (!youDefeatSpice(self)) return
         const pick = g.chooseOne(self.controller, 'Harkonnen Gladiator Arena: a friendly unit gains Raid 1 for this phase', friendlyIds(g, self), {
@@ -664,6 +679,7 @@ const dune: CardScript[] = [
     name: 'Imperial Prison Planet',
     text: '[When you defeat a friendly Spice token:] You may deal 1 damage to a friendly unit. If you do and it survives, give an Experience token to it.',
     front: {
+      triggersIf: { whenSpiceDefeated: (_g, self) => youDefeatSpice(self) },
       whenSpiceDefeated: (g, self) => {
         if (!youDefeatSpice(self)) return
         const ids = friendlyIds(g, self)
@@ -684,6 +700,7 @@ const dune: CardScript[] = [
     name: 'Mother School',
     text: '[When you defeat a friendly Spice token:] Look at the top card of your deck. You may discard it.',
     front: {
+      triggersIf: { whenSpiceDefeated: (_g, self) => youDefeatSpice(self) },
       whenSpiceDefeated: (g, self) => {
         if (!youDefeatSpice(self)) return
         const [top] = g.top(self.controller, 1)
@@ -704,6 +721,7 @@ const dune: CardScript[] = [
     subtitle: "Smuggler's Run",
     text: '[Raid 1]\n[When you defeat a friendly Spice token:] You may ready this unit. Use this ability only once each round.',
     front: {
+      triggersIf: { whenSpiceDefeated: (g, self) => youDefeatSpice(self) && !g.used(self) && !!g.unit(self.id)?.exhausted },
       whenSpiceDefeated: (g, self) => {
         if (!youDefeatSpice(self) || g.used(self) || !g.unit(self.id)?.exhausted) return
         if (!g.may(self.controller, "Tuek's Lighter: ready this unit?", { yes: 'Ready it', no: 'Skip', source: self.def.id })) return
@@ -718,6 +736,7 @@ const dune: CardScript[] = [
     text: '[Hidden]\n[Smuggle] [[6 Cunning]]\n[When Played:] Draw a card.\nWhenever an opponent defeats a Spice token, create a Spice token. Use this ability only once each round.',
     front: {
       whenPlayed: (g, self) => g.draw(self.controller, 1),
+      triggersIf: { whenSpiceDefeated: (g, self) => self.spice?.by !== self.controller && !g.used(self) },
       whenSpiceDefeated: (g, self) => {
         if (self.spice?.by === self.controller || g.used(self)) return
         g.use(self)
@@ -729,8 +748,10 @@ const dune: CardScript[] = [
     name: 'Harkonnen Harvester Team',
     text: 'Whenever a friendly [{Harkonnen}] unit is defeated, create a Spice token. Use this ability only once each round.',
     front: {
+      triggersIf: { whenFriendlyDefeated: (g, self) => !!self.otherDef?.traits.includes('Harkonnen') && !g.used(self) },
       whenFriendlyDefeated: (g, self) => {
-        if (!self.otherDef?.traits.includes('Harkonnen') || g.used(self)) return
+        // Two Harkonnen units defeated at once trigger it twice: the second does nothing
+        if (g.used(self)) return
         g.use(self)
         g.createSpice(self.controller)
       },
@@ -1003,6 +1024,7 @@ const dune: CardScript[] = [
     backText:
       '[Restore 2]\n[When Deployed:] Return a [{Bene Gesserit}] or [{Fremen}] unit from your discard pile to your hand.\nWhen a friendly Spice token is defeated: Heal 2 damage from a unit or base.',
     front: {
+      triggersIf: { whenYouPlay: (g, self) => !!self.otherDef?.traits.includes('Bene Gesserit') && g.leaderReady(self.controller) },
       whenYouPlay: (g, self) => {
         const p = self.controller
         if (!self.otherDef?.traits.includes('Bene Gesserit') || !g.leaderReady(p)) return
@@ -1160,6 +1182,7 @@ const dune: CardScript[] = [
     text: '[When you play a unit:] You may exhaust this leader and either pay [1] or defeat a friendly Spice token. If you do, give an Experience token to that unit.',
     backText: '<If you control another [{Atreides}] unit, this unit gains [Sentinel].>\n[When Defeated:] Defeat an enemy non-leader unit.',
     front: {
+      triggersIf: { whenYouPlay: (g, self) => self.otherDef?.type === 'unit' && g.leaderReady(self.controller) },
       whenYouPlay: (g, self) => {
         const p = self.controller
         if (self.otherDef?.type !== 'unit' || !self.other || !g.unit(self.other) || !g.leaderReady(p)) return
@@ -1189,6 +1212,7 @@ const dune: CardScript[] = [
     text: '[When you play an [{Emperor}] unit:] You may exhaust this leader. If you do, give a Shield token to that unit.',
     backText: '[When Deployed:] Give a Shield token to a friendly [{Emperor}] unit.\nFriendly [{Emperor}] units with a Shield get [+1/+0].',
     front: {
+      triggersIf: { whenYouPlay: (g, self) => self.otherDef?.type === 'unit' && self.otherDef.traits.includes('Emperor') && g.leaderReady(self.controller) },
       whenYouPlay: (g, self) => {
         const p = self.controller
         if (self.otherDef?.type !== 'unit' || !self.otherDef.traits.includes('Emperor') || !self.other || !g.unit(self.other) || !g.leaderReady(p)) return
@@ -1540,9 +1564,7 @@ const dune: CardScript[] = [
       whenPlayed: (g, self) => {
         const p = self.controller
         const found = searchDeck(g, self, 5, (d) => d.type === 'unit' && d.traits.includes('Trooper'), 'a Trooper unit')
-        if (!found || !g.canPlay(p, found, { discount: 1 })) return
-        if (g.may(p, `Harkonnen Sergeant: play ${g.name(found)} now, for 1 less?`, { yes: 'Play it', no: 'Keep it', source: self.def.id }))
-          g.playCard(p, found, { discount: 1 })
+        if (found) g.mayPlay(p, found, `Harkonnen Sergeant: play ${g.name(found)} now, for 1 less?`, { discount: 1, source: self.def.id })
       },
     },
   },
@@ -1554,7 +1576,8 @@ const dune: CardScript[] = [
         const p = self.controller
         const top = g.top(p, 10)
         const revealed = top.filter((c) => g.def(c).type === 'unit' && g.hasTrait(c, 'Sardaukar'))
-        g.log(revealed.length ? `Sardaukar Legion reveals ${revealed.map((c) => g.def(c).name).join(', ')}` : 'Sardaukar Legion finds no Sardaukar unit', p)
+        if (revealed.length) g.reveal(p, revealed.map((c) => c.id), self)
+        else g.log('Sardaukar Legion finds no Sardaukar unit', p)
         if (revealed.length && g.spice(p)) {
           const counts = Array.from({ length: Math.min(3, g.spice(p)) + 1 }, (_, n) => `${n} (up to ${2 * n} cost)`)
           const spent = g.option(p, 'Sardaukar Legion: defeat how many Spice tokens?', counts, { ai: counts.length - 1, source: self.def.id })
@@ -1705,8 +1728,7 @@ const dune: CardScript[] = [
         })
         if (!pick) return
         g.returnToHand(pick)
-        if (g.canPlay(p, pick, { discount: 1 }) && g.may(p, `Scout: play ${g.name(pick)} again, for 1 less?`, { yes: 'Play it', no: 'Keep it', source: self.def.id }))
-          g.playCard(p, pick, { discount: 1 })
+        g.mayPlay(p, pick, `Scout: play ${g.name(pick)} again, for 1 less?`, { discount: 1, source: self.def.id })
       },
     },
   },
@@ -1717,7 +1739,7 @@ const dune: CardScript[] = [
     text: "Attack with a ground unit, even if it's exhausted. It can't attack bases for this attack. If it's a [{Ginaz}] unit, it deals its combat damage before the defender.",
     front: {
       play: (g, self) => {
-        const pick = g.chooseOne(self.controller, 'Amtal Rule: attack with a ground unit, even if it is exhausted', friendlyIds(g, self, (u) => u.arena === 'ground'), {
+        const pick = g.chooseOne(self.controller, 'Amtal Rule: attack with a ground unit, even if it is exhausted', friendlyIds(g, self, (u) => u.arena === 'ground' && g.canAttack(u.id, { exhausted: true, noBases: true })), {
           ai: 'help',
           source: self.def.id,
         })
@@ -1861,14 +1883,14 @@ const dune: CardScript[] = [
   {
     name: 'Reverend Mother Mohiam',
     subtitle: "The Emperor's Truthsayer",
-    text: "Opponents play with their hands revealed.\n[When Played:] Discard any number of cards from your hand. For each card discarded this way, choose a card in each opponent's hand. They discard it.",
+    text: "Opponents play with their hands revealed.\n[When Played:] Discard any number of [{Bene Gesserit}] cards from your hand. For each card discarded this way, choose a card in each opponent's hand. They discard it.",
     front: {
       revealsHands: true,
       whenPlayed: (g, self) => {
         const p = self.controller
         const foe = enemy(g, self)
-        const hand = g.player(p).hand.map((c) => c.id)
-        const mine = g.choose(p, 'Reverend Mother Mohiam: discard any number of cards from your hand; they discard one for each', hand, {
+        const hand = g.player(p).hand.filter((c) => g.def(c).traits.includes('Bene Gesserit')).map((c) => c.id)
+        const mine = g.choose(p, 'Reverend Mother Mohiam: discard any number of Bene Gesserit cards from your hand; they discard one for each', hand, {
           min: 0,
           max: hand.length,
           ai: 'none',
@@ -2064,7 +2086,7 @@ const dune: CardScript[] = [
             if (!top) return
             g.mill(p, top.id)
             const cost = g.def(top).cost
-            const ready = friendlyIds(g, self, (u) => !u.exhausted)
+            const ready = friendlyIds(g, self, (u) => g.canAttack(u.id))
             const same = ready.find((id) => g.cost(g.unit(id)!) === cost)
             const pick = g.chooseOne(p, `Paul Atreides: attack with a unit (one that costs ${cost} gets +2/+0)`, ready, {
               ai: same ?? 'help',
@@ -2261,7 +2283,7 @@ function searchDeck(g: Game, self: Self, count: number, test: (card: CardDef) =>
   const found = top.filter((c) => test(g.def(c))).map((c) => c.id)
   const pick = g.chooseOne(p, `${self.def.name}: search the top ${count} cards of your deck for ${what}`, found, { ai: 'best', source: self.def.id })
   if (pick) {
-    g.log(`${g.player(p).name} reveals ${g.name(pick)}`, p)
+    g.reveal(p, [pick], self)
     g.drawCard(p, pick)
   } else g.log(`${self.def.name} finds nothing`, p)
   g.shuffleToBottom(p, top.filter((c) => c.id !== pick).map((c) => c.id))
@@ -2327,7 +2349,7 @@ function imperialSpy(g: Game, self: Self) {
   const foe = enemy(g, self)
   const [top] = g.top(foe, 1)
   if (!top) return
-  const where = g.option(self.controller, "Imperial Spy: the top card of their deck…", ['Leave it on top', 'Put it on the bottom', 'Discard it'], {
+  const where = g.option(self.controller, `Imperial Spy: the top card of their deck is ${g.def(top).name}`, ['Leave it on top', 'Put it on the bottom', 'Discard it'], {
     ai: 2,
     source: self.def.id,
     card: top.def,
@@ -2406,7 +2428,18 @@ const byKey = new Map(dune.map((script) => [keyOf(script.name, script.subtitle),
 // compared with its script's once
 const found = new Map<string, CardScript | undefined>()
 
+// Each card's script, found once: a game's copies share their cards
+const scriptOfCard = new WeakMap<CardDef, CardScript | null>()
+
 export function scriptFor(card: CardDef): CardScript | undefined {
+  const known = scriptOfCard.get(card)
+  if (known !== undefined) return known ?? undefined
+  const script = findScript(card)
+  scriptOfCard.set(card, script ?? null)
+  return script
+}
+
+function findScript(card: CardDef): CardScript | undefined {
   const lookup = `${keyOf(card.name, card.subtitle)}|${card.type}|${card.text}|${card.backText}`
   if (found.has(lookup)) return found.get(lookup)
   let script = byKey.get(keyOf(card.name, card.subtitle))

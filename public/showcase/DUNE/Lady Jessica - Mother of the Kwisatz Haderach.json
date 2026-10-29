@@ -17,7 +17,7 @@
     "frameOpacity": 0
   },
   "name": "Lady Jessica",
-  "text": "[Restore 3]\n[When Played/On Attack:] Look at an opponent's hand and name a card. This phase, opponents can't play the named card. Draw a card.",
+  "text": "[Restore 3]\n[When Played/On Attack:] Look at an opponent's hand and choose a card in it. This phase, they can't play cards with that name. Draw a card.",
   "power": 4,
   "trait": "Bene Gesserit, Atreides",
   "number": "066",

@@ -113,6 +113,9 @@ export type Prompt = {
   source?: string
   // A card the question is about, shown with it (the top card of a deck)
   card?: string
+  // The card in the player's hand a "play it now?" question plays, and what it costs then:
+  // clicking that card answers yes
+  play?: { card: string; cost: number }
   kind: 'pick' | 'option'
   // def: the card, for one shown only in the question (in a hand, on top of a deck)
   options: { id: string; label?: string; def?: string }[]
@@ -143,6 +146,8 @@ export type Discount = { player: PlayerId; trait: string; amount: number }
 
 // A unit whose control was taken until the regroup phase starts, when its owner takes it back
 export type Borrowed = { unit: string; owner: PlayerId }
+
+export type Revealed = { cards: string[]; by: string }
 
 export type GameState = {
   rng: number
@@ -176,6 +181,9 @@ export type GameState = {
   doomed: string[]
   // The attack under way, for what applies while attacking and the defender's own abilities
   attack: { attacker: string; target: string | 'base' } | null
+  // The cards each player revealed last, and the card that made them reveal them (card ids);
+  // a game saved before it had none
+  revealed?: [Revealed | null, Revealed | null]
   // While an ability waits for an answer
   prompt: Prompt | null
   pending: Pending | null

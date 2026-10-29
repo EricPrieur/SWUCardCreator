@@ -17,7 +17,7 @@
     "frameOpacity": 0
   },
   "name": "Reverend Mother Mohiam",
-  "text": "Opponents play with their hands revealed.\n[When Played:] Discard any number of cards from your hand. For each card discarded this way, choose a card in each opponent's hand. They discard it.",
+  "text": "Opponents play with their hands revealed.\n[When Played:] Discard any number of [{Bene Gesserit}] cards from your hand. For each card discarded this way, choose a card in each opponent's hand. They discard it.",
   "power": 4,
   "trait": "Bene Gesserit, Emperor",
   "number": "031",

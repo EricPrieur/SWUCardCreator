@@ -77,6 +77,7 @@ export function createGame(options: { seed: number; decks: [DeckList, DeckList];
     borrowed: [],
     doomed: [],
     attack: null,
+    revealed: [null, null],
     prompt: null,
     pending: null,
   }
@@ -212,6 +213,9 @@ export function hpOf(state: GameState, unit: UnitState) {
     grantsTo(state, unit).reduce((sum, grant) => sum + (grant.hp ?? 0), 0)
   )
 }
+
+// Hidden (7.5.18): a unit with it can't be attacked the phase it entered play
+export const isHidden = (state: GameState, unit: UnitState) => !!keywordsOf(state, unit).hidden && unit.entered === state.phaseCount
 
 // Grit (7.5.6): +1/+0 for each damage on it; Raid (7.5.8): +N/+0 while attacking
 export function powerOf(state: GameState, unit: UnitState, attacking = false) {
@@ -400,8 +404,12 @@ type Hook =
 
 // An event on a player's side, which the abilities there that wait for it resolve after
 function trigger(state: GameState, p: PlayerId, hook: Hook, extra: Partial<Self> = {}, except?: string) {
-  for (const { self, abilities } of holders(state, p))
-    if (self.id !== except) queue(state, p, self.def.name, abilities[hook], { ...self, ...extra })
+  for (const { self, abilities } of holders(state, p)) {
+    if (self.id === except) continue
+    const triggered = { ...self, ...extra }
+    if (abilities.triggersIf?.[hook]?.(new Game(state, p), triggered) === false) continue
+    queue(state, p, self.def.name, abilities[hook], triggered)
+  }
 }
 
 // "Use this ability only once each round"
@@ -510,13 +518,11 @@ function attackTargets(state: GameState, p: PlayerId, attacker: UnitState): (str
     const self: Self = { id: attacker.id, controller: p, def: def(state, attacker) }
     return sentinels.filter((u) => !cantAttack?.(new Game(state), self, u)).map((u) => u.id)
   }
-  // Hidden (7.5.18): not the phase it entered play
-  const hidden = (u: UnitState) => keywordsOf(state, u).hidden && u.entered === state.phaseCount
   // "This unit can't attack units named Paul Atreides."
   const cant = unitScript(state, attacker).cantAttack
   const g = new Game(state)
   const self: Self = { id: attacker.id, controller: p, def: def(state, attacker) }
-  const allowed = (u: UnitState) => !hidden(u) && !cant?.(g, self, u)
+  const allowed = (u: UnitState) => !isHidden(state, u) && !cant?.(g, self, u)
   return [...enemies.filter(allowed).map((u) => u.id), 'base']
 }
 
@@ -650,7 +656,7 @@ function checkAnswer(prompt: Prompt, picks: string[]) {
 export function applyAction(game: GameState, p: PlayerId, action: Action): GameState {
   if (action.type === 'concede') {
     if (game.phase === 'over') throw new IllegalAction('The game is over')
-    const state = structuredClone(game)
+    const state = copy(game)
     state.prompt = null
     state.pending = null
     state.phase = 'over'
@@ -672,10 +678,17 @@ export function applyAction(game: GameState, p: PlayerId, action: Action): GameS
   return play(game, p, action, [])
 }
 
+// A game to change: a deep copy, but for what never changes once made, which the copy shares:
+// the card definitions, the log's lines and the game an ability's question waits in
+function copy(state: GameState): GameState {
+  const { defs, log, pending, ...rest } = state
+  return { ...structuredClone(rest), defs, log: [...log], pending }
+}
+
 // Plays an action from the game before it, with the answers known so far: to its end, or to
 // the next question, the game then showing how far it got
 function play(base: GameState, p: PlayerId, action: Action, answers: string[][]): GameState {
-  const state = structuredClone(base)
+  const state = copy(base)
   const outer = current
   current = { answers, next: 0, queue: [] }
   try {
@@ -878,6 +891,10 @@ function priceOf(state: GameState, p: PlayerId, card: CardDef, from: PlayedFrom,
   const cost = from === 'smuggle' ? smuggleCost(state, p, card) : playCost(state, p, card)
   return Math.max(0, cost - (options.discount ?? 0) - (discountFor(state, p, card)?.amount ?? 0))
 }
+
+// What a card in a player's hand costs them to play now: its cost, aspects missing and
+// discounts counted
+export const handPrice = (state: GameState, p: PlayerId, card: CardDef) => priceOf(state, p, card, 'hand')
 
 // How much less a card may cost for the Spice tokens defeated as it is played (CHOAM Dividend,
 // Guild Heighliner)
@@ -1295,11 +1312,12 @@ export class Game {
     return pick ?? null
   }
   // A "you may": yes or no. ai: what the AI answers.
-  may(player: PlayerId, text: string, options: { yes?: string; no?: string; ai?: boolean; source?: string } = {}) {
+  may(player: PlayerId, text: string, options: { yes?: string; no?: string; ai?: boolean; source?: string; play?: Prompt['play'] } = {}) {
     const [pick] = ask({
       player,
       text,
       source: options.source,
+      ...(options.play && { play: options.play }),
       kind: 'option',
       options: [
         { id: 'no', label: options.no ?? 'No' },
@@ -1340,6 +1358,14 @@ export class Game {
   // Doing
   log(text: string, player?: PlayerId) {
     log(this.state, text, player)
+  }
+  // Cards a player reveals (from their deck, say), shown to both players until they reveal others
+  reveal(p: PlayerId, cardIds: string[], by: Self) {
+    const cards = cardIds.flatMap((id) => (this.card(id) ? [this.card(id)!.def] : []))
+    if (!cards.length) return
+    this.state.revealed ??= [null, null]
+    this.state.revealed[p] = { cards, by: by.def.id }
+    this.log(`${this.player(p).name} reveals ${cards.map((d) => this.state.defs[d].name).join(', ')}`, p)
   }
   // To a unit or a base (base0, base1): the damage dealt, none when a Shield token prevents it
   damage(target: string, amount: number, from?: Self) {
@@ -1633,6 +1659,20 @@ export class Game {
     if (player.resources.some((r) => r.card.id === cardId)) return smuggle ? 'smuggle' : 'plot'
     return undefined
   }
+  // What a card costs its player to play now, from where it is
+  price(p: PlayerId, cardId: string, options: PlayOptions & { smuggle?: boolean } = {}) {
+    const from = this.placeOf(p, cardId, options.smuggle)
+    const card = this.cardInfo(cardId)
+    return from && card ? priceOf(this.state, p, this.def(card), from, options) : 0
+  }
+  // "Play it now?": the question, answered yes by clicking the card, which then is played
+  mayPlay(p: PlayerId, cardId: string, text: string, options: PlayOptions & { source?: string } = {}) {
+    if (!this.canPlay(p, cardId, options)) return false
+    const { source, ...play } = options
+    if (!this.may(p, text, { yes: 'Play it', no: 'Keep it', source, play: { card: cardId, cost: this.price(p, cardId, play) } })) return false
+    this.playCard(p, cardId, play)
+    return true
+  }
   canPlay(p: PlayerId, cardId: string, options: PlayOptions & { smuggle?: boolean } = {}) {
     const from = this.placeOf(p, cardId, options.smuggle)
     const card = this.cardInfo(cardId)
@@ -1663,13 +1703,24 @@ export class Game {
     return true
   }
 
+  // What a unit may attack, if it can attack at all: ready (unless the ability says it may be
+  // exhausted) and with something to attack
+  attackable(unitId: string, options: { exhausted?: boolean; noBases?: boolean } = {}) {
+    const unit = this.unit(unitId)
+    if (!unit || (unit.exhausted && !options.exhausted)) return []
+    return attackTargets(this.state, controllerOf(this.state, unit), unit).filter((t) => !(options.noBases && t === 'base'))
+  }
+  canAttack(unitId: string, options: { exhausted?: boolean; noBases?: boolean } = {}) {
+    return this.attackable(unitId, options).length > 0
+  }
+
   // Attack with a unit, its controller choosing what it attacks. The unit may be exhausted
   // when the ability says so.
   attackWith(unitId: string, options: AttackOptions & { exhausted?: boolean; noBases?: boolean } = {}) {
     const unit = this.unit(unitId)
-    if (!unit || (unit.exhausted && !options.exhausted)) return false
+    if (!unit) return false
     const p = controllerOf(this.state, unit)
-    const targets = attackTargets(this.state, p, unit).filter((t) => !(options.noBases && t === 'base'))
+    const targets = this.attackable(unitId, options)
     const ids = targets.map((t) => (t === 'base' ? baseId(other(p)) : t))
     const pick = this.chooseOne(p, `Choose what ${nameOf(this.state, unit)} attacks`, ids, { ai: 'harm' })
     if (!pick) return false
