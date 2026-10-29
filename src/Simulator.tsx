@@ -7,6 +7,7 @@ import { loadDecks, type Deck } from './cards'
 import { chooseAction } from '../server/engine/ai.ts'
 import { cardDef, randomDeck, type SavedCard } from '../server/engine/cards.ts'
 import { applyAction, createGame } from '../server/engine/game.ts'
+import { scripts } from '../server/engine/scripts.ts'
 import { viewFor, type SideView } from '../server/engine/view.ts'
 import type { Action, Arena, CardDef, GameState, PlayerId } from '../server/engine/types.ts'
 import './Simulator.css'
@@ -257,7 +258,7 @@ export function Simulator() {
             <DeckPicker title="AI Deck" side="opp" value={choices[1]} decks={decks} set={set} onChange={(c) => choose(1, c)} />
           </div>
           <p className="sim-note">
-            Cards play with their cost, power, HP and printed keywords; the rest of their text doesn't do anything yet.
+            Cards play with their cost, power, HP and printed keywords. The text of {scripts.length} cards works so far; on the others it doesn't do anything yet.
           </p>
           <button type="button" className="sim-button go" onClick={start}>
             Start game
@@ -369,6 +370,13 @@ function Table(props: {
   const opp = view.players[AI]
   const defOf = (id: string) => game.defs[id]
   const mine = view.waitingFor.includes(YOU)
+  // A question an ability asks you: what you may pick, on the board or among cards shown apart
+  const asked = view.prompt && 'options' in view.prompt && view.prompt.player === YOU ? view.prompt : null
+  const boardIds = new Set([...me.units, ...opp.units].map((u) => u.id).concat('base0', 'base1'))
+  const askedOn = (id: string) => !!asked && asked.kind === 'pick' && asked.options.some((o) => o.id === id)
+  const shown = asked?.kind === 'pick' ? asked.options.filter((o) => !boardIds.has(o.id)) : []
+  // A question about a card off the board is asked beside it, apart from the board
+  const apart = !!shown.length || !!asked?.card
 
   const act = (p: PlayerId, action: Action) => {
     if (action.type === 'play') {
@@ -449,12 +457,14 @@ function Table(props: {
   }
 
   // What the phase asks of you, and the buttons that answer it (always at the bottom right)
-  const pickCount = mine && view.phase === 'resource' ? Math.min(2, me.handCount) : mine && view.phase === 'regroup' ? 1 : 0
+  const pickCount = asked ? 0 : mine && view.phase === 'resource' ? Math.min(2, me.handCount) : mine && view.phase === 'regroup' ? 1 : 0
   const attackActions = view.actions.filter((a) => a.type === 'attack')
   const attacker = mode?.kind === 'attack' ? me.units.find((u) => u.id === mode.attacker) : undefined
   const attachCard = mode?.kind === 'attach' ? me.hand?.find((c) => c.id === mode.card) : undefined
   const isTarget = (target: string) =>
-    mode?.kind === 'attack'
+    asked
+      ? askedOn(target)
+      : mode?.kind === 'attack'
       ? can({ type: 'attack', attacker: mode.attacker, target })
       : mode?.kind === 'attach'
         ? can({ type: 'play', card: mode.card, attachTo: target })
@@ -463,7 +473,36 @@ function Table(props: {
   let prompt = ''
   let buttons: { label: string; kind?: string; onClick?: () => void; disabled?: boolean }[] = []
   const waitText = `${opp.name} is ${view.phase === 'action' ? 'choosing an action' : 'deciding'}…`
-  switch (view.phase) {
+  const answer = (picks: string[]) => act(YOU, { type: 'answer', picks })
+  const pickAnswer = (id: string) => {
+    if (!asked) return
+    if (asked.max === 1 && asked.min <= 1) return answer([id])
+    setPicked((now) => (now.includes(id) ? now.filter((i) => i !== id) : now.length < asked.max ? [...now, id] : now))
+  }
+  // The card that asks, unless its question already starts with its name
+  const askText = (prompt: { source?: string; text: string }) => {
+    const name = prompt.source && view.defs[prompt.source]?.name
+    return name && !prompt.text.startsWith(name) ? `${name}: ${prompt.text}` : prompt.text
+  }
+  if (view.prompt && !asked) {
+    prompt = `${opp.name} is choosing…`
+  } else if (asked?.kind === 'option') {
+    prompt = askText(asked)
+    buttons = asked.options.map((o, i) => ({
+      label: o.label ?? o.id,
+      kind: i === asked.options.length - 1 ? 'go' : undefined,
+      onClick: () => answer([o.id]),
+    }))
+  } else if (asked) {
+    const count = asked.max > 1 ? ` (${picked.length}/${asked.max})` : ''
+    prompt = askText(asked) + count
+    buttons = [
+      ...(asked.min === 0 ? [{ label: asked.max === 1 ? 'Skip' : 'None', onClick: () => answer([]) }] : []),
+      ...(asked.max > 1 || asked.min > 1
+        ? [{ label: 'Done', kind: 'go', disabled: picked.length < asked.min || !picked.length, onClick: () => answer(picked) }]
+        : []),
+    ]
+  } else switch (view.phase) {
     case 'first':
       prompt = mine ? 'You decide who goes first' : `${opp.name} decides who goes first…`
       buttons = [
@@ -521,6 +560,11 @@ function Table(props: {
               disabled: !can({ type: 'initiative' }),
               onClick: () => act(YOU, { type: 'initiative' }),
             },
+            ...view.abilities.map((a) => ({
+              label: `${a.source === 'leader' ? defOf(me.leader.def).name : defOf(me.units.find((u) => u.id === a.source)?.def ?? '').name}: ${a.label}`,
+              kind: 'ability',
+              onClick: () => act(YOU, { type: 'ability', source: a.source, index: a.index }),
+            })),
             ...(can({ type: 'deploy' })
               ? [{ label: 'Deploy Leader', kind: 'go', onClick: () => act(YOU, { type: 'deploy' }) }]
               : []),
@@ -540,7 +584,9 @@ function Table(props: {
     else act(YOU, plays[0])
   }
   const clickUnit = (id: string) => {
-    if (mode && isTarget(id)) {
+    if (asked) {
+      if (askedOn(id)) pickAnswer(id)
+    } else if (mode && isTarget(id)) {
       act(YOU, mode.kind === 'attack' ? { type: 'attack', attacker: mode.attacker, target: id } : { type: 'play', card: mode.card, attachTo: id })
     } else if (mode?.kind === 'attack' && mode.attacker === id) {
       setMode(null)
@@ -548,8 +594,9 @@ function Table(props: {
       setMode({ kind: 'attack', attacker: id })
     }
   }
-  const clickBase = () => {
-    if (mode?.kind === 'attack' && isTarget('base')) act(YOU, { type: 'attack', attacker: mode.attacker, target: 'base' })
+  const clickBase = (id: string) => {
+    if (asked) return askedOn(id) && pickAnswer(id)
+    if (id === 'base' && mode?.kind === 'attack' && isTarget('base')) act(YOU, { type: 'attack', attacker: mode.attacker, target: 'base' })
   }
 
   const unitView = (side: SideView, arena: Arena) => (u: SideView['units'][number]) => {
@@ -558,11 +605,13 @@ function Table(props: {
     const printed = u.leader ? d.unit : d
     const target = isTarget(u.id)
     const ours = side === me
-    const ready = !mode && ours && attackActions.some((a) => a.type === 'attack' && a.attacker === u.id)
+    const chosen = asked && picked.includes(u.id)
+    const ready = !mode && !asked && ours && attackActions.some((a) => a.type === 'attack' && a.attacker === u.id)
     const classes = [
       'sim-unit',
       u.exhausted && 'exhausted',
       target && 'target',
+      chosen && 'chosen',
       mode?.kind === 'attack' && !ours && arena === attacker?.arena && !target && 'blocked',
       attacker?.id === u.id && 'attacker',
       ready && 'can-act',
@@ -680,7 +729,7 @@ function Table(props: {
               ))}
           {!side.hand && <span className="sim-count hand">{side.handCount}</span>}
         </div>
-        {who === 'me' && (
+        {who === 'me' && !apart && (
           <div className="sim-actions">
             {buttons.map((b) => (
               <button key={b.label} type="button" className={`sim-button ${b.kind ?? ''}`} disabled={b.disabled} onClick={b.onClick}>
@@ -714,15 +763,16 @@ function Table(props: {
   const baseCard = (side: SideView) => {
     const image = imageOf(side.base.def)
     const hp = defOf(side.base.def).hp
-    const target = side === opp && isTarget('base')
+    const id = side === me ? `base${YOU}` : `base${AI}`
+    const target = asked ? askedOn(id) : side === opp && isTarget('base')
     return (
       <button
         type="button"
-        className={`sim-landscape base${target ? ' target' : ''}`}
+        className={`sim-landscape base${target ? ' target' : ''}${asked && picked.includes(id) ? ' chosen' : ''}`}
         title={`${hp - side.base.damage} of ${hp} HP left`}
         onMouseEnter={look(image, true)}
         onMouseLeave={leave}
-        onClick={side === opp ? clickBase : undefined}
+        onClick={() => clickBase(side === opp && !asked ? 'base' : id)}
       >
         <img src={img(image ?? '')} alt={defOf(side.base.def).name} />
         <span className="sim-base-hp">{hp - side.base.damage}</span>
@@ -801,7 +851,7 @@ function Table(props: {
           <div className="sim-centre">
             {leaderCard(opp)}
             {baseCard(opp)}
-            <div className="sim-prompt">{prompt && <span>{prompt}</span>}</div>
+            <div className="sim-prompt">{prompt && <span>{apart ? 'Choose…' : prompt}</span>}</div>
             {baseCard(me)}
             {leaderCard(me)}
           </div>
@@ -859,6 +909,38 @@ function Table(props: {
         </ol>
       </aside>
 
+      {apart && asked && (
+        <div className="sim-choice">
+          <p>{prompt}</p>
+          <div className="sim-choice-cards">
+            {asked.card && (
+              <img src={img(imageOf(asked.card) ?? '')} alt={defOf(asked.card).name} onMouseEnter={look(imageOf(asked.card))} onMouseLeave={leave} />
+            )}
+            {shown.map((o) => {
+              const image = o.def ? imageOf(o.def) : undefined
+              return (
+                <button
+                  key={o.id}
+                  type="button"
+                  className={picked.includes(o.id) ? 'picked' : undefined}
+                  onMouseEnter={look(image)}
+                  onMouseLeave={leave}
+                  onClick={() => pickAnswer(o.id)}
+                >
+                  {image ? <img src={img(image)} alt={o.def ? defOf(o.def).name : ''} /> : <span>{o.label ?? o.id}</span>}
+                </button>
+              )
+            })}
+          </div>
+          <div className="sim-choice-buttons">
+            {buttons.map((b) => (
+              <button key={b.label} type="button" className={`sim-button ${b.kind ?? ''}`} disabled={b.disabled} onClick={b.onClick}>
+                {b.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       {hover && (
         <div className={`sim-preview ${hover.right ? 'right' : 'left'}${hover.landscape ? ' landscape' : ''}`}>
           <img src={img(hover.image)} alt="" />

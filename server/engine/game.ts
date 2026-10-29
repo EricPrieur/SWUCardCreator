@@ -3,13 +3,16 @@ import {
   type Action,
   type Aspect,
   type CardDef,
+  type Effect,
   type GameState,
   type Inst,
   type Keywords,
   type PlayerId,
   type PlayerState,
+  type Prompt,
   type UnitState,
 } from './types.ts'
+import { abilitiesOf, type Abilities, type Ability, type Self } from './scripts.ts'
 
 // Rule numbers below are those of the Comprehensive Rules v9.0
 
@@ -35,10 +38,13 @@ function shuffle<T>(state: GameState, list: T[]) {
   }
 }
 
-const other = (p: PlayerId): PlayerId => (p === 0 ? 1 : 0)
+export const other = (p: PlayerId): PlayerId => (p === 0 ? 1 : 0)
 const def = (state: GameState, inst: { def: string }) => state.defs[inst.def]
 const log = (state: GameState, text: string, player?: PlayerId) => state.log.push({ player, text })
 const nameOf = (state: GameState, inst: { def: string }) => def(state, inst).name
+// A base, as a prompt or an ability names it
+export const baseId = (p: PlayerId) => `base${p}`
+const baseOwner = (id: string): PlayerId | undefined => (id === 'base0' ? 0 : id === 'base1' ? 1 : undefined)
 
 // 5.2: bases and leaders in play, a random player chosen to decide who starts with the
 // initiative; then, actions of their own, that choice, the 6 cards drawn, the mulligans and the
@@ -59,6 +65,9 @@ export function createGame(options: { seed: number; decks: [DeckList, DeckList];
     nextId: 1,
     log: [],
     winner: null,
+    effects: [],
+    prompt: null,
+    pending: null,
   }
   options.decks.forEach((list, p) => {
     for (const id of [list.leader, list.base, ...list.deck]) if (!defs[id]) throw new Error(`Unknown card ${id}`)
@@ -86,9 +95,11 @@ export function createGame(options: { seed: number; decks: [DeckList, DeckList];
   return state
 }
 
-// Who has to act now: the active player in the action phase; during setup and regroup,
-// whoever still has a choice to make (both at once while choosing the setup resources)
+// Who has to act now: whoever a question waits on; the active player in the action phase;
+// during setup and regroup, whoever still has a choice to make (both at once while choosing
+// the setup resources)
 export function waitingFor(state: GameState): PlayerId[] {
+  if (state.prompt) return [state.prompt.player]
   const [a, b] = [state.initiative, other(state.initiative)]
   const pending = (done: (p: PlayerState) => boolean) => [a, b].filter((p) => !done(state.players[p]))
   switch (state.phase) {
@@ -130,10 +141,16 @@ function keywordsOf(state: GameState, unit: UnitState): Keywords {
   return unit.leader ? (card.unit?.keywords ?? {}) : card.keywords
 }
 
+const effectsOn = (state: GameState, unit: UnitState) => state.effects.filter((e) => e.unit === unit.id)
+
 export function hpOf(state: GameState, unit: UnitState) {
   const card = def(state, unit)
   const printed = unit.leader ? (card.unit?.hp ?? 0) : card.hp
-  return printed + unit.upgrades.reduce((sum, u) => sum + def(state, u).hp, 0)
+  return (
+    printed +
+    unit.upgrades.reduce((sum, u) => sum + def(state, u).hp, 0) +
+    effectsOn(state, unit).reduce((sum, e) => sum + e.hp, 0)
+  )
 }
 
 // Grit (7.5.6): +1/+0 for each damage on it; Raid (7.5.8): +N/+0 while attacking
@@ -145,6 +162,7 @@ export function powerOf(state: GameState, unit: UnitState, attacking = false) {
     0,
     printed +
       unit.upgrades.reduce((sum, u) => sum + def(state, u).power, 0) +
+      effectsOn(state, unit).reduce((sum, e) => sum + e.power, 0) +
       (keywords.grit ? unit.damage : 0) +
       (attacking ? (keywords.raid ?? 0) : 0),
   )
@@ -170,31 +188,104 @@ function findUnit(state: GameState, id: string) {
   return undefined
 }
 
+const controllerOf = (state: GameState, unit: UnitState): PlayerId => (state.players[0].units.includes(unit) ? 0 : 1)
+
+// --- Resolving abilities: questions and triggers ---
+
+// An ability asked something that has no answer yet: the action stops here, to be played
+// again from its start once the question is answered (see Pending)
+class Pause extends Error {
+  prompt: Prompt
+  constructor(prompt: Prompt) {
+    super('Waiting for an answer')
+    this.prompt = prompt
+  }
+}
+
+// A triggered ability waiting to resolve
+type Trigger = { player: PlayerId; label: string; run: () => void }
+
+// The action being played: the answers it has, the next to hand out, the abilities triggered.
+// One action at a time, start to end in one go, so it can live outside the game state.
+type Run = { answers: string[][]; next: number; queue: Trigger[] }
+let current: Run | null = null
+
+function ask(prompt: Prompt): string[] {
+  const run = current as Run
+  if (run.next < run.answers.length) return run.answers[run.next++]
+  throw new Pause(prompt)
+}
+
+function queue(state: GameState, player: PlayerId, source: string, ability: Ability | undefined, self: Self) {
+  if (!ability) return
+  ;(current as Run).queue.push({ player, label: source, run: () => ability(new Game(state), self) })
+}
+
+// The abilities a card has where it is: a unit's, a leader's unit side's once deployed, a
+// leader side's
+function scriptOf(state: GameState, inst: { def: string }, side: 'front' | 'back' = 'front'): Abilities {
+  return abilitiesOf(def(state, inst), side)
+}
+const unitScript = (state: GameState, unit: UnitState) => scriptOf(state, unit, unit.leader ? 'back' : 'front')
+
+// Triggered abilities resolve once the step that triggered them is done: the active player's
+// first (7.6.10), each player choosing the order of their own when they have more than one
+function resolveTriggers(state: GameState) {
+  const run = current as Run
+  while (run.queue.length && state.phase !== 'over') {
+    const ofActive = run.queue.filter((t) => t.player === state.active)
+    const mine = ofActive.length ? ofActive : run.queue
+    let next = mine[0]
+    if (mine.length > 1) {
+      const [pick] = ask({
+        player: next.player,
+        kind: 'option',
+        text: 'Choose the ability to resolve first',
+        options: mine.map((t, i) => ({ id: String(i), label: t.label })),
+        min: 1,
+        max: 1,
+        ai: '0',
+      })
+      next = mine[Number(pick)]
+    }
+    run.queue = run.queue.filter((t) => t !== next)
+    next.run()
+  }
+}
+
 // 1.12.4: defeated once its damage reaches its HP. A unit goes to its owner's discard pile with
 // its upgrades; a leader unit flips back to its leader side, exhausted, and can't deploy again.
 function checkDefeats(state: GameState) {
   for (const p of [0, 1] as const) {
-    const player = state.players[p]
-    for (const unit of [...player.units]) {
-      if (unit.damage < hpOf(state, unit)) continue
-      player.units = player.units.filter((u) => u !== unit)
-      for (const { owner, ...upgrade } of unit.upgrades) state.players[owner].discard.push(upgrade)
-      if (unit.leader) {
-        player.leader.deployed = false
-        player.leader.exhausted = true
-      } else {
-        player.discard.push({ id: unit.id, def: unit.def })
-      }
-      log(state, `${nameOf(state, unit)} is defeated`, p)
-    }
+    for (const unit of [...state.players[p].units]) if (unit.damage >= hpOf(state, unit)) defeatUnit(state, unit)
   }
   // 5.6: the game ends the moment a base is defeated; both at once is a draw
   const lost = ([0, 1] as const).filter((p) => state.players[p].base.damage >= def(state, state.players[p].base).hp)
-  if (lost.length) {
+  if (lost.length && state.phase !== 'over') {
     state.phase = 'over'
     state.winner = lost.length === 2 ? 'draw' : other(lost[0])
     log(state, state.winner === 'draw' ? 'Both bases fall: a draw' : `${state.players[state.winner].name} wins`)
   }
+}
+
+function defeatUnit(state: GameState, unit: UnitState) {
+  const p = controllerOf(state, unit)
+  const player = state.players[p]
+  player.units = player.units.filter((u) => u !== unit)
+  state.effects = state.effects.filter((e) => e.unit !== unit.id)
+  for (const { owner, ...upgrade } of unit.upgrades) state.players[owner].discard.push(upgrade)
+  if (unit.leader) {
+    player.leader.deployed = false
+    player.leader.exhausted = true
+  } else {
+    state.players[unit.owner].discard.push({ id: unit.id, def: unit.def })
+  }
+  log(state, `${nameOf(state, unit)} is defeated`, p)
+  queue(state, p, nameOf(state, unit), unitScript(state, unit).whenDefeated, {
+    id: unit.id,
+    controller: p,
+    def: def(state, unit),
+  })
 }
 
 function heal(state: GameState, p: PlayerId, amount: number) {
@@ -229,9 +320,41 @@ function choose<T>(list: T[], count: number): T[][] {
   return list.flatMap((item, i) => choose(list.slice(i + 1), count - 1).map((rest) => [item, ...rest]))
 }
 
-// Every action the player may take now; [] when it isn't their turn to choose
+// A leader's or a unit's Action abilities that can be used now, with what they cost
+function actionAbilities(state: GameState, p: PlayerId) {
+  const player = state.players[p]
+  const ready = readyResources(player)
+  const found: { source: string; index: number }[] = []
+  const offer = (source: string, abilities: Abilities, exhausted: boolean, self: Self) =>
+    abilities.actions?.forEach((ability, index) => {
+      if (ability.exhaust && exhausted) return
+      if ((ability.resources ?? 0) > ready) return
+      if (ability.can && !ability.can(new Game(state), self)) return
+      found.push({ source, index })
+    })
+  if (!player.leader.deployed) {
+    offer('leader', scriptOf(state, player.leader), player.leader.exhausted, {
+      id: 'leader',
+      controller: p,
+      def: def(state, player.leader),
+    })
+  }
+  for (const unit of player.units)
+    offer(unit.id, unitScript(state, unit), unit.exhausted, { id: unit.id, controller: p, def: def(state, unit) })
+  return found
+}
+
+// Every action the player may take now; [] when it isn't their turn to choose. An answer with
+// several picks is listed in each of its combinations only while there are few.
 export function legalActions(state: GameState, p: PlayerId): Action[] {
   if (state.phase === 'over' || !waitingFor(state).includes(p)) return []
+  if (state.prompt) {
+    const { options, min, max } = state.prompt
+    const ids = options.map((o) => o.id)
+    const sizes = Array.from({ length: max - min + 1 }, (_, i) => min + i)
+    if (max > 1 && ids.length > 10) return []
+    return sizes.flatMap((size) => choose(ids, size)).map((picks) => ({ type: 'answer', picks }))
+  }
   const player = state.players[p]
   const handIds = player.hand.map((c) => c.id)
   switch (state.phase) {
@@ -270,6 +393,7 @@ export function legalActions(state: GameState, p: PlayerId): Action[] {
   const leader = def(state, player.leader)
   if (!player.leader.deployed && !player.leader.epicUsed && player.resources.length >= leader.cost)
     actions.push({ type: 'deploy' })
+  for (const { source, index } of actionAbilities(state, p)) actions.push({ type: 'ability', source, index })
   if (!state.initiativeTaken) actions.push({ type: 'initiative' })
   return actions
 }
@@ -278,36 +402,76 @@ export function legalActions(state: GameState, p: PlayerId): Action[] {
 
 const sameAction = (a: Action, b: Action) => JSON.stringify(a) === JSON.stringify(b)
 
+function checkAnswer(prompt: Prompt, picks: string[]) {
+  const ids = new Set(prompt.options.map((o) => o.id))
+  const ok =
+    picks.length >= prompt.min &&
+    picks.length <= prompt.max &&
+    new Set(picks).size === picks.length &&
+    picks.every((pick) => ids.has(pick))
+  if (!ok) throw new IllegalAction('That answer is not one of the choices')
+}
+
 // The game after player p takes an action; the game given is left as it was
 export function applyAction(game: GameState, p: PlayerId, action: Action): GameState {
-  const state = structuredClone(game)
   if (action.type === 'concede') {
-    if (state.phase === 'over') throw new IllegalAction('The game is over')
+    if (game.phase === 'over') throw new IllegalAction('The game is over')
+    const state = structuredClone(game)
+    state.prompt = null
+    state.pending = null
     state.phase = 'over'
     state.winner = other(p)
     log(state, `${state.players[p].name} concedes`, p)
     return state
   }
-  const legal = legalActions(state, p)
+  if (game.prompt) {
+    if (action.type !== 'answer' || p !== game.prompt.player) throw new IllegalAction('An answer is awaited')
+    checkAnswer(game.prompt, action.picks)
+    const pending = game.pending as NonNullable<GameState['pending']>
+    return play(pending.base, pending.player, pending.action, [...pending.answers, action.picks])
+  }
+  const legal = legalActions(game, p)
   // A resource choice may list its cards in any order
   const normal = action.type === 'resource' ? { ...action, cards: [...action.cards].sort() } : action
   const allowed = legal.some((a) => sameAction(a.type === 'resource' ? { ...a, cards: [...a.cards].sort() } : a, normal))
-  if (!allowed) throw new IllegalAction(`${state.players[p].name} can't ${action.type} now`)
+  if (!allowed) throw new IllegalAction(`${game.players[p].name} can't ${action.type} now`)
+  return play(game, p, action, [])
+}
 
+// Plays an action from the game before it, with the answers known so far: to its end, or to
+// the next question, the game then showing how far it got
+function play(base: GameState, p: PlayerId, action: Action, answers: string[][]): GameState {
+  const state = structuredClone(base)
+  const outer = current
+  current = { answers, next: 0, queue: [] }
+  try {
+    perform(state, p, action)
+    return state
+  } catch (error) {
+    if (!(error instanceof Pause)) throw error
+    state.prompt = error.prompt
+    state.pending = { base, player: p, action, answers }
+    return state
+  } finally {
+    current = outer
+  }
+}
+
+function perform(state: GameState, p: PlayerId, action: Action) {
   const player = state.players[p]
   switch (state.phase) {
     case 'first':
       if (action.type === 'first') chooseFirst(state, p, action.goFirst)
-      return state
+      return
     case 'mulligan':
       if (action.type === 'mulligan') mulligan(state, p, action.take)
-      return state
+      return
     case 'resource':
       if (action.type === 'resource') setupResource(state, p, action.cards)
-      return state
+      return
     case 'regroup':
       if (action.type === 'resource') regroupResource(state, p, action.cards)
-      return state
+      return
   }
 
   switch (action.type) {
@@ -335,10 +499,13 @@ export function applyAction(game: GameState, p: PlayerId, action: Action): GameS
       deploy(state, p)
       state.passes = 0
       break
+    case 'ability':
+      useAbility(state, p, action.source, action.index)
+      state.passes = 0
+      break
   }
-  if (state.phase === 'over') return state
+  if (state.phase === 'over') return
   nextTurn(state)
-  return state
 }
 
 // 5.2.1c: the chosen player gives the initiative to themselves or to their opponent; then
@@ -419,9 +586,11 @@ function nextTurn(state: GameState) {
   }
 }
 
-// 5.5: each player draws 2, then chooses whether to resource a card
+// 5.5: each player draws 2, then chooses whether to resource a card. What lasted for the
+// action phase ends with it.
 function startRegroup(state: GameState) {
   state.phase = 'regroup'
+  state.effects = state.effects.filter((e) => e.until !== 'phase')
   log(state, `Round ${state.round}: regroup phase`)
   for (const p of [0, 1] as const) draw(state, p, 2)
   checkDefeats(state)
@@ -434,46 +603,88 @@ function playCard(state: GameState, p: PlayerId, id: string, attachTo?: string) 
   const d = def(state, card)
   pay(player, playCost(state, p, d))
   player.hand = player.hand.filter((c) => c !== card)
+  const self: Self = { id: card.id, controller: p, def: d }
   if (d.type === 'unit') {
     // 3.5.3: a unit enters play exhausted
     player.units.push({ ...card, owner: p, arena: d.arena ?? 'ground', damage: 0, exhausted: true, upgrades: [] })
     log(state, `${player.name} plays ${d.name}`, p)
+    queue(state, p, d.name, scriptOf(state, card).whenPlayed, self)
   } else if (d.type === 'upgrade') {
     const unit = findUnit(state, attachTo as string) as UnitState
     unit.upgrades.push({ ...card, owner: p })
     log(state, `${player.name} attaches ${d.name} to ${nameOf(state, unit)}`, p)
+    queue(state, p, d.name, scriptOf(state, card).whenPlayed, { ...self, other: unit.id })
   } else {
-    // Events resolve their text, which cards will script; then go to the discard pile
-    player.discard.push(card)
+    // An event resolves its text, then goes to the discard pile
     log(state, `${player.name} plays ${d.name}`, p)
+    const effect = scriptOf(state, card).play
+    if (effect) effect(new Game(state), self)
+    else log(state, `(${d.name}'s text doesn't do anything yet)`)
+    player.discard.push(card)
   }
+  // Abilities that trigger on another card being played
+  if (d.type === 'unit')
+    for (const unit of player.units)
+      if (unit.id !== card.id)
+        queue(state, p, nameOf(state, unit), unitScript(state, unit).whenYouPlay, {
+          id: unit.id,
+          controller: p,
+          def: def(state, unit),
+          other: card.id,
+        })
   checkDefeats(state)
+  resolveTriggers(state)
 }
 
-// 6.3: exhaust the attacker, then both deal their damage at once
-function attack(state: GameState, p: PlayerId, attackerId: string, target: string | 'base') {
+// What an attack may do differently, for an ability that makes one
+type AttackOptions = { power?: number }
+
+// 6.3: exhaust the attacker, resolve its On Attack abilities and those it triggers, then both
+// deal their damage at once
+function attack(state: GameState, p: PlayerId, attackerId: string, target: string | 'base', options: AttackOptions = {}) {
   const player = state.players[p]
   const enemy = state.players[other(p)]
   const attacker = findUnit(state, attackerId) as UnitState
-  const keywords = keywordsOf(state, attacker)
   attacker.exhausted = true
-  const power = powerOf(state, attacker, true)
-  // Restore (7.5.9): when it attacks, heal that much damage from your base
-  if (keywords.restore) heal(state, p, keywords.restore)
-  if (target === 'base') {
-    enemy.base.damage += power
-    log(state, `${player.name} attacks ${nameOf(state, enemy.base)} with ${nameOf(state, attacker)} for ${power}`, p)
-  } else {
-    const defender = findUnit(state, target) as UnitState
-    const remaining = Math.max(0, hpOf(state, defender) - defender.damage)
-    const back = powerOf(state, defender)
-    defender.damage += power
-    attacker.damage += back
-    // Overwhelm (7.5.7): damage beyond what defeats the defender goes to its controller's base
-    if (keywords.overwhelm && power > remaining) enemy.base.damage += power - remaining
-    log(state, `${player.name} attacks ${nameOf(state, defender)} with ${nameOf(state, attacker)}`, p)
+  if (options.power) state.effects.push({ unit: attackerId, power: options.power, hp: 0, until: 'attack' })
+  const defenderName = target === 'base' ? nameOf(state, enemy.base) : nameOf(state, findUnit(state, target) as UnitState)
+  log(state, `${player.name} attacks ${defenderName} with ${nameOf(state, attacker)}`, p)
+  const self: Self = { id: attackerId, controller: p, def: def(state, attacker), attack: { attacker: attackerId, target } }
+  queue(state, p, nameOf(state, attacker), unitScript(state, attacker).onAttack, self)
+  for (const unit of player.units)
+    if (unit.id !== attackerId)
+      queue(state, p, nameOf(state, unit), unitScript(state, unit).whenFriendlyAttacks, {
+        id: unit.id,
+        controller: p,
+        def: def(state, unit),
+        other: attackerId,
+        attack: self.attack,
+      })
+  resolveTriggers(state)
+
+  // The attack ends without combat when either is gone
+  const still = findUnit(state, attackerId)
+  const defender = target === 'base' ? undefined : findUnit(state, target)
+  if (state.phase !== 'over' && still && (target === 'base' || defender)) {
+    const keywords = keywordsOf(state, still)
+    const power = powerOf(state, still, true)
+    // Restore (7.5.9): when it attacks, heal that much damage from your base
+    if (keywords.restore) heal(state, p, keywords.restore)
+    if (!defender) {
+      enemy.base.damage += power
+      log(state, `${nameOf(state, still)} deals ${power} damage to ${nameOf(state, enemy.base)}`, p)
+    } else {
+      const remaining = Math.max(0, hpOf(state, defender) - defender.damage)
+      const back = powerOf(state, defender)
+      defender.damage += power
+      still.damage += back
+      // Overwhelm (7.5.7): damage beyond what defeats the defender goes to its controller's base
+      if (keywords.overwhelm && power > remaining) enemy.base.damage += power - remaining
+    }
+    checkDefeats(state)
+    resolveTriggers(state)
   }
-  checkDefeats(state)
+  state.effects = state.effects.filter((e) => !(e.until === 'attack' && e.unit === attackerId))
 }
 
 // 3.4.4: flip to the unit side, in its arena, ready; deployed, not played
@@ -481,7 +692,7 @@ function deploy(state: GameState, p: PlayerId) {
   const player = state.players[p]
   player.leader.deployed = true
   player.leader.epicUsed = true
-  player.units.push({
+  const unit: UnitState = {
     id: `L${p}`,
     def: player.leader.def,
     owner: p,
@@ -490,6 +701,288 @@ function deploy(state: GameState, p: PlayerId) {
     exhausted: false,
     leader: true,
     upgrades: [],
-  })
+  }
+  player.units.push(unit)
   log(state, `${player.name} deploys ${nameOf(state, player.leader)}`, p)
+  queue(state, p, nameOf(state, unit), scriptOf(state, unit, 'back').whenDeployed, {
+    id: unit.id,
+    controller: p,
+    def: def(state, unit),
+  })
+  resolveTriggers(state)
+}
+
+// What an Action ability says, for a button that uses it
+export function abilityLabel(state: GameState, p: PlayerId, source: string, index: number) {
+  const player = state.players[p]
+  const unit = source === 'leader' ? undefined : findUnit(state, source)
+  const ability = (unit ? unitScript(state, unit) : scriptOf(state, player.leader)).actions?.[index]
+  if (!ability) return ''
+  const cost = [ability.resources && `${ability.resources} resource${ability.resources > 1 ? 's' : ''}`, ability.exhaust && 'exhaust']
+  const paid = cost.filter(Boolean).join(', ')
+  return paid ? `${ability.label} (${paid})` : ability.label
+}
+
+// An Action ability: pay its cost, exhausting the card when it says so, then resolve it
+function useAbility(state: GameState, p: PlayerId, source: string, index: number) {
+  const player = state.players[p]
+  const unit = source === 'leader' ? undefined : (findUnit(state, source) as UnitState)
+  const card = unit ?? player.leader
+  const ability = (unit ? unitScript(state, unit) : scriptOf(state, player.leader)).actions?.[index]
+  if (!ability) throw new IllegalAction('No such ability')
+  pay(player, ability.resources ?? 0)
+  if (ability.exhaust) {
+    if (unit) unit.exhausted = true
+    else player.leader.exhausted = true
+  }
+  log(state, `${player.name} uses ${nameOf(state, card)}: ${ability.label}`, p)
+  ability.run(new Game(state), { id: source, controller: p, def: def(state, card) })
+  checkDefeats(state)
+  resolveTriggers(state)
+}
+
+// --- What abilities can do ---
+
+type Choice = { optional?: boolean; ai?: Prompt['ai']; source?: string }
+
+// The game as card scripts see and change it: what is where, questions for the players, and
+// the effects cards have. Damage and defeats are dealt with as they happen.
+export class Game {
+  state: GameState
+  constructor(state: GameState) {
+    this.state = state
+  }
+
+  // Reading
+  get active() {
+    return this.state.active
+  }
+  other(p: PlayerId) {
+    return other(p)
+  }
+  def(card: { def: string }) {
+    return def(this.state, card)
+  }
+  name(id: string) {
+    const owner = baseOwner(id)
+    if (owner !== undefined) return nameOf(this.state, this.state.players[owner].base)
+    const unit = this.unit(id)
+    if (unit) return nameOf(this.state, unit)
+    for (const pl of this.state.players)
+      for (const card of [...pl.hand, ...pl.deck, ...pl.discard]) if (card.id === id) return nameOf(this.state, card)
+    return id
+  }
+  unit(id: string) {
+    return findUnit(this.state, id)
+  }
+  // Every unit in play, or those a test lets through
+  units(test: (unit: UnitState) => boolean = () => true) {
+    return [...this.state.players[0].units, ...this.state.players[1].units].filter(test)
+  }
+  controller(unit: UnitState) {
+    return controllerOf(this.state, unit)
+  }
+  power(unit: UnitState) {
+    return powerOf(this.state, unit)
+  }
+  hp(unit: UnitState) {
+    return hpOf(this.state, unit)
+  }
+  cost(unit: UnitState) {
+    return this.def(unit).cost
+  }
+  hasTrait(card: { def: string }, trait: string) {
+    return this.def(card).traits.includes(trait)
+  }
+  // Every upgrade in play, with the unit it is on
+  upgrades() {
+    return this.units().flatMap((unit) => unit.upgrades.map((upgrade) => ({ ...upgrade, unit })))
+  }
+  player(p: PlayerId) {
+    return this.state.players[p]
+  }
+
+  // Asking. A question with nothing to choose from isn't asked.
+  // A card in a hand, deck or discard pile is shown in the question: only the player asked sees it
+  choose(player: PlayerId, text: string, ids: string[], options: Choice & { min?: number; max?: number } = {}) {
+    if (!ids.length) return []
+    const min = Math.min(options.min ?? 1, ids.length)
+    const max = Math.min(options.max ?? 1, ids.length)
+    return ask({
+      player,
+      text,
+      source: options.source,
+      kind: 'pick',
+      options: ids.map((id) => ({ id, label: this.name(id), def: this.cardInfo(id)?.def })),
+      min,
+      max,
+      ai: options.ai,
+    })
+  }
+  // One of them, or nothing when optional (or when there is nothing to choose)
+  chooseOne(player: PlayerId, text: string, ids: string[], options: Choice = {}) {
+    const [pick] = this.choose(player, text, ids, { ...options, min: options.optional ? 0 : 1, max: 1 })
+    return pick ?? null
+  }
+  // A "you may": yes or no. ai: what the AI answers.
+  may(player: PlayerId, text: string, options: { yes?: string; no?: string; ai?: boolean; source?: string } = {}) {
+    const [pick] = ask({
+      player,
+      text,
+      source: options.source,
+      kind: 'option',
+      options: [
+        { id: 'no', label: options.no ?? 'No' },
+        { id: 'yes', label: options.yes ?? 'Yes' },
+      ],
+      min: 1,
+      max: 1,
+      ai: options.ai === false ? 'no' : 'yes',
+    })
+    return pick === 'yes'
+  }
+  // "Choose one:": the number of the choice taken
+  option(player: PlayerId, text: string, labels: string[], options: { ai?: number; source?: string; card?: string } = {}) {
+    const [pick] = ask({
+      player,
+      text,
+      source: options.source,
+      card: options.card,
+      kind: 'option',
+      options: labels.map((label, i) => ({ id: String(i), label })),
+      min: 1,
+      max: 1,
+      ai: String(options.ai ?? 0),
+    })
+    return Number(pick)
+  }
+  private cardInfo(id: string) {
+    for (const pl of this.state.players)
+      for (const card of [...pl.hand, ...pl.deck, ...pl.discard]) if (card.id === id) return card
+    return undefined
+  }
+
+  // Doing
+  log(text: string, player?: PlayerId) {
+    log(this.state, text, player)
+  }
+  // To a unit or a base (base0, base1)
+  damage(target: string, amount: number, from?: Self) {
+    if (amount <= 0) return
+    const owner = baseOwner(target)
+    if (owner !== undefined) this.state.players[owner].base.damage += amount
+    else {
+      const unit = this.unit(target)
+      if (!unit) return
+      unit.damage += amount
+    }
+    this.log(`${from ? `${from.def.name} deals` : 'Dealt'} ${amount} damage to ${this.name(target)}`, from?.controller)
+    checkDefeats(this.state)
+  }
+  heal(target: string, amount: number, from?: Self) {
+    const owner = baseOwner(target)
+    const damaged = owner !== undefined ? this.state.players[owner].base : this.unit(target)
+    if (!damaged || amount <= 0) return
+    const healed = Math.min(amount, damaged.damage)
+    damaged.damage -= healed
+    this.log(`${from ? `${from.def.name} heals` : 'Healed'} ${healed} damage from ${this.name(target)}`, from?.controller)
+  }
+  defeat(unitId: string) {
+    const unit = this.unit(unitId)
+    if (unit) defeatUnit(this.state, unit)
+    checkDefeats(this.state)
+  }
+  defeatUpgrade(upgradeId: string) {
+    for (const unit of this.units()) {
+      const upgrade = unit.upgrades.find((u) => u.id === upgradeId)
+      if (!upgrade) continue
+      unit.upgrades = unit.upgrades.filter((u) => u !== upgrade)
+      this.state.players[upgrade.owner].discard.push({ id: upgrade.id, def: upgrade.def })
+      this.log(`${nameOf(this.state, upgrade)} on ${nameOf(this.state, unit)} is defeated`)
+      checkDefeats(this.state)
+    }
+  }
+  exhaust(unitId: string) {
+    const unit = this.unit(unitId)
+    if (unit) unit.exhausted = true
+  }
+  ready(unitId: string) {
+    const unit = this.unit(unitId)
+    if (unit) unit.exhausted = false
+  }
+  // +power/+HP to a unit, for this attack or this phase
+  buff(unitId: string, power: number, hp: number, until: Effect['until']) {
+    this.state.effects.push({ unit: unitId, power, hp, until })
+  }
+  pay(p: PlayerId, amount: number) {
+    if (readyResources(this.state.players[p]) < amount) return false
+    pay(this.state.players[p], amount)
+    return true
+  }
+  canPay(p: PlayerId, amount: number) {
+    return readyResources(this.state.players[p]) >= amount
+  }
+  draw(p: PlayerId, count: number) {
+    draw(this.state, p, count)
+    this.log(`${this.state.players[p].name} draws ${count === 1 ? 'a card' : `${count} cards`}`, p)
+    checkDefeats(this.state)
+  }
+  // From a hand to its owner's discard pile
+  discard(p: PlayerId, cardId: string) {
+    const player = this.state.players[p]
+    const card = player.hand.find((c) => c.id === cardId)
+    if (!card) return
+    player.hand = player.hand.filter((c) => c !== card)
+    player.discard.push(card)
+    this.log(`${player.name} discards ${nameOf(this.state, card)}`, p)
+  }
+  // A player chooses cards from their own hand and discards them
+  discardChosen(p: PlayerId, count: number, text = `Choose ${count === 1 ? 'a card' : `${count} cards`} to discard`) {
+    const hand = this.state.players[p].hand.map((c) => c.id)
+    const picks = this.choose(p, text, hand, { min: count, max: count, ai: 'cheap' })
+    for (const id of picks) this.discard(p, id)
+    return picks.length
+  }
+  // The top cards of a deck, which stay there
+  top(p: PlayerId, count: number) {
+    return this.state.players[p].deck.slice(0, count)
+  }
+  toBottom(p: PlayerId, cardId: string) {
+    const deck = this.state.players[p].deck
+    const card = deck.find((c) => c.id === cardId)
+    if (!card) return
+    this.state.players[p].deck = [...deck.filter((c) => c !== card), card]
+  }
+  // From a deck to its discard pile
+  mill(p: PlayerId, cardId: string) {
+    const player = this.state.players[p]
+    const card = player.deck.find((c) => c.id === cardId)
+    if (!card) return
+    player.deck = player.deck.filter((c) => c !== card)
+    player.discard.push(card)
+    this.log(`${player.name} discards ${nameOf(this.state, card)} from their deck`, p)
+  }
+  // From a hand to the top or bottom of its deck
+  putBack(p: PlayerId, cardId: string, where: 'top' | 'bottom') {
+    const player = this.state.players[p]
+    const card = player.hand.find((c) => c.id === cardId)
+    if (!card) return
+    player.hand = player.hand.filter((c) => c !== card)
+    if (where === 'top') player.deck.unshift(card)
+    else player.deck.push(card)
+    this.log(`${player.name} puts a card on the ${where} of their deck`, p)
+  }
+  // Attack with a unit, its controller choosing what it attacks. The unit may be exhausted
+  // when the ability says so.
+  attackWith(unitId: string, options: AttackOptions & { exhausted?: boolean; noBases?: boolean } = {}) {
+    const unit = this.unit(unitId)
+    if (!unit || (unit.exhausted && !options.exhausted)) return false
+    const p = controllerOf(this.state, unit)
+    const targets = attackTargets(this.state, p, unit).filter((t) => !(options.noBases && t === 'base'))
+    const ids = targets.map((t) => (t === 'base' ? baseId(other(p)) : t))
+    const pick = this.chooseOne(p, `Choose what ${nameOf(this.state, unit)} attacks`, ids, { ai: 'harm' })
+    if (!pick) return false
+    attack(this.state, p, unitId, baseOwner(pick) !== undefined ? 'base' : pick, options)
+    return true
+  }
 }

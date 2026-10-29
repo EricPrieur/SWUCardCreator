@@ -1,10 +1,11 @@
 import { hpOf, legalActions, playCost, powerOf } from './game.ts'
-import type { Action, GameState, PlayerId, UnitState } from './types.ts'
+import type { Action, GameState, PlayerId, Prompt, UnitState } from './types.ts'
 
 // A first opponent to play against: it looks only at what its player could see, plays its
 // best card, makes the trades that favour it and otherwise hits the base. It reads the
 // printed values only, as the engine does.
 export function chooseAction(state: GameState, p: PlayerId): Action | undefined {
+  if (state.prompt) return state.prompt.player === p ? answer(state, p) : undefined
   const actions = legalActions(state, p)
   if (!actions.length) return undefined
   const player = state.players[p]
@@ -67,5 +68,49 @@ export function chooseAction(state: GameState, p: PlayerId): Action | undefined 
   const attacks = actions.filter((a) => score(a) >= 0).sort((a, b) => score(b) - score(a))
   if (attacks.length) return attacks[0]
 
+  // A leader's or a unit's Action ability, before giving up the turn
+  const ability = actions.find((a) => a.type === 'ability')
+  if (ability) return ability
+
   return actions.find((a) => a.type === 'initiative') ?? { type: 'pass' }
+}
+
+// Answering an ability's question, as its script hints: 'harm' picks what hurts the opponent
+// most, 'help' what helps itself, 'cheap' its cheapest cards, an option's id that option.
+// Anything else picks as little as it may.
+function answer(state: GameState, p: PlayerId): Action {
+  const prompt = state.prompt as Prompt
+  const ids = prompt.options.map((o) => o.id)
+  if (prompt.kind === 'option') {
+    return { type: 'answer', picks: [ids.includes(prompt.ai ?? '') ? (prompt.ai as string) : ids[0]] }
+  }
+  const foe = p === 0 ? 1 : 0
+  const unit = (id: string) => [...state.players[0].units, ...state.players[1].units].find((u) => u.id === id)
+  const mine = (id: string) => {
+    const u = unit(id)
+    if (u) return state.players[p].units.includes(u)
+    if (id === `base${p}`) return true
+    if (id === `base${foe}`) return false
+    return [...state.players[p].hand, ...state.players[p].deck, ...state.players[p].discard].some((c) => c.id === id)
+  }
+  // How much a pick is worth to the AI: an enemy unit by its cost, a leader as much as a big
+  // unit, the enemy base a little; its own things the other way round
+  const worth = (id: string) => {
+    const u = unit(id)
+    const value = u ? (u.leader ? 6 : state.defs[u.def].cost) + 1 : id.startsWith('base') ? 2 : 1
+    return mine(id) ? -value : value
+  }
+  const cardCost = (id: string) => {
+    const option = prompt.options.find((o) => o.id === id)
+    return option?.def ? state.defs[option.def].cost : 0
+  }
+  let ranked: string[] = []
+  if (prompt.ai === 'harm') ranked = ids.filter((id) => worth(id) > 0).sort((a, b) => worth(b) - worth(a))
+  else if (prompt.ai === 'help') ranked = ids.filter((id) => worth(id) < 0).sort((a, b) => worth(a) - worth(b))
+  else if (prompt.ai === 'cheap') ranked = [...ids].sort((a, b) => cardCost(a) - cardCost(b))
+  // Short of picks it likes, it takes what it must from the rest
+  const rest = ids.filter((id) => !ranked.includes(id))
+  const wanted = prompt.ai === 'harm' || prompt.ai === 'help' ? Math.min(prompt.max, ranked.length) : prompt.min
+  const picks = [...ranked, ...rest].slice(0, Math.max(prompt.min, wanted))
+  return { type: 'answer', picks }
 }

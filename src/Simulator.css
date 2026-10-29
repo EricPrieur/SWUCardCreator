@@ -646,9 +646,9 @@
   min-height: 6vh;
 }
 .sim-prompt span {
-  max-width: calc(var(--lw) * 1.4);
+  max-width: calc(var(--lw) * 1.6);
   padding: 0.6vh 1.2vh;
-  border-radius: 999px;
+  border-radius: 14px;
   background: rgba(60, 40, 120, 0.85);
   border: 1px solid #8b7cf6;
   font-size: 1.05rem;
@@ -855,4 +855,76 @@
     width 380ms ease,
     height 380ms ease,
     transform 380ms ease;
+}
+
+/* An ability's question: what it may pick glows, what is picked is marked */
+.sim-unit.chosen img,
+.sim-landscape.chosen img {
+  border-color: var(--spice);
+  box-shadow: 0 0 1.8vh var(--spice);
+}
+.sim-button.ability {
+  border-color: #b48ee6;
+  background: rgba(50, 30, 80, 0.6);
+  max-width: 16rem;
+  font-size: 0.85rem;
+}
+
+/* Cards an ability shows apart from the board: from a hand, a deck or a discard pile */
+.sim-choice {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 110;
+  max-width: min(90vw, 70rem);
+  padding: 1.2rem 1.5rem;
+  border: 1px solid var(--spice);
+  border-radius: 14px;
+  background: rgba(28, 20, 14, 0.96);
+  color: var(--sand);
+  text-align: center;
+  box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.6);
+}
+.sim-choice p {
+  margin: 0 0 1rem;
+  font-weight: 700;
+}
+.sim-choice-cards {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.8rem;
+}
+.sim-choice-cards button {
+  padding: 0;
+  border: 0.3vh solid transparent;
+  border-radius: 8px;
+  background: none;
+  cursor: pointer;
+}
+.sim-choice-cards img {
+  display: block;
+  width: auto;
+  max-width: none;
+  height: 28vh;
+  aspect-ratio: auto;
+  object-fit: contain;
+  border-radius: 6px;
+}
+.sim-choice-cards button:hover {
+  border-color: rgba(232, 215, 181, 0.5);
+}
+.sim-choice-cards button.picked {
+  border-color: var(--spice);
+  box-shadow: 0 0 1.6vh var(--spice);
+}
+.sim-choice-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 0.8rem;
+  margin-top: 1rem;
+}
+.sim-choice-buttons:empty {
+  display: none;
 }

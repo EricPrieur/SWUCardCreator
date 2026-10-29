@@ -1,5 +1,6 @@
-import { hpOf, legalActions, powerOf, waitingFor } from './game.ts'
-import type { Action, CardDef, GameState, Inst, LogEntry, Phase, PlayerId, UnitState } from './types.ts'
+import { abilityLabel, hpOf, legalActions, powerOf, waitingFor } from './game.ts'
+import { scriptStatus } from './scripts.ts'
+import type { Action, CardDef, GameState, Inst, LogEntry, Phase, PlayerId, Prompt, UnitState } from './types.ts'
 
 // What one player is shown of the game: the open information, their own hand and resources,
 // and only the size of everything hidden (the opponent's hand and resources, both decks)
@@ -29,12 +30,16 @@ export type PlayerView = {
   initiativeTaken: boolean
   winner: PlayerId | 'draw' | null
   waitingFor: PlayerId[]
+  // A question an ability asks you, in full; one it asks your opponent, without its choices
+  prompt: Prompt | { player: PlayerId; text: string } | null
   players: [SideView, SideView]
   log: LogEntry[]
   // What you may do now
   actions: Action[]
-  // The cards named anywhere in this view
-  defs: Record<string, CardDef>
+  // The Action abilities among them, with what each says
+  abilities: { source: string; index: number; label: string }[]
+  // The cards named anywhere in this view, and whether each one's text does anything yet
+  defs: Record<string, CardDef & { script: ReturnType<typeof scriptStatus> }>
 }
 
 export function viewFor(state: GameState, you: PlayerId): PlayerView {
@@ -54,7 +59,13 @@ export function viewFor(state: GameState, you: PlayerId): PlayerView {
     }
   }) as [SideView, SideView]
 
+  const prompt = state.prompt
+  const asked = prompt && prompt.player === you ? prompt : prompt && { player: prompt.player, text: prompt.text }
+
   const named = new Set<string>()
+  if (asked && 'options' in asked) for (const option of asked.options) if (option.def) named.add(option.def)
+  if (asked && 'source' in asked && asked.source) named.add(asked.source)
+  if (asked && 'card' in asked && asked.card) named.add(asked.card)
   for (const side of players) {
     named.add(side.leader.def)
     named.add(side.base.def)
@@ -66,6 +77,7 @@ export function viewFor(state: GameState, you: PlayerId): PlayerView {
     }
   }
 
+  const actions = legalActions(state, you)
   return {
     you,
     round: state.round,
@@ -75,9 +87,13 @@ export function viewFor(state: GameState, you: PlayerId): PlayerView {
     initiativeTaken: state.initiativeTaken,
     winner: state.winner,
     waitingFor: waitingFor(state),
+    prompt: asked,
     players,
     log: state.log.slice(),
-    actions: legalActions(state, you),
-    defs: Object.fromEntries([...named].map((id) => [id, state.defs[id]])),
+    actions,
+    abilities: actions.flatMap((a) =>
+      a.type === 'ability' ? [{ source: a.source, index: a.index, label: abilityLabel(state, you, a.source, a.index) }] : [],
+    ),
+    defs: Object.fromEntries([...named].map((id) => [id, { ...state.defs[id], script: scriptStatus(state.defs[id]) }])),
   }
 }

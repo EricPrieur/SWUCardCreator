@@ -16,7 +16,8 @@ export type Keywords = {
   saboteur?: boolean
 }
 
-// A card as the engine knows it: printed values only
+// A card as the engine knows it: its printed values, and its text, which names the script
+// that plays it (scripts.ts) as long as the two still match
 export type CardDef = {
   id: string
   name: string
@@ -34,6 +35,9 @@ export type CardDef = {
   keywords: Keywords
   // A leader's unit side
   unit?: { power: number; hp: number; arena: Arena; keywords: Keywords }
+  text?: string
+  // A leader's unit side's text
+  backText?: string
 }
 
 // One physical card in a game; def names its CardDef
@@ -76,6 +80,32 @@ export type Phase = 'first' | 'mulligan' | 'resource' | 'action' | 'regroup' | '
 
 export type LogEntry = { player?: PlayerId; text: string }
 
+// A question an ability asks a player in the middle of an action. 'pick' chooses among
+// things in the game (units, bases as base0/base1, cards by their id); 'option' among labels.
+export type Prompt = {
+  player: PlayerId
+  text: string
+  // The card whose ability asks
+  source?: string
+  // A card the question is about, shown with it (the top card of a deck)
+  card?: string
+  kind: 'pick' | 'option'
+  // def: the card, for one shown only in the question (in a hand, on top of a deck)
+  options: { id: string; label?: string; def?: string }[]
+  min: number
+  max: number
+  // How the AI answers: a pick that 'harm's or 'help's, the option it takes
+  ai?: 'harm' | 'help' | 'cheap' | string
+}
+
+// The action a prompt interrupted: the game as it was before it, and the answers given so far.
+// Each answer plays the action again from there with one more answer, the same seed giving
+// the same game, until it runs to the end.
+export type Pending = { base: GameState; player: PlayerId; action: Action; answers: string[][] }
+
+// A change to a unit that lasts a while: for this attack, or for this phase
+export type Effect = { unit: string; power: number; hp: number; until: 'attack' | 'phase' }
+
 export type GameState = {
   rng: number
   round: number
@@ -93,6 +123,10 @@ export type GameState = {
   log: LogEntry[]
   // Once the game is over: the winner, or 'draw'
   winner: PlayerId | 'draw' | null
+  effects: Effect[]
+  // While an ability waits for an answer
+  prompt: Prompt | null
+  pending: Pending | null
 }
 
 export type Action =
@@ -102,6 +136,9 @@ export type Action =
   | { type: 'play'; card: string; attachTo?: string }
   | { type: 'attack'; attacker: string; target: string | 'base' }
   | { type: 'deploy' }
+  // A leader's or unit's Action ability, by its number on the card
+  | { type: 'ability'; source: string; index: number }
+  | { type: 'answer'; picks: string[] }
   | { type: 'initiative' }
   | { type: 'pass' }
   | { type: 'concede' }

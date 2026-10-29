@@ -84,6 +84,7 @@ export function cardDef(card: SavedCard): CardDef | undefined {
     traits,
     unique: front.type === 'leader' || !!card.unique,
     keywords: printedKeywords(card.text),
+    text: card.text,
   }
   if (front.type === 'unit') def.arena = front.arena
   if (front.type === 'leader') {
@@ -93,6 +94,7 @@ export function cardDef(card: SavedCard): CardDef | undefined {
       arena: card.backFrameId ? frameFacts(card.backFrameId).arena : 'ground',
       keywords: printedKeywords(card.backText),
     }
+    def.backText = card.backText
   }
   return def
 }

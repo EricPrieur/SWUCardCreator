@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { chooseAction } from './ai.ts'
 import { cardDef, printedKeywords, randomDeck, type SavedCard } from './cards.ts'
+import { scripts, scriptStatus } from './scripts.ts'
 import { applyAction, createGame } from './game.ts'
 import type { CardDef, PlayerId } from './types.ts'
 
@@ -71,5 +72,15 @@ test('two AIs play a game of random DUNE decks to the end', (t) => {
     }
     assert.equal(state.phase, 'over', `seed ${seed} ended`)
     assert.ok(state.round > 2, 'it took a few rounds')
+  }
+})
+
+test('every script quotes its DUNE card exactly, so it plays it', (t) => {
+  const defs = duneDefs()
+  if (!defs) return t.skip('no DUNE export')
+  for (const script of scripts) {
+    const card: CardDef | undefined = defs.find((d: CardDef) => d.name === script.name && (d.subtitle ?? '') === (script.subtitle ?? ''))
+    assert.ok(card, `${script.name} is a DUNE card`)
+    assert.equal(scriptStatus(card), 'scripted', `${script.name}'s script quotes its text`)
   }
 })
