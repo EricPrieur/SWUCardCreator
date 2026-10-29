@@ -61,7 +61,7 @@ const smuggleLine = /^\[Smuggle\]?\s*\[\[(\d+)[^\]]*\]\]\]?$/i
 const arrakisLine = /^While you control an \[\{?Arrakis\}?\] base, this unit gains (.+)\.$/i
 const spiceCostLine = /^As an additional cost to play this unit, defeat (a|\d+) friendly Spice tokens?\.$/i
 const startSpiceLine = /^You start the game with (a|\d+) \[?Spice Tokens?\]?\.$/i
-const attachLine = /^Attach to a (friendly |non-\[\{?([^}\]]+)\}?\] )?unit\.$/i
+const attachLine = /^Attach to an? ((?:(?:friendly|non-leader|non-\[\{?[^}\]]+\}?\]),? )*)unit\.$/i
 const attachedGainsLine = /^Attached unit gains ((?:\[[^\]]+\](?:,? and |, )?)+)\.$/i
 // "< >" and "<< >>" only box a line on the card
 const unboxed = (line: string) => line.trim().replace(/^<<?\s*(.*?)\s*>>?$/, '$1')
@@ -83,8 +83,15 @@ export function readText(text = '') {
       for (const [, word] of match[1].matchAll(/\[([^\]]+)\]/g)) addKeyword(read.arrakisKeywords, word)
     } else if ((match = line.match(spiceCostLine))) read.spiceCost = count(match[1])
     else if ((match = line.match(startSpiceLine))) read.startSpice = count(match[1])
-    else if ((match = line.match(attachLine)))
-      read.attach = match[2] ? { not: match[2] } : match[1] ? { friendly: true } : {}
+    else if ((match = line.match(attachLine))) {
+      const words = match[1]
+      const not = [...words.matchAll(/non-\[\{?([^}\]]+)\}?\]/gi)].map((m) => m[1])
+      read.attach = {
+        ...(/friendly/i.test(words) && { friendly: true }),
+        ...(not.length && { not }),
+        ...(/non-leader/i.test(words) && { nonLeader: true }),
+      }
+    }
     else if ((match = line.match(attachedGainsLine))) {
       read.attachedKeywords = {}
       for (const [, word] of match[1].matchAll(/\[([^\]]+)\]/g)) addKeyword(read.attachedKeywords, word)
@@ -187,7 +194,7 @@ export const builtInTokens: CardDef[] = [
 // "Create a Random Deck": a random leader, a random base of another aspect than the leader's
 // (an aspect twice gains nothing in DUNE), and 50 cards from the set chosen at random
 // among those their aspects pay for in full, 1 to 3 copies each (a unique card once), then
-// among cards that miss one aspect. Events are left out while their text does nothing.
+// among cards that miss one aspect
 export function randomDeck(defs: CardDef[], random: () => number = Math.random, size = 50) {
   const pick = <T>(list: T[]) => list[Math.floor(random() * list.length)]
   const shuffled = <T>(list: T[]) => {
@@ -209,7 +216,7 @@ export function randomDeck(defs: CardDef[], random: () => number = Math.random, 
         sum + Math.max(0, card.aspects.filter((a) => a === aspect).length - provided.filter((a) => a === aspect).length),
       0,
     )
-  const playable = defs.filter((d) => (d.type === 'unit' || d.type === 'upgrade') && !d.token)
+  const playable = defs.filter((d) => (d.type === 'unit' || d.type === 'upgrade' || d.type === 'event') && !d.token)
   const pool = [...shuffled(playable.filter((d) => missing(d) === 0)), ...shuffled(playable.filter((d) => missing(d) === 1))]
   const copies = new Map<string, number>()
   const add = (card: CardDef, wanted: number) => {

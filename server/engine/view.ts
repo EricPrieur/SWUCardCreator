@@ -1,4 +1,4 @@
-import { abilityLabel, hpOf, keywordsOf, legalActions, powerOf, waitingFor } from './game.ts'
+import { abilityLabel, handRevealed, hpOf, keywordsOf, legalActions, powerOf, seesTopCard, waitingFor } from './game.ts'
 import { scriptStatus } from './scripts.ts'
 import type { Action, CardDef, GameState, Inst, Keywords, LogEntry, Phase, PlayerId, Prompt, UnitState } from './types.ts'
 
@@ -9,8 +9,10 @@ export type SideView = {
   leader: GameState['players'][0]['leader']
   base: GameState['players'][0]['base']
   deckCount: number
-  // null for the opponent's hand
+  // null for the opponent's hand, unless they play with it revealed
   hand: Inst[] | null
+  // The top card of your deck, when a card lets you look at it at any time
+  topCard?: Inst
   handCount: number
   // Every card drawn this game
   drawn: number
@@ -51,7 +53,8 @@ export function viewFor(state: GameState, you: PlayerId): PlayerView {
       leader: { ...player.leader },
       base: { ...player.base },
       deckCount: player.deck.length,
-      hand: mine ? player.hand.map((c) => ({ ...c })) : null,
+      hand: mine || handRevealed(state, p as PlayerId) ? player.hand.map((c) => ({ ...c })) : null,
+      ...(mine && seesTopCard(state, p as PlayerId) && player.deck[0] && { topCard: { ...player.deck[0] } }),
       handCount: player.hand.length,
       drawn: player.drawn,
       discard: player.discard.map((c) => ({ ...c })),
@@ -71,7 +74,7 @@ export function viewFor(state: GameState, you: PlayerId): PlayerView {
   for (const side of players) {
     named.add(side.leader.def)
     named.add(side.base.def)
-    for (const c of [...(side.hand ?? []), ...side.discard, ...side.spice]) named.add(c.def)
+    for (const c of [...(side.hand ?? []), ...side.discard, ...side.spice, ...(side.topCard ? [side.topCard] : [])]) named.add(c.def)
     for (const r of side.resources) if (r.card) named.add(r.card.def)
     for (const u of side.units) {
       named.add(u.def)

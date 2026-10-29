@@ -9,8 +9,8 @@ export function chooseAction(state: GameState, p: PlayerId): Action | undefined 
   const actions = legalActions(state, p)
   if (!actions.length) return undefined
   const player = state.players[p]
-  // A card it may play: in its hand, or among its resources with Smuggle
-  const cards = [...player.hand, ...player.resources.map((r) => r.card)]
+  // A card it may play: in its hand, among its resources with Smuggle, in its discard pile
+  const cards = [...player.hand, ...player.resources.map((r) => r.card), ...player.discard]
   const defOf = (id: string) => state.defs[cards.find((c) => c.id === id)?.def ?? '']
   const cost = (id: string) => defOf(id)?.cost ?? 0
 
@@ -41,7 +41,7 @@ export function chooseAction(state: GameState, p: PlayerId): Action | undefined 
   const plays = actions.filter((a) => a.type === 'play')
   const own = new Set(player.units.map((u) => u.id))
   const price = (a: Action) =>
-    a.type !== 'play' ? 0 : a.smuggle ? smuggleCost(state, p, defOf(a.card)) : playCost(state, p, defOf(a.card))
+    a.type !== 'play' || a.spice ? 0 : a.smuggle ? smuggleCost(state, p, defOf(a.card)) : playCost(state, p, defOf(a.card))
   const units = plays.filter((a) => !a.attachTo).sort((a, b) => price(b) - price(a))
   if (units.length) return units[0]
   const upgrades = plays.filter((a) => a.attachTo && own.has(a.attachTo))

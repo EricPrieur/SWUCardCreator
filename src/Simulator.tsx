@@ -235,6 +235,11 @@ export function Simulator() {
     )
   }
 
+  // The cards whose text the engine plays, of those with text: a card changed in the Creator
+  // since its script was written no longer counts
+  const written = set ? set.defs.filter((d) => !d.token && scriptStatus(d) !== 'blank').length : 0
+  const working = set ? set.defs.filter((d) => !d.token && scriptStatus(d) === 'scripted').length : 0
+
   return (
     <div className="sim-menu">
       <div className="sim-menu-tabs" role="tablist">
@@ -260,7 +265,9 @@ export function Simulator() {
             <DeckPicker title="AI Deck" side="opp" value={choices[1]} decks={decks} set={set} onChange={(c) => choose(1, c)} />
           </div>
           <p className="sim-note">
-            Cards play with their cost, power, HP and keywords. The text of {set.defs.filter((d) => !d.token && scriptStatus(d) === 'scripted').length} of {set.defs.filter((d) => !d.token && scriptStatus(d) !== 'blank').length} cards works so far; on the others it doesn't do anything yet.
+            {working < written
+              ? `Cards play with their cost, power, HP and keywords. The text of ${working} of ${written} cards works so far; on the others it doesn't do anything yet.`
+              : `Every card's text works, all ${written} of them.`}
           </p>
           <button type="button" className="sim-button go" onClick={start}>
             Start game
@@ -273,7 +280,9 @@ export function Simulator() {
 
 type Hover = { image: string; landscape: boolean; right: boolean } | null
 // What a click on the board means now: choosing a target for an attack, or a unit for an upgrade
-type Mode = { kind: 'attack'; attacker: string } | { kind: 'attach'; card: string; smuggle?: boolean } | null
+// How a card is played: using Smuggle, from the discard pile, for a Spice token instead of its cost
+type Way = { smuggle?: boolean; discard?: boolean; spice?: boolean }
+type Mode = { kind: 'attack'; attacker: string } | ({ kind: 'attach'; card: string } & Way) | null
 
 const cardBack = asset('/sim/DuneCardBack01.jpg')
 
@@ -430,8 +439,14 @@ function Table(props: {
   }
   const can = (action: Action) => view.actions.some((a) => sameAction(a, action))
   // In the engine's order of keys, which sameAction compares
-  const attachAction = (attach: { card: string; smuggle?: boolean }, unit: string): Action =>
-    attach.smuggle ? { type: 'play', card: attach.card, attachTo: unit, smuggle: true } : { type: 'play', card: attach.card, attachTo: unit }
+  // The play that attaches a card to a unit, played the way chosen, among those the engine allows
+  const sameWay = (a: Way, b: Way) => !!a.smuggle === !!b.smuggle && !!a.discard === !!b.discard && !!a.spice === !!b.spice
+  const attachAction = (attach: { card: string } & Way, unit: string): Action =>
+    view.actions.find((a) => a.type === 'play' && a.card === attach.card && a.attachTo === unit && sameWay(a, attach)) ?? {
+      type: 'play',
+      card: attach.card,
+      attachTo: unit,
+    }
 
   const coming = [me, opp].map((side, p) => Math.min(side.handCount, side.drawn - landed[p]))
   // Each card drawn and not yet landed flies in, in the order drawn. Measured before the page is
@@ -628,13 +643,25 @@ function Table(props: {
   ]
 
   const playsOf = (id: string) => view.actions.filter((a) => a.type === 'play' && a.card === id)
-  // A resource played using Smuggle: a unit or event at once, an upgrade once its unit is chosen
-  const clickResource = (id: string) => {
+  // Playing a card from wherever it is: a unit or event at once, an upgrade once its unit is
+  // chosen. A card that can be played more than one way (paying, or for a Spice token) asks how.
+  const playCard = (id: string) => {
     if (mode || asked || pickCount) return
-    const plays = playsOf(id)
-    if (!plays.length) return
-    if (plays.some((a) => a.type === 'play' && a.attachTo)) setMode({ kind: 'attach', card: id, smuggle: true })
-    else act(YOU, plays[0])
+    const ways: Way[] = []
+    for (const a of playsOf(id)) if (a.type === 'play' && !ways.some((w) => sameWay(w, a))) ways.push(a)
+    const playWay = (way: Way) => {
+      const plays = playsOf(id).filter((a) => a.type === 'play' && sameWay(a, way))
+      if (plays.some((a) => a.type === 'play' && a.attachTo))
+        setMode({ kind: 'attach', card: id, ...(way.smuggle && { smuggle: true }), ...(way.discard && { discard: true }), ...(way.spice && { spice: true }) })
+      else act(YOU, plays[0])
+    }
+    const card = [...(me.hand ?? []), ...me.discard, ...me.resources.flatMap((r) => (r.card ? [r.card] : []))].find((c) => c.id === id)
+    if (ways.length > 1 && card)
+      setMenu({
+        card: card.def,
+        options: ways.map((way) => ({ label: way.spice ? 'Play it for a Spice token' : 'Pay for it', run: () => playWay(way) })),
+      })
+    else if (ways.length) playWay(ways[0])
   }
   const clickHand = (id: string) => {
     if (asked) {
@@ -645,10 +672,7 @@ function Table(props: {
       setPicked((now) => (now.includes(id) ? now.filter((i) => i !== id) : now.length < pickCount ? [...now, id] : now))
       return
     }
-    const plays = playsOf(id)
-    if (!plays.length) return
-    if (plays.some((a) => a.type === 'play' && a.attachTo)) setMode({ kind: 'attach', card: id })
-    else act(YOU, plays[0])
+    playCard(id)
   }
   const clickUnit = (id: string) => {
     if (asked) {
@@ -757,7 +781,19 @@ function Table(props: {
           <span className="sim-count">{side.discard.length}</span>
         </div>
         <div className="sim-pile deck" title="Deck">
-          {side.deckCount ? <Back /> : <div className="sim-empty">Deck</div>}
+          {side.topCard ? (
+            <img
+              src={img(imageOf(side.topCard.def) ?? '')}
+              alt={defOf(side.topCard.def).name}
+              title="The top card of your deck"
+              onMouseEnter={look(imageOf(side.topCard.def))}
+              onMouseLeave={leave}
+            />
+          ) : side.deckCount ? (
+            <Back />
+          ) : (
+            <div className="sim-empty">Deck</div>
+          )}
           <span className="sim-count">{side.deckCount}</span>
         </div>
         <div
@@ -944,7 +980,7 @@ function Table(props: {
           play: card.play
             ? () => {
                 setPileOpen(null)
-                clickResource(card.id)
+                playCard(card.id)
               }
             : undefined,
         })
@@ -964,7 +1000,11 @@ function Table(props: {
       : pileOpen
         ? {
             title: pileOpen === 'discard-me' ? 'Your discard pile' : `${opp.name}'s discard pile`,
-            stacks: stack([...(pileOpen === 'discard-me' ? me : opp).discard].reverse()),
+            stacks: stack(
+              [...(pileOpen === 'discard-me' ? me : opp).discard]
+                .reverse()
+                .map((c) => ({ ...c, play: pileOpen === 'discard-me' && !mode && !asked && !pickCount && playsOf(c.id).length > 0 })),
+            ),
           }
         : { title: '', stacks: [] }
 
@@ -1103,7 +1143,7 @@ function Table(props: {
                 key={stack.key}
                 type="button"
                 className={[stack.play && 'playable', stack.used && 'used'].filter(Boolean).join(' ') || undefined}
-                title={stack.play ? 'Play it using Smuggle' : stack.used ? 'Exhausted' : undefined}
+                title={stack.play ? (pileOpen === 'resources' ? 'Play it using Smuggle' : 'Play it from your discard pile') : stack.used ? 'Exhausted' : undefined}
                 onMouseEnter={look(imageOf(stack.def))}
                 onMouseLeave={leave}
                 onClick={stack.play}

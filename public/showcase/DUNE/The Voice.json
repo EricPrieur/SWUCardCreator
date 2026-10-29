@@ -19,7 +19,7 @@
     "frameOpacity": 0
   },
   "name": "The Voice",
-  "text": "Look at an opponent's hand and name a card. This phase, opponents can't play the named cards. Draw a card.",
+  "text": "Look at an opponent's hand and choose a card in it. This phase, they can't play cards with that name. Draw a card.",
   "trait": "Bene Gesserit",
   "number": "127",
   "rarity": "C",

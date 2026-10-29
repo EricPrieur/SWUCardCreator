@@ -109,7 +109,7 @@
       "set": "DUNE",
       "number": "005",
       "arena": "Ground",
-      "rarity": "C"
+      "rarity": "R"
     },
     {
       "id": "2fb57847-cfcf-474c-9b75-19d509feb052",
@@ -2520,7 +2520,7 @@
       "traits": [
         "Bene Gesserit"
       ],
-      "text": "look at an opponent's hand and name a card. this phase, opponents can't play the named cards. draw a card.",
+      "text": "look at an opponent's hand and choose a card in it. this phase, they can't play cards with that name. draw a card.",
       "set": "DUNE",
       "number": "127",
       "rarity": "C"

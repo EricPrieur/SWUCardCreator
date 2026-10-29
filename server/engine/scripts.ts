@@ -26,8 +26,8 @@ export type Self = {
 }
 
 // What a card gives a unit for as long as it is in play: "Other friendly [{Sardaukar}] units gain
-// [Sentinel]."
-export type Grant = { keywords?: Keywords; power?: number; hp?: number }
+// [Sentinel]."; traits: "Attached unit gains the [{Atreides}] trait."
+export type Grant = { keywords?: Keywords; power?: number; hp?: number; traits?: string[] }
 
 export type Ability = (g: Game, self: Self) => void
 
@@ -62,10 +62,34 @@ export type Abilities = {
   whenFriendlyDefeated?: Ability
   // When the regroup phase starts
   regroupStart?: Ability
-  // What it gives a unit (each unit on its side is asked)
+  // When an enemy unit attacks; self.other is the attacker
+  whenEnemyAttacks?: Ability
+  // When a friendly unit deals combat damage to an enemy base; self.other is that unit
+  whenCombatDamageBase?: Ability
+  // "When this unit completes an attack:"
+  afterAttack?: Ability
+  // An upgrade's: when the unit it is on becomes exhausted; when that unit is defeated
+  whenAttachedExhausted?: Ability
+  attachedWhenDefeated?: Ability
+  // What it gives a unit (every unit in play is asked, so a script says whom it gives to)
   gives?: (g: Game, self: Self, unit: UnitState) => Grant | undefined
   // Whether the additional costs of a card being played may be ignored
   ignoresAdditionalCost?: (g: Game, self: Self, card: CardDef) => boolean
+  // A unit that can't attack some units
+  cantAttack?: (g: Game, self: Self, target: UnitState) => boolean
+  // An upgrade's: "Attached unit can't be defeated by enemy card abilities."
+  cantBeDefeatedByEnemies?: boolean
+  // "Opponents play with their hands revealed."; "You may look at the top card of your deck at
+  // any time."
+  revealsHands?: boolean
+  seesTopCard?: boolean
+  // Playing it: from the discard pile, when it may be (an upgrade onto that unit); for a Spice
+  // token instead of its cost, from the hand or discard pile; for 1 less for each Spice token
+  // defeated, up to so many; put into play as a resource once its text resolves (an event)
+  discardPlay?: (g: Game, self: Self, unit?: UnitState) => boolean
+  spicePlay?: boolean
+  spiceReduces?: number
+  toResources?: boolean
 }
 
 export type CardScript = {
@@ -1312,6 +1336,773 @@ const dune: CardScript[] = [
       },
     },
   },
+  // --- Constant abilities ---
+  {
+    name: 'Alia Atreides',
+    subtitle: 'Pre-born',
+    text: 'This unit gains each keyword printed on [{Fremen}] and [{Bene Gesserit}] units in your discard pile.',
+    front: {
+      gives: (g, self, unit) => {
+        if (unit.id !== self.id) return undefined
+        const keywords: Keywords = {}
+        for (const card of g.player(self.controller).discard) {
+          const d = g.def(card)
+          if (d.type !== 'unit' || !(d.traits.includes('Fremen') || d.traits.includes('Bene Gesserit'))) continue
+          for (const name of combatKeywords) if (d.keywords[name]) addKeyword(keywords, name, d.keywords[name])
+        }
+        return { keywords }
+      },
+    },
+  },
+  {
+    name: 'Atreides Troops',
+    text: 'While you control another [{Atreides}] unit, this unit gains [Restore 1].',
+    front: {
+      gives: (g, self, unit) => (unit.id === self.id && anotherAtreides(g, self) ? { keywords: { restore: 1 } } : undefined),
+    },
+  },
+  {
+    name: 'Chani',
+    subtitle: 'Desert Guide',
+    text: 'While you control an [{Arrakis}] base, this unit gains [Hidden].\nOther friendly [{Fremen}] units get [+1/+0].',
+    front: {
+      gives: (g, self, unit) =>
+        unit.id !== self.id && g.controller(unit) === self.controller && g.hasTrait(unit, 'Fremen') ? { power: 1 } : undefined,
+    },
+  },
+  {
+    name: "Harkonnen Heavy 'Thopter",
+    text: 'Friendly [{Trooper}] units gain [Raid 1].',
+    front: {
+      gives: (g, self, unit) => (g.controller(unit) === self.controller && g.hasTrait(unit, 'Trooper') ? { keywords: { raid: 1 } } : undefined),
+    },
+  },
+  {
+    name: "The Emperor's Frigate",
+    subtitle: 'Seat of the Padishah',
+    text: '[Sentinel]\nEnemy ground units get [-1/-0] while attacking a base.\n[When Played:] Search the top 5 cards of your deck for an [{Emperor}] card, reveal it and draw it.',
+    front: {
+      gives: (g, self, unit) =>
+        g.controller(unit) !== self.controller && unit.arena === 'ground' && g.attack?.attacker === unit.id && g.attack.target === 'base'
+          ? { power: -1 }
+          : undefined,
+      whenPlayed: (g, self) => searchDeck(g, self, 5, (d) => d.traits.includes('Emperor'), 'an Emperor card'),
+    },
+  },
+  {
+    name: 'Count Hasimir Fenring',
+    subtitle: "The Emperor's Blade",
+    text: "[Ambush]\nWhile attacking, this unit deals combat damage before the defender.\nThis unit can't attack units named Paul Atreides.",
+    front: {
+      gives: (_g, self, unit) => (unit.id === self.id ? { keywords: { firstStrike: true } } : undefined),
+      cantAttack: (g, _self, target) => g.def(target).name === 'Paul Atreides',
+    },
+  },
+  {
+    name: 'Ginaz Swordmaster',
+    text: '[Ambush]\n[On Attack:] If you control another [{Ginaz}] unit, this unit deals its combat damage before the defender.',
+    front: {
+      onAttack: (g, self) => {
+        if (friendlyIds(g, self, (u) => u.id !== self.id && g.hasTrait(u, 'Ginaz')).length) g.grant(self.id, { firstStrike: true }, 'attack')
+      },
+    },
+  },
+
+  // --- Upgrades ---
+  {
+    name: 'Litany Against Fear',
+    text: "Attached unit can't be defeated by enemy card abilities.",
+    front: { cantBeDefeatedByEnemies: true },
+  },
+  {
+    name: 'Stillsuit',
+    text: "Attach to a non-[{Vehicle}] unit.\nAttached unit gains [Restore 1], or [Restore 2] instead if it's a [{Fremen}] unit.",
+    front: {
+      gives: (g, self, unit) => (unit.id === self.attachedTo ? { keywords: { restore: g.hasTrait(unit, 'Fremen') ? 2 : 1 } } : undefined),
+    },
+  },
+  {
+    name: 'Sworn Sword',
+    text: 'Attach to a non-[{Vehicle}] unit.\nAttached unit gains [Sentinel] and the [{Atreides}] trait.\n[When Played:] If attached unit has the [{Atreides}] trait printed on it, give an Experience token to it.',
+    front: {
+      gives: (_g, self, unit) => (unit.id === self.attachedTo ? { keywords: { sentinel: true }, traits: ['Atreides'] } : undefined),
+      whenPlayed: (g, self) => {
+        const unit = self.other ? g.unit(self.other) : undefined
+        if (unit && g.def(unit).traits.includes('Atreides')) g.giveToken(unit.id, 'Experience')
+      },
+    },
+  },
+  {
+    name: 'Fedaykin Oath',
+    text: 'Attach to a non-[{Vehicle}] unit.\nAttached unit gains [Sentinel] and: "[When Defeated:] Create a Fremen token."',
+    front: {
+      gives: (_g, self, unit) => (unit.id === self.attachedTo ? { keywords: { sentinel: true } } : undefined),
+      attachedWhenDefeated: (g, self) => {
+        g.createToken(self.controller, 'Fremen')
+      },
+    },
+  },
+  {
+    name: 'Crysknife',
+    text: 'Attach to a non-[{Vehicle}] unit.\n[When Played:] Deal 1 damage to a ground unit.\nYou may play this upgrade from your discard pile if you attach it to a [{Fremen}] unit.',
+    front: {
+      whenPlayed: (g, self) => {
+        const pick = g.chooseOne(self.controller, 'Crysknife: deal 1 damage to a ground unit', unitIds(g, (u) => u.arena === 'ground'), {
+          ai: 'harm',
+          source: self.def.id,
+        })
+        if (pick) g.damage(pick, 1, self)
+      },
+      discardPlay: (g, _self, unit) => !!unit && g.hasTrait(unit, 'Fremen'),
+    },
+  },
+  {
+    name: 'Gom Jabbar',
+    text: 'Attach to a non-[{Vehicle}], non-leader unit.\nAttached unit gains: "When this unit becomes exhausted, defeat it unless its controller discards a card from their hand."',
+    front: {
+      whenAttachedExhausted: (g, self) => {
+        const unit = self.attachedTo ? g.unit(self.attachedTo) : undefined
+        if (!unit) return
+        const p = g.controller(unit)
+        const keep =
+          g.player(p).hand.length > 0 &&
+          g.may(p, `Gom Jabbar: discard a card from your hand to keep ${g.name(unit.id)}?`, { yes: 'Discard a card', no: 'Let it be defeated', source: self.def.id })
+        if (keep) g.discardChosen(p, 1, 'Gom Jabbar: choose a card to discard', self.def.id)
+        else g.defeat(unit.id)
+      },
+    },
+  },
+  {
+    name: 'Gene Manipulation',
+    text: '[When Played:] Choose a card in your discard pile that shares a Trait with attached unit. Attached unit gains a [keyword] printed on that card.',
+    front: {
+      whenPlayed: (g, self) => {
+        const unit = self.other ? g.unit(self.other) : undefined
+        if (!unit) return
+        const traits = g.traits(unit)
+        const printed = (card: { def: string }) => combatKeywords.filter((name) => g.def(card).keywords[name])
+        const cards = g
+          .player(self.controller)
+          .discard.filter((c) => g.def(c).traits.some((t) => traits.includes(t)) && printed(c).length)
+          .map((c) => c.id)
+        const pick = g.chooseOne(self.controller, `Gene Manipulation: choose a card in your discard pile that shares a trait with ${g.name(unit.id)}`, cards, {
+          ai: 'best',
+          source: self.def.id,
+        })
+        if (!pick) return
+        const card = g.card(pick)!
+        const names = printed(card)
+        const which = names.length > 1 ? g.option(self.controller, `Gene Manipulation: ${g.name(unit.id)} gains…`, names.map(keywordLabel(card, g)), { source: self.def.id }) : 0
+        const name = names[which]
+        const keywords: Keywords = {}
+        addKeyword(keywords, name, g.def(card).keywords[name])
+        g.grant(unit.id, keywords, 'source', self.id)
+        g.log(`${g.name(unit.id)} gains ${keywordLabel(card, g)(name)}`, self.controller)
+      },
+    },
+  },
+  {
+    name: 'Black Market Fence',
+    text: '[When Played:] You may take control of a non-unique [{Item}] upgrade or a token upgrade and attach it to a friendly unit.',
+    front: {
+      whenPlayed: (g, self) => {
+        const p = self.controller
+        const upgrades = g.upgrades().filter((u) => g.def(u).token || (!g.def(u).unique && g.hasTrait(u, 'Item')))
+        // The AI takes what helps it from an enemy unit
+        const good = upgrades.find((u) => g.controller(u.unit) !== p && g.def(u).name !== 'Weakness')
+        const pick = g.chooseOne(p, 'Black Market Fence: you may take an Item or token upgrade', upgrades.map((u) => u.id), {
+          optional: true,
+          ai: good?.id ?? 'none',
+          source: self.def.id,
+        })
+        if (!pick) return
+        const to = g.chooseOne(p, `Black Market Fence: attach ${g.def(upgrades.find((u) => u.id === pick)!).name} to a friendly unit`, friendlyIds(g, self), {
+          ai: 'help',
+          source: self.def.id,
+        })
+        if (to) g.moveUpgrade(pick, to)
+      },
+    },
+  },
+
+  // --- Searching the deck, playing from the discard pile ---
+  {
+    name: 'Bene Gesserit Shuttle',
+    text: '[When Played:] Search the top 5 cards of your deck for a [{Bene Gesserit}] unit, reveal it and draw it.',
+    front: {
+      whenPlayed: (g, self) => searchDeck(g, self, 5, (d) => d.type === 'unit' && d.traits.includes('Bene Gesserit'), 'a Bene Gesserit unit'),
+    },
+  },
+  {
+    name: 'Harkonnen Sergeant',
+    text: '[When Played:] Search the top 5 cards of your deck for a [{Trooper}] unit, reveal it and draw it. You may play it now. It costs [1] less.',
+    front: {
+      whenPlayed: (g, self) => {
+        const p = self.controller
+        const found = searchDeck(g, self, 5, (d) => d.type === 'unit' && d.traits.includes('Trooper'), 'a Trooper unit')
+        if (!found || !g.canPlay(p, found, { discount: 1 })) return
+        if (g.may(p, `Harkonnen Sergeant: play ${g.name(found)} now, for 1 less?`, { yes: 'Play it', no: 'Keep it', source: self.def.id }))
+          g.playCard(p, found, { discount: 1 })
+      },
+    },
+  },
+  {
+    name: 'Sardaukar Legion',
+    text: 'As an additional cost to play this unit, defeat a friendly Spice token.\n[When Played:] Search the top 10 cards of your deck for any number of [{Sardaukar}] units and reveal them. You may defeat up to 3 friendly Spice tokens. Play any number of the revealed units with a combined cost of [#2] or less for each Spice token defeated this way, for free, ignoring their additional costs.',
+    front: {
+      whenPlayed: (g, self) => {
+        const p = self.controller
+        const top = g.top(p, 10)
+        const revealed = top.filter((c) => g.def(c).type === 'unit' && g.hasTrait(c, 'Sardaukar'))
+        g.log(revealed.length ? `Sardaukar Legion reveals ${revealed.map((c) => g.def(c).name).join(', ')}` : 'Sardaukar Legion finds no Sardaukar unit', p)
+        if (revealed.length && g.spice(p)) {
+          const counts = Array.from({ length: Math.min(3, g.spice(p)) + 1 }, (_, n) => `${n} (up to ${2 * n} cost)`)
+          const spent = g.option(p, 'Sardaukar Legion: defeat how many Spice tokens?', counts, { ai: counts.length - 1, source: self.def.id })
+          for (let i = 0; i < spent; i++) g.defeatSpice(p)
+          let budget = 2 * spent
+          for (;;) {
+            const ids = revealed
+              .filter((c) => g.def(c).cost <= budget && g.canPlay(p, c.id, { free: true, ignoreAdditional: true }))
+              .map((c) => c.id)
+            const pick = g.chooseOne(p, `Sardaukar Legion: you may play a revealed unit (up to ${budget} cost left)`, ids, {
+              optional: true,
+              ai: 'best',
+              source: self.def.id,
+            })
+            if (!pick) break
+            budget -= g.def(g.card(pick)!).cost
+            g.playCard(p, pick, { free: true, ignoreAdditional: true })
+          }
+        }
+        // The cards searched and left go to the bottom of the deck
+        g.shuffleToBottom(p, top.map((c) => c.id))
+      },
+    },
+  },
+  {
+    name: 'Carryall',
+    text: '[When Played/On Attack:] You may play a ground [{Vehicle}] unit from your discard pile that was defeated this phase and costs [#5] or less for free.',
+    front: {
+      whenPlayed: (g, self) => carryall(g, self),
+      onAttack: (g, self) => carryall(g, self),
+    },
+  },
+  {
+    name: 'Harkonnen Drop Ship',
+    text: '[When Played/On Attack:] You may play up to 2 [{Harkonnen}] [{Trooper}] units that cost [#2] or less from your discard pile for free.',
+    front: {
+      whenPlayed: (g, self) => dropShip(g, self),
+      onAttack: (g, self) => dropShip(g, self),
+    },
+  },
+  {
+    name: "Paul's 'Thopter",
+    subtitle: 'Into the Storm',
+    text: '[When Defeated:] You may play an [{Atreides}] ground unit that costs [#2] or less from your discard pile for free.',
+    front: {
+      whenDefeated: (g, self) =>
+        playFromDiscard(g, self, "Paul's 'Thopter: you may play an Atreides ground unit that costs 2 or less from your discard pile", (d) =>
+          d.type === 'unit' && d.arena === 'ground' && d.traits.includes('Atreides') && d.cost <= 2,
+        ),
+    },
+  },
+  {
+    name: 'Spice-Sworn Blade',
+    text: 'You may play this unit from your hand or discard pile for free by defeating a friendly Spice token.',
+    front: { spicePlay: true },
+  },
+  {
+    name: 'CHOAM Dividend',
+    text: 'While playing this event, you may defeat a friendly Spice token. If you do, it costs [1] less.\nPut this event into play as a resource.',
+    front: { spiceReduces: 1, toResources: true, play: () => {} },
+  },
+  {
+    name: 'Guild Heighliner',
+    text: 'As you play this unit, you may defeat any number of friendly Spice tokens. It costs [1] less for each Spice token defeated this way.\n[When Played:] Play any number of ground units from your hand with a combined cost of [#8] or less for free. They gain [Ambush] for this phase.',
+    front: {
+      spiceReduces: 99,
+      whenPlayed: (g, self) => {
+        const p = self.controller
+        let budget = 8
+        for (;;) {
+          const ids = g
+            .player(p)
+            .hand.filter((c) => g.def(c).type === 'unit' && g.def(c).arena === 'ground' && g.def(c).cost <= budget && g.canPlay(p, c.id, { free: true }))
+            .map((c) => c.id)
+          const pick = g.chooseOne(p, `Guild Heighliner: you may play a ground unit from your hand for free (up to ${budget} cost left)`, ids, {
+            optional: true,
+            ai: 'best',
+            source: self.def.id,
+          })
+          if (!pick) return
+          budget -= g.def(g.card(pick)!).cost
+          // Ambush before it enters play, so it may attack as it does
+          g.grant(pick, { ambush: true }, 'phase')
+          g.playCard(p, pick, { free: true })
+        }
+      },
+    },
+  },
+  {
+    name: 'Princess Irulan',
+    subtitle: 'Imperial Chronicler',
+    text: '[Restore 1]\n[When Played:] You may put 3 [{Bene Gesserit}] cards from your discard pile on the bottom of your deck in any order. If you do, put the top card of your deck into play as a resource.',
+    front: {
+      whenPlayed: (g, self) => {
+        const p = self.controller
+        const cards = g.player(p).discard.filter((c) => g.hasTrait(c, 'Bene Gesserit')).map((c) => c.id)
+        if (cards.length < 3) return
+        if (!g.may(p, 'Princess Irulan: put 3 Bene Gesserit cards from your discard pile on the bottom of your deck to gain a resource?', { yes: 'Do it', no: 'Skip', source: self.def.id }))
+          return
+        const picks = g.choose(p, 'Princess Irulan: choose 3 Bene Gesserit cards, in the order they go to the bottom', cards, { min: 3, max: 3, ai: 'cheap', source: self.def.id })
+        for (const id of picks) g.discardToBottom(p, id)
+        g.resourceFromDeck(p)
+      },
+    },
+  },
+  {
+    name: 'Sietch Reverend Mother',
+    text: '[When Played:] Choose a [{Fremen}] or [{Bene Gesserit}] unit in your discard pile other than a Sietch Reverend Mother. Use its [When Played] ability as if it were this unit\'s.\n[When Defeated:] Return another [{Fremen}] or [{Bene Gesserit}] unit from your discard pile to your hand.',
+    front: {
+      whenPlayed: (g, self) => {
+        const ids = g
+          .player(self.controller)
+          .discard.filter((c) => isFremenOrSister(g, c) && g.def(c).name !== 'Sietch Reverend Mother' && abilitiesOf(g.def(c), 'front').whenPlayed)
+          .map((c) => c.id)
+        const pick = g.chooseOne(self.controller, "Sietch Reverend Mother: choose a unit in your discard pile to use its When Played ability", ids, {
+          ai: 'best',
+          source: self.def.id,
+        })
+        if (!pick) return
+        const card = g.def(g.card(pick)!)
+        g.log(`Sietch Reverend Mother uses ${card.name}'s When Played ability`, self.controller)
+        abilitiesOf(card, 'front').whenPlayed?.(g, self)
+      },
+      whenDefeated: (g, self) => {
+        const ids = g
+          .player(self.controller)
+          .discard.filter((c) => c.id !== self.id && isFremenOrSister(g, c))
+          .map((c) => c.id)
+        const pick = g.chooseOne(self.controller, 'Sietch Reverend Mother: return a Fremen or Bene Gesserit unit from your discard pile to your hand', ids, {
+          ai: 'best',
+          source: self.def.id,
+        })
+        if (pick) g.fromDiscard(self.controller, pick)
+      },
+    },
+  },
+  {
+    name: 'Scout',
+    text: "[When Played:] You may return another friendly non-leader unit that costs [#2] or less and isn't named Scout to its owner's hand. If you do, you may play it. It costs [1] less.",
+    front: {
+      whenPlayed: (g, self) => {
+        const p = self.controller
+        const ids = friendlyIds(g, self, (u) => u.id !== self.id && !u.leader && g.cost(u) <= 2 && g.def(u).name !== 'Scout')
+        const pick = g.chooseOne(p, "Scout: you may return another friendly unit that costs 2 or less to its owner's hand", ids, {
+          optional: true,
+          ai: 'none',
+          source: self.def.id,
+        })
+        if (!pick) return
+        g.returnToHand(pick)
+        if (g.canPlay(p, pick, { discount: 1 }) && g.may(p, `Scout: play ${g.name(pick)} again, for 1 less?`, { yes: 'Play it', no: 'Keep it', source: self.def.id }))
+          g.playCard(p, pick, { discount: 1 })
+      },
+    },
+  },
+
+  // --- Combat ---
+  {
+    name: 'Amtal Rule',
+    text: "Attack with a ground unit, even if it's exhausted. It can't attack bases for this attack. If it's a [{Ginaz}] unit, it deals its combat damage before the defender.",
+    front: {
+      play: (g, self) => {
+        const pick = g.chooseOne(self.controller, 'Amtal Rule: attack with a ground unit, even if it is exhausted', friendlyIds(g, self, (u) => u.arena === 'ground'), {
+          ai: 'help',
+          source: self.def.id,
+        })
+        if (!pick) return
+        g.attackWith(pick, { exhausted: true, noBases: true, firstStrike: g.hasTrait(g.unit(pick)!, 'Ginaz') })
+      },
+    },
+  },
+  {
+    name: 'Duncan Idaho',
+    subtitle: 'Swordmaster of the Ginaz',
+    text: '[Sentinel]\n[When Defeated:] If this unit was defending and you control Paul Atreides or Lady Jessica, you may defeat the attacking unit.',
+    front: {
+      whenDefeated: (g, self) => {
+        const attacker = self.attack?.target === self.id ? g.unit(self.attack.attacker) : undefined
+        if (!attacker || !controlsNamed(g, self.controller, ['Paul Atreides', 'Lady Jessica'])) return
+        if (g.may(self.controller, `Duncan Idaho: defeat ${g.name(attacker.id)}?`, { yes: 'Defeat it', no: 'Skip', source: self.def.id })) g.defeat(attacker.id)
+      },
+    },
+  },
+  {
+    name: 'Hunter Seeker',
+    text: 'When an enemy ground unit attacks: Defeat this unit. If you do, deal 3 damage to the attacking unit.',
+    front: {
+      whenEnemyAttacks: (g, self) => {
+        const attacker = self.other ? g.unit(self.other) : undefined
+        if (!attacker || attacker.arena !== 'ground' || !g.unit(self.id)) return
+        g.defeat(self.id)
+        if (!g.unit(self.id)) g.damage(attacker.id, 3, self)
+      },
+    },
+  },
+  {
+    name: 'Prana-Bindu Adept',
+    text: "[Sentinel]\nWhen this unit is attacked: Discard the top card of your deck. If it's a [{Bene Gesserit}] card, the attacking unit gets [-2/-0] for this attack.",
+    front: {
+      whenDefending: (g, self) => {
+        const [top] = g.top(self.controller, 1)
+        if (!top) return
+        g.mill(self.controller, top.id)
+        if (g.hasTrait(top, 'Bene Gesserit') && self.other && g.unit(self.other)) g.buff(self.other, -2, 0, 'attack')
+      },
+    },
+  },
+  {
+    name: 'Bene Gesserit Operative',
+    text: "[Saboteur]\n[Hidden]\n[On Attack:] If this unit is attacking a base, that base's controller discards a card from their hand.",
+    front: {
+      onAttack: (g, self) => {
+        if (self.attack?.target === 'base') g.discardChosen(enemy(g, self), 1, 'Bene Gesserit Operative makes you discard a card', self.def.id)
+      },
+    },
+  },
+  {
+    name: 'Shai-Hulud',
+    text: "[Overwhelm]\n[When Played:] If you control an [{Arrakis}] base, return each non-leader [{Fremen}] unit to its owner's hand. Then defeat each other ground unit that isn't a [{Fremen}] unit.\n[When this unit completes an attack:] Return it to the bottom of its owner's deck.",
+    front: {
+      whenPlayed: (g, self) => {
+        if (!g.controlsArrakis(self.controller)) return
+        for (const id of unitIds(g, (u) => !u.leader && g.hasTrait(u, 'Fremen'))) g.returnToHand(id)
+        for (const id of unitIds(g, (u) => u.id !== self.id && u.arena === 'ground' && !g.hasTrait(u, 'Fremen'))) g.defeat(id)
+      },
+      afterAttack: (g, self) => g.toDeckBottom(self.id),
+    },
+  },
+  {
+    name: 'Fremen Worm Riders',
+    text: "[Overwhelm]\nWhile you control an [{Arrakis}] base, this unit gains [Ambush].\n[When Defeated:] Put this card on the bottom of its owner's deck.",
+    front: {
+      whenDefeated: (g, self) => {
+        for (const p of [0, 1] as PlayerId[]) if (g.player(p).discard.some((c) => c.id === self.id)) g.discardToBottom(p, self.id)
+        g.log("Fremen Worm Riders go to the bottom of their owner's deck", self.controller)
+      },
+    },
+  },
+  {
+    name: 'Rabban\'s Gunship',
+    subtitle: 'Fist of the Beast',
+    text: '[When you play a [{Harkonnen}] unit (including this one):] You may deal 1 damage to a friendly unit. If you do, deal 2 damage to a ground unit or base.',
+    front: {
+      whenPlayed: (g, self) => gunship(g, self),
+      whenYouPlay: (g, self) => {
+        if (self.otherDef?.type === 'unit' && self.otherDef.traits.includes('Harkonnen')) gunship(g, self)
+      },
+    },
+  },
+  {
+    name: 'The Baron\'s Wrath',
+    text: 'You may defeat any number of friendly Spice tokens and friendly [{Harkonnen}] units. Deal X damage divided as you choose among any number of units. X is the number of friendly [{Harkonnen}] units, plus 2 for each Spice token and unit defeated this way.',
+    front: {
+      play: (g, self) => {
+        const p = self.controller
+        const counts = Array.from({ length: g.spice(p) + 1 }, (_, n) => `${n} Spice token${n === 1 ? '' : 's'}`)
+        const spice = counts.length > 1 ? g.option(p, "The Baron's Wrath: defeat how many Spice tokens?", counts, { ai: counts.length - 1, source: self.def.id }) : 0
+        for (let i = 0; i < spice; i++) g.defeatSpice(p)
+        const harkonnen = friendlyIds(g, self, (u) => g.hasTrait(u, 'Harkonnen'))
+        const fallen = g.choose(p, "The Baron's Wrath: defeat any number of friendly Harkonnen units", harkonnen, { min: 0, max: harkonnen.length, ai: 'none', source: self.def.id })
+        for (const id of fallen) g.defeat(id)
+        let left = friendlyIds(g, self, (u) => g.hasTrait(u, 'Harkonnen')).length + 2 * (spice + fallen.length)
+        g.log(`The Baron's Wrath: ${left} damage to deal`, p)
+        while (left > 0) {
+          const target = g.chooseOne(p, `The Baron's Wrath: choose a unit to deal damage to (${left} left)`, unitIds(g, () => true), {
+            ai: 'harm',
+            source: self.def.id,
+          })
+          if (!target) return
+          const amounts = Array.from({ length: left }, (_, i) => String(i + 1))
+          const unit = g.unit(target)!
+          const lethal = Math.min(left, Math.max(1, g.hp(unit) - unit.damage))
+          const amount = amounts.length > 1 ? Number(amounts[g.option(p, `The Baron's Wrath: how much damage to ${g.name(target)}?`, amounts, { ai: lethal - 1, source: self.def.id })]) : 1
+          g.damage(target, amount, self)
+          left -= amount
+        }
+      },
+    },
+  },
+
+  // --- Hands and decks ---
+  {
+    name: 'Imperial Spy',
+    text: "[Hidden]\n[When Played/On Attack:] Look at the top card of an opponent's deck. You may put it on the bottom of their deck or discard it.",
+    front: {
+      whenPlayed: (g, self) => imperialSpy(g, self),
+      onAttack: (g, self) => imperialSpy(g, self),
+    },
+  },
+  {
+    name: 'Lady Jessica',
+    subtitle: 'Mother of the Kwisatz Haderach',
+    text: "[Restore 3]\n[When Played/On Attack:] Look at an opponent's hand and choose a card in it. This phase, they can't play cards with that name. Draw a card.",
+    front: {
+      whenPlayed: (g, self) => nameACard(g, self),
+      onAttack: (g, self) => nameACard(g, self),
+    },
+  },
+  {
+    name: 'The Voice',
+    text: "Look at an opponent's hand and choose a card in it. This phase, they can't play cards with that name. Draw a card.",
+    front: { play: (g, self) => nameACard(g, self) },
+  },
+  {
+    name: 'Reverend Mother Mohiam',
+    subtitle: "The Emperor's Truthsayer",
+    text: "Opponents play with their hands revealed.\n[When Played:] Discard any number of cards from your hand. For each card discarded this way, choose a card in each opponent's hand. They discard it.",
+    front: {
+      revealsHands: true,
+      whenPlayed: (g, self) => {
+        const p = self.controller
+        const foe = enemy(g, self)
+        const hand = g.player(p).hand.map((c) => c.id)
+        const mine = g.choose(p, 'Reverend Mother Mohiam: discard any number of cards from your hand; they discard one for each', hand, {
+          min: 0,
+          max: hand.length,
+          ai: 'none',
+          source: self.def.id,
+        })
+        for (const id of mine) g.discard(p, id)
+        for (let i = 0; i < mine.length; i++) {
+          const pick = g.chooseOne(p, `Reverend Mother Mohiam: choose a card in ${g.player(foe).name}'s hand to discard`, g.player(foe).hand.map((c) => c.id), {
+            ai: 'best',
+            source: self.def.id,
+          })
+          if (pick) g.discard(foe, pick)
+        }
+      },
+    },
+  },
+  {
+    name: 'Paul Atreides',
+    subtitle: 'Usul',
+    text: "While you control an [{Arrakis}] base, this unit gains [Hidden].\n[On Attack:] Look at the top card of your deck. You may discard it. If you do and it's a [{Fremen}] card, this unit gets [+2/+0] for this attack.",
+    front: {
+      onAttack: (g, self) => {
+        const [top] = g.top(self.controller, 1)
+        if (!top) return
+        const fremen = g.hasTrait(top, 'Fremen')
+        const discard = g.option(self.controller, 'Paul Atreides: discard the top card of your deck?', ['Leave it on top', 'Discard it'], {
+          ai: fremen ? 1 : 0,
+          source: self.def.id,
+          card: top.def,
+        })
+        if (discard !== 1) return
+        g.mill(self.controller, top.id)
+        if (fremen) g.buff(self.id, 2, 0, 'attack')
+      },
+    },
+  },
+
+  // --- Taking control ---
+  {
+    name: 'Lady Margot Fenring',
+    subtitle: 'Agent of the Sisterhood',
+    text: '[When Played/On Attack:] Choose an enemy non-leader unit. You may discard a card from your hand. If you do and it costs [#4] or less, take control of it. Otherwise, exhaust it. At the start of the regroup phase, its owner takes control of it.',
+    front: {
+      whenPlayed: (g, self) => margot(g, self),
+      onAttack: (g, self) => margot(g, self),
+    },
+  },
+  {
+    name: 'Seduction',
+    text: 'Choose an enemy non-leader unit. If it costs the same as or less than a friendly [Bene Gesserit] unit, take control of it and ready it. Otherwise, exhaust it. At the start of the regroup phase, its owner takes control of it.',
+    front: {
+      play: (g, self) => {
+        const p = self.controller
+        const target = g.chooseOne(p, 'Seduction: choose an enemy non-leader unit', unitIds(g, (u) => g.controller(u) !== p && !u.leader), {
+          ai: 'harm',
+          source: self.def.id,
+        })
+        if (!target) return
+        const unit = g.unit(target)!
+        const sisters = g.units((u) => g.controller(u) === p && g.hasTrait(u, 'Bene Gesserit'))
+        if (sisters.some((u) => g.cost(u) >= g.cost(unit))) {
+          g.takeControl(target, p, true)
+          g.ready(target)
+        } else g.exhaust(target)
+      },
+    },
+  },
+  {
+    name: 'Worm Signs',
+    text: 'If you control an [{Arrakis}] base, choose a non-[{Fremen}] non-leader ground unit. Its controller chooses one:\n• Return it to its owner\'s hand.\n• Defeat it when the next regroup phase starts.',
+    front: {
+      play: (g, self) => {
+        if (!g.controlsArrakis(self.controller)) return
+        const target = g.chooseOne(self.controller, 'Worm Signs: choose a non-Fremen non-leader ground unit', unitIds(g, (u) => u.arena === 'ground' && !u.leader && !g.hasTrait(u, 'Fremen')), {
+          ai: 'harm',
+          source: self.def.id,
+        })
+        if (!target) return
+        const owner = g.controller(g.unit(target)!)
+        const choice = g.option(owner, `Worm Signs: ${g.name(target)}…`, ["Return it to its owner's hand", 'Defeat it when the next regroup phase starts'], {
+          ai: 0,
+          source: self.def.id,
+        })
+        if (choice === 0) g.returnToHand(target)
+        else {
+          g.doom(target)
+          g.log(`${g.name(target)} will be defeated when the regroup phase starts`, owner)
+        }
+      },
+    },
+  },
+
+  // --- Choices ---
+  {
+    name: 'Bene Gesserit Sister',
+    text: '[Restore 1]\n[When Played:] Choose one:\n• Deal 2 damage to a unit.\n• The next [{Bene Gesserit}] card you play this phase costs [2] less.',
+    front: {
+      whenPlayed: (g, self) => {
+        const p = self.controller
+        const enemies = unitIds(g, (u) => g.controller(u) !== p)
+        const choice = g.option(p, 'Bene Gesserit Sister: choose one', ['Deal 2 damage to a unit', 'The next Bene Gesserit card you play this phase costs 2 less'], {
+          ai: enemies.length ? 0 : 1,
+          source: self.def.id,
+        })
+        if (choice === 1) return g.discountNext(p, 'Bene Gesserit', 2)
+        const pick = g.chooseOne(p, 'Bene Gesserit Sister: deal 2 damage to a unit', unitIds(g, () => true), { ai: 'harm', source: self.def.id })
+        if (pick) g.damage(pick, 2, self)
+      },
+    },
+  },
+  {
+    name: 'Family Atomics',
+    text: 'Choose one:\n• Defeat an upgrade. If it was a Fortification, draw a card.\n• Pay [3]. If you do, defeat a non-leader unit and deal 3 damage to your base.',
+    front: {
+      play: (g, self) => {
+        const p = self.controller
+        const upgrades = g.upgrades()
+        const enemyUpgrade = upgrades.some((u) => g.controller(u.unit) !== p)
+        const choice = g.option(p, 'Family Atomics: choose one', ['Defeat an upgrade', 'Pay 3 to defeat a non-leader unit and deal 3 damage to your base'], {
+          ai: !enemyUpgrade && g.canPay(p, 3) ? 1 : 0,
+          source: self.def.id,
+        })
+        if (choice === 0) {
+          const pick = g.chooseOne(p, 'Family Atomics: defeat an upgrade', upgrades.map((u) => u.id), { ai: 'harm', source: self.def.id })
+          if (!pick) return
+          const fortification = g.hasTrait(upgrades.find((u) => u.id === pick)!, 'Fortification')
+          g.defeatUpgrade(pick)
+          if (fortification) g.draw(p, 1)
+          return
+        }
+        if (!g.pay(p, 3)) return
+        const pick = g.chooseOne(p, 'Family Atomics: defeat a non-leader unit', unitIds(g, (u) => !u.leader), { ai: 'harm', source: self.def.id })
+        if (pick) g.defeat(pick)
+        g.damage(`base${p}`, 3, self)
+      },
+    },
+  },
+
+  // --- Leaders ---
+  {
+    name: 'Count Hasimir Fenring',
+    subtitle: "The Emperor's Shadow",
+    text: "[When a friendly unit deals combat damage to an enemy base:] You may exhaust this leader and defeat a friendly Spice token. If you do, look at that player's hand. You may discard a card from it. If you do, that player draws a card.",
+    backText:
+      "[Saboteur]\n[When Deployed:] Look at an opponent's hand and discard a card from it.\nOnce each round, when a friendly unit deals combat damage to an enemy base: You may defeat a friendly Spice token. If you do, look at that player's hand. You may discard a card from it. If you do, that player draws a card.",
+    front: {
+      whenCombatDamageBase: (g, self) => {
+        const p = self.controller
+        if (!g.leaderReady(p) || !g.spice(p)) return
+        if (!g.may(p, "Count Hasimir Fenring: exhaust this leader and defeat a Spice token to look at their hand?", { yes: 'Do it', no: 'Skip', source: self.def.id }))
+          return
+        g.exhaustLeader(p)
+        g.defeatSpice(p)
+        fenringLook(g, self)
+      },
+    },
+    back: {
+      whenDeployed: (g, self) => {
+        const foe = enemy(g, self)
+        g.log(`Count Hasimir Fenring looks at ${g.player(foe).name}'s hand`, self.controller)
+        const pick = g.chooseOne(self.controller, "Count Hasimir Fenring: discard a card from their hand", g.player(foe).hand.map((c) => c.id), {
+          ai: 'best',
+          source: self.def.id,
+        })
+        if (pick) g.discard(foe, pick)
+      },
+      whenCombatDamageBase: (g, self) => {
+        const p = self.controller
+        if (g.used(self) || !g.spice(p)) return
+        if (!g.may(p, 'Count Hasimir Fenring: defeat a Spice token to look at their hand?', { yes: 'Defeat a Spice token', no: 'Skip', source: self.def.id })) return
+        g.use(self)
+        g.defeatSpice(p)
+        fenringLook(g, self)
+      },
+    },
+  },
+  {
+    name: 'Paul Atreides',
+    subtitle: 'Haunted by Dreams',
+    text: 'You may look at the top card of your deck at any time.\n[Action [Arrow]:] Discard the top card of your deck. Then, attack with a unit. If it has the same cost as the discarded card, it gets [+2/+0] for this attack.',
+    backText:
+      '[Raid 1]\n[On Attack:] Look at the top 3 cards of your deck. Discard 1 of them and put the others back in any order. If the discarded card has an [On Attack] ability, use it as if it were this unit\'s.',
+    front: {
+      seesTopCard: true,
+      actions: [
+        {
+          label: 'discard your top card, then attack',
+          exhaust: true,
+          can: (g, self) => g.top(self.controller, 1).length > 0,
+          run: (g, self) => {
+            const p = self.controller
+            const [top] = g.top(p, 1)
+            if (!top) return
+            g.mill(p, top.id)
+            const cost = g.def(top).cost
+            const ready = friendlyIds(g, self, (u) => !u.exhausted)
+            const same = ready.find((id) => g.cost(g.unit(id)!) === cost)
+            const pick = g.chooseOne(p, `Paul Atreides: attack with a unit (one that costs ${cost} gets +2/+0)`, ready, {
+              ai: same ?? 'help',
+              source: self.def.id,
+            })
+            if (pick) g.attackWith(pick, { power: g.cost(g.unit(pick)!) === cost ? 2 : 0 })
+          },
+        },
+      ],
+    },
+    back: {
+      onAttack: (g, self) => {
+        const p = self.controller
+        const top = g.top(p, 3)
+        if (!top.length) return
+        const withAttack = top.find((c) => abilitiesOf(g.def(c), 'front').onAttack)
+        const pick = g.chooseOne(p, 'Paul Atreides: discard 1 of the top 3 cards of your deck', top.map((c) => c.id), {
+          ai: withAttack?.id ?? 'cheap',
+          source: self.def.id,
+        })
+        if (!pick) return
+        const card = g.card(pick)!
+        g.mill(p, pick)
+        // The others back on top, in the order chosen
+        const rest = top.filter((c) => c.id !== pick)
+        if (rest.length === 2) {
+          const first = g.option(p, 'Paul Atreides: which card goes on top?', rest.map((c) => g.def(c).name), { source: self.def.id })
+          g.toTop(p, rest[1 - first].id)
+          g.toTop(p, rest[first].id)
+        }
+        const onAttack = abilitiesOf(g.def(card), 'front').onAttack
+        if (onAttack) {
+          g.log(`Paul Atreides uses ${g.def(card).name}'s On Attack ability`, p)
+          onAttack(g, self)
+        }
+      },
+    },
+  },
 ]
 
 // "When you defeat a friendly Spice token"
@@ -1445,6 +2236,156 @@ function defeatNonUniqueUpgrade(g: Game, self: Self) {
     source: self.def.id,
   })
   if (pick) g.defeatUpgrade(pick)
+}
+
+// The keywords a unit may gain from a card printed with them
+const combatKeywords = ['sentinel', 'raid', 'restore', 'overwhelm', 'grit', 'saboteur', 'ambush', 'hidden'] as const
+type CombatKeyword = (typeof combatKeywords)[number]
+
+function addKeyword(keywords: Keywords, name: CombatKeyword, value: number | boolean | undefined) {
+  if (typeof value === 'number') (keywords[name] as number) = ((keywords[name] as number) ?? 0) + value
+  else if (value) (keywords[name] as boolean) = true
+}
+
+// "Raid 2", "Sentinel": a keyword as a card prints it
+const keywordLabel = (card: { def: string }, g: Game) => (name: CombatKeyword) => {
+  const value = g.def(card).keywords[name]
+  const word = name[0].toUpperCase() + name.slice(1)
+  return typeof value === 'number' ? `${word} ${value}` : word
+}
+
+// "Search the top N cards of your deck for …, reveal it and draw it.": the rest go to the bottom
+function searchDeck(g: Game, self: Self, count: number, test: (card: CardDef) => boolean, what: string) {
+  const p = self.controller
+  const top = g.top(p, count)
+  const found = top.filter((c) => test(g.def(c))).map((c) => c.id)
+  const pick = g.chooseOne(p, `${self.def.name}: search the top ${count} cards of your deck for ${what}`, found, { ai: 'best', source: self.def.id })
+  if (pick) {
+    g.log(`${g.player(p).name} reveals ${g.name(pick)}`, p)
+    g.drawCard(p, pick)
+  } else g.log(`${self.def.name} finds nothing`, p)
+  g.shuffleToBottom(p, top.filter((c) => c.id !== pick).map((c) => c.id))
+  return pick
+}
+
+// "You may play … from your discard pile for free"
+function playFromDiscard(g: Game, self: Self, text: string, test: (card: CardDef, id: string) => boolean) {
+  const p = self.controller
+  const ids = g
+    .player(p)
+    .discard.filter((c) => test(g.def(c), c.id) && g.canPlay(p, c.id, { free: true }))
+    .map((c) => c.id)
+  const pick = g.chooseOne(p, text, ids, { optional: true, ai: 'best', source: self.def.id })
+  if (pick) g.playCard(p, pick, { free: true })
+  return pick
+}
+
+const carryall = (g: Game, self: Self) =>
+  playFromDiscard(g, self, 'Carryall: you may play a ground Vehicle unit defeated this phase from your discard pile', (d, id) =>
+    d.type === 'unit' && d.arena === 'ground' && d.traits.includes('Vehicle') && d.cost <= 5 && g.defeatedThisPhase(id),
+  )
+
+function dropShip(g: Game, self: Self) {
+  const troopers = (d: CardDef) => d.type === 'unit' && d.traits.includes('Harkonnen') && d.traits.includes('Trooper') && d.cost <= 2
+  for (let i = 0; i < 2; i++)
+    if (!playFromDiscard(g, self, `Harkonnen Drop Ship: you may play a Harkonnen Trooper unit that costs 2 or less from your discard pile (${2 - i} left)`, troopers)) return
+}
+
+const isFremenOrSister = (g: Game, card: { def: string }) =>
+  g.def(card).type === 'unit' && (g.hasTrait(card, 'Fremen') || g.hasTrait(card, 'Bene Gesserit'))
+
+// Whether a player controls a card of one of these names: a unit, or their leader
+const controlsNamed = (g: Game, p: PlayerId, names: string[]) =>
+  g.units((u) => g.controller(u) === p).some((u) => names.includes(g.def(u).name)) ||
+  (!g.player(p).leader.deployed && names.includes(g.def(g.player(p).leader).name))
+
+// Rabban's Gunship: 1 damage to a friendly unit for 2 to a ground unit or base
+function gunship(g: Game, self: Self) {
+  const p = self.controller
+  const friends = friendlyIds(g, self)
+  // The AI hurts a unit that survives it
+  const tough = friends.find((id) => {
+    const u = g.unit(id)!
+    return g.hp(u) - u.damage > 1
+  })
+  const hurt = g.chooseOne(p, "Rabban's Gunship: you may deal 1 damage to a friendly unit to deal 2 damage to a ground unit or base", friends, {
+    optional: true,
+    ai: tough ?? 'none',
+    source: self.def.id,
+  })
+  if (!hurt) return
+  g.damage(hurt, 1, self)
+  const pick = g.chooseOne(p, "Rabban's Gunship: deal 2 damage to a ground unit or base", [...unitIds(g, (u) => u.arena === 'ground'), ...bases()], {
+    ai: 'harm',
+    source: self.def.id,
+  })
+  if (pick) g.damage(pick, 2, self)
+}
+
+// Imperial Spy: the top card of the opponent's deck, left, put on the bottom or discarded
+function imperialSpy(g: Game, self: Self) {
+  const foe = enemy(g, self)
+  const [top] = g.top(foe, 1)
+  if (!top) return
+  const where = g.option(self.controller, "Imperial Spy: the top card of their deck…", ['Leave it on top', 'Put it on the bottom', 'Discard it'], {
+    ai: 2,
+    source: self.def.id,
+    card: top.def,
+  })
+  if (where === 1) {
+    g.toBottom(foe, top.id)
+    g.log(`${g.player(self.controller).name} puts the top card of ${g.player(foe).name}'s deck on the bottom`, self.controller)
+  } else if (where === 2) g.mill(foe, top.id)
+}
+
+// "Look at an opponent's hand and choose a card in it. This phase, they can't play cards with that
+// name. Draw a card." (The Voice, Lady Jessica)
+function nameACard(g: Game, self: Self) {
+  const foe = enemy(g, self)
+  g.log(`${g.player(self.controller).name} looks at ${g.player(foe).name}'s hand`, self.controller)
+  const pick = g.chooseOne(self.controller, `${self.def.name}: choose a card in their hand; they can't play cards with that name this phase`, g.player(foe).hand.map((c) => c.id), {
+    ai: 'best',
+    source: self.def.id,
+  })
+  if (pick) g.ban(foe, g.def(g.card(pick)!).name)
+  g.draw(self.controller, 1)
+}
+
+// Count Hasimir Fenring: a look at the hand of the player whose base was hit, a card discarded
+// from it for one drawn
+function fenringLook(g: Game, self: Self) {
+  const foe = enemy(g, self)
+  g.log(`Count Hasimir Fenring looks at ${g.player(foe).name}'s hand`, self.controller)
+  const pick = g.chooseOne(self.controller, 'Count Hasimir Fenring: you may discard a card from their hand; they draw a card', g.player(foe).hand.map((c) => c.id), {
+    optional: true,
+    ai: 'best',
+    source: self.def.id,
+  })
+  if (!pick) return
+  g.discard(foe, pick)
+  g.draw(foe, 1)
+}
+
+// Lady Margot Fenring: a card discarded takes a unit that costs 4 or less; otherwise it is exhausted
+function margot(g: Game, self: Self) {
+  const p = self.controller
+  const target = g.chooseOne(p, 'Lady Margot Fenring: choose an enemy non-leader unit', unitIds(g, (u) => g.controller(u) !== p && !u.leader), {
+    ai: 'harm',
+    source: self.def.id,
+  })
+  if (!target) return
+  const cheap = g.cost(g.unit(target)!) <= 4
+  const discarded =
+    g.player(p).hand.length > 0 &&
+    g.may(p, `Lady Margot Fenring: discard a card from your hand${cheap ? ` to take control of ${g.name(target)}` : ''}?`, {
+      yes: 'Discard a card',
+      no: 'Skip',
+      ai: cheap && g.player(p).hand.length > 1,
+      source: self.def.id,
+    }) &&
+    g.discardChosen(p, 1, 'Lady Margot Fenring: choose a card to discard', self.def.id) > 0
+  if (discarded && cheap) g.takeControl(target, p, true)
+  else g.exhaust(target)
 }
 
 // --- Finding a card's script ---

@@ -19,6 +19,8 @@ export type Keywords = {
   plot?: boolean
   // Smuggle [Y]: the cost to play it from your resources
   smuggle?: number
+  // Not a printed keyword: "deals combat damage before the defender", while attacking
+  firstStrike?: boolean
 }
 
 // A card as the engine knows it: its printed values, and its text, which names the script
@@ -47,8 +49,8 @@ export type CardDef = {
   spiceCost?: number
   // A base's or leader's "You start the game with a [Spice Token]."
   startSpice?: number
-  // An upgrade's "Attach to a friendly unit." or "Attach to a non-[{Vehicle}] unit."
-  attach?: { friendly?: boolean; not?: string }
+  // An upgrade's "Attach to a friendly unit." or "Attach to a non-[{Vehicle}], non-leader unit."
+  attach?: { friendly?: boolean; not?: string[]; nonLeader?: boolean }
   // An upgrade's "Attached unit gains [Sentinel]."
   attachedKeywords?: Keywords
   // A leader's unit side
@@ -125,8 +127,22 @@ export type Prompt = {
 // the same game, until it runs to the end.
 export type Pending = { base: GameState; player: PlayerId; action: Action; answers: string[][] }
 
-// A change to a unit that lasts a while: for this attack, or for this phase
-export type Effect = { unit: string; power: number; hp: number; keywords?: Keywords; until: 'attack' | 'phase' }
+// A change to a unit that lasts a while: for this attack, for this phase, or while the card
+// that made it (source, an upgrade) stays in play
+export type Effect = {
+  unit: string
+  power: number
+  hp: number
+  keywords?: Keywords
+  until: 'attack' | 'phase' | 'source'
+  source?: string
+}
+
+// "The next [{Bene Gesserit}] card you play this phase costs [2] less."
+export type Discount = { player: PlayerId; trait: string; amount: number }
+
+// A unit whose control was taken until the regroup phase starts, when its owner takes it back
+export type Borrowed = { unit: string; owner: PlayerId }
 
 export type GameState = {
   rng: number
@@ -150,6 +166,16 @@ export type GameState = {
   effects: Effect[]
   // The "once each round" abilities used this round
   usedThisRound: string[]
+  // What lasts this phase: cost reductions not yet used, card names opponents can't play, the
+  // units defeated (their card ids)
+  discounts: Discount[]
+  banned: { player: PlayerId; name: string }[]
+  defeatedThisPhase: string[]
+  borrowed: Borrowed[]
+  // Units to defeat when the next regroup phase starts (Worm Signs)
+  doomed: string[]
+  // The attack under way, for what applies while attacking and the defender's own abilities
+  attack: { attacker: string; target: string | 'base' } | null
   // While an ability waits for an answer
   prompt: Prompt | null
   pending: Pending | null
@@ -159,8 +185,9 @@ export type Action =
   | { type: 'first'; goFirst: boolean }
   | { type: 'mulligan'; take: boolean }
   | { type: 'resource'; cards: string[] }
-  // From the hand; from the resources using Smuggle
-  | { type: 'play'; card: string; attachTo?: string; smuggle?: boolean }
+  // From the hand; from the resources using Smuggle; from the discard pile when the card says
+  // so; for a Spice token instead of its cost when the card says so
+  | { type: 'play'; card: string; attachTo?: string; smuggle?: boolean; discard?: boolean; spice?: boolean }
   | { type: 'attack'; attacker: string; target: string | 'base' }
   | { type: 'deploy' }
   // A leader's or unit's Action ability, by its number on the card
