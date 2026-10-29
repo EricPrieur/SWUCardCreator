@@ -320,7 +320,10 @@ function AdminModal(props: { session: Session; focus?: number; onClose: () => vo
       .catch((err) => setError(err.message))
   }, [session.token])
 
-  const change = async (user: AdminUser, body: { isAdmin?: boolean; quotaBytes?: number | null; canPublish?: boolean }) => {
+  const change = async (
+    user: AdminUser,
+    body: { isAdmin?: boolean; isTester?: boolean; quotaBytes?: number | null; canPublish?: boolean },
+  ) => {
     setError(null)
     try {
       const data = await api<{ user: User }>(`/api/admin/users/${user.id}`, { method: 'PATCH', body, token: session.token })
@@ -342,6 +345,7 @@ function AdminModal(props: { session: Session; focus?: number; onClose: () => vo
               <tr>
                 <th>User</th>
                 <th>Admin</th>
+                <th title="May use the game simulator; admins always may">Tester</th>
                 <th title="May make cards public">Public?</th>
                 <th>Cards</th>
                 <th>Storage</th>
@@ -364,6 +368,16 @@ function AdminModal(props: { session: Session; focus?: number; onClose: () => vo
                       checked={user.isAdmin}
                       disabled={user.permanent}
                       onChange={(event) => change(user, { isAdmin: event.target.checked })}
+                    />
+                  </td>
+                  <td>
+                    <input
+                      type="checkbox"
+                      aria-label={`${user.username} is a tester`}
+                      title="May use the game simulator"
+                      checked={user.isAdmin || !!user.isTester}
+                      disabled={user.isAdmin}
+                      onChange={(event) => change(user, { isTester: event.target.checked })}
                     />
                   </td>
                   <td>

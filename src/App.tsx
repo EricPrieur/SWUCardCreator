@@ -5,6 +5,7 @@ import { asset } from './asset'
 import './App.css'
 import { CardView } from './CardView'
 import { AccountBar } from './account'
+import { Simulator } from './Simulator'
 import {
   copyLocalDecks,
   deckScope,
@@ -55,6 +56,8 @@ const tabs = [
   { id: 'decks', label: 'Deck Builder' },
   // Everyone's public cards; only where the accounts server answers
   { id: 'community', label: 'Community' },
+  // The game simulator, for admins and testers while it is being built
+  { id: 'simulator', label: 'Simulator' },
   { id: 'projects', label: 'My Other Projects' },
 ] as const
 
@@ -4350,6 +4353,7 @@ function App() {
   const account = useAccount()
   const online = useServerOnline()
   const communityNew = useCommunityNew(account, online, tab === 'community')
+  const canSimulate = !!account && (account.user.isAdmin || !!account.user.isTester)
   const [accountCards, setAccountCards] = useState<'loading' | 'ready' | 'failed'>('loading')
   const [syncError, setSyncError] = useState<string | null>(null)
   const [syncing, setSyncing] = useState(0)
@@ -4547,7 +4551,7 @@ function App() {
         <h1>SWU Card Creator</h1>
         <nav className="tabs">
           {tabs
-            .filter(({ id }) => id !== 'community' || online)
+            .filter(({ id }) => (id !== 'community' || online) && (id !== 'simulator' || canSimulate))
             .map(({ id, label }) => (
             <a key={id} href={`#${id}`} aria-current={tab === id ? 'page' : undefined}>
               {label}
@@ -4582,6 +4586,7 @@ function App() {
       {drawer.stage}
       {tab === 'decks' && <DeckBuilder key={decksCopied} cards={cards.flatMap(deckCardOf)} />}
       {tab === 'projects' && <Projects />}
+      {tab === 'simulator' && canSimulate && <Simulator />}
       {tab === 'creator' && (
         <CardCreator
           draft={draft}

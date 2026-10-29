@@ -5,13 +5,13 @@
   "description": "Accounts and card storage for SWU Card Creator",
   "type": "module",
   "engines": {
-    "node": ">=20"
+    "node": ">=22.18"
   },
   "scripts": {
     "start": "node index.js",
     "dev": "node --watch index.js",
     "local": "node local.js",
-    "test": "node --test"
+    "test": "node --test \"test/*.test.js\" \"engine/*.test.ts\""
   },
   "dependencies": {
     "bcrypt": "^6.0.0",

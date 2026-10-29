@@ -10,7 +10,7 @@ router.get('/users', async (req, res) => {
   try {
     await enforcePermanentAdmins()
     const { rows } = await query(
-      `SELECT u.id, u.username, u.is_admin, u.quota_bytes, u.can_publish, u.created_at, u.last_login_at, u.discord_username,
+      `SELECT u.id, u.username, u.is_admin, u.is_tester, u.quota_bytes, u.can_publish, u.created_at, u.last_login_at, u.discord_username,
          (u.password_hash IS NOT NULL) AS has_password,
          COALESCE((SELECT SUM(bytes) FROM ${SCHEMA}.cards c WHERE c.user_id = u.id), 0)
        + COALESCE((SELECT SUM(bytes) FROM ${SCHEMA}.images i WHERE i.user_id = u.id), 0)
@@ -33,13 +33,14 @@ router.get('/users', async (req, res) => {
   }
 })
 
-// Change an account's admin flag, storage limit (quotaBytes null: no limit), or whether
-// it may make cards public
+// Change an account's admin or tester flag, storage limit (quotaBytes null: no limit), or
+// whether it may make cards public
 router.patch('/users/:id', async (req, res) => {
   const id = Number(req.params.id)
-  const { isAdmin, quotaBytes, canPublish } = req.body ?? {}
+  const { isAdmin, isTester, quotaBytes, canPublish } = req.body ?? {}
   if (!Number.isInteger(id)) return res.status(400).json({ error: 'Bad user id' })
   if (isAdmin !== undefined && typeof isAdmin !== 'boolean') return res.status(400).json({ error: 'isAdmin must be true or false' })
+  if (isTester !== undefined && typeof isTester !== 'boolean') return res.status(400).json({ error: 'isTester must be true or false' })
   if (canPublish !== undefined && typeof canPublish !== 'boolean')
     return res.status(400).json({ error: 'canPublish must be true or false' })
   if (quotaBytes !== undefined && quotaBytes !== null && !(Number.isInteger(quotaBytes) && quotaBytes >= 0))
@@ -54,10 +55,11 @@ router.patch('/users/:id', async (req, res) => {
       `UPDATE ${SCHEMA}.users SET
          is_admin = COALESCE($2, is_admin),
          quota_bytes = CASE WHEN $3 THEN $4::BIGINT ELSE quota_bytes END,
-         can_publish = COALESCE($5, can_publish)
+         can_publish = COALESCE($5, can_publish),
+         is_tester = COALESCE($6, is_tester)
        WHERE id = $1
-       RETURNING id, username, is_admin, quota_bytes, can_publish, created_at, discord_username, (password_hash IS NOT NULL) AS has_password`,
-      [id, isAdmin ?? null, quotaBytes !== undefined, quotaBytes ?? null, canPublish ?? null],
+       RETURNING id, username, is_admin, is_tester, quota_bytes, can_publish, created_at, discord_username, (password_hash IS NOT NULL) AS has_password`,
+      [id, isAdmin ?? null, quotaBytes !== undefined, quotaBytes ?? null, canPublish ?? null, isTester ?? null],
     )
     res.json({ user: userPublic(rows[0]) })
   } catch (err) {

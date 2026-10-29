@@ -210,6 +210,23 @@ test('an admin can stop an account making cards public', async () => {
   assert.ok((await call('GET', '/public/cards')).body.cards.some((card) => card.owner === 'frank'))
 })
 
+test('an admin can make an account a tester', async () => {
+  const tess = await register('tess')
+  const admin = (await call('POST', '/auth/login', { username: 'prieur', password: 'longenough' })).body.token
+  const me = (await call('GET', '/auth/me', undefined, tess)).body.user
+  assert.equal(me.isTester, false)
+
+  assert.equal((await call('PATCH', `/admin/users/${me.id}`, { isTester: 'yes' }, admin)).status, 400)
+  assert.equal((await call('PATCH', `/admin/users/${me.id}`, { isTester: true }, tess)).status, 403)
+  const on = await call('PATCH', `/admin/users/${me.id}`, { isTester: true }, admin)
+  assert.equal(on.body.user.isTester, true)
+  assert.equal((await call('GET', '/auth/me', undefined, tess)).body.user.isTester, true)
+  // Changing another flag leaves it as it is
+  const quota = await call('PATCH', `/admin/users/${me.id}`, { quotaBytes: 1000000 }, admin)
+  assert.equal(quota.body.user.isTester, true)
+  assert.equal((await call('GET', '/admin/users', undefined, admin)).body.users.find((u) => u.id === me.id).isTester, true)
+})
+
 test('decks are kept per account and per Deck Builder, and count against its storage', async () => {
   const decker = await register('decker')
   const stranger = await register('stranger')

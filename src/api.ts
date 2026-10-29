@@ -8,6 +8,8 @@ export type User = {
   id: number
   username: string
   isAdmin: boolean
+  // May use the game simulator while it is built (admins always may); missing on older sessions
+  isTester?: boolean
   // null: no limit
   quotaBytes: number | null
   // May make cards public; an admin can turn it off

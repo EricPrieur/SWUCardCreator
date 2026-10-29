@@ -15,7 +15,7 @@ function secret() {
 }
 
 const USER_COLUMNS =
-  'id, username, is_admin, quota_bytes, can_publish, created_at, discord_username, (password_hash IS NOT NULL) AS has_password'
+  'id, username, is_admin, is_tester, quota_bytes, can_publish, created_at, discord_username, (password_hash IS NOT NULL) AS has_password'
 
 // The sites allowed to call this server: the app on GitHub Pages and the dev server
 const DEFAULT_ORIGINS = ['https://ericprieur.github.io', 'http://localhost:5173']
@@ -34,6 +34,8 @@ export function userPublic(user) {
     id: user.id,
     username: user.username,
     isAdmin: !!user.is_admin,
+    // May use the game simulator, which admins always may
+    isTester: !!user.is_tester,
     // null: no limit
     quotaBytes: user.quota_bytes === null ? null : Number(user.quota_bytes),
     // May make cards public
@@ -310,6 +312,18 @@ export async function requireAdmin(req, res, next) {
     next()
   } catch (err) {
     console.error('Admin check error:', err)
+    res.status(500).json({ error: 'Server error' })
+  }
+}
+
+// The game simulator, while it is built: testers and admins, read from the table like admin rights
+export async function requireTester(req, res, next) {
+  try {
+    const { rows } = await query(`SELECT is_admin, is_tester FROM ${SCHEMA}.users WHERE id = $1`, [req.user.id])
+    if (!rows[0]?.is_admin && !rows[0]?.is_tester) return res.status(403).json({ error: 'Tester access required' })
+    next()
+  } catch (err) {
+    console.error('Tester check error:', err)
     res.status(500).json({ error: 'Server error' })
   }
 }

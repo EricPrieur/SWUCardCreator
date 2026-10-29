@@ -46,6 +46,8 @@ export async function initDB() {
   await query(`CREATE UNIQUE INDEX IF NOT EXISTS users_username_lower ON ${SCHEMA}.users (LOWER(username))`)
   // Whether the account may make cards public; an admin can take it away
   await query(`ALTER TABLE ${SCHEMA}.users ADD COLUMN IF NOT EXISTS can_publish BOOLEAN NOT NULL DEFAULT TRUE`)
+  // A tester may use the game simulator while it is being built; admins always may
+  await query(`ALTER TABLE ${SCHEMA}.users ADD COLUMN IF NOT EXISTS is_tester BOOLEAN NOT NULL DEFAULT FALSE`)
   // The Discord account it signs in with, if any, and its name there
   await query(`ALTER TABLE ${SCHEMA}.users ADD COLUMN IF NOT EXISTS discord_id VARCHAR(32)`)
   await query(`ALTER TABLE ${SCHEMA}.users ADD COLUMN IF NOT EXISTS discord_username VARCHAR(64)`)
