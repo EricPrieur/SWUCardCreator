@@ -1,6 +1,6 @@
 import type { Game } from './game.ts'
 import { enginePlays } from './cards.ts'
-import type { CardDef, PlayerId } from './types.ts'
+import type { CardDef, Keywords, PlayerId, UnitState } from './types.ts'
 
 // What each card's text does. A script names the card and quotes its text as printed: while
 // the card's text is the same, the script plays it; once the card is changed in the Creator,
@@ -17,7 +17,17 @@ export type Self = {
   // Played from the resources using Smuggle, or Plot
   smuggled?: boolean
   plot?: boolean
+  // The card other is, when it has left play (a unit defeated, an event played)
+  otherDef?: CardDef
+  // An upgrade's unit
+  attachedTo?: string
+  // A Spice token defeated: whose, and by whom
+  spice?: { owner: PlayerId; by: PlayerId }
 }
+
+// What a card gives a unit for as long as it is in play: "Other friendly [{Sardaukar}] units gain
+// [Sentinel]."
+export type Grant = { keywords?: Keywords; power?: number; hp?: number }
 
 export type Ability = (g: Game, self: Self) => void
 
@@ -40,8 +50,22 @@ export type Abilities = {
   actions?: ActionAbility[]
   // When another friendly unit attacks; self.other is the attacker
   whenFriendlyAttacks?: Ability
-  // When you play another unit; self.other is that unit
+  // When this unit is attacked
+  whenDefending?: Ability
+  // When you play another card; self.other and self.otherDef are that card
   whenYouPlay?: Ability
+  // When you create a token unit; self.other is the token
+  whenYouCreate?: Ability
+  // When any Spice token is defeated; self.spice says whose, and by whom
+  whenSpiceDefeated?: Ability
+  // When another friendly unit is defeated; self.otherDef is that unit
+  whenFriendlyDefeated?: Ability
+  // When the regroup phase starts
+  regroupStart?: Ability
+  // What it gives a unit (each unit on its side is asked)
+  gives?: (g: Game, self: Self, unit: UnitState) => Grant | undefined
+  // Whether the additional costs of a card being played may be ignored
+  ignoresAdditionalCost?: (g: Game, self: Self, card: CardDef) => boolean
 }
 
 export type CardScript = {
@@ -199,7 +223,7 @@ const dune: CardScript[] = [
     text: '[Restore 1]\n[When Played:] Each opponent discards a card from their hand.',
     front: {
       whenPlayed: (g, self) => {
-        g.discardChosen(enemy(g, self), 1, `${self.def.name}: choose a card to discard`)
+        g.discardChosen(enemy(g, self), 1, `${self.def.name} makes you discard a card`, self.def.id)
       },
     },
   },
@@ -348,7 +372,7 @@ const dune: CardScript[] = [
     front: {
       whenPlayed: (g, self) => {
         g.draw(self.controller, 1)
-        g.discardChosen(self.controller, 1, `${self.def.name}: choose a card to discard`)
+        g.discardChosen(self.controller, 1, `${self.def.name}: discard a card from your hand`, self.def.id)
       },
     },
   },
@@ -591,7 +615,797 @@ const dune: CardScript[] = [
       },
     },
   },
+
+  // --- Spice token triggers: bases ---
+  {
+    name: 'Castle Caladan',
+    text: '[When you defeat a friendly Spice token:] Heal 1 damage from a unit or base.',
+    front: { whenSpiceDefeated: (g, self) => youDefeatSpice(self) && healOne(g, self, 1) },
+  },
+  {
+    name: 'Harkonnen Gladiator Arena',
+    text: '[When you defeat a friendly Spice token:] A friendly unit gains [Raid 1] for this phase.',
+    front: {
+      whenSpiceDefeated: (g, self) => {
+        if (!youDefeatSpice(self)) return
+        const pick = g.chooseOne(self.controller, 'Harkonnen Gladiator Arena: a friendly unit gains Raid 1 for this phase', friendlyIds(g, self), {
+          ai: 'help',
+          source: self.def.id,
+        })
+        if (pick) g.grant(pick, { raid: 1 }, 'phase')
+      },
+    },
+  },
+  {
+    name: 'Imperial Prison Planet',
+    text: '[When you defeat a friendly Spice token:] You may deal 1 damage to a friendly unit. If you do and it survives, give an Experience token to it.',
+    front: {
+      whenSpiceDefeated: (g, self) => {
+        if (!youDefeatSpice(self)) return
+        const ids = friendlyIds(g, self)
+        // The AI toughens its strongest unit that survives the damage
+        const tough = g
+          .units((u) => ids.includes(u.id) && g.hp(u) - u.damage > 1)
+          .sort((a, b) => g.power(b) - g.power(a))[0]
+        const pick = g.chooseOne(self.controller, 'Imperial Prison Planet: you may deal 1 damage to a friendly unit to give it an Experience token', ids, {
+          optional: true,
+          ai: tough?.id ?? 'none',
+          source: self.def.id,
+        })
+        if (pick && g.damage(pick, 1, self) && g.unit(pick)) g.giveToken(pick, 'Experience')
+      },
+    },
+  },
+  {
+    name: 'Mother School',
+    text: '[When you defeat a friendly Spice token:] Look at the top card of your deck. You may discard it.',
+    front: {
+      whenSpiceDefeated: (g, self) => {
+        if (!youDefeatSpice(self)) return
+        const [top] = g.top(self.controller, 1)
+        if (!top) return
+        const where = g.option(self.controller, `Mother School: the top card of your deck is ${g.def(top).name}`, ['Leave it on top', 'Discard it'], {
+          ai: g.def(top).cost > g.player(self.controller).resources.length + 2 ? 1 : 0,
+          source: self.def.id,
+          card: top.def,
+        })
+        if (where === 1) g.mill(self.controller, top.id)
+      },
+    },
+  },
+
+  // --- Spice token triggers: units ---
+  {
+    name: "Tuek's Lighter",
+    subtitle: "Smuggler's Run",
+    text: '[Raid 1]\n[When you defeat a friendly Spice token:] You may ready this unit. Use this ability only once each round.',
+    front: {
+      whenSpiceDefeated: (g, self) => {
+        if (!youDefeatSpice(self) || g.used(self) || !g.unit(self.id)?.exhausted) return
+        if (!g.may(self.controller, "Tuek's Lighter: ready this unit?", { yes: 'Ready it', no: 'Skip', source: self.def.id })) return
+        g.use(self)
+        g.ready(self.id)
+      },
+    },
+  },
+  {
+    name: 'Staban Tuek',
+    subtitle: 'The Unseen Network',
+    text: '[Hidden]\n[Smuggle] [[6 Cunning]]\n[When Played:] Draw a card.\nWhenever an opponent defeats a Spice token, create a Spice token. Use this ability only once each round.',
+    front: {
+      whenPlayed: (g, self) => g.draw(self.controller, 1),
+      whenSpiceDefeated: (g, self) => {
+        if (self.spice?.by === self.controller || g.used(self)) return
+        g.use(self)
+        g.createSpice(self.controller)
+      },
+    },
+  },
+  {
+    name: 'Harkonnen Harvester Team',
+    text: 'Whenever a friendly [{Harkonnen}] unit is defeated, create a Spice token. Use this ability only once each round.',
+    front: {
+      whenFriendlyDefeated: (g, self) => {
+        if (!self.otherDef?.traits.includes('Harkonnen') || g.used(self)) return
+        g.use(self)
+        g.createSpice(self.controller)
+      },
+    },
+  },
+  {
+    name: 'Spice Harvester',
+    text: '[When Played/On Attack:] If you control an [{Arrakis}] base, create a Spice token.\n\n[When the regroup phase starts:] You may defeat 3 friendly Spice tokens. If you do, put the top card of your deck into play as a resource.',
+    front: {
+      whenPlayed: arrakisSpice,
+      onAttack: arrakisSpice,
+      regroupStart: (g, self) => {
+        const p = self.controller
+        if (g.spice(p) < 3) return
+        if (!g.may(p, 'Spice Harvester: defeat 3 Spice tokens to put the top card of your deck into play as a resource?', { yes: 'Defeat 3 Spice tokens', no: 'Skip', source: self.def.id }))
+          return
+        for (let i = 0; i < 3; i++) g.defeatSpice(p)
+        g.resourceFromDeck(p)
+      },
+    },
+  },
+  {
+    name: 'Ginaz Mercenary',
+    text: '[On Attack:] You may defeat a friendly Spice token. If you do, this unit gets [+2/+0] for this attack.',
+    front: {
+      onAttack: (g, self) => {
+        const p = self.controller
+        if (!g.spice(p)) return
+        // The AI keeps its last Spice token
+        if (!g.may(p, 'Ginaz Mercenary: defeat a Spice token for +2/+0 for this attack?', { yes: 'Defeat a Spice token', no: 'Skip', ai: g.spice(p) > 1, source: self.def.id }))
+          return
+        if (g.defeatSpice(p)) g.buff(self.id, 2, 0, 'attack')
+      },
+    },
+  },
+  {
+    name: 'Spice Hunter',
+    text: '[On Attack:] If you control another [{Fremen}] unit, you may defeat an enemy Spice token. ',
+    front: {
+      onAttack: (g, self) => {
+        const p = self.controller
+        const foe = enemy(g, self)
+        if (!g.spice(foe) || !g.units((u) => g.controller(u) === p && u.id !== self.id && g.hasTrait(u, 'Fremen')).length) return
+        if (g.may(p, 'Spice Hunter: defeat an enemy Spice token?', { yes: 'Defeat it', no: 'Skip', source: self.def.id })) g.defeatSpice(foe, undefined, p)
+      },
+    },
+  },
+  {
+    name: 'Fremen Saboteurs',
+    text: '[Saboteur]\n[When Played:] You may defeat an enemy Spice token or an upgrade on an enemy unit. If you do, deal 2 damage to a unit or base.\n',
+    front: {
+      whenPlayed: (g, self) => {
+        const p = self.controller
+        const foe = enemy(g, self)
+        const upgrades = g.upgrades().filter((u) => g.controller(u.unit) === foe)
+        const ids = [...g.spiceIds(foe).slice(0, 1), ...upgrades.map((u) => u.id)]
+        const real = upgrades.find((u) => !g.def(u).token || g.def(u).name !== 'Weakness')
+        const pick = g.chooseOne(p, 'Fremen Saboteurs: you may defeat an enemy Spice token or an upgrade on an enemy unit', ids, {
+          optional: true,
+          ai: real?.id ?? ids[0] ?? 'none',
+          source: self.def.id,
+        })
+        if (!pick) return
+        if (g.spiceIds(foe).includes(pick)) g.defeatSpice(foe, pick, p)
+        else g.defeatUpgrade(pick)
+        const target = g.chooseOne(p, 'Fremen Saboteurs: deal 2 damage to a unit or base', [...g.units().map((u) => u.id), ...bases()], {
+          ai: 'harm',
+          source: self.def.id,
+        })
+        if (target) g.damage(target, 2, self)
+      },
+    },
+  },
+  {
+    name: 'Spotter \'Thopter',
+    text: '[When Played/On Attack:] If you control an [{Arrakis}] base and a [{Harvester}] [{Vehicle}] unit, create a Spice token.',
+    front: { whenPlayed: spotterSpice, onAttack: spotterSpice },
+  },
+  {
+    name: 'Guild Navigator',
+    text: '[Sentinel]\n[When Played:] You may defeat a friendly Spice token. If you do, look at the top 5 cards of your deck. Draw 1 of them, discard any number of them and put the rest on the bottom of your deck in any order.',
+    front: {
+      whenPlayed: (g, self) => {
+        const p = self.controller
+        if (!g.spice(p)) return
+        if (!g.may(p, 'Guild Navigator: defeat a Spice token to look at the top 5 cards of your deck?', { yes: 'Defeat a Spice token', no: 'Skip', source: self.def.id }))
+          return
+        if (!g.defeatSpice(p)) return
+        const top = g.top(p, 5)
+        const drawn = g.chooseOne(p, 'Guild Navigator: draw 1 of the top 5 cards of your deck', top.map((c) => c.id), { ai: 'best', source: self.def.id })
+        if (drawn) g.drawCard(p, drawn)
+        const rest = top.filter((c) => c.id !== drawn).map((c) => c.id)
+        const discarded = g.choose(p, 'Guild Navigator: discard any number of them; the rest go to the bottom of your deck', rest, {
+          min: 0,
+          max: rest.length,
+          ai: 'none',
+          source: self.def.id,
+        })
+        for (const id of rest) {
+          if (discarded.includes(id)) g.mill(p, id)
+          else g.toBottom(p, id)
+        }
+      },
+    },
+  },
+
+  // --- Experience, Shield and Weakness tokens ---
+  {
+    name: 'Shadout Mapes',
+    subtitle: 'Keeper of the Household',
+    text: '[Sentinel]\n[When Defeated:] Give an Experience token to a friendly unit.',
+    front: {
+      whenDefeated: (g, self) => experienceTo(g, self, friendlyIds(g, self), 'Shadout Mapes: give an Experience token to a friendly unit'),
+    },
+  },
+  {
+    name: 'Gurney Halleck',
+    subtitle: 'Warrior-Troubadour',
+    text: '[Saboteur]\n[When Played/On Attack:] Give an Experience token to another friendly [{Atreides}] unit.',
+    front: { whenPlayed: otherAtreidesExperience, onAttack: otherAtreidesExperience },
+  },
+  {
+    name: 'Duke Leto Atreides',
+    subtitle: 'The Red Duke',
+    text: '[When Played/When Defeated:] Give an Experience token to each other friendly [{Atreides}] unit.',
+    front: { whenPlayed: eachAtreidesExperience, whenDefeated: eachAtreidesExperience },
+  },
+  {
+    name: 'Atreides House Guard',
+    text: '<While you control another [{Atreides}] unit, this unit gains [Sentinel].>\n[When Defeated:] Give an Experience token to another friendly [{Atreides}] unit.',
+    front: {
+      gives: (g, self, unit) => (unit.id === self.id && anotherAtreides(g, self) ? { keywords: { sentinel: true } } : undefined),
+      whenDefeated: otherAtreidesExperience,
+    },
+  },
+  {
+    name: 'Dr. Wellington Yueh',
+    subtitle: 'Suk Doctor',
+    text: '[When Played:] Heal 2 damage from a unit or base.\n[When Defeated:] Exhaust your leader. Defeat each Shield token on friendly units.',
+    front: {
+      whenPlayed: (g, self) => healOne(g, self, 2),
+      whenDefeated: (g, self) => {
+        g.exhaustLeader(self.controller)
+        for (const upgrade of g.upgrades())
+          if (g.controller(upgrade.unit) === self.controller && g.def(upgrade).token && g.def(upgrade).name === 'Shield') g.defeatUpgrade(upgrade.id)
+      },
+    },
+  },
+  {
+    name: 'Esmar Tuek',
+    subtitle: 'Smuggler Chief',
+    text: '[When Played:] If you control a [Command] unit, give 2 Experience tokens to a friendly [{Underworld}] unit. Then, if you control an [Aggression] unit, this unit may deal damage equal to its power to a unit.',
+    front: {
+      whenPlayed: (g, self) => {
+        const p = self.controller
+        const controls = (aspect: string) => g.units((u) => g.controller(u) === p && (g.def(u).aspects as string[]).includes(aspect)).length > 0
+        if (controls('Command')) {
+          const underworld = friendlyIds(g, self, (u) => g.hasTrait(u, 'Underworld'))
+          const pick = g.chooseOne(p, 'Esmar Tuek: give 2 Experience tokens to a friendly Underworld unit', underworld, { ai: 'help', source: self.def.id })
+          if (pick) g.giveToken(pick, 'Experience', 2)
+        }
+        const me = g.unit(self.id)
+        if (!me || !controls('Aggression')) return
+        const target = g.chooseOne(p, `Esmar Tuek: you may deal ${g.power(me)} damage to a unit`, g.units().map((u) => u.id), {
+          optional: true,
+          ai: 'harm',
+          source: self.def.id,
+        })
+        if (target) g.damage(target, g.power(me), self)
+      },
+    },
+  },
+  {
+    name: 'Tleilaxu Face Dancer',
+    text: "[Sentinel]\n[When Played:] Choose another unit. Give this unit Experience tokens equal to half the total of that unit's power and HP, rounded down.",
+    front: {
+      whenPlayed: (g, self) => {
+        const others = g.units((u) => u.id !== self.id)
+        const total = (u: UnitState) => g.power(u) + g.hp(u)
+        const biggest = [...others].sort((a, b) => total(b) - total(a))[0]
+        const pick = g.chooseOne(self.controller, 'Tleilaxu Face Dancer: choose another unit to copy', others.map((u) => u.id), {
+          ai: biggest?.id,
+          source: self.def.id,
+        })
+        const copied = pick ? g.unit(pick) : undefined
+        if (copied) g.giveToken(self.id, 'Experience', Math.floor(total(copied) / 2))
+      },
+    },
+  },
+  {
+    name: 'Feyd-Rautha Harkonnen',
+    subtitle: 'na-Baron',
+    text: '[Sentinel]\n[When this unit attacks or is attacked:] Give a Weakness token to the other unit in the combat.',
+    front: {
+      onAttack: (g, self) => {
+        const target = self.attack?.target
+        if (target && target !== 'base') g.giveToken(target, 'Weakness')
+      },
+      whenDefending: (g, self) => {
+        if (self.other) g.giveToken(self.other, 'Weakness')
+      },
+    },
+  },
+  {
+    name: 'Lasgun',
+    text: '[When Played:] If attached unit is a [{Trooper}] unit, defeat another upgrade. If it was a Shield token, deal 3 damage to the unit it was attached to.',
+    front: {
+      whenPlayed: (g, self) => {
+        const unit = g.unit(self.other ?? '')
+        if (!unit || !g.hasTrait(unit, 'Trooper')) return
+        const upgrades = g.upgrades().filter((u) => u.id !== self.id)
+        const theirs = upgrades.filter((u) => g.controller(u.unit) !== self.controller)
+        const shield = theirs.find((u) => g.def(u).token && g.def(u).name === 'Shield')
+        const mine = upgrades.find((u) => g.def(u).token && g.def(u).name === 'Weakness')
+        const pick = g.chooseOne(self.controller, 'Lasgun: defeat another upgrade', upgrades.map((u) => u.id), {
+          ai: shield?.id ?? theirs[0]?.id ?? mine?.id,
+          source: self.def.id,
+        })
+        const chosen = upgrades.find((u) => u.id === pick)
+        if (!chosen) return
+        const wasShield = g.def(chosen).token && g.def(chosen).name === 'Shield'
+        g.defeatUpgrade(chosen.id)
+        if (wasShield) g.damage(chosen.unit.id, 3, self)
+      },
+    },
+  },
+  {
+    name: 'Sardaukar Vow',
+    text: 'Attach to a non-[{Vehicle}] unit.\nAttached unit gains [Sentinel].\n[When Played:] If attached unit is a [{Sardaukar}] unit, give a Shield token to it.',
+    front: {
+      whenPlayed: (g, self) => {
+        const unit = g.unit(self.other ?? '')
+        if (unit && g.hasTrait(unit, 'Sardaukar')) g.giveToken(unit.id, 'Shield')
+      },
+    },
+  },
+  {
+    name: 'Personal Shield',
+    text: 'Attach to a friendly unit.\n[When Played:] If you control an [{Arrakis}] base, defeat attached unit. Otherwise, give a Shield token to attached unit.\n[When the regroup phase starts:] If attached unit has no Shield token, give a Shield token to it.',
+    front: {
+      whenPlayed: (g, self) => {
+        if (!self.other) return
+        if (g.controlsArrakis(self.controller)) g.defeat(self.other)
+        else g.giveToken(self.other, 'Shield')
+      },
+      regroupStart: (g, self) => {
+        if (self.attachedTo && !g.tokens(self.attachedTo, 'Shield')) g.giveToken(self.attachedTo, 'Shield')
+      },
+    },
+  },
+  {
+    name: 'Piter De Vries',
+    subtitle: 'Twisted Mentat',
+    text: '[When Played:] Draw 2 cards, then put a card from your hand on the top or bottom of your deck or discard it.\n[PLOT]\n[When Played using Plot:] Give a Weakness token to each enemy unit. Then, defeat this unit.',
+    front: {
+      whenPlayed: (g, self) => {
+        drawTwoPutOne(g, self)
+        if (!self.plot) return
+        for (const unit of g.units((u) => g.controller(u) !== self.controller)) g.giveToken(unit.id, 'Weakness')
+        g.defeat(self.id)
+      },
+    },
+  },
+
+  // --- Leaders ---
+  {
+    name: 'Lady Jessica',
+    subtitle: 'Bene Gesserit',
+    text: '[When you play a [{Bene Gesserit}] card:] You may exhaust this leader. If you do, exhaust an enemy non-leader ground unit that costs [#4] or less.',
+    backText:
+      '[Restore 2]\n[When Deployed:] Return a [{Bene Gesserit}] or [{Fremen}] unit from your discard pile to your hand.\nWhen a friendly Spice token is defeated: Heal 2 damage from a unit or base.',
+    front: {
+      whenYouPlay: (g, self) => {
+        const p = self.controller
+        if (!self.otherDef?.traits.includes('Bene Gesserit') || !g.leaderReady(p)) return
+        const targets = g.units((u) => g.controller(u) !== p && !u.leader && u.arena === 'ground' && g.cost(u) <= 4 && !u.exhausted)
+        if (!targets.length) return
+        if (!g.may(p, 'Lady Jessica: exhaust this leader to exhaust an enemy ground unit that costs 4 or less?', { yes: 'Exhaust', no: 'Skip', source: self.def.id })) return
+        g.exhaustLeader(p)
+        const pick = g.chooseOne(p, 'Lady Jessica: exhaust an enemy non-leader ground unit that costs 4 or less', targets.map((u) => u.id), {
+          ai: 'harm',
+          source: self.def.id,
+        })
+        if (pick) g.exhaust(pick)
+      },
+    },
+    back: {
+      whenDeployed: (g, self) => {
+        const p = self.controller
+        const units = g
+          .player(p)
+          .discard.filter((c) => g.def(c).type === 'unit' && (g.hasTrait(c, 'Bene Gesserit') || g.hasTrait(c, 'Fremen')))
+          .map((c) => c.id)
+        const pick = g.chooseOne(p, 'Lady Jessica: return a Bene Gesserit or Fremen unit from your discard pile to your hand', units, {
+          ai: 'best',
+          source: self.def.id,
+        })
+        if (pick) g.fromDiscard(p, pick)
+      },
+      whenSpiceDefeated: (g, self) => {
+        if (self.spice?.owner === self.controller) healOne(g, self, 2)
+      },
+    },
+  },
+  {
+    name: 'Chani',
+    subtitle: 'Sihaya',
+    text: '[When you play a [{Fremen}] unit or create a [{Fremen}] token:] You may exhaust this leader. If you do, deal 1 damage to an enemy base.',
+    backText:
+      'While you control an [{Arrakis}] base, this unit gains [Hidden].\n[When you play a [{Fremen}] unit or create a [{Fremen}] token:] Deal 1 damage to an enemy unit or base.',
+    front: { whenYouPlay: chaniLeader, whenYouCreate: chaniLeader },
+    back: { whenYouPlay: chaniUnit, whenYouCreate: chaniUnit },
+  },
+  {
+    name: 'Shaddam IV',
+    subtitle: 'Padishah Emperor',
+    text: 'You start the game with a [Spice Token].\n[Action [Arrow]:] Play a [{Sardaukar}] card from your hand, ignoring its additional costs.',
+    backText:
+      'Once each round, when you play a [{Sardaukar}] card, you may ignore its additional costs.\n[When Deployed:] You may play a [{Sardaukar}] unit from your hand or discard pile for free.\nOther friendly [{Sardaukar}] units gain [Sentinel].',
+    front: {
+      actions: [
+        {
+          label: 'play a Sardaukar card, ignoring its additional costs',
+          exhaust: true,
+          can: (g, self) => sardaukarInHand(g, self).length > 0,
+          run: (g, self) => {
+            const ids = sardaukarInHand(g, self)
+            const pick = g.chooseOne(self.controller, 'Shaddam IV: play a Sardaukar card from your hand, ignoring its additional costs', ids, {
+              ai: 'best',
+              source: self.def.id,
+            })
+            if (pick) g.playCard(self.controller, pick, { ignoreAdditional: true })
+          },
+        },
+      ],
+    },
+    back: {
+      ignoresAdditionalCost: (g, self, card) => card.traits.includes('Sardaukar') && !g.used(self, 'ignoresAdditionalCost'),
+      whenDeployed: (g, self) => {
+        const p = self.controller
+        const player = g.player(p)
+        const ids = [...player.hand, ...player.discard]
+          .filter((c) => g.def(c).type === 'unit' && g.hasTrait(c, 'Sardaukar') && g.canPlay(p, c.id, { free: true }))
+          .map((c) => c.id)
+        const pick = g.chooseOne(p, 'Shaddam IV: you may play a Sardaukar unit from your hand or discard pile for free', ids, {
+          optional: true,
+          ai: 'best',
+          source: self.def.id,
+        })
+        if (pick) g.playCard(p, pick, { free: true })
+      },
+      gives: (g, self, unit) =>
+        unit.id !== self.id && g.controller(unit) === self.controller && g.hasTrait(unit, 'Sardaukar') ? { keywords: { sentinel: true } } : undefined,
+    },
+  },
+  {
+    name: 'Baron Vladimir Harkonnen',
+    subtitle: 'The Masterstroke',
+    text: '[Action [Arrow]:] Defeat a friendly Spice token. If you do, play a card from your resources as if it were played using [Plot]. It costs [1] less. Deal 1 damage to your base.',
+    backText: '[When Deployed:] Play up to 2 cards from your resources as if they were played using [Plot]. Each costs [1] less.\n[When Defeated:] Deal 2 damage to each unit.',
+    front: {
+      actions: [
+        {
+          label: 'play a card from your resources for 1 less',
+          exhaust: true,
+          can: (g, self) => g.spice(self.controller) > 0 && plotPlays(g, self).length > 0,
+          run: (g, self) => {
+            const p = self.controller
+            if (!g.defeatSpice(p)) return
+            const pick = g.chooseOne(p, 'Baron Vladimir Harkonnen: play a card from your resources, for 1 less', plotPlays(g, self), {
+              ai: 'best',
+              source: self.def.id,
+            })
+            if (pick) g.playCard(p, pick, { discount: 1 })
+            g.damage(`base${p}`, 1, self)
+          },
+        },
+      ],
+    },
+    back: {
+      whenDeployed: (g, self) => {
+        for (let i = 0; i < 2; i++) {
+          const pick = g.chooseOne(self.controller, 'Baron Vladimir Harkonnen: you may play a card from your resources, for 1 less', plotPlays(g, self), {
+            optional: true,
+            ai: 'best',
+            source: self.def.id,
+          })
+          if (!pick || !g.playCard(self.controller, pick, { discount: 1 })) return
+        }
+      },
+      whenDefeated: (g, self) => {
+        for (const unit of g.units()) g.damage(unit.id, 2, self)
+      },
+    },
+  },
+  {
+    name: 'Gurney Halleck',
+    subtitle: 'Smuggler of Arrakis',
+    text: '[Action [Arrow]:] Defeat a friendly Spice token. If you do, choose one:\n• Play a card using Smuggle. It costs [2] less.\n• Give an Experience token to a friendly [{Underworld}] unit.',
+    backText:
+      '[On Attack:] You may defeat a friendly Spice token. If you do, choose one:\n• Play a card using Smuggle. It costs [2] less.\n• Give an Experience token to a friendly [{Underworld}] unit.',
+    front: {
+      actions: [
+        {
+          label: 'smuggle a card for 2 less, or an Experience token',
+          exhaust: true,
+          can: (g, self) => g.spice(self.controller) > 0,
+          run: (g, self) => {
+            if (g.defeatSpice(self.controller)) gurneyChoice(g, self)
+          },
+        },
+      ],
+    },
+    back: {
+      onAttack: (g, self) => {
+        const p = self.controller
+        if (!g.spice(p)) return
+        if (!g.may(p, 'Gurney Halleck: defeat a Spice token to smuggle a card for 2 less, or give an Experience token?', { yes: 'Defeat a Spice token', no: 'Skip', source: self.def.id }))
+          return
+        if (g.defeatSpice(p)) gurneyChoice(g, self)
+      },
+    },
+  },
+  {
+    name: 'Duke Leto Atreides',
+    subtitle: 'Duke of House Atreides',
+    text: '[When you play a unit:] You may exhaust this leader and either pay [1] or defeat a friendly Spice token. If you do, give an Experience token to that unit.',
+    backText: '<If you control another [{Atreides}] unit, this unit gains [Sentinel].>\n[When Defeated:] Defeat an enemy non-leader unit.',
+    front: {
+      whenYouPlay: (g, self) => {
+        const p = self.controller
+        if (self.otherDef?.type !== 'unit' || !self.other || !g.unit(self.other) || !g.leaderReady(p)) return
+        const choices = ['Skip', ...(g.canPay(p, 1) ? ['Pay 1'] : []), ...(g.spice(p) ? ['Defeat a Spice token'] : [])]
+        if (choices.length === 1) return
+        // The AI spends a spare Spice token, or a spare resource
+        const ai = g.spice(p) > 1 ? choices.indexOf('Defeat a Spice token') : g.canPay(p, 3) ? choices.indexOf('Pay 1') : 0
+        const choice = choices[g.option(p, `Duke Leto Atreides: exhaust this leader to give ${self.otherDef.name} an Experience token?`, choices, { ai: Math.max(0, ai), source: self.def.id })]
+        if (choice === 'Skip') return
+        if (choice === 'Pay 1' ? !g.pay(p, 1) : !g.defeatSpice(p)) return
+        g.exhaustLeader(p)
+        g.giveToken(self.other, 'Experience')
+      },
+    },
+    back: {
+      gives: (g, self, unit) => (unit.id === self.id && anotherAtreides(g, self) ? { keywords: { sentinel: true } } : undefined),
+      whenDefeated: (g, self) => {
+        const targets = unitIds(g, (u) => g.controller(u) !== self.controller && !u.leader)
+        const pick = g.chooseOne(self.controller, 'Duke Leto Atreides: defeat an enemy non-leader unit', targets, { ai: 'harm', source: self.def.id })
+        if (pick) g.defeat(pick)
+      },
+    },
+  },
+  {
+    name: 'Princess Irulan',
+    subtitle: 'Daughter of the Emperor',
+    text: '[When you play an [{Emperor}] unit:] You may exhaust this leader. If you do, give a Shield token to that unit.',
+    backText: '[When Deployed:] Give a Shield token to a friendly [{Emperor}] unit.\nFriendly [{Emperor}] units with a Shield get [+1/+0].',
+    front: {
+      whenYouPlay: (g, self) => {
+        const p = self.controller
+        if (self.otherDef?.type !== 'unit' || !self.otherDef.traits.includes('Emperor') || !self.other || !g.unit(self.other) || !g.leaderReady(p)) return
+        if (!g.may(p, `Princess Irulan: exhaust this leader to give ${self.otherDef.name} a Shield token?`, { yes: 'Exhaust', no: 'Skip', source: self.def.id })) return
+        g.exhaustLeader(p)
+        g.giveToken(self.other, 'Shield')
+      },
+    },
+    back: {
+      whenDeployed: (g, self) => {
+        const ids = friendlyIds(g, self, (u) => g.hasTrait(u, 'Emperor'))
+        const pick = g.chooseOne(self.controller, 'Princess Irulan: give a Shield token to a friendly Emperor unit', ids, { ai: 'help', source: self.def.id })
+        if (pick) g.giveToken(pick, 'Shield')
+      },
+      gives: (g, self, unit) =>
+        g.controller(unit) === self.controller && g.hasTrait(unit, 'Emperor') && g.tokens(unit.id, 'Shield') ? { power: 1 } : undefined,
+    },
+  },
+
+  // --- Events that make or spend Spice ---
+  {
+    name: 'The Spice Must Flow',
+    text: 'Create 3 Spice tokens. If you control an [{Arrakis}] base, create 4 Spice tokens instead. Each opponent creates a Spice token.',
+    front: {
+      play: (g, self) => {
+        g.createSpice(self.controller, g.controlsArrakis(self.controller) ? 4 : 3)
+        g.createSpice(enemy(g, self))
+      },
+    },
+  },
+  {
+    name: 'Spice Trance',
+    text: 'Look at the top 3 cards of your deck. Discard any number of them and put the rest back in any order. Create a Spice token. If you control an [{Arrakis}] base, create another Spice token.',
+    front: {
+      play: (g, self) => {
+        const p = self.controller
+        const top = g.top(p, 3).map((c) => c.id)
+        const soon = g.player(p).resources.length + 2
+        const dear = top.filter((id) => g.def(g.card(id)!).cost > soon)
+        const discarded = g.choose(p, 'Spice Trance: discard any number of the top 3 cards of your deck', top, {
+          min: 0,
+          max: top.length,
+          ai: dear[0] ?? 'none',
+          source: self.def.id,
+        })
+        for (const id of discarded) g.mill(p, id)
+        // The rest back in the order chosen, the first on top
+        let rest = top.filter((id) => !discarded.includes(id))
+        const order: string[] = []
+        while (rest.length > 1) {
+          const next = g.chooseOne(p, 'Spice Trance: choose the next card to put back, from the top down', rest, { ai: 'best', source: self.def.id })
+          if (!next) break
+          order.push(next)
+          rest = rest.filter((id) => id !== next)
+        }
+        for (const id of [...order, ...rest].reverse()) g.toTop(p, id)
+        g.createSpice(p, g.controlsArrakis(p) ? 2 : 1)
+      },
+    },
+  },
+  {
+    name: 'Spice Raid',
+    text: 'Deal 2 damage to a ground unit. If that unit is defeated this way, create a Spice token.',
+    front: {
+      play: (g, self) => {
+        const pick = g.chooseOne(self.controller, 'Spice Raid: deal 2 damage to a ground unit', unitIds(g, (u) => u.arena === 'ground'), {
+          ai: 'harm',
+          source: self.def.id,
+        })
+        if (pick && g.damage(pick, 2, self) && !g.unit(pick)) g.createSpice(self.controller)
+      },
+    },
+  },
+  {
+    name: 'Lasgun Volley',
+    text: 'Deal 4 damage to a unit. Then, you may defeat a friendly Spice token. If you do, deal 2 damage to the same unit.',
+    front: {
+      play: (g, self) => {
+        const p = self.controller
+        const pick = g.chooseOne(p, 'Lasgun Volley: deal 4 damage to a unit', g.units().map((u) => u.id), { ai: 'harm', source: self.def.id })
+        if (!pick) return
+        g.damage(pick, 4, self)
+        if (!g.unit(pick) || !g.spice(p)) return
+        if (g.may(p, `Lasgun Volley: defeat a Spice token to deal 2 more damage to ${g.name(pick)}?`, { yes: 'Defeat a Spice token', no: 'Skip', source: self.def.id }) && g.defeatSpice(p))
+          g.damage(pick, 2, self)
+      },
+    },
+  },
+  {
+    name: 'War of Assassins',
+    text: 'You may defeat 2 friendly Spice tokens. If you do, defeat a unit. Otherwise, defeat a non-leader unit.',
+    front: {
+      play: (g, self) => {
+        const p = self.controller
+        const leader = g.units((u) => !!u.leader && g.controller(u) !== p).length > 0
+        const paid =
+          g.spice(p) >= 2 &&
+          g.may(p, 'War of Assassins: defeat 2 Spice tokens to be able to defeat a leader unit?', { yes: 'Defeat 2 Spice tokens', no: 'Skip', ai: leader, source: self.def.id })
+        if (paid) for (let i = 0; i < 2; i++) g.defeatSpice(p)
+        const pick = g.chooseOne(p, `War of Assassins: defeat a ${paid ? '' : 'non-leader '}unit`, unitIds(g, (u) => paid || !u.leader), {
+          ai: 'harm',
+          source: self.def.id,
+        })
+        if (pick) g.defeat(pick)
+      },
+    },
+  },
+  {
+    name: 'Coriolis Storm',
+    text: "You may defeat a friendly Spice token. If you do, return a non-leader unit to its owner's hand. Otherwise, return a non-leader unit that costs [#6] or less to its owner's hand.",
+    front: {
+      play: (g, self) => {
+        const p = self.controller
+        const big = g.units((u) => g.controller(u) !== p && !u.leader && g.cost(u) > 6).length > 0
+        const paid =
+          g.spice(p) > 0 &&
+          g.may(p, "Coriolis Storm: defeat a Spice token to be able to return a unit that costs more than 6?", { yes: 'Defeat a Spice token', no: 'Skip', ai: big, source: self.def.id }) &&
+          g.defeatSpice(p)
+        const pick = g.chooseOne(p, "Coriolis Storm: return a non-leader unit to its owner's hand", unitIds(g, (u) => !u.leader && (paid || g.cost(u) <= 6)), {
+          ai: 'harm',
+          source: self.def.id,
+        })
+        if (pick) g.returnToHand(pick)
+      },
+    },
+  },
+  {
+    name: "Earning the Fremen's respect",
+    text: 'You may defeat a friendly ground [{Vehicle}] unit, any number of friendly Spice tokens, or both. Create 2 [{Fremen}] tokens if you defeated a unit this way, plus 1 for each Spice token defeated this way.',
+    front: {
+      play: (g, self) => {
+        const p = self.controller
+        const vehicles = friendlyIds(g, self, (u) => u.arena === 'ground' && g.hasTrait(u, 'Vehicle') && !u.leader)
+        const vehicle = g.chooseOne(p, "Earning the Fremen's respect: you may defeat a friendly ground Vehicle unit", vehicles, {
+          optional: true,
+          ai: 'none',
+          source: self.def.id,
+        })
+        if (vehicle) g.defeat(vehicle)
+        const counts = Array.from({ length: g.spice(p) + 1 }, (_, n) => `${n} Spice token${n === 1 ? '' : 's'}`)
+        const spent = counts.length > 1 ? g.option(p, "Earning the Fremen's respect: defeat how many Spice tokens?", counts, { ai: counts.length - 1, source: self.def.id }) : 0
+        for (let i = 0; i < spent; i++) g.defeatSpice(p)
+        const fremen = (vehicle ? 2 : 0) + spent
+        for (let i = 0; i < fremen; i++) g.createToken(p, 'Fremen')
+      },
+    },
+  },
 ]
+
+// "When you defeat a friendly Spice token"
+const youDefeatSpice = (self: Self) => self.spice?.owner === self.controller && self.spice.by === self.controller
+
+// Friendly units, or those of them a test lets through
+const friendlyIds = (g: Game, self: Self, test: (u: UnitState) => boolean = () => true) =>
+  unitIds(g, (u) => g.controller(u) === self.controller && test(u))
+
+// "Heal N damage from a unit or base": the AI heals its own
+function healOne(g: Game, self: Self, amount: number) {
+  const damaged = [
+    ...g.units((u) => u.damage > 0).map((u) => u.id),
+    ...([0, 1] as PlayerId[]).filter((p) => g.player(p).base.damage > 0).map((p) => `base${p}`),
+  ]
+  const pick = g.chooseOne(self.controller, `${self.def.name}: heal ${amount} damage from a unit or base`, damaged, { ai: 'help', source: self.def.id })
+  if (pick) g.heal(pick, amount, self)
+}
+
+function experienceTo(g: Game, self: Self, ids: string[], text: string) {
+  const pick = g.chooseOne(self.controller, text, ids, { ai: 'help', source: self.def.id })
+  if (pick) g.giveToken(pick, 'Experience')
+}
+
+const anotherAtreides = (g: Game, self: Self) => friendlyIds(g, self, (u) => u.id !== self.id && g.hasTrait(u, 'Atreides')).length > 0
+
+// "Give an Experience token to another friendly [{Atreides}] unit."
+function otherAtreidesExperience(g: Game, self: Self) {
+  const ids = friendlyIds(g, self, (u) => u.id !== self.id && g.hasTrait(u, 'Atreides'))
+  experienceTo(g, self, ids, `${self.def.name}: give an Experience token to another friendly Atreides unit`)
+}
+
+// "Give an Experience token to each other friendly [{Atreides}] unit."
+function eachAtreidesExperience(g: Game, self: Self) {
+  for (const id of friendlyIds(g, self, (u) => u.id !== self.id && g.hasTrait(u, 'Atreides'))) g.giveToken(id, 'Experience')
+}
+
+// Spotter 'Thopter: Spice with an Arrakis base and a Harvester Vehicle
+function spotterSpice(g: Game, self: Self) {
+  const harvester = friendlyIds(g, self, (u) => g.hasTrait(u, 'Harvester') && g.hasTrait(u, 'Vehicle')).length > 0
+  if (g.controlsArrakis(self.controller) && harvester) g.createSpice(self.controller)
+}
+
+// Chani: a Fremen unit played or a Fremen token created
+const fremenArrives = (self: Self) => self.otherDef?.type === 'unit' && self.otherDef.traits.includes('Fremen')
+
+function chaniLeader(g: Game, self: Self) {
+  const p = self.controller
+  if (!fremenArrives(self) || !g.leaderReady(p)) return
+  if (!g.may(p, 'Chani: exhaust this leader to deal 1 damage to an enemy base?', { yes: 'Exhaust', no: 'Skip', source: self.def.id })) return
+  g.exhaustLeader(p)
+  g.damage(`base${enemy(g, self)}`, 1, self)
+}
+
+function chaniUnit(g: Game, self: Self) {
+  if (!fremenArrives(self)) return
+  const foe = enemy(g, self)
+  const ids = [...unitIds(g, (u) => g.controller(u) === foe), `base${foe}`]
+  const pick = g.chooseOne(self.controller, 'Chani: deal 1 damage to an enemy unit or base', ids, { ai: 'harm', source: self.def.id })
+  if (pick) g.damage(pick, 1, self)
+}
+
+// Shaddam IV: the Sardaukar cards in hand he can play
+const sardaukarInHand = (g: Game, self: Self) =>
+  g
+    .player(self.controller)
+    .hand.filter((c) => g.hasTrait(c, 'Sardaukar') && g.canPlay(self.controller, c.id, { ignoreAdditional: true }))
+    .map((c) => c.id)
+
+// Baron Vladimir Harkonnen: the cards in his resources he can play as if using Plot, for 1 less
+const plotPlays = (g: Game, self: Self) =>
+  g
+    .player(self.controller)
+    .resources.map((r) => r.card.id)
+    .filter((id) => g.canPlay(self.controller, id, { discount: 1 }))
+
+// Gurney Halleck: "Play a card using Smuggle. It costs [2] less." or an Experience token
+function gurneyChoice(g: Game, self: Self) {
+  const p = self.controller
+  const smuggled = g
+    .player(p)
+    .resources.map((r) => r.card.id)
+    .filter((id) => g.canPlay(p, id, { smuggle: true, discount: 2 }))
+  const choice = g.option(p, 'Gurney Halleck: choose one', ['Play a card using Smuggle, for 2 less', 'Give an Experience token to a friendly Underworld unit'], {
+    ai: smuggled.length ? 0 : 1,
+    source: self.def.id,
+  })
+  if (choice === 1) {
+    experienceTo(g, self, friendlyIds(g, self, (u) => g.hasTrait(u, 'Underworld')), 'Gurney Halleck: give an Experience token to a friendly Underworld unit')
+    return
+  }
+  const pick = g.chooseOne(p, 'Gurney Halleck: play a card using Smuggle, for 2 less', smuggled, { ai: 'best', source: self.def.id })
+  if (pick) g.playCard(p, pick, { smuggle: true, discount: 2 })
+}
 
 // "If you control an [{Arrakis}] base, create a Spice token."
 function arrakisSpice(g: Game, self: Self) {
@@ -647,10 +1461,17 @@ const normal = (text = '') =>
 const keyOf = (name: string, subtitle?: string) => `${name}|${subtitle?.trim() ?? ''}`
 const byKey = new Map(dune.map((script) => [keyOf(script.name, script.subtitle), script]))
 
+// Looked up again and again as the engine works out what units have: each card's text is
+// compared with its script's once
+const found = new Map<string, CardScript | undefined>()
+
 export function scriptFor(card: CardDef): CardScript | undefined {
-  const script = byKey.get(keyOf(card.name, card.subtitle))
-  if (!script || normal(script.text) !== normal(card.text)) return undefined
-  if (card.type === 'leader' && normal(script.backText) !== normal(card.backText)) return undefined
+  const lookup = `${keyOf(card.name, card.subtitle)}|${card.type}|${card.text}|${card.backText}`
+  if (found.has(lookup)) return found.get(lookup)
+  let script = byKey.get(keyOf(card.name, card.subtitle))
+  if (script && normal(script.text) !== normal(card.text)) script = undefined
+  if (script && card.type === 'leader' && normal(script.backText) !== normal(card.backText)) script = undefined
+  found.set(lookup, script)
   return script
 }
 

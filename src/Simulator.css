@@ -426,29 +426,39 @@
   align-self: center;
   flex: none;
 }
+/* Buttons in the desert's colours: weathered leather, spice for what moves the game on */
 .sim-button {
   min-width: 9rem;
   color: var(--sand);
   font-family: inherit;
   padding: 0.8rem 1rem;
-  border: 2px solid var(--line);
+  border: 1px solid rgba(232, 215, 181, 0.32);
   border-radius: 10px;
-  background: rgba(0, 0, 0, 0.55);
+  background: linear-gradient(180deg, #3d2c1d 0%, #261a11 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 236, 200, 0.12), 0 0.3rem 0.8rem rgba(0, 0, 0, 0.45);
   font-weight: 700;
   font-size: 1rem;
+  letter-spacing: 0.02em;
   cursor: pointer;
+  transition: filter 0.12s, transform 0.12s;
+}
+.sim-button:hover:not(:disabled) {
+  filter: brightness(1.18);
+  transform: translateY(-1px);
 }
 .sim-button.pass {
-  border-color: #e6c84a;
-  background: rgba(80, 66, 10, 0.6);
+  border-color: #b99a5b;
+  background: linear-gradient(180deg, #5a4626 0%, #382a15 100%);
 }
 .sim-button.claim {
-  border-color: var(--me);
-  background: rgba(20, 50, 90, 0.6);
+  border-color: #d9b46a;
+  color: #2a1a0b;
+  background: linear-gradient(180deg, #e9cf8f 0%, #b8914c 100%);
 }
 .sim-button.go {
-  border-color: var(--spice);
-  background: rgba(120, 60, 10, 0.6);
+  border-color: #f0a75a;
+  color: #fff4e3;
+  background: linear-gradient(180deg, #c8711f 0%, #8a4512 100%);
 }
 .sim-button:disabled {
   opacity: 0.35;
@@ -621,36 +631,26 @@
 .sim-landscape.target {
   cursor: crosshair;
 }
-.sim-spice {
-  position: absolute;
-  right: -0.6vh;
-  bottom: -0.6vh;
-  display: flex;
-  align-items: center;
-  gap: 0.2rem;
-  padding: 0.15rem 0.4rem 0.15rem 0.15rem;
-  border-radius: 999px;
-  background: #000;
-  border: 1px solid var(--spice);
-  font-size: 0.75rem;
-  font-weight: 700;
-}
-.sim-spice img {
-  width: 1.8vh;
-  height: 2.5vh;
-}
+/* The message between the bases floats over the board: however long, nothing moves */
 .sim-prompt {
-  display: grid;
-  place-items: center;
+  position: relative;
+  align-self: stretch;
   flex: 1;
   min-height: 6vh;
 }
 .sim-prompt span {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 6;
+  transform: translate(-50%, -50%);
+  width: max-content;
   max-width: calc(var(--lw) * 1.6);
   padding: 0.6vh 1.2vh;
   border-radius: 14px;
-  background: rgba(60, 40, 120, 0.85);
-  border: 1px solid #8b7cf6;
+  background: linear-gradient(180deg, rgba(74, 50, 28, 0.94), rgba(44, 29, 16, 0.94));
+  border: 1px solid rgba(224, 138, 44, 0.75);
+  box-shadow: 0 0.4rem 1.2rem rgba(0, 0, 0, 0.45);
   font-size: 1.05rem;
   text-align: center;
 }
@@ -863,12 +863,6 @@
   border-color: var(--spice);
   box-shadow: 0 0 1.8vh var(--spice);
 }
-.sim-button.ability {
-  border-color: #b48ee6;
-  background: rgba(50, 30, 80, 0.6);
-  max-width: 16rem;
-  font-size: 0.85rem;
-}
 
 /* Cards an ability shows apart from the board: from a hand, a deck or a discard pile */
 .sim-choice {
@@ -953,6 +947,198 @@
 .sim-upgrades span.weakness {
   background: rgba(80, 30, 90, 0.85);
 }
-.sim-spice {
-  z-index: 2;
+/* A leader or base shown to choose what it does */
+.sim-choice-cards img.landscape {
+  height: 22vh;
+}
+
+/* Who goes first and the mulligan: asked big, floating in the middle of the board */
+.sim-play {
+  position: relative;
+}
+.sim-setup {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 20;
+  display: grid;
+  justify-items: center;
+  gap: 2.2vh;
+  padding: 3vh 4vh;
+  border: 2px solid rgba(224, 138, 44, 0.8);
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(66, 44, 24, 0.96), rgba(34, 22, 12, 0.96));
+  box-shadow: 0 1.5rem 4rem rgba(0, 0, 0, 0.65);
+  text-align: center;
+}
+.sim-setup p {
+  margin: 0;
+  font-size: clamp(1.4rem, 3.2vh, 2.2rem);
+  font-weight: 700;
+  white-space: nowrap;
+}
+.sim-setup-buttons {
+  display: flex;
+  gap: 1.2rem;
+}
+.sim-setup .sim-button {
+  min-width: 11rem;
+  padding: 1rem 1.4rem;
+  font-size: 1.15rem;
+}
+
+/* The card that asks, named in its question: hover it to see it */
+.sim-asker {
+  color: var(--spice);
+  text-decoration: underline dotted;
+  text-underline-offset: 0.2em;
+  cursor: help;
+}
+
+/* A question answered from your hand: green, or red for a discard */
+.sim-hand-card.asked {
+  cursor: pointer;
+}
+.sim-hand-card.asked img {
+  border-color: #7cd66b;
+  box-shadow: 0 0 1.2vh rgba(124, 214, 107, 0.6);
+}
+.sim-hand-card.asked.harm img {
+  border-color: #e0483a;
+  box-shadow: 0 0 1.4vh rgba(224, 72, 58, 0.75);
+}
+.sim-hand-card.asked.picked img {
+  transform: translateY(-2.5vh);
+}
+
+/* Your resources open to be seen face up */
+.sim-resources.open {
+  cursor: pointer;
+}
+.sim-resources.open:hover .sim-resource > * {
+  filter: brightness(1.2);
+}
+.sim-choice-cards button.playable {
+  border-color: #7cd66b;
+  box-shadow: 0 0 1.6vh rgba(124, 214, 107, 0.7);
+}
+.sim-choice-cards button.used img {
+  filter: brightness(0.5) grayscale(0.4);
+}
+.sim-choice-cards button:not(.playable) {
+  cursor: default;
+}
+
+/* The Spice tokens beside a base: a pile of up to 5 round tokens, the count on the top one */
+.sim-base-slot {
+  position: relative;
+  flex: none;
+}
+.sim-spice-pile {
+  --token: 4.6vh;
+  --rise: 0.85vh;
+  position: absolute;
+  left: calc(100% + 1.2vh);
+  bottom: 0.4vh;
+  width: var(--token);
+  height: calc(var(--token) + 4 * var(--rise));
+  /* Over the ground arena's edge, not under it */
+  z-index: 5;
+}
+.sim-spice-token {
+  position: absolute;
+  left: var(--shift);
+  bottom: calc(var(--i) * var(--rise));
+  width: var(--token);
+  height: var(--token);
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 0.3vh solid #6b3a12;
+  background: var(--spice-art) 50% 80% / 330% auto no-repeat, #3a2210;
+  box-shadow: 0 0.35vh 0.5vh rgba(0, 0, 0, 0.75), inset 0 0 0.8vh rgba(0, 0, 0, 0.55);
+}
+.sim-spice-token b {
+  font-size: 1.05rem;
+  color: #fff4e3;
+  text-shadow: 0 0 0.4vh #000, 0 0 0.8vh #000;
+}
+.sim-spice-pile.can-act {
+  cursor: pointer;
+}
+.sim-spice-pile.can-act .sim-spice-token:last-child {
+  border-color: #7cd66b;
+  box-shadow: 0 0 1.6vh rgba(124, 214, 107, 0.9), inset 0 0 0.8vh rgba(0, 0, 0, 0.55);
+}
+.sim-spice-pile.can-act:hover .sim-spice-token:last-child {
+  filter: brightness(1.2);
+}
+
+/* A Spice token a question would defeat: red, as a discard is */
+.sim-spice-pile.harm {
+  cursor: pointer;
+}
+.sim-spice-pile.harm .sim-spice-token:last-child {
+  border-color: #e0483a;
+  box-shadow: 0 0 1.6vh rgba(224, 72, 58, 0.9), inset 0 0 0.8vh rgba(0, 0, 0, 0.55);
+}
+
+/* A discard pile opens to see its cards */
+.sim-pile.open {
+  cursor: pointer;
+}
+.sim-pile.open:hover img {
+  filter: brightness(1.15);
+}
+
+/* A pile's cards, smaller the more of them there are */
+.sim-choice-cards button {
+  position: relative;
+}
+.sim-choice-cards.size-medium img {
+  height: 22vh;
+}
+.sim-choice-cards.size-small img {
+  height: 16vh;
+}
+.sim-choice-cards.size-tiny img {
+  height: 12vh;
+}
+.sim-choice-cards.size-small,
+.sim-choice-cards.size-tiny {
+  gap: 0.5rem;
+}
+
+/* How many copies are stacked: a white number on a black hexagon edged in white, in the card's
+   top right corner, as the Deck Builder shows it */
+.sim-copies {
+  position: absolute;
+  top: 1.5%;
+  right: 2%;
+  width: 24%;
+  aspect-ratio: 1 / 1.1;
+  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+  background: #fff;
+}
+.sim-copies span {
+  position: absolute;
+  inset: 7%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+  background: #111;
+  font-size: 2.6vh;
+  font-weight: 800;
+  color: #fff;
+}
+.size-medium .sim-copies span {
+  font-size: 2.1vh;
+}
+.size-small .sim-copies span {
+  font-size: 1.6vh;
+}
+.size-tiny .sim-copies span {
+  font-size: 1.2vh;
 }

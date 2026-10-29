@@ -45,8 +45,12 @@ export type CardDef = {
   arrakisKeywords?: Keywords
   // "As an additional cost to play this unit, defeat a friendly Spice token."
   spiceCost?: number
-  // A base's "You start the game with a [Spice Token]."
+  // A base's or leader's "You start the game with a [Spice Token]."
   startSpice?: number
+  // An upgrade's "Attach to a friendly unit." or "Attach to a non-[{Vehicle}] unit."
+  attach?: { friendly?: boolean; not?: string }
+  // An upgrade's "Attached unit gains [Sentinel]."
+  attachedKeywords?: Keywords
   // A leader's unit side
   unit?: { power: number; hp: number; arena: Arena; keywords: Keywords; arrakisKeywords?: Keywords }
   text?: string
@@ -122,7 +126,7 @@ export type Prompt = {
 export type Pending = { base: GameState; player: PlayerId; action: Action; answers: string[][] }
 
 // A change to a unit that lasts a while: for this attack, or for this phase
-export type Effect = { unit: string; power: number; hp: number; until: 'attack' | 'phase' }
+export type Effect = { unit: string; power: number; hp: number; keywords?: Keywords; until: 'attack' | 'phase' }
 
 export type GameState = {
   rng: number
@@ -144,6 +148,8 @@ export type GameState = {
   // Once the game is over: the winner, or 'draw'
   winner: PlayerId | 'draw' | null
   effects: Effect[]
+  // The "once each round" abilities used this round
+  usedThisRound: string[]
   // While an ability waits for an answer
   prompt: Prompt | null
   pending: Pending | null

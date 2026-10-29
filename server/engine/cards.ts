@@ -15,6 +15,8 @@ export type SavedCard = {
   cost?: number
   power?: number
   hp?: number
+  // The art, a file beside the card's image
+  art?: { src?: string }
 }
 
 const aspectNames: Aspect[] = ['Vigilance', 'Command', 'Aggression', 'Cunning', 'Heroism', 'Villainy']
@@ -59,14 +61,20 @@ const smuggleLine = /^\[Smuggle\]?\s*\[\[(\d+)[^\]]*\]\]\]?$/i
 const arrakisLine = /^While you control an \[\{?Arrakis\}?\] base, this unit gains (.+)\.$/i
 const spiceCostLine = /^As an additional cost to play this unit, defeat (a|\d+) friendly Spice tokens?\.$/i
 const startSpiceLine = /^You start the game with (a|\d+) \[?Spice Tokens?\]?\.$/i
+const attachLine = /^Attach to a (friendly |non-\[\{?([^}\]]+)\}?\] )?unit\.$/i
+const attachedGainsLine = /^Attached unit gains ((?:\[[^\]]+\](?:,? and |, )?)+)\.$/i
+// "< >" and "<< >>" only box a line on the card
+const unboxed = (line: string) => line.trim().replace(/^<<?\s*(.*?)\s*>>?$/, '$1')
 const count = (word: string) => (/^\d+$/.test(word) ? Number(word) : 1)
 
 // What a card's text says that the engine plays without a script: its keywords, those it gains
 // with an Arrakis base, a Spice token to pay as it is played or to start the game with
 export function readText(text = '') {
-  const read: Pick<CardDef, 'keywords' | 'arrakisKeywords' | 'spiceCost' | 'startSpice'> = { keywords: {} }
+  const read: Pick<CardDef, 'keywords' | 'arrakisKeywords' | 'spiceCost' | 'startSpice' | 'attach' | 'attachedKeywords'> = {
+    keywords: {},
+  }
   for (const raw of text.split('\n')) {
-    const line = raw.trim()
+    const line = unboxed(raw)
     let match
     if ((match = line.match(keywordLine))) addKeyword(read.keywords, match[1])
     else if ((match = line.match(smuggleLine))) read.keywords.smuggle = Number(match[1])
@@ -75,17 +83,23 @@ export function readText(text = '') {
       for (const [, word] of match[1].matchAll(/\[([^\]]+)\]/g)) addKeyword(read.arrakisKeywords, word)
     } else if ((match = line.match(spiceCostLine))) read.spiceCost = count(match[1])
     else if ((match = line.match(startSpiceLine))) read.startSpice = count(match[1])
+    else if ((match = line.match(attachLine)))
+      read.attach = match[2] ? { not: match[2] } : match[1] ? { friendly: true } : {}
+    else if ((match = line.match(attachedGainsLine))) {
+      read.attachedKeywords = {}
+      for (const [, word] of match[1].matchAll(/\[([^\]]+)\]/g)) addKeyword(read.attachedKeywords, word)
+    }
   }
   return read
 }
 
 // Whether the engine plays a line of text by itself (see readText)
 export function enginePlays(line: string) {
-  const text = line.trim()
+  const text = unboxed(line)
   if (keywordLine.test(text)) return addKeyword({}, text.slice(1, -1))
-  const gains = text.match(arrakisLine)
+  const gains = text.match(arrakisLine) ?? text.match(attachedGainsLine)
   if (gains) return [...gains[1].matchAll(/\[([^\]]+)\]/g)].every(([, word]) => addKeyword({}, word))
-  return [smuggleLine, spiceCostLine, startSpiceLine].some((pattern) => pattern.test(text))
+  return [smuggleLine, spiceCostLine, startSpiceLine, attachLine].some((pattern) => pattern.test(text))
 }
 
 // The keywords printed on a side: each stands on a line of its own, as "[Sentinel]" or

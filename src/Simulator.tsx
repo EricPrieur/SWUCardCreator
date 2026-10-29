@@ -27,7 +27,8 @@ const img = (image: string) => asset(`/showcase/${SET}/${image}.jpg`)
 
 // The set's cards, and each one's images: its front and a leader's unit side. A two-sided
 // base is two cards, its second side's id ending in BACK_SIDE, as the Deck Builder has it.
-type SetCards = { defs: CardDef[]; images: Record<string, { image: string; back?: string }> }
+// spiceArt: the Spice token's art, its pile of spice shown on the tokens on the board
+type SetCards = { defs: CardDef[]; images: Record<string, { image: string; back?: string }>; spiceArt?: string }
 const BACK_SIDE = '#back'
 
 async function loadSet(): Promise<SetCards> {
@@ -46,6 +47,7 @@ async function loadSet(): Promise<SetCards> {
     if (!d) continue
     set.defs.push(d)
     set.images[d.id] = { image: entry.image, back: entry.back }
+    if (card.frameId === 'spice-token' && card.art?.src) set.spiceArt = asset(`/showcase/${SET}/${card.art.src}`)
     const second = d.type === 'base' && card.backFrameId && cardDef({ ...card, id: card.id + BACK_SIDE, frameId: card.backFrameId })
     if (second && entry.back) {
       set.defs.push(second)
@@ -304,6 +306,15 @@ const DRAW_STAGGER = 110
 const DRAW_FLIGHT = 380
 const SOUND_KEY = 'dune-unlimited.simulator.sound'
 const drawSound = asset('/sim/sounds/card-draw.ogg')
+const clickSound = asset('/sim/sounds/click.ogg')
+// A pile's cards shown smaller the more there are of them, to fit the window
+const pileSize = (count: number) => (count <= 6 ? 'large' : count <= 12 ? 'medium' : count <= 24 ? 'small' : 'tiny')
+
+// The most Spice tokens a pile shows; more only change its count
+const SPICE_PILE = 5
+// Each token in the pile a little off the one under it, always the same, as a pile is: never
+// further left than the gap to the base
+const SPICE_SHIFT = [0, 0.6, -0.3, 0.9, 0.2]
 
 let soundOn = (() => {
   try {
@@ -313,13 +324,17 @@ let soundOn = (() => {
   }
 })()
 
-function playDraw() {
+function play(sound: string, volume: number) {
   if (!soundOn) return
-  const audio = new Audio(drawSound)
-  audio.volume = 0.35
+  const audio = new Audio(sound)
+  audio.volume = volume
   // A browser may refuse sound until the page has been clicked: silent, then
   audio.play().catch(() => {})
 }
+const playDraw = () => play(drawSound, 0.35)
+
+// What clicking makes a sound: a button, or a card that can be played, used or picked
+const clickable = 'button, .playable, .can-act, .target'
 
 // One card's flight, drawn over the page: from one box to another, then gone
 function fly(image: string, from: DOMRect, to: DOMRect) {
@@ -364,6 +379,20 @@ function Table(props: {
   const landedNow = useRef(landed)
   landedNow.current = landed
   const [message, setMessage] = useState('')
+  // A card clicked that can do more than one thing: what it can do, to choose from
+  // A pile opened to see each card in it: your resources, face up, to play one using Smuggle,
+  // or either discard pile
+  const [pileOpen, setPileOpen] = useState<'resources' | 'discard-me' | 'discard-opp' | null>(null)
+  const [menu, setMenu] = useState<{ card: string; landscape?: boolean; options: { label: string; run: () => void }[] } | null>(null)
+
+  // Each click on something that answers it clicks
+  useEffect(() => {
+    const click = (event: MouseEvent) => {
+      if ((event.target as Element | null)?.closest?.(clickable)) play(clickSound, 0.5)
+    }
+    document.addEventListener('click', click, true)
+    return () => document.removeEventListener('click', click, true)
+  }, [])
 
   const view = useMemo(() => viewFor(game, YOU), [game])
   const me = view.players[YOU]
@@ -374,9 +403,14 @@ function Table(props: {
   const asked = view.prompt && 'options' in view.prompt && view.prompt.player === YOU ? view.prompt : null
   const boardIds = new Set([...me.units, ...opp.units].map((u) => u.id).concat('base0', 'base1'))
   const askedOn = (id: string) => !!asked && asked.kind === 'pick' && asked.options.some((o) => o.id === id)
-  const shown = asked?.kind === 'pick' ? asked.options.filter((o) => !boardIds.has(o.id)) : []
+  // Cards in your hand are picked there, red for a discard
+  const handIds = new Set(me.hand?.map((c) => c.id))
+  const shown = asked?.kind === 'pick' ? asked.options.filter((o) => !boardIds.has(o.id) && !handIds.has(o.id)) : []
+  const harmful = !!asked && /discard/i.test(asked.text)
   // A question about a card off the board is asked beside it, apart from the board
-  const apart = !!shown.length || !!asked?.card
+  const apart = !!shown.length || !!asked?.card || !!menu
+  // Who goes first and the mulligan are asked big, in the middle of the board
+  const setup = !view.prompt && (view.phase === 'first' || view.phase === 'mulligan')
 
   const act = (p: PlayerId, action: Action) => {
     if (action.type === 'play') {
@@ -388,6 +422,8 @@ function Table(props: {
     if (p === YOU) {
       setMode(null)
       setPicked([])
+      setMenu(null)
+      setPileOpen(null)
     }
     // The hovered card may leave the board without a mouseleave
     setHover(null)
@@ -566,17 +602,30 @@ function Table(props: {
               disabled: !can({ type: 'initiative' }),
               onClick: () => act(YOU, { type: 'initiative' }),
             },
-            ...view.abilities.map((a) => ({
-              label: `${defOf(a.source === 'leader' ? me.leader.def : ([...me.units, ...me.spice].find((c) => c.id === a.source)?.def ?? '')).name}: ${a.label}`,
-              kind: 'ability',
-              onClick: () => act(YOU, { type: 'ability', source: a.source, index: a.index }),
-            })),
-            ...(can({ type: 'deploy' })
-              ? [{ label: 'Deploy Leader', kind: 'go', onClick: () => act(YOU, { type: 'deploy' }) }]
-              : []),
           ]
       break
   }
+
+  // What a card on the table can do, clicked: its Action abilities, and a leader's deploy or a
+  // unit's attack. One is done at once; more are offered to choose from.
+  const abilitiesOf = (source: string) =>
+    !mode && !asked
+      ? view.abilities.filter((a) => a.source === source).map((a) => ({ label: a.label, run: () => act(YOU, { type: 'ability', source, index: a.index }) }))
+      : []
+  const offer = (card: string, options: { label: string; run: () => void }[], landscape?: boolean) => {
+    if (options.length === 1) options[0].run()
+    else if (options.length) setMenu({ card, landscape, options })
+  }
+  const leaderOptions = () => [
+    ...abilitiesOf('leader'),
+    ...(!mode && !asked && can({ type: 'deploy' }) ? [{ label: 'Deploy Leader', run: () => act(YOU, { type: 'deploy' }) }] : []),
+  ]
+  const unitOptions = (id: string) => [
+    ...(!mode && !asked && attackActions.some((a) => a.type === 'attack' && a.attacker === id)
+      ? [{ label: 'Attack', run: () => setMode({ kind: 'attack', attacker: id }) }]
+      : []),
+    ...abilitiesOf(id),
+  ]
 
   const playsOf = (id: string) => view.actions.filter((a) => a.type === 'play' && a.card === id)
   // A resource played using Smuggle: a unit or event at once, an upgrade once its unit is chosen
@@ -588,6 +637,10 @@ function Table(props: {
     else act(YOU, plays[0])
   }
   const clickHand = (id: string) => {
+    if (asked) {
+      if (askedOn(id)) pickAnswer(id)
+      return
+    }
     if (pickCount) {
       setPicked((now) => (now.includes(id) ? now.filter((i) => i !== id) : now.length < pickCount ? [...now, id] : now))
       return
@@ -604,8 +657,9 @@ function Table(props: {
       act(YOU, mode.kind === 'attack' ? { type: 'attack', attacker: mode.attacker, target: id } : attachAction(mode, id))
     } else if (mode?.kind === 'attack' && mode.attacker === id) {
       setMode(null)
-    } else if (!mode && attackActions.some((a) => a.type === 'attack' && a.attacker === id)) {
-      setMode({ kind: 'attack', attacker: id })
+    } else if (!mode) {
+      const unit = me.units.find((u) => u.id === id)
+      if (unit) offer(unit.def, unitOptions(id))
     }
   }
   const clickBase = (id: string) => {
@@ -620,7 +674,7 @@ function Table(props: {
     const target = isTarget(u.id)
     const ours = side === me
     const chosen = asked && picked.includes(u.id)
-    const ready = !mode && !asked && ours && attackActions.some((a) => a.type === 'attack' && a.attacker === u.id)
+    const ready = ours && unitOptions(u.id).length > 0
     const classes = [
       'sim-unit',
       u.exhausted && 'exhausted',
@@ -690,7 +744,11 @@ function Table(props: {
     const ready = side.resources.filter((r) => !r.exhausted).length
     return (
       <div className={`sim-strip ${who}`}>
-        <div className="sim-pile" title="Discard pile">
+        <div
+          className={`sim-pile${top ? ' open' : ''}`}
+          title={top ? 'Discard pile: click to see it' : 'Discard pile'}
+          onClick={top ? () => setPileOpen(who === 'me' ? 'discard-me' : 'discard-opp') : undefined}
+        >
           {top ? (
             <img src={img(imageOf(top.def) ?? '')} alt={defOf(top.def).name} onMouseEnter={look(imageOf(top.def))} onMouseLeave={leave} />
           ) : (
@@ -702,7 +760,11 @@ function Table(props: {
           {side.deckCount ? <Back /> : <div className="sim-empty">Deck</div>}
           <span className="sim-count">{side.deckCount}</span>
         </div>
-        <div className="sim-resources" title={`${ready} of ${side.resources.length} resources ready`}>
+        <div
+          className={`sim-resources${who === 'me' ? ' open' : ''}`}
+          title={`${ready} of ${side.resources.length} resources ready${who === 'me' ? ': click to see them' : ''}`}
+          onClick={who === 'me' ? () => setPileOpen('resources') : undefined}
+        >
           <div className="sim-resource-cards">
             {side.resources.map((r, i) => {
               const smuggle = !!r.card && who === 'me' && !mode && !asked && !pickCount && playsOf(r.card.id).length > 0
@@ -710,10 +772,8 @@ function Table(props: {
                 <div
                   key={i}
                   className={['sim-resource', r.exhausted && 'used', smuggle && 'playable'].filter(Boolean).join(' ')}
-                  title={smuggle ? 'Play it using Smuggle' : undefined}
                   onMouseEnter={r.card ? look(imageOf(r.card.def)) : undefined}
                   onMouseLeave={leave}
-                  onClick={smuggle ? () => clickResource(r.card!.id) : undefined}
                 >
                   <Back />
                 </div>
@@ -734,7 +794,8 @@ function Table(props: {
                   data-image={imageOf(c.def)}
                   className={[
                     'sim-hand-card',
-                    !pickCount && !mode && playsOf(c.id).length && 'playable',
+                    !pickCount && !mode && !asked && playsOf(c.id).length && 'playable',
+                    askedOn(c.id) && (harmful ? 'asked harm' : 'asked'),
                     picked.includes(c.id) && 'picked',
                     mode?.kind === 'attach' && mode.card === c.id && 'picked',
                     pickCount && 'pickable',
@@ -755,7 +816,7 @@ function Table(props: {
               ))}
           {!side.hand && <span className="sim-count hand">{side.handCount}</span>}
         </div>
-        {who === 'me' && !apart && (
+        {who === 'me' && !apart && !setup && (
           <div className="sim-actions">
             {buttons.map((b) => (
               <button key={b.label} type="button" className={`sim-button ${b.kind ?? ''}`} disabled={b.disabled} onClick={b.onClick}>
@@ -770,16 +831,16 @@ function Table(props: {
 
   const leaderCard = (side: SideView) => {
     const image = imageOf(side.leader.def)
-    const deploy = side === me && !mode && can({ type: 'deploy' })
-    const classes = ['sim-landscape', 'leader', side.leader.deployed && 'deployed', side.leader.exhausted && 'exhausted', deploy && 'can-act']
+    const options = side === me ? leaderOptions() : []
+    const classes = ['sim-landscape', 'leader', side.leader.deployed && 'deployed', side.leader.exhausted && 'exhausted', options.length && 'can-act']
     return (
       <button
         type="button"
         className={classes.filter(Boolean).join(' ')}
-        title={side.leader.deployed ? 'Deployed' : deploy ? 'Deploy this leader' : undefined}
+        title={side.leader.deployed ? 'Deployed' : options.map((o) => o.label).join(' or ') || undefined}
         onMouseEnter={look(image, true)}
         onMouseLeave={leave}
-        onClick={deploy ? () => act(YOU, { type: 'deploy' }) : undefined}
+        onClick={options.length ? () => offer(side.leader.def, options, true) : undefined}
       >
         <img src={img(image ?? '')} alt={defOf(side.leader.def).name} />
         {side.leader.deployed && <span className="sim-flag">Deployed</span>}
@@ -791,25 +852,47 @@ function Table(props: {
     const hp = defOf(side.base.def).hp
     const id = side === me ? `base${YOU}` : `base${AI}`
     const target = asked ? askedOn(id) : side === opp && isTarget('base')
+    // Your Spice tokens are alike: their Action is used on the first one that can
+    const spiceUse = side === me ? side.spice.flatMap((t) => abilitiesOf(t.id))[0] : undefined
+    const spice = side.spice.length
+    const spiceImage = spice ? imageOf(side.spice[0].def) : undefined
+    const pile = Math.min(spice, SPICE_PILE)
+    // A question that would defeat one of these Spice tokens: red, and clicked it says yes
+    const spiceAsked =
+      !!spice && !!asked && /defeat .*Spice tokens?/i.test(asked.text) && (/enemy/i.test(asked.text) ? side === opp : side === me)
+    const spiceYes = spiceAsked && asked?.options.some((o) => o.id === 'yes') ? () => answer(['yes']) : undefined
     return (
-      <button
-        type="button"
-        className={`sim-landscape base${target ? ' target' : ''}${asked && picked.includes(id) ? ' chosen' : ''}`}
-        title={`${hp - side.base.damage} of ${hp} HP left`}
-        onMouseEnter={look(image, true)}
-        onMouseLeave={leave}
-        onClick={() => clickBase(side === opp && !asked ? 'base' : id)}
-      >
-        <img src={img(image ?? '')} alt={defOf(side.base.def).name} />
-        <span className="sim-base-hp">{hp - side.base.damage}</span>
-        {!!side.spice.length && (
-          <span className="sim-spice" title={`${side.spice.length} Spice token${side.spice.length > 1 ? 's' : ''}`}>
-            <img src={img(imageOf(side.spice[0].def) ?? '')} alt="" onMouseEnter={look(imageOf(side.spice[0].def))} onMouseLeave={leave} />
-            {side.spice.length}
-          </span>
+      <div className="sim-base-slot">
+        <button
+          type="button"
+          className={`sim-landscape base${target ? ' target' : ''}${asked && picked.includes(id) ? ' chosen' : ''}`}
+          title={`${hp - side.base.damage} of ${hp} HP left`}
+          onMouseEnter={look(image, true)}
+          onMouseLeave={leave}
+          onClick={() => clickBase(side === opp && !asked ? 'base' : id)}
+        >
+          <img src={img(image ?? '')} alt={defOf(side.base.def).name} />
+          <span className="sim-base-hp">{hp - side.base.damage}</span>
+          {!!side.base.damage && <span className="sim-damage big">{side.base.damage}</span>}
+        </button>
+        {/* The Spice tokens, a pile beside the base: up to 5 shown, the count on the top one */}
+        {!!spice && (
+          <div
+            className={`sim-spice-pile${spiceAsked ? ' harm' : spiceUse ? ' can-act' : ''}`}
+            style={{ '--spice-art': `url("${set.spiceArt ?? img(spiceImage ?? '')}")` } as React.CSSProperties}
+            title={spiceUse ? `Spice: ${spiceUse.label}` : `${spice} Spice token${spice > 1 ? 's' : ''}`}
+            onMouseEnter={look(spiceImage)}
+            onMouseLeave={leave}
+            onClick={spiceYes ?? spiceUse?.run}
+          >
+            {Array.from({ length: pile }, (_, i) => (
+              <span key={i} className="sim-spice-token" style={{ '--i': i, '--shift': `${SPICE_SHIFT[i]}vh` } as React.CSSProperties}>
+                {i === pile - 1 && <b>{spice}</b>}
+              </span>
+            ))}
+          </div>
         )}
-        {!!side.base.damage && <span className="sim-damage big">{side.base.damage}</span>}
-      </button>
+      </div>
     )
   }
 
@@ -842,6 +925,62 @@ function Table(props: {
       </>
     )
   }
+
+  // The pile opened: copies of a card stacked as one, with how many in its corner. A resource
+  // stacks with those as ready as it, and as playable using Smuggle.
+  type Stack = { key: string; def: string; count: number; used?: boolean; play?: () => void }
+  const stack = (cards: { def: string; id: string; used?: boolean; play?: boolean }[]) => {
+    const stacks: Stack[] = []
+    for (const card of cards) {
+      const key = `${card.def}|${!!card.used}|${!!card.play}`
+      const found = stacks.find((s) => s.key === key)
+      if (found) found.count++
+      else
+        stacks.push({
+          key,
+          def: card.def,
+          count: 1,
+          used: card.used,
+          play: card.play
+            ? () => {
+                setPileOpen(null)
+                clickResource(card.id)
+              }
+            : undefined,
+        })
+    }
+    return stacks
+  }
+  const opened =
+    pileOpen === 'resources'
+      ? {
+          title: `Your resources: ${me.resources.filter((r) => !r.exhausted).length} of ${me.resources.length} ready`,
+          stacks: stack(
+            me.resources.flatMap((r) =>
+              r.card ? [{ ...r.card, used: r.exhausted, play: !mode && !asked && !pickCount && playsOf(r.card.id).length > 0 }] : [],
+            ),
+          ),
+        }
+      : pileOpen
+        ? {
+            title: pileOpen === 'discard-me' ? 'Your discard pile' : `${opp.name}'s discard pile`,
+            stacks: stack([...(pileOpen === 'discard-me' ? me : opp).discard].reverse()),
+          }
+        : { title: '', stacks: [] }
+
+  // The card that asks, named first in its question: hovered, it is shown
+  const asker = asked?.source ? defOf(asked.source) : undefined
+  const promptText =
+    asker && prompt.startsWith(asker.name) ? (
+      <>
+        <b className="sim-asker" onMouseEnter={look(imageOf(asker.id), asker.type === 'leader' || asker.type === 'base')} onMouseLeave={leave}>
+          {asker.name}
+        </b>
+        {prompt.slice(asker.name.length)}
+      </>
+    ) : (
+      prompt
+    )
 
   const result =
     view.winner === null ? '' : view.winner === 'draw' ? 'Draw' : view.winner === YOU ? 'Victory' : 'Defeat'
@@ -883,11 +1022,25 @@ function Table(props: {
           <div className="sim-centre">
             {leaderCard(opp)}
             {baseCard(opp)}
-            <div className="sim-prompt">{prompt && <span>{apart ? 'Choose…' : prompt}</span>}</div>
+            <div className="sim-prompt">{prompt && !setup && <span>{apart ? 'Choose…' : promptText}</span>}</div>
             {baseCard(me)}
             {leaderCard(me)}
           </div>
           {arena('ground')}
+          {setup && (
+            <div className="sim-setup">
+              <p>{prompt}</p>
+              {mine && (
+                <div className="sim-setup-buttons">
+                  {buttons.map((b) => (
+                    <button key={b.label} type="button" className={`sim-button ${b.kind ?? ''}`} onClick={b.onClick}>
+                      {b.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
           <div className="sim-last">
             {lastCard(last[AI], opp.name)}
             <div className={`sim-initiative-track ${view.initiative === YOU ? 'me' : 'opp'}`}>
@@ -941,6 +1094,60 @@ function Table(props: {
         </ol>
       </aside>
 
+      {pileOpen && (
+        <div className="sim-choice">
+          <p>{opened.title}</p>
+          <div className={`sim-choice-cards size-${pileSize(opened.stacks.length)}`}>
+            {opened.stacks.map((stack) => (
+              <button
+                key={stack.key}
+                type="button"
+                className={[stack.play && 'playable', stack.used && 'used'].filter(Boolean).join(' ') || undefined}
+                title={stack.play ? 'Play it using Smuggle' : stack.used ? 'Exhausted' : undefined}
+                onMouseEnter={look(imageOf(stack.def))}
+                onMouseLeave={leave}
+                onClick={stack.play}
+              >
+                <img src={img(imageOf(stack.def) ?? '')} alt={defOf(stack.def).name} />
+                {stack.count > 1 && (
+                  <span className="sim-copies">
+                    <span>{stack.count}</span>
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+          <div className="sim-choice-buttons">
+            <button type="button" className="sim-button" onClick={() => setPileOpen(null)}>
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+      {menu && !asked && (
+        <div className="sim-choice">
+          <p>{defOf(menu.card).name}: choose one</p>
+          <div className="sim-choice-cards">
+            <img
+              className={menu.landscape ? 'landscape' : undefined}
+              src={img(imageOf(menu.card) ?? '')}
+              alt={defOf(menu.card).name}
+              onMouseEnter={look(imageOf(menu.card), menu.landscape)}
+              onMouseLeave={leave}
+            />
+          </div>
+          <div className="sim-choice-buttons">
+            <button type="button" className="sim-button" onClick={() => setMenu(null)}>
+              Cancel
+            </button>
+            {menu.options.map((o) => (
+              <button key={o.label} type="button" className="sim-button go" onClick={o.run}>
+                {o.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       {apart && asked && (
         <div className="sim-choice">
           <p>{prompt}</p>
