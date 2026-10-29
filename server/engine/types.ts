@@ -33,7 +33,7 @@ export type CardDef = {
   unique: boolean
   keywords: Keywords
   // A leader's unit side
-  unit?: { power: number; hp: number; keywords: Keywords }
+  unit?: { power: number; hp: number; arena: Arena; keywords: Keywords }
 }
 
 // One physical card in a game; def names its CardDef
@@ -66,9 +66,13 @@ export type PlayerState = {
   regroupDone: boolean
   // Took the initiative: passes for the rest of the action phase
   passedForPhase: boolean
+  // Every card drawn this game, the starting hand and a mulligan's included: open
+  // information, which the screen animates as it goes up
+  drawn: number
 }
 
-export type Phase = 'mulligan' | 'resource' | 'action' | 'regroup' | 'over'
+// 'first': the player chosen at random decides who starts with the initiative (5.2.1c)
+export type Phase = 'first' | 'mulligan' | 'resource' | 'action' | 'regroup' | 'over'
 
 export type LogEntry = { player?: PlayerId; text: string }
 
@@ -79,6 +83,8 @@ export type GameState = {
   active: PlayerId
   initiative: PlayerId
   initiativeTaken: boolean
+  // Chosen at random to decide who starts with the initiative
+  chooser: PlayerId
   // Passes in a row in this action phase; two end it
   passes: number
   players: [PlayerState, PlayerState]
@@ -90,6 +96,7 @@ export type GameState = {
 }
 
 export type Action =
+  | { type: 'first'; goFirst: boolean }
   | { type: 'mulligan'; take: boolean }
   | { type: 'resource'; cards: string[] }
   | { type: 'play'; card: string; attachTo?: string }

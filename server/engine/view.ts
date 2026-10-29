@@ -1,4 +1,4 @@
-import { legalActions, waitingFor } from './game.ts'
+import { hpOf, legalActions, powerOf, waitingFor } from './game.ts'
 import type { Action, CardDef, GameState, Inst, LogEntry, Phase, PlayerId, UnitState } from './types.ts'
 
 // What one player is shown of the game: the open information, their own hand and resources,
@@ -11,10 +11,13 @@ export type SideView = {
   // null for the opponent's hand
   hand: Inst[] | null
   handCount: number
+  // Every card drawn this game
+  drawn: number
   discard: Inst[]
   // card is null for the opponent's: resources are facedown
   resources: { card: Inst | null; exhausted: boolean }[]
-  units: UnitState[]
+  // With their power and HP as they are now, upgrades and all
+  units: (UnitState & { power: number; hp: number })[]
 }
 
 export type PlayerView = {
@@ -44,9 +47,10 @@ export function viewFor(state: GameState, you: PlayerId): PlayerView {
       deckCount: player.deck.length,
       hand: mine ? player.hand.map((c) => ({ ...c })) : null,
       handCount: player.hand.length,
+      drawn: player.drawn,
       discard: player.discard.map((c) => ({ ...c })),
       resources: player.resources.map((r) => ({ card: mine ? { ...r.card } : null, exhausted: r.exhausted })),
-      units: structuredClone(player.units),
+      units: structuredClone(player.units).map((u) => ({ ...u, power: powerOf(state, u), hp: hpOf(state, u) })),
     }
   }) as [SideView, SideView]
 

@@ -2586,3 +2586,11 @@
   opacity: 0.6;
   cursor: default;
 }
+
+/* Leaving a page with changes not saved: Cancel, Don't save, Save */
+.leave-buttons {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}

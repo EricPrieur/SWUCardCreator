@@ -21,8 +21,8 @@ const card = (id: string, extra: Partial<CardDef>): CardDef => ({
 })
 
 const defs: CardDef[] = [
-  card('chani', { type: 'leader', cost: 4, aspects: ['Aggression', 'Heroism'], unit: { power: 2, hp: 5, keywords: {} } }),
-  card('rabban', { type: 'leader', cost: 5, aspects: ['Aggression', 'Villainy'], unit: { power: 4, hp: 6, keywords: {} } }),
+  card('chani', { type: 'leader', cost: 4, aspects: ['Aggression', 'Heroism'], unit: { power: 2, hp: 5, arena: 'ground', keywords: {} } }),
+  card('rabban', { type: 'leader', cost: 5, aspects: ['Aggression', 'Villainy'], unit: { power: 4, hp: 6, arena: 'ground', keywords: {} } }),
   card('sietch', { type: 'base', hp: 28, aspects: ['Cunning'] }),
   card('carthag', { type: 'base', hp: 28, aspects: ['Aggression'] }),
   card('trooper', { cost: 1, power: 2, hp: 2, aspects: ['Aggression'] }),
@@ -36,8 +36,9 @@ const defs: CardDef[] = [
 
 const deckOf = (id: string, count = 50) => Array.from({ length: count }, () => id)
 
+// A game past the choice of who goes first: the player chosen goes first
 function newGame(seed = 7, deck0 = deckOf('trooper'), deck1 = deckOf('trooper')) {
-  return createGame({
+  const state = createGame({
     seed,
     defs,
     decks: [
@@ -45,6 +46,7 @@ function newGame(seed = 7, deck0 = deckOf('trooper'), deck1 = deckOf('trooper'))
       { name: 'Rabban', leader: 'rabban', base: 'carthag', deck: deck1 },
     ],
   })
+  return applyAction(state, state.chooser, { type: 'first', goFirst: true })
 }
 
 const act = (state: GameState, p: PlayerId, action: Action) => applyAction(state, p, action)
@@ -281,4 +283,41 @@ test('each player sees their own hand and resources, never the opponent’s or t
   assert.equal(view.players[1].deckCount, 44)
   assert.ok(!('deck' in view.players[1]))
   assert.ok(!JSON.stringify(view).includes(state.players[1].hand[0].id))
+})
+
+test('the cards drawn are counted: the starting hand, a mulligan, the regroup', () => {
+  let state = newGame()
+  const first = state.initiative
+  assert.deepEqual(state.players.map((p) => p.drawn), [6, 6])
+  state = act(state, first, { type: 'mulligan', take: true })
+  assert.equal(state.players[first].drawn, 12)
+  state = act(state, first === 0 ? 1 : 0, { type: 'mulligan', take: false })
+  for (const p of [0, 1] as const) state = act(state, p, { type: 'resource', cards: state.players[p].hand.slice(0, 2).map((c) => c.id) })
+  state = act(state, state.active, { type: 'pass' })
+  state = act(state, state.active, { type: 'pass' })
+  assert.equal(state.players[first].drawn, 14)
+  assert.equal(viewFor(state, first === 0 ? 1 : 0).players[first].drawn, 14)
+})
+
+test('a random player decides who goes first, before the opening hands are drawn', () => {
+  const state = createGame({
+    seed: 3,
+    defs,
+    decks: [
+      { name: 'Chani', leader: 'chani', base: 'sietch', deck: deckOf('trooper') },
+      { name: 'Rabban', leader: 'rabban', base: 'carthag', deck: deckOf('trooper') },
+    ],
+  })
+  const chooser = state.chooser
+  const opponent = chooser === 0 ? 1 : 0
+  assert.equal(state.phase, 'first')
+  assert.deepEqual(state.players.map((p) => p.hand.length), [0, 0])
+  assert.deepEqual(legalActions(state, opponent), [])
+  const second = act(state, chooser, { type: 'first', goFirst: false })
+  assert.equal(second.phase, 'mulligan')
+  assert.equal(second.initiative, opponent)
+  assert.deepEqual(second.players.map((p) => p.hand.length), [6, 6])
+  // The player now with the initiative decides on a mulligan first
+  assert.deepEqual(legalActions(second, chooser), [])
+  assert.equal(act(state, chooser, { type: 'first', goFirst: true }).initiative, chooser)
 })

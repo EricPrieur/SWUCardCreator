@@ -1,4 +1,4 @@
-/* The simulator mock: the whole window, chat on the left, the board, the log on the right */
+/* The simulator: the whole window, chat on the left, the board, the log on the right */
 .sim {
   --uh: 13vh; /* a unit in an arena */
   --uw: calc(var(--uh) * 0.718);
@@ -117,36 +117,150 @@
   font-style: normal;
   text-decoration: underline dotted;
 }
-.sim-mock {
+.sim-tools {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   gap: 0.6rem;
   margin-bottom: 1rem;
   padding-bottom: 0.8rem;
-  border-bottom: 1px dashed var(--spice);
+  border-bottom: 1px solid var(--line);
+  font-size: 0.8rem;
 }
-.sim-mock label {
-  display: grid;
-  gap: 0.2rem;
+.sim-tools span {
   flex: 1;
-  min-width: 0;
-  font-size: 0.7rem;
   color: var(--spice);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
+  font-weight: 700;
 }
-.sim-mock select {
-  width: 100%;
-  padding: 0.3rem;
+.sim-tools button {
+  padding: 0.2rem 0.5rem;
   border: 1px solid var(--line);
+  border-radius: 6px;
+  background: none;
+  cursor: pointer;
+}
+.sim-tools .sim-sound {
+  display: grid;
+  place-items: center;
+  padding: 0.2rem 0.35rem;
+}
+.sim-tools .sim-sound[aria-pressed='true'] {
+  color: var(--sand-dim);
+}
+.sim-tools button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.sim-tools a {
+  color: var(--sand-dim);
+}
+
+/* The Simulator tab, inside the page: Play vs AI and Online Game, each deck's picker */
+.sim-menu {
+  --me: #6fb3ff;
+  --opp: #ff6b5b;
+  width: min(56rem, 100%);
+  margin: 1.5rem auto;
+  padding: 0 1rem;
+  box-sizing: border-box;
+}
+.sim-menu-tabs {
+  display: flex;
+  gap: 0.5rem;
+  border-bottom: 1px solid rgba(232, 215, 181, 0.16);
+}
+.sim-menu-tabs button {
+  padding: 0.7rem 1.4rem;
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: 10px 10px 0 0;
+  background: none;
+  color: var(--sand-dim);
+  font: inherit;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.sim-menu-tabs button[aria-selected='true'] {
+  border-color: rgba(232, 215, 181, 0.16);
+  background: rgba(0, 0, 0, 0.3);
+  color: var(--spice);
+}
+.sim-menu-panel {
+  display: grid;
+  justify-items: center;
+  gap: 1rem;
+  padding: 1.5rem;
+  border: 1px solid rgba(232, 215, 181, 0.16);
+  border-top: none;
+  border-radius: 0 0 12px 12px;
+  background: rgba(0, 0, 0, 0.3);
+}
+.sim-pickers {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 1rem;
+  width: 100%;
+}
+.sim-picker {
+  display: grid;
+  align-content: start;
+  gap: 0.7rem;
+  padding: 1rem;
+  border: 1px solid var(--me);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.3);
+}
+.sim-picker.opp {
+  border-color: var(--opp);
+}
+.sim-picker label {
+  display: grid;
+  gap: 0.35rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.sim-picker select {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid rgba(232, 215, 181, 0.16);
   border-radius: 6px;
   background: #1c140e;
   color: var(--sand);
-  text-transform: none;
+  font: inherit;
+  font-weight: 400;
   letter-spacing: 0;
+  text-transform: none;
 }
-.sim-mock a {
+.sim-picker p,
+.sim-note,
+.sim-wip {
+  margin: 0;
   color: var(--sand-dim);
+}
+.sim-wip {
+  padding: 2rem 0;
+}
+.sim-seat-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+.sim-seat-cards img,
+.sim-seat-cards span {
+  width: 100%;
+  aspect-ratio: 1000 / 718;
+  height: auto;
+  border-radius: 6px;
+}
+.sim-seat-cards span {
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  border: 1px dashed rgba(232, 215, 181, 0.3);
+  color: var(--sand-dim);
+  font-size: 2rem;
 }
 
 /* The board: opponent's strip, play area, your strip */
@@ -251,7 +365,7 @@
 .sim-strip.opp .sim-hand {
   gap: 0.4vw;
 }
-.sim-strip.opp .sim-hand > .sim-back {
+.sim-strip.opp .sim-hand > .sim-hand-back {
   width: var(--sw);
   height: var(--sh);
 }
@@ -314,6 +428,8 @@
 }
 .sim-button {
   min-width: 9rem;
+  color: var(--sand);
+  font-family: inherit;
   padding: 0.8rem 1rem;
   border: 2px solid var(--line);
   border-radius: 10px;
@@ -385,6 +501,11 @@
   border-top: 1px dashed var(--line);
 }
 
+.sim-unit-slot {
+  display: grid;
+  justify-items: center;
+  gap: 0.3vh;
+}
 .sim-unit {
   position: relative;
   display: grid;
@@ -613,4 +734,125 @@
   font-size: 2.4rem;
   color: var(--spice);
   letter-spacing: 0.2em;
+}
+
+/* A unit's printed keywords, its power and HP when they have changed, its upgrades */
+.sim-tags {
+  position: absolute;
+  bottom: 0.4vh;
+  left: 50%;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.2vh;
+  width: max-content;
+  max-width: var(--uh);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+.sim-tags span {
+  padding: 0 0.5vh;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.8);
+  border: 1px solid var(--sand-dim);
+  font-size: 1.1vh;
+  font-weight: 700;
+  line-height: 1.6;
+}
+.sim-stats {
+  position: absolute;
+  top: 0.4vh;
+  right: -0.6vh;
+  padding: 0.1vh 0.6vh;
+  border-radius: 0.6vh;
+  background: #000;
+  border: 1px solid var(--spice);
+  color: #ffd9a8;
+  font-size: 1.4vh;
+  font-weight: 800;
+}
+.sim-upgrades {
+  display: grid;
+  gap: 0.2vh;
+  max-width: var(--uh);
+}
+.sim-upgrades span {
+  padding: 0 0.5vh;
+  border-radius: 0.4vh;
+  background: rgba(120, 60, 10, 0.7);
+  font-size: 1.1vh;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: default;
+}
+
+.sim-landscape.can-act {
+  cursor: pointer;
+}
+.sim-landscape.can-act img {
+  border-color: rgba(124, 214, 107, 0.7);
+  box-shadow: 0 0 1.2vh rgba(124, 214, 107, 0.5);
+}
+.sim-landscape.deployed img,
+.sim-landscape.exhausted img {
+  filter: brightness(0.45) grayscale(0.4);
+}
+.sim-flag {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  padding: 0.2vh 0.8vh;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.75);
+  font-size: 1.3vh;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.sim-base-hp {
+  position: absolute;
+  top: -0.6vh;
+  right: -0.6vh;
+  min-width: 2.6vh;
+  padding: 0.2vh 0.5vh;
+  border-radius: 0.6vh;
+  background: #000;
+  border: 2px solid #7cd66b;
+  color: #c8f5bf;
+  font-size: 1.6vh;
+  font-weight: 800;
+}
+.sim-initiative.taken {
+  border-style: dashed;
+  box-shadow: none;
+}
+.sim-over-actions {
+  display: flex;
+  justify-content: center;
+  gap: 0.8rem;
+}
+
+/* A card on its way from the deck to the hand: hidden in its place there until it lands */
+[data-arriving] {
+  visibility: hidden;
+}
+.sim-flying {
+  position: fixed;
+  z-index: 115;
+  border-radius: 0.6vh;
+  background: #1b120b center / cover no-repeat;
+  box-shadow: 0 0.6vh 2vh rgba(0, 0, 0, 0.8);
+  pointer-events: none;
+  transform: scale(0.85) rotate(-6deg);
+}
+.sim-flying.moving {
+  transform: none;
+  transition:
+    left 380ms cubic-bezier(0.25, 0.1, 0.25, 1),
+    top 380ms cubic-bezier(0.25, 0.1, 0.25, 1),
+    width 380ms ease,
+    height 380ms ease,
+    transform 380ms ease;
 }

@@ -4,7 +4,8 @@ import artFiles from 'virtual:art-list'
 import { asset } from './asset'
 import './App.css'
 import { CardView } from './CardView'
-import { AccountBar } from './account'
+import { AccountBar, Modal } from './account'
+import { leaveGuard, setLeaveGuard } from './leaveGuard'
 import { Simulator } from './Simulator'
 import {
   copyLocalDecks,
@@ -2752,7 +2753,31 @@ function DeckBuilder(props: {
     cards: [],
     sideboard: [],
   }))
-  const deck = decks.find(({ id }) => id === currentId) ?? decks[0] ?? firstDeck
+  // Changes are drafts until saved, kept in this browser by deck: leaving the page without
+  // saving keeps them, to save or undo on coming back. A deck never saved is a draft too.
+  const draftsKey = `dune-unlimited.deck-drafts.${scope}`
+  const [drafts, setDrafts] = useState<Record<string, Deck>>(() => {
+    try {
+      const found = JSON.parse(localStorage.getItem(draftsKey) ?? '{}')
+      return found && typeof found === 'object' ? found : {}
+    } catch {
+      return {}
+    }
+  })
+  const storeDrafts = (next: Record<string, Deck>) => {
+    setDrafts(next)
+    try {
+      localStorage.setItem(draftsKey, JSON.stringify(next))
+    } catch {
+      setNote('Could not keep the changes: this browser has run out of storage. Save them now.')
+    }
+  }
+  const withoutDraft = (id: string) => Object.fromEntries(Object.entries(drafts).filter(([key]) => key !== id))
+  // While the account's decks load, a draft of a saved deck is not yet known to be one
+  const unsavedNew = deckState === 'ready' ? Object.values(drafts).filter((d) => !decks.some((saved) => saved.id === d.id)) : []
+  const allDecks = [...decks.map((saved) => drafts[saved.id] ?? saved), ...unsavedNew]
+  const deck = allDecks.find(({ id }) => id === currentId) ?? allDecks[0] ?? firstDeck
+  const unsaved = !!drafts[deck.id]
   const byId = new Map(cards.map((card) => [card.id, card]))
 
   const saveDecks = (next: Deck[]) => {
@@ -2776,13 +2801,33 @@ function DeckBuilder(props: {
     setDecks(next)
   }
   const changeDeck = (next: Deck) => {
-    if (decks.some((other) => other.id === next.id)) saveDecks(decks.map((other) => (other.id === next.id ? next : other)))
-    else {
-      // The new deck opened for want of any, kept now that it has something
-      saveDecks([...decks, next])
-      setCurrentId(next.id)
-    }
+    const saved = decks.find((other) => other.id === next.id)
+    // Changed back to what is saved: nothing left to save
+    if (saved && JSON.stringify(saved) === JSON.stringify(next)) storeDrafts(withoutDraft(next.id))
+    else storeDrafts({ ...drafts, [next.id]: next })
+    // The new deck opened for want of any, kept now that it has something
+    if (!saved) setCurrentId(next.id)
   }
+  // Every deck with changes, saved at once when leaving the page asks to
+  const saveDrafts = (ids: string[]) => {
+    if (account && deckState !== 'ready') {
+      setNote('Your account’s decks are still loading. Try again in a moment.')
+      return
+    }
+    const next = [...decks.map((saved) => (ids.includes(saved.id) ? (drafts[saved.id] ?? saved) : saved))]
+    for (const id of ids) if (!decks.some((saved) => saved.id === id) && drafts[id]) next.push(drafts[id])
+    saveDecks(next)
+    storeDrafts(Object.fromEntries(Object.entries(drafts).filter(([id]) => !ids.includes(id))))
+  }
+  const unsavedDecks = allDecks.filter((d) => drafts[d.id])
+  useEffect(() => {
+    if (!unsavedDecks.length) return setLeaveGuard(null)
+    setLeaveGuard({
+      what: unsavedDecks.length === 1 ? unsavedDecks[0].name || 'Your deck' : `${unsavedDecks.length} decks`,
+      save: () => saveDrafts(unsavedDecks.map((d) => d.id)),
+    })
+  })
+  useEffect(() => () => setLeaveGuard(null), [])
   const addDeck = (next: Deck) => {
     saveDecks([...decks, next])
     setCurrentId(next.id)
@@ -3040,7 +3085,7 @@ function DeckBuilder(props: {
         <div className="deck-bar">
           <ChoiceDropdown
             label="Deck"
-            options={decks.map(({ id, name }) => ({ value: id, label: name || 'Unnamed deck' }))}
+            options={allDecks.map(({ id, name }) => ({ value: id, label: `${name || 'Unnamed deck'}${drafts[id] ? ' (not saved)' : ''}` }))}
             selected={deck.id}
             onChange={(id) => {
               setCurrentId(id)
@@ -3118,6 +3163,18 @@ function DeckBuilder(props: {
       <div className="deck-side">
         {/* What can be done with the deck, over its list */}
         <div className="deck-bar-buttons">
+          {unsaved && (
+            <>
+              <button className="button button-primary" type="button" onClick={() => saveDrafts([deck.id])}>
+                Save
+              </button>
+              {decks.some((saved) => saved.id === deck.id) && (
+                <button className="button" type="button" title="Back to the deck as last saved" onClick={() => storeDrafts(withoutDraft(deck.id))}>
+                  Undo changes
+                </button>
+              )}
+            </>
+          )}
           <button className="button" type="button" onClick={newDeck}>
             New
           </button>
@@ -3164,6 +3221,7 @@ function DeckBuilder(props: {
                 type="button"
                 onClick={() => {
                   saveDecks(decks.filter((other) => other.id !== deck.id))
+                  storeDrafts(withoutDraft(deck.id))
                   setDeleting(false)
                 }}
               >
@@ -4333,14 +4391,50 @@ function App() {
   const [saved, setSaved] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
 
+  // Going to another page with changes not saved: the page stays while the question is asked
+  const [leaving, setLeaving] = useState<{ hash: string; what: string } | null>(null)
+  const shownHash = useRef(window.location.hash)
   useEffect(() => {
     const onHashChange = () => {
+      const guard = leaveGuard()
+      if (guard && window.location.hash !== shownHash.current) {
+        setLeaving({ hash: window.location.hash, what: guard.what })
+        history.replaceState(null, '', shownHash.current || window.location.pathname)
+        return
+      }
+      shownHash.current = window.location.hash
       setTab(tabFromHash())
       setShowcase(showcaseFromHash())
     }
     window.addEventListener('hashchange', onHashChange)
     return () => window.removeEventListener('hashchange', onHashChange)
   }, [])
+  // Saved or not, the page the question was asked for opens; what wasn't saved stays as it was
+  const leave = (save: boolean) => {
+    if (!leaving) return
+    if (save) leaveGuard()?.save()
+    shownHash.current = leaving.hash
+    setLeaving(null)
+    window.location.hash = leaving.hash
+    setTab(tabFromHash())
+    setShowcase(showcaseFromHash())
+  }
+  const leaveModal = leaving && (
+    <Modal title="Save your changes?" onClose={() => setLeaving(null)}>
+      <p className="account-note">{leaving.what} has changes that aren't saved.</p>
+      <div className="leave-buttons">
+        <button className="button" type="button" onClick={() => setLeaving(null)}>
+          Cancel
+        </button>
+        <button className="button" type="button" onClick={() => leave(false)}>
+          Don't save
+        </button>
+        <button className="button button-primary" type="button" onClick={() => leave(true)}>
+          Save
+        </button>
+      </div>
+    </Modal>
+  )
 
   // Kept shortly after the last change rather than on every keystroke: art can be large
   useEffect(() => {
@@ -4522,6 +4616,7 @@ function App() {
           <h1>{showcase === 'DUNE' ? 'Dune SWU' : showcase}</h1>
         </header>
         <Showcase folder={showcase} />
+        {leaveModal}
       </main>
     )
   }
@@ -4599,6 +4694,7 @@ function App() {
           onNew={() => changeDraft({ frameId: draft.frameId, name: '', trait: '', text: '', ...loadCardLine() })}
         />
       )}
+      {leaveModal}
     </main>
   )
 }

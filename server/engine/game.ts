@@ -40,17 +40,19 @@ const def = (state: GameState, inst: { def: string }) => state.defs[inst.def]
 const log = (state: GameState, text: string, player?: PlayerId) => state.log.push({ player, text })
 const nameOf = (state: GameState, inst: { def: string }) => def(state, inst).name
 
-// 5.2: bases and leaders in play, a random player starts with the initiative, decks shuffled,
-// 6 cards drawn; then the mulligans and the 2 resources, which are actions of their own
+// 5.2: bases and leaders in play, a random player chosen to decide who starts with the
+// initiative; then, actions of their own, that choice, the 6 cards drawn, the mulligans and the
+// 2 resources
 export function createGame(options: { seed: number; decks: [DeckList, DeckList]; defs: CardDef[] }): GameState {
   const defs = Object.fromEntries(options.defs.map((d) => [d.id, d]))
   const state: GameState = {
     rng: options.seed | 0,
     round: 1,
-    phase: 'mulligan',
+    phase: 'first',
     active: 0,
     initiative: 0,
     initiativeTaken: false,
+    chooser: 0,
     passes: 0,
     players: [] as unknown as [PlayerState, PlayerState],
     defs,
@@ -67,7 +69,7 @@ export function createGame(options: { seed: number; decks: [DeckList, DeckList];
       leader: { def: list.leader, deployed: false, exhausted: false, epicUsed: false },
       base: { def: list.base, damage: 0 },
       deck,
-      hand: deck.splice(0, HAND_SIZE),
+      hand: [],
       discard: [],
       resources: [],
       units: [],
@@ -75,11 +77,12 @@ export function createGame(options: { seed: number; decks: [DeckList, DeckList];
       setupResourced: false,
       regroupDone: false,
       passedForPhase: false,
+      drawn: 0,
     }
   })
-  state.initiative = random(state) < 0.5 ? 0 : 1
-  state.active = state.initiative
-  log(state, `${state.players[state.initiative].name} starts with the initiative`, state.initiative)
+  state.chooser = random(state) < 0.5 ? 0 : 1
+  state.initiative = state.active = state.chooser
+  log(state, `${state.players[state.chooser].name} decides who goes first`, state.chooser)
   return state
 }
 
@@ -89,6 +92,8 @@ export function waitingFor(state: GameState): PlayerId[] {
   const [a, b] = [state.initiative, other(state.initiative)]
   const pending = (done: (p: PlayerState) => boolean) => [a, b].filter((p) => !done(state.players[p]))
   switch (state.phase) {
+    case 'first':
+      return [state.chooser]
     // 5.2.1e: the player with the initiative decides first
     case 'mulligan':
       return pending((p) => p.mulliganDone).slice(0, 1)
@@ -202,8 +207,10 @@ function draw(state: GameState, p: PlayerId, count: number) {
   const player = state.players[p]
   for (let i = 0; i < count; i++) {
     const card = player.deck.shift()
-    if (card) player.hand.push(card)
-    else player.base.damage += EMPTY_DECK_DAMAGE
+    if (card) {
+      player.hand.push(card)
+      player.drawn++
+    } else player.base.damage += EMPTY_DECK_DAMAGE
   }
 }
 
@@ -228,6 +235,11 @@ export function legalActions(state: GameState, p: PlayerId): Action[] {
   const player = state.players[p]
   const handIds = player.hand.map((c) => c.id)
   switch (state.phase) {
+    case 'first':
+      return [
+        { type: 'first', goFirst: true },
+        { type: 'first', goFirst: false },
+      ]
     case 'mulligan':
       return [
         { type: 'mulligan', take: false },
@@ -284,6 +296,9 @@ export function applyAction(game: GameState, p: PlayerId, action: Action): GameS
 
   const player = state.players[p]
   switch (state.phase) {
+    case 'first':
+      if (action.type === 'first') chooseFirst(state, p, action.goFirst)
+      return state
     case 'mulligan':
       if (action.type === 'mulligan') mulligan(state, p, action.take)
       return state
@@ -326,6 +341,15 @@ export function applyAction(game: GameState, p: PlayerId, action: Action): GameS
   return state
 }
 
+// 5.2.1c: the chosen player gives the initiative to themselves or to their opponent; then
+// each draws their opening hand (5.2.1d)
+function chooseFirst(state: GameState, p: PlayerId, goFirst: boolean) {
+  state.initiative = state.active = goFirst ? p : other(p)
+  log(state, `${state.players[p].name} chooses to go ${goFirst ? 'first' : 'second'}`, p)
+  for (const q of [0, 1] as const) draw(state, q, HAND_SIZE)
+  state.phase = 'mulligan'
+}
+
 function mulligan(state: GameState, p: PlayerId, take: boolean) {
   const player = state.players[p]
   if (take) {
@@ -333,6 +357,7 @@ function mulligan(state: GameState, p: PlayerId, take: boolean) {
     player.hand = []
     shuffle(state, player.deck)
     player.hand = player.deck.splice(0, HAND_SIZE)
+    player.drawn += player.hand.length
     log(state, `${player.name} takes a mulligan`, p)
   } else {
     log(state, `${player.name} keeps their hand`, p)
@@ -451,7 +476,7 @@ function attack(state: GameState, p: PlayerId, attackerId: string, target: strin
   checkDefeats(state)
 }
 
-// 3.4.4: flip to the unit side, in the ground arena, ready; deployed, not played
+// 3.4.4: flip to the unit side, in its arena, ready; deployed, not played
 function deploy(state: GameState, p: PlayerId) {
   const player = state.players[p]
   player.leader.deployed = true
@@ -460,7 +485,7 @@ function deploy(state: GameState, p: PlayerId) {
     id: `L${p}`,
     def: player.leader.def,
     owner: p,
-    arena: 'ground',
+    arena: def(state, player.leader).unit?.arena ?? 'ground',
     damage: 0,
     exhausted: false,
     leader: true,

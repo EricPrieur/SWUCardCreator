@@ -74,7 +74,7 @@ function useDiscord() {
 }
 
 // A window over the page; Escape or a click outside closes it
-function Modal(props: { title: string; wide?: boolean; onClose: () => void; children: ReactNode }) {
+export function Modal(props: { title: string; wide?: boolean; onClose: () => void; children: ReactNode }) {
   const { title, wide, onClose, children } = props
   const ref = useRef<HTMLDialogElement>(null)
   useEffect(() => {
