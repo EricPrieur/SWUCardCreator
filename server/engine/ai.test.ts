@@ -31,8 +31,11 @@ test('a saved leader becomes a leader with its unit side on the back', () => {
   assert.deepEqual(leader.traits, ['Bene Gesserit', 'Emperor'])
   assert.deepEqual(leader.unit, { power: 4, hp: 8, arena: 'ground', keywords: { sentinel: true } })
   assert.equal(cardDef({ id: 's', frameId: 'unit-cunning-space', name: 'Ship', power: 2, hp: 3 })?.arena, 'space')
-  assert.equal(cardDef({ id: 'f', frameId: 'unit-token-text-neutral', name: 'Fremen' })?.type, 'unit')
-  assert.equal(cardDef({ id: 'p', frameId: 'spice-token', name: 'Spice' }), undefined)
+  const fremen = cardDef({ id: 'f', frameId: 'unit-token-text-neutral', name: 'Fremen', text: 'While you control an [{Arrakis}] base, this unit gains [Raid 1].' })
+  assert.equal(fremen?.type, 'unit')
+  assert.equal(fremen?.token, true)
+  assert.deepEqual(fremen?.arrakisKeywords, { raid: 1 })
+  assert.equal(cardDef({ id: 'p', frameId: 'spice-token', name: 'Spice' })?.type, 'token')
 })
 
 // The DUNE set as exported, when it is there to read
@@ -41,7 +44,6 @@ function duneDefs(): CardDef[] | undefined {
   try {
     const list: { image: string; type: string }[] = JSON.parse(readFileSync(new URL('showcase.json', folder), 'utf8')).cards
     return list
-      .filter((e) => e.type !== 'Token')
       .map((e) => cardDef(JSON.parse(readFileSync(new URL(`${e.image}.json`, folder), 'utf8')) as SavedCard))
       .filter((d): d is CardDef => !!d)
   } catch {

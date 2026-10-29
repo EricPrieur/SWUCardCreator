@@ -928,3 +928,31 @@
 .sim-choice-buttons:empty {
   display: none;
 }
+
+/* A resource that can be played using Smuggle */
+.sim-resource.playable {
+  cursor: pointer;
+}
+.sim-resource.playable > * {
+  outline: 0.3vh solid #7cd66b;
+  box-shadow: 0 0 1.2vh rgba(124, 214, 107, 0.6);
+  border-radius: 0.45vh;
+}
+
+/* Token upgrades: Experience, Shield, Weakness */
+.sim-upgrades span.token {
+  background: rgba(40, 40, 40, 0.85);
+  border: 1px solid var(--line);
+}
+.sim-upgrades span.experience {
+  background: rgba(30, 90, 40, 0.85);
+}
+.sim-upgrades span.shield {
+  background: rgba(30, 70, 120, 0.85);
+}
+.sim-upgrades span.weakness {
+  background: rgba(80, 30, 90, 0.85);
+}
+.sim-spice {
+  z-index: 2;
+}

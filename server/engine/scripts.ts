@@ -1,4 +1,5 @@
 import type { Game } from './game.ts'
+import { enginePlays } from './cards.ts'
 import type { CardDef, PlayerId } from './types.ts'
 
 // What each card's text does. A script names the card and quotes its text as printed: while
@@ -13,6 +14,9 @@ export type Self = {
   def: CardDef
   other?: string
   attack?: { attacker: string; target: string | 'base' }
+  // Played from the resources using Smuggle, or Plot
+  smuggled?: boolean
+  plot?: boolean
 }
 
 export type Ability = (g: Game, self: Self) => void
@@ -397,7 +401,228 @@ const dune: CardScript[] = [
       },
     },
   },
+
+  // --- Tokens, and cards that make them ---
+  {
+    name: 'Spice',
+    text: '[Action:] Defeat this token. Look at the top 3 cards of your deck. Draw 1 of them. Put each of the others on the top or bottom of your deck in any order, or discard it.',
+    front: {
+      actions: [
+        {
+          label: 'draw 1 of your top 3 cards',
+          run: (g, self) => {
+            const p = self.controller
+            if (!g.defeatSpice(p, self.id)) return
+            const top = g.top(p, 3)
+            const drawn = g.chooseOne(p, 'Spice: draw 1 of the top 3 cards of your deck', top.map((c) => c.id), {
+              ai: 'best',
+              source: self.def.id,
+            })
+            if (drawn) g.drawCard(p, drawn)
+            // One after the other: a card put on top goes over those put there before it
+            for (const card of top.filter((c) => c.id !== drawn)) {
+              const where = g.option(p, `Spice: put ${g.def(card).name}…`, ['On top of your deck', 'On the bottom of your deck', 'In your discard pile'], {
+                // The AI keeps what it can soon pay for
+                ai: g.def(card).cost > g.player(p).resources.length + 2 ? 1 : 0,
+                source: self.def.id,
+                card: card.def,
+              })
+              if (where === 0) g.toTop(p, card.id)
+              else if (where === 1) g.toBottom(p, card.id)
+              else g.mill(p, card.id)
+            }
+          },
+        },
+      ],
+    },
+  },
+  {
+    name: 'Spice Runner',
+    text: '[When Defeated:] Create a Spice token.',
+    front: { whenDefeated: (g, self) => g.createSpice(self.controller) },
+  },
+  {
+    name: 'Spice Smuggler',
+    text: '[When Played:] Create a Spice token.\n[Smuggle [[3 Cunning]]]\n[When played using Smuggle:] Create a Spice token.',
+    front: { whenPlayed: (g, self) => g.createSpice(self.controller, self.smuggled ? 2 : 1) },
+  },
+  {
+    name: "Smuggler's 'Thopter",
+    text: "[When Played:] Create a Spice token. If you control a [{Spacing Guild}] unit, draw a card.\n[Smuggle [[4 Cunning]]]\n[When played using Smuggle:] Create a Spice token.",
+    front: {
+      whenPlayed: (g, self) => {
+        g.createSpice(self.controller)
+        if (g.units((u) => g.controller(u) === self.controller && g.hasTrait(u, 'Spacing Guild')).length) g.draw(self.controller, 1)
+        if (self.smuggled) g.createSpice(self.controller)
+      },
+    },
+  },
+  {
+    name: 'Smuggled Spice',
+    text: 'Create a Spice token.\n[Smuggle [[2 Cunning]]]\n[When played using Smuggle:] Create another Spice token.',
+    front: { play: (g, self) => g.createSpice(self.controller, self.smuggled ? 2 : 1) },
+  },
+  {
+    name: "Smuggler's Harvester",
+    text: '[Hidden]\n[When Played/On Attack:] If you control an [{Arrakis}] base, create a Spice token.',
+    front: { whenPlayed: arrakisSpice, onAttack: arrakisSpice },
+  },
+  {
+    name: 'Harkonnen Harvester',
+    text: '[When Played/On Attack:] If you control an [{Arrakis}] base, create a Spice token, then you may deal 2 damage to a friendly unit. If you do, create another Spice token.',
+    front: { whenPlayed: harkonnenHarvest, onAttack: harkonnenHarvest },
+  },
+  {
+    name: 'Liet Kynes',
+    subtitle: 'Imperial Planetologist',
+    text: '[When Played/On Attack:] You may defeat a friendly Spice token. If you do, heal 3 damage from your base.\n[When Defeated:] Create 2 Spice tokens.',
+    front: {
+      whenPlayed: kynesHeal,
+      onAttack: kynesHeal,
+      whenDefeated: (g, self) => g.createSpice(self.controller, 2),
+    },
+  },
+  {
+    name: 'CHOAM Spice Broker',
+    text: '[When Played:] Create a Spice token. Then, you may pay [2]. If you do, create another Spice token.',
+    front: {
+      whenPlayed: (g, self) => {
+        const p = self.controller
+        g.createSpice(p)
+        if (!g.canPay(p, 2)) return
+        // The AI pays with resources to spare
+        if (g.may(p, 'CHOAM Spice Broker: pay 2 resources to create another Spice token?', { yes: 'Pay 2', no: 'Skip', ai: g.canPay(p, 4), source: self.def.id }) && g.pay(p, 2))
+          g.createSpice(p)
+      },
+    },
+  },
+  {
+    name: 'Desert Power',
+    text: 'Create 2 Fremen tokens and ready them.',
+    front: {
+      play: (g, self) => {
+        for (let i = 0; i < 2; i++) g.createToken(self.controller, 'Fremen', { ready: true })
+      },
+    },
+  },
+  {
+    name: 'Fedaykin Death Commando',
+    text: '[Grit]\n[When Played:] Give an Experience token to this unit for each other friendly [{Fremen}] unit.\n[When Defeated:] Create a Fremen token.',
+    front: {
+      whenPlayed: (g, self) => {
+        const fremen = g.units((u) => g.controller(u) === self.controller && u.id !== self.id && g.hasTrait(u, 'Fremen'))
+        if (fremen.length) g.giveToken(self.id, 'Experience', fremen.length)
+      },
+      whenDefeated: (g, self) => {
+        g.createToken(self.controller, 'Fremen')
+      },
+    },
+  },
+  {
+    name: 'Missionaria Sister',
+    text: '[When Played:] If you control an [{Arrakis}] base, create a Fremen token.',
+    front: {
+      whenPlayed: (g, self) => {
+        if (g.controlsArrakis(self.controller)) g.createToken(self.controller, 'Fremen')
+      },
+    },
+  },
+  {
+    name: 'Stilgar',
+    subtitle: 'Naib of Sietch Tabr',
+    text: '[Action [[1, Arrow]]:] Create a Fremen token.',
+    backText: 'While you control an [{Arrakis}] base, this unit gains [Hidden].\n[On Attack:] Create a Fremen token.',
+    front: {
+      actions: [
+        {
+          label: 'create a Fremen token',
+          resources: 1,
+          exhaust: true,
+          run: (g, self) => {
+            g.createToken(self.controller, 'Fremen')
+          },
+        },
+      ],
+    },
+    back: {
+      onAttack: (g, self) => {
+        g.createToken(self.controller, 'Fremen')
+      },
+    },
+  },
+  {
+    name: 'Atreides Shield Trooper',
+    text: '[When Played:] If you control an [{Arrakis}] base, give an Experience token to this unit. Otherwise, give a Shield token to this unit.',
+    front: {
+      whenPlayed: (g, self) => g.giveToken(self.id, g.controlsArrakis(self.controller) ? 'Experience' : 'Shield'),
+    },
+  },
+  {
+    name: 'Sardaukar Levenbrech',
+    text: 'As an additional cost to play this unit, defeat a friendly Spice token.\n[When Played:] You may defeat a non-unique upgrade.',
+    front: {
+      whenPlayed: (g, self) => {
+        const upgrades = g.upgrades().filter((u) => !g.def(u).unique)
+        // The AI defeats an enemy's upgrade, never its own
+        const enemy = upgrades.find((u) => g.controller(u.unit) !== self.controller)
+        const pick = g.chooseOne(self.controller, 'Sardaukar Levenbrech: you may defeat a non-unique upgrade', upgrades.map((u) => u.id), {
+          optional: true,
+          ai: enemy?.id ?? 'none',
+          source: self.def.id,
+        })
+        if (pick) g.defeatUpgrade(pick)
+      },
+    },
+  },
+  {
+    name: 'Sardaukar Bashar',
+    text: "As an additional cost to play this unit, defeat a friendly Spice token.\n[When Played:] Give an Experience token to another friendly [{Trooper}] unit. If it's a [{Sardaukar}] unit, ready it.",
+    front: {
+      whenPlayed: (g, self) => {
+        const troopers = unitIds(g, (u) => g.controller(u) === self.controller && u.id !== self.id && g.hasTrait(u, 'Trooper'))
+        const pick = g.chooseOne(self.controller, 'Sardaukar Bashar: give an Experience token to another friendly Trooper unit', troopers, {
+          ai: 'help',
+          source: self.def.id,
+        })
+        if (!pick) return
+        g.giveToken(pick, 'Experience')
+        const unit = g.unit(pick)
+        if (unit && g.hasTrait(unit, 'Sardaukar')) g.ready(pick)
+      },
+    },
+  },
 ]
+
+// "If you control an [{Arrakis}] base, create a Spice token."
+function arrakisSpice(g: Game, self: Self) {
+  if (g.controlsArrakis(self.controller)) g.createSpice(self.controller)
+}
+
+// Harkonnen Harvester: Spice, and more Spice for hurting your own. The AI hurts the unit with
+// the most HP to spare, if it survives 2 damage.
+function harkonnenHarvest(g: Game, self: Self) {
+  const p = self.controller
+  if (!g.controlsArrakis(p)) return
+  g.createSpice(p)
+  const friendly = g.units((u) => g.controller(u) === p)
+  const left = (u: (typeof friendly)[number]) => g.hp(u) - u.damage
+  const tough = friendly.filter((u) => left(u) > 2).sort((a, b) => left(b) - left(a))[0]
+  const pick = g.chooseOne(p, 'Harkonnen Harvester: you may deal 2 damage to a friendly unit to create another Spice token', friendly.map((u) => u.id), {
+    optional: true,
+    ai: tough?.id ?? 'none',
+    source: self.def.id,
+  })
+  if (pick && g.damage(pick, 2, self)) g.createSpice(p)
+}
+
+// Liet Kynes: a Spice token for 3 damage healed; the AI only once its base has the damage
+function kynesHeal(g: Game, self: Self) {
+  const p = self.controller
+  if (!g.spice(p)) return
+  const hurt = g.player(p).base.damage >= 3
+  if (!g.may(p, 'Liet Kynes: defeat a friendly Spice token to heal 3 damage from your base?', { yes: 'Defeat a Spice token', no: 'Skip', ai: hurt, source: self.def.id })) return
+  if (g.defeatSpice(p)) g.heal(`base${p}`, 3, self)
+}
 
 function defeatNonUniqueUpgrade(g: Game, self: Self) {
   const upgrades = g.upgrades().filter((u) => !g.def(u).unique)
@@ -430,11 +655,15 @@ export function scriptFor(card: CardDef): CardScript | undefined {
 }
 
 // Whether a card's text does something: 'scripted'; 'outdated' when its script was written
-// for text since changed; 'none' for text no script plays yet; 'blank' for a card with no text
+// for text since changed; 'none' for text no script plays yet; 'blank' for a card with no text.
+// Text the engine plays by
+// itself (keywords, Smuggle, Spice costs, see enginePlays) needs no script.
 export function scriptStatus(card: CardDef): 'scripted' | 'outdated' | 'none' | 'blank' {
   if (scriptFor(card)) return 'scripted'
   if (byKey.has(keyOf(card.name, card.subtitle))) return 'outdated'
-  return normal(card.text) || normal(card.backText) ? 'none' : 'blank'
+  const lines = [normal(card.text), normal(card.backText)].join('\n').split('\n').filter(Boolean)
+  if (!lines.length) return 'blank'
+  return lines.every(enginePlays) ? 'scripted' : 'none'
 }
 
 const nothing: Abilities = {}

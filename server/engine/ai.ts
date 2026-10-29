@@ -1,4 +1,4 @@
-import { hpOf, legalActions, playCost, powerOf } from './game.ts'
+import { hpOf, legalActions, playCost, powerOf, smuggleCost } from './game.ts'
 import type { Action, GameState, PlayerId, Prompt, UnitState } from './types.ts'
 
 // A first opponent to play against: it looks only at what its player could see, plays its
@@ -9,7 +9,9 @@ export function chooseAction(state: GameState, p: PlayerId): Action | undefined 
   const actions = legalActions(state, p)
   if (!actions.length) return undefined
   const player = state.players[p]
-  const defOf = (id: string) => state.defs[player.hand.find((c) => c.id === id)?.def ?? '']
+  // A card it may play: in its hand, or among its resources with Smuggle
+  const cards = [...player.hand, ...player.resources.map((r) => r.card)]
+  const defOf = (id: string) => state.defs[cards.find((c) => c.id === id)?.def ?? '']
   const cost = (id: string) => defOf(id)?.cost ?? 0
 
   switch (state.phase) {
@@ -38,9 +40,9 @@ export function chooseAction(state: GameState, p: PlayerId): Action | undefined 
   // The dearest unit it can pay for; an upgrade on its strongest unit
   const plays = actions.filter((a) => a.type === 'play')
   const own = new Set(player.units.map((u) => u.id))
-  const units = plays
-    .filter((a) => !a.attachTo)
-    .sort((a, b) => playCost(state, p, defOf(b.card)) - playCost(state, p, defOf(a.card)))
+  const price = (a: Action) =>
+    a.type !== 'play' ? 0 : a.smuggle ? smuggleCost(state, p, defOf(a.card)) : playCost(state, p, defOf(a.card))
+  const units = plays.filter((a) => !a.attachTo).sort((a, b) => price(b) - price(a))
   if (units.length) return units[0]
   const upgrades = plays.filter((a) => a.attachTo && own.has(a.attachTo))
   const strongest = (a: Action) =>
@@ -68,22 +70,28 @@ export function chooseAction(state: GameState, p: PlayerId): Action | undefined 
   const attacks = actions.filter((a) => score(a) >= 0).sort((a, b) => score(b) - score(a))
   if (attacks.length) return attacks[0]
 
-  // A leader's or a unit's Action ability, before giving up the turn
-  const ability = actions.find((a) => a.type === 'ability')
+  // A leader's or a unit's Action ability, before giving up the turn; a Spice token's only while
+  // it has more than the cards in its hand will cost
+  const needed = Math.max(0, ...player.hand.map((c) => state.defs[c.def].spiceCost ?? 0))
+  const spice = new Set(player.spice.map((t) => t.id))
+  const ability = actions.find((a) => a.type === 'ability' && (!spice.has(a.source) || player.spice.length > needed))
   if (ability) return ability
 
   return actions.find((a) => a.type === 'initiative') ?? { type: 'pass' }
 }
 
 // Answering an ability's question, as its script hints: 'harm' picks what hurts the opponent
-// most, 'help' what helps itself, 'cheap' its cheapest cards, an option's id that option.
-// Anything else picks as little as it may.
+// most, 'help' what helps itself, 'cheap' its cheapest cards, 'best' the dearest card it can
+// soon pay for, an option's id that option, 'none' nothing. Anything else picks as little as it
+// may.
 function answer(state: GameState, p: PlayerId): Action {
   const prompt = state.prompt as Prompt
   const ids = prompt.options.map((o) => o.id)
   if (prompt.kind === 'option') {
     return { type: 'answer', picks: [ids.includes(prompt.ai ?? '') ? (prompt.ai as string) : ids[0]] }
   }
+  if (ids.includes(prompt.ai ?? '')) return { type: 'answer', picks: [prompt.ai as string] }
+  if (prompt.ai === 'none') return { type: 'answer', picks: ids.slice(0, prompt.min) }
   const foe = p === 0 ? 1 : 0
   const unit = (id: string) => [...state.players[0].units, ...state.players[1].units].find((u) => u.id === id)
   const mine = (id: string) => {
@@ -108,9 +116,16 @@ function answer(state: GameState, p: PlayerId): Action {
   if (prompt.ai === 'harm') ranked = ids.filter((id) => worth(id) > 0).sort((a, b) => worth(b) - worth(a))
   else if (prompt.ai === 'help') ranked = ids.filter((id) => worth(id) < 0).sort((a, b) => worth(a) - worth(b))
   else if (prompt.ai === 'cheap') ranked = [...ids].sort((a, b) => cardCost(a) - cardCost(b))
+  else if (prompt.ai === 'best') {
+    const soon = state.players[p].resources.length + 1
+    ranked = [...ids].sort((a, b) => {
+      const [x, y] = [cardCost(a), cardCost(b)]
+      return x <= soon && y <= soon ? y - x : x <= soon ? -1 : y <= soon ? 1 : x - y
+    })
+  }
   // Short of picks it likes, it takes what it must from the rest
   const rest = ids.filter((id) => !ranked.includes(id))
-  const wanted = prompt.ai === 'harm' || prompt.ai === 'help' ? Math.min(prompt.max, ranked.length) : prompt.min
+  const wanted = prompt.ai === 'harm' || prompt.ai === 'help' ? Math.min(prompt.max, ranked.length) : prompt.ai === 'best' ? 1 : prompt.min
   const picks = [...ranked, ...rest].slice(0, Math.max(prompt.min, wanted))
   return { type: 'answer', picks }
 }

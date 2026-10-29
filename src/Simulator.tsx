@@ -7,7 +7,7 @@ import { loadDecks, type Deck } from './cards'
 import { chooseAction } from '../server/engine/ai.ts'
 import { cardDef, randomDeck, type SavedCard } from '../server/engine/cards.ts'
 import { applyAction, createGame } from '../server/engine/game.ts'
-import { scripts } from '../server/engine/scripts.ts'
+import { scriptStatus } from '../server/engine/scripts.ts'
 import { viewFor, type SideView } from '../server/engine/view.ts'
 import type { Action, Arena, CardDef, GameState, PlayerId } from '../server/engine/types.ts'
 import './Simulator.css'
@@ -258,7 +258,7 @@ export function Simulator() {
             <DeckPicker title="AI Deck" side="opp" value={choices[1]} decks={decks} set={set} onChange={(c) => choose(1, c)} />
           </div>
           <p className="sim-note">
-            Cards play with their cost, power, HP and printed keywords. The text of {scripts.length} cards works so far; on the others it doesn't do anything yet.
+            Cards play with their cost, power, HP and keywords. The text of {set.defs.filter((d) => !d.token && scriptStatus(d) === 'scripted').length} of {set.defs.filter((d) => !d.token && scriptStatus(d) !== 'blank').length} cards works so far; on the others it doesn't do anything yet.
           </p>
           <button type="button" className="sim-button go" onClick={start}>
             Start game
@@ -271,7 +271,7 @@ export function Simulator() {
 
 type Hover = { image: string; landscape: boolean; right: boolean } | null
 // What a click on the board means now: choosing a target for an attack, or a unit for an upgrade
-type Mode = { kind: 'attack'; attacker: string } | { kind: 'attach'; card: string } | null
+type Mode = { kind: 'attack'; attacker: string } | { kind: 'attach'; card: string; smuggle?: boolean } | null
 
 const cardBack = asset('/sim/DuneCardBack01.jpg')
 
@@ -393,6 +393,9 @@ function Table(props: {
     setHover(null)
   }
   const can = (action: Action) => view.actions.some((a) => sameAction(a, action))
+  // In the engine's order of keys, which sameAction compares
+  const attachAction = (attach: { card: string; smuggle?: boolean }, unit: string): Action =>
+    attach.smuggle ? { type: 'play', card: attach.card, attachTo: unit, smuggle: true } : { type: 'play', card: attach.card, attachTo: unit }
 
   const coming = [me, opp].map((side, p) => Math.min(side.handCount, side.drawn - landed[p]))
   // Each card drawn and not yet landed flies in, in the order drawn. Measured before the page is
@@ -460,14 +463,17 @@ function Table(props: {
   const pickCount = asked ? 0 : mine && view.phase === 'resource' ? Math.min(2, me.handCount) : mine && view.phase === 'regroup' ? 1 : 0
   const attackActions = view.actions.filter((a) => a.type === 'attack')
   const attacker = mode?.kind === 'attack' ? me.units.find((u) => u.id === mode.attacker) : undefined
-  const attachCard = mode?.kind === 'attach' ? me.hand?.find((c) => c.id === mode.card) : undefined
+  const attachCard =
+    mode?.kind === 'attach'
+      ? (me.hand?.find((c) => c.id === mode.card) ?? me.resources.find((r) => r.card?.id === mode.card)?.card ?? undefined)
+      : undefined
   const isTarget = (target: string) =>
     asked
       ? askedOn(target)
       : mode?.kind === 'attack'
       ? can({ type: 'attack', attacker: mode.attacker, target })
       : mode?.kind === 'attach'
-        ? can({ type: 'play', card: mode.card, attachTo: target })
+        ? can(attachAction(mode, target))
         : false
 
   let prompt = ''
@@ -561,7 +567,7 @@ function Table(props: {
               onClick: () => act(YOU, { type: 'initiative' }),
             },
             ...view.abilities.map((a) => ({
-              label: `${a.source === 'leader' ? defOf(me.leader.def).name : defOf(me.units.find((u) => u.id === a.source)?.def ?? '').name}: ${a.label}`,
+              label: `${defOf(a.source === 'leader' ? me.leader.def : ([...me.units, ...me.spice].find((c) => c.id === a.source)?.def ?? '')).name}: ${a.label}`,
               kind: 'ability',
               onClick: () => act(YOU, { type: 'ability', source: a.source, index: a.index }),
             })),
@@ -573,6 +579,14 @@ function Table(props: {
   }
 
   const playsOf = (id: string) => view.actions.filter((a) => a.type === 'play' && a.card === id)
+  // A resource played using Smuggle: a unit or event at once, an upgrade once its unit is chosen
+  const clickResource = (id: string) => {
+    if (mode || asked || pickCount) return
+    const plays = playsOf(id)
+    if (!plays.length) return
+    if (plays.some((a) => a.type === 'play' && a.attachTo)) setMode({ kind: 'attach', card: id, smuggle: true })
+    else act(YOU, plays[0])
+  }
   const clickHand = (id: string) => {
     if (pickCount) {
       setPicked((now) => (now.includes(id) ? now.filter((i) => i !== id) : now.length < pickCount ? [...now, id] : now))
@@ -587,7 +601,7 @@ function Table(props: {
     if (asked) {
       if (askedOn(id)) pickAnswer(id)
     } else if (mode && isTarget(id)) {
-      act(YOU, mode.kind === 'attack' ? { type: 'attack', attacker: mode.attacker, target: id } : { type: 'play', card: mode.card, attachTo: id })
+      act(YOU, mode.kind === 'attack' ? { type: 'attack', attacker: mode.attacker, target: id } : attachAction(mode, id))
     } else if (mode?.kind === 'attack' && mode.attacker === id) {
       setMode(null)
     } else if (!mode && attackActions.some((a) => a.type === 'attack' && a.attacker === id)) {
@@ -601,7 +615,7 @@ function Table(props: {
 
   const unitView = (side: SideView, arena: Arena) => (u: SideView['units'][number]) => {
     const d = defOf(u.def)
-    const keywords = u.leader ? (d.unit?.keywords ?? {}) : d.keywords
+    const keywords = u.keywords
     const printed = u.leader ? d.unit : d
     const target = isTarget(u.id)
     const ours = side === me
@@ -621,6 +635,8 @@ function Table(props: {
       keywords.saboteur && 'Saboteur',
       keywords.overwhelm && 'Overwhelm',
       keywords.grit && 'Grit',
+      keywords.ambush && 'Ambush',
+      keywords.hidden && 'Hidden',
       keywords.raid && `Raid ${keywords.raid}`,
       keywords.restore && `Restore ${keywords.restore}`,
     ].filter(Boolean)
@@ -652,7 +668,12 @@ function Table(props: {
         {!!u.upgrades.length && (
           <span className="sim-upgrades">
             {u.upgrades.map((up) => (
-              <span key={up.id} onMouseEnter={look(imageOf(up.def))} onMouseLeave={leave}>
+              <span
+                key={up.id}
+                className={defOf(up.def).token ? `token ${defOf(up.def).name.toLowerCase()}` : undefined}
+                onMouseEnter={look(imageOf(up.def))}
+                onMouseLeave={leave}
+              >
                 {defOf(up.def).name}
               </span>
             ))}
@@ -683,16 +704,21 @@ function Table(props: {
         </div>
         <div className="sim-resources" title={`${ready} of ${side.resources.length} resources ready`}>
           <div className="sim-resource-cards">
-            {side.resources.map((r, i) => (
-              <div
-                key={i}
-                className={r.exhausted ? 'sim-resource used' : 'sim-resource'}
-                onMouseEnter={r.card ? look(imageOf(r.card.def)) : undefined}
-                onMouseLeave={leave}
-              >
-                <Back />
-              </div>
-            ))}
+            {side.resources.map((r, i) => {
+              const smuggle = !!r.card && who === 'me' && !mode && !asked && !pickCount && playsOf(r.card.id).length > 0
+              return (
+                <div
+                  key={i}
+                  className={['sim-resource', r.exhausted && 'used', smuggle && 'playable'].filter(Boolean).join(' ')}
+                  title={smuggle ? 'Play it using Smuggle' : undefined}
+                  onMouseEnter={r.card ? look(imageOf(r.card.def)) : undefined}
+                  onMouseLeave={leave}
+                  onClick={smuggle ? () => clickResource(r.card!.id) : undefined}
+                >
+                  <Back />
+                </div>
+              )
+            })}
           </div>
           <span className="sim-resource-count">
             {ready}/{side.resources.length}
@@ -776,6 +802,12 @@ function Table(props: {
       >
         <img src={img(image ?? '')} alt={defOf(side.base.def).name} />
         <span className="sim-base-hp">{hp - side.base.damage}</span>
+        {!!side.spice.length && (
+          <span className="sim-spice" title={`${side.spice.length} Spice token${side.spice.length > 1 ? 's' : ''}`}>
+            <img src={img(imageOf(side.spice[0].def) ?? '')} alt="" onMouseEnter={look(imageOf(side.spice[0].def))} onMouseLeave={leave} />
+            {side.spice.length}
+          </span>
+        )}
         {!!side.base.damage && <span className="sim-damage big">{side.base.damage}</span>}
       </button>
     )

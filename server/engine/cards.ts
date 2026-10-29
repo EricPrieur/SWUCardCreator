@@ -21,50 +21,81 @@ const aspectNames: Aspect[] = ['Vigilance', 'Command', 'Aggression', 'Cunning', 
 const typeNames = { unit: 'unit', leader: 'leader', base: 'base', event: 'event', upgrade: 'upgrade' } as const
 
 // A frame's id names what it is: unit-vigilance-villainy-space, leader-cunning-heroism-unit,
-// base-command-text. Tokens and fortifications are not cards a deck plays yet.
+// base-command-text; unit-token-text-neutral for a token unit, spice-token for the Spice token.
+// Fortifications are not cards a deck plays yet.
 function frameFacts(frameId: string) {
   const words = frameId.split('-')
-  const type = typeNames[words[0] as keyof typeof typeNames]
+  const type = words[0] === 'spice' ? ('token' as const) : typeNames[words[0] as keyof typeof typeNames]
   const aspects = words.flatMap((w) => aspectNames.filter((a) => a.toLowerCase() === w))
   const arena: Arena = words.includes('space') ? 'space' : 'ground'
-  return { type, aspects, arena }
+  return { type, aspects, arena, token: words.includes('token') }
+}
+
+// One keyword as printed, "Sentinel" or "Raid 2", added to those a card has. Numbered keywords
+// stack (7.5.4).
+function addKeyword(keywords: Keywords, word: string) {
+  const [, name, amount] = word.trim().match(/^([A-Za-z]+)(?: (\d+))?$/) ?? []
+  switch (name?.toLowerCase()) {
+    case 'sentinel':
+    case 'overwhelm':
+    case 'grit':
+    case 'saboteur':
+    case 'ambush':
+    case 'hidden':
+    case 'plot':
+      keywords[name.toLowerCase() as 'sentinel'] = true
+      return true
+    case 'raid':
+    case 'restore':
+      keywords[name.toLowerCase() as 'raid'] = (keywords[name.toLowerCase() as 'raid'] ?? 0) + Number(amount ?? 1)
+      return true
+  }
+  return false
+}
+
+// The lines of text the engine plays itself, on any card, without a script
+const keywordLine = /^\[([A-Za-z]+(?: \d+)?)\]$/
+const smuggleLine = /^\[Smuggle\]?\s*\[\[(\d+)[^\]]*\]\]\]?$/i
+const arrakisLine = /^While you control an \[\{?Arrakis\}?\] base, this unit gains (.+)\.$/i
+const spiceCostLine = /^As an additional cost to play this unit, defeat (a|\d+) friendly Spice tokens?\.$/i
+const startSpiceLine = /^You start the game with (a|\d+) \[?Spice Tokens?\]?\.$/i
+const count = (word: string) => (/^\d+$/.test(word) ? Number(word) : 1)
+
+// What a card's text says that the engine plays without a script: its keywords, those it gains
+// with an Arrakis base, a Spice token to pay as it is played or to start the game with
+export function readText(text = '') {
+  const read: Pick<CardDef, 'keywords' | 'arrakisKeywords' | 'spiceCost' | 'startSpice'> = { keywords: {} }
+  for (const raw of text.split('\n')) {
+    const line = raw.trim()
+    let match
+    if ((match = line.match(keywordLine))) addKeyword(read.keywords, match[1])
+    else if ((match = line.match(smuggleLine))) read.keywords.smuggle = Number(match[1])
+    else if ((match = line.match(arrakisLine))) {
+      read.arrakisKeywords = {}
+      for (const [, word] of match[1].matchAll(/\[([^\]]+)\]/g)) addKeyword(read.arrakisKeywords, word)
+    } else if ((match = line.match(spiceCostLine))) read.spiceCost = count(match[1])
+    else if ((match = line.match(startSpiceLine))) read.startSpice = count(match[1])
+  }
+  return read
+}
+
+// Whether the engine plays a line of text by itself (see readText)
+export function enginePlays(line: string) {
+  const text = line.trim()
+  if (keywordLine.test(text)) return addKeyword({}, text.slice(1, -1))
+  const gains = text.match(arrakisLine)
+  if (gains) return [...gains[1].matchAll(/\[([^\]]+)\]/g)].every(([, word]) => addKeyword({}, word))
+  return [smuggleLine, spiceCostLine, startSpiceLine].some((pattern) => pattern.test(text))
 }
 
 // The keywords printed on a side: each stands on a line of its own, as "[Sentinel]" or
-// "[Raid 2]". One a unit only gains on a condition is part of a sentence and not read.
+// "[Raid 2]". One a unit only gains on a condition is part of a sentence and read apart.
 export function printedKeywords(text = ''): Keywords {
-  const keywords: Keywords = {}
-  for (const line of text.split('\n')) {
-    const words = line.trim().match(/^\[([A-Za-z]+)(?: (\d+))?\]$/)
-    if (!words) continue
-    const [, name, amount] = words
-    switch (name.toLowerCase()) {
-      case 'sentinel':
-        keywords.sentinel = true
-        break
-      case 'overwhelm':
-        keywords.overwhelm = true
-        break
-      case 'grit':
-        keywords.grit = true
-        break
-      case 'saboteur':
-        keywords.saboteur = true
-        break
-      // Numbered keywords stack (7.5.4)
-      case 'raid':
-        keywords.raid = (keywords.raid ?? 0) + Number(amount ?? 1)
-        break
-      case 'restore':
-        keywords.restore = (keywords.restore ?? 0) + Number(amount ?? 1)
-        break
-    }
-  }
-  return keywords
+  return readText(text).keywords
 }
 
-// The engine's card for a saved one, or nothing for a card no deck plays (a token, a
-// fortification). A leader's Leader side keeps the deploy cost; its back is the unit.
+// The engine's card for a saved one, or nothing for a card no deck plays (a fortification).
+// A leader's Leader side keeps the deploy cost; its back is the unit.
 export function cardDef(card: SavedCard): CardDef | undefined {
   const front = frameFacts(card.frameId)
   if (!front.type) return undefined
@@ -83,21 +114,61 @@ export function cardDef(card: SavedCard): CardDef | undefined {
     aspects: front.aspects,
     traits,
     unique: front.type === 'leader' || !!card.unique,
-    keywords: printedKeywords(card.text),
+    ...readText(card.text),
     text: card.text,
+  }
+  if (front.token) {
+    def.token = true
+    def.cost = 0
   }
   if (front.type === 'unit') def.arena = front.arena
   if (front.type === 'leader') {
+    const back = readText(card.backText)
     def.unit = {
       power: card.power ?? 0,
       hp: card.hp ?? 0,
       arena: card.backFrameId ? frameFacts(card.backFrameId).arena : 'ground',
-      keywords: printedKeywords(card.backText),
+      keywords: back.keywords,
+      ...(back.arrakisKeywords && { arrakisKeywords: back.arrakisKeywords }),
     }
     def.backText = card.backText
   }
   return def
 }
+
+// The official tokens DUNE cards give (3.7.5-3.7.6), and the set's own Spice and Fremen tokens
+// for a game whose cards don't include them
+export const builtInTokens: CardDef[] = [
+  { name: 'Experience', type: 'upgrade', power: 1, hp: 1, traits: ['Learned'] },
+  { name: 'Shield', type: 'upgrade', power: 0, hp: 0, traits: ['Armor'] },
+  { name: 'Weakness', type: 'upgrade', power: -1, hp: -1, traits: ['Condition'] },
+  {
+    name: 'Spice',
+    type: 'token',
+    power: 0,
+    hp: 0,
+    traits: ['Supply'],
+    text: '[Action:] Defeat this token. Look at the top 3 cards of your deck. Draw 1 of them. Put each of the others on the top or bottom of your deck in any order, or discard it.',
+  },
+  {
+    name: 'Fremen',
+    type: 'unit',
+    power: 2,
+    hp: 1,
+    arena: 'ground',
+    traits: ['Fremen', 'Trooper'],
+    text: 'While you control an [{Arrakis}] base, this unit gains [Raid 1].',
+    arrakisKeywords: { raid: 1 },
+  },
+].map((token) => ({
+  id: `token-${token.name.toLowerCase()}`,
+  cost: 0,
+  aspects: [],
+  unique: false,
+  keywords: {},
+  token: true,
+  ...(token as Partial<CardDef>),
+})) as CardDef[]
 
 // "Create a Random Deck": a random leader, a random base of another aspect than the leader's
 // (an aspect twice gains nothing in DUNE), and 50 cards from the set chosen at random
@@ -124,7 +195,7 @@ export function randomDeck(defs: CardDef[], random: () => number = Math.random, 
         sum + Math.max(0, card.aspects.filter((a) => a === aspect).length - provided.filter((a) => a === aspect).length),
       0,
     )
-  const playable = defs.filter((d) => d.type === 'unit' || d.type === 'upgrade')
+  const playable = defs.filter((d) => (d.type === 'unit' || d.type === 'upgrade') && !d.token)
   const pool = [...shuffled(playable.filter((d) => missing(d) === 0)), ...shuffled(playable.filter((d) => missing(d) === 1))]
   const copies = new Map<string, number>()
   const add = (card: CardDef, wanted: number) => {

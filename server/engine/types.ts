@@ -14,6 +14,11 @@ export type Keywords = {
   overwhelm?: boolean
   grit?: boolean
   saboteur?: boolean
+  ambush?: boolean
+  hidden?: boolean
+  plot?: boolean
+  // Smuggle [Y]: the cost to play it from your resources
+  smuggle?: number
 }
 
 // A card as the engine knows it: its printed values, and its text, which names the script
@@ -22,7 +27,10 @@ export type CardDef = {
   id: string
   name: string
   subtitle?: string
-  type: 'unit' | 'leader' | 'base' | 'event' | 'upgrade'
+  // 'token': one that is neither a unit nor an upgrade (Spice)
+  type: 'unit' | 'leader' | 'base' | 'event' | 'upgrade' | 'token'
+  // Created, never in a deck: set aside when it leaves play (3.7.3)
+  token?: boolean
   // A leader's deploy cost; nothing for a base
   cost: number
   // A unit's, an upgrade's modifiers, a base's HP
@@ -33,8 +41,14 @@ export type CardDef = {
   traits: string[]
   unique: boolean
   keywords: Keywords
+  // "While you control an [{Arrakis}] base, this unit gains …"
+  arrakisKeywords?: Keywords
+  // "As an additional cost to play this unit, defeat a friendly Spice token."
+  spiceCost?: number
+  // A base's "You start the game with a [Spice Token]."
+  startSpice?: number
   // A leader's unit side
-  unit?: { power: number; hp: number; arena: Arena; keywords: Keywords }
+  unit?: { power: number; hp: number; arena: Arena; keywords: Keywords; arrakisKeywords?: Keywords }
   text?: string
   // A leader's unit side's text
   backText?: string
@@ -50,6 +64,8 @@ export type UnitState = Inst & {
   exhausted: boolean
   // The leader's unit side, deployed
   leader?: boolean
+  // The phase it entered play in (GameState.phaseCount), for Hidden
+  entered?: number
   // Each goes to its owner's discard pile, whoever controls the unit
   upgrades: (Inst & { owner: PlayerId })[]
 }
@@ -63,6 +79,8 @@ export type PlayerState = {
   discard: Inst[]
   resources: { card: Inst; exhausted: boolean }[]
   units: UnitState[]
+  // Spice tokens, beside the base
+  spice: Inst[]
   // Setup: has decided on a mulligan, has chosen 2 resources
   mulliganDone: boolean
   setupResourced: boolean
@@ -110,6 +128,8 @@ export type GameState = {
   rng: number
   round: number
   phase: Phase
+  // Counts the phases gone by, for what lasts "this phase"
+  phaseCount: number
   active: PlayerId
   initiative: PlayerId
   initiativeTaken: boolean
@@ -133,7 +153,8 @@ export type Action =
   | { type: 'first'; goFirst: boolean }
   | { type: 'mulligan'; take: boolean }
   | { type: 'resource'; cards: string[] }
-  | { type: 'play'; card: string; attachTo?: string }
+  // From the hand; from the resources using Smuggle
+  | { type: 'play'; card: string; attachTo?: string; smuggle?: boolean }
   | { type: 'attack'; attacker: string; target: string | 'base' }
   | { type: 'deploy' }
   // A leader's or unit's Action ability, by its number on the card

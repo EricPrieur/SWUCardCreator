@@ -12,6 +12,7 @@ import {
   type Prompt,
   type UnitState,
 } from './types.ts'
+import { builtInTokens } from './cards.ts'
 import { abilitiesOf, type Abilities, type Ability, type Self } from './scripts.ts'
 
 // Rule numbers below are those of the Comprehensive Rules v9.0
@@ -50,11 +51,14 @@ const baseOwner = (id: string): PlayerId | undefined => (id === 'base0' ? 0 : id
 // initiative; then, actions of their own, that choice, the 6 cards drawn, the mulligans and the
 // 2 resources
 export function createGame(options: { seed: number; decks: [DeckList, DeckList]; defs: CardDef[] }): GameState {
-  const defs = Object.fromEntries(options.defs.map((d) => [d.id, d]))
+  // The set's own tokens, or the official ones
+  const tokens = builtInTokens.filter((t) => !options.defs.some((d) => d.token && d.name === t.name))
+  const defs = Object.fromEntries([...options.defs, ...tokens].map((d) => [d.id, d]))
   const state: GameState = {
     rng: options.seed | 0,
     round: 1,
     phase: 'first',
+    phaseCount: 0,
     active: 0,
     initiative: 0,
     initiativeTaken: false,
@@ -82,6 +86,7 @@ export function createGame(options: { seed: number; decks: [DeckList, DeckList];
       discard: [],
       resources: [],
       units: [],
+      spice: [],
       mulliganDone: false,
       setupResourced: false,
       regroupDone: false,
@@ -89,6 +94,11 @@ export function createGame(options: { seed: number; decks: [DeckList, DeckList];
       drawn: 0,
     }
   })
+  // A base that starts the game with Spice tokens (an Arrakis base)
+  for (const p of [0, 1] as const) {
+    const start = def(state, state.players[p].base).startSpice ?? 0
+    if (start) createSpice(state, p, start)
+  }
   state.chooser = random(state) < 0.5 ? 0 : 1
   state.initiative = state.active = state.chooser
   log(state, `${state.players[state.chooser].name} decides who goes first`, state.chooser)
@@ -135,10 +145,24 @@ export function aspectPenalty(state: GameState, p: PlayerId, card: CardDef) {
 }
 
 export const playCost = (state: GameState, p: PlayerId, card: CardDef) => card.cost + aspectPenalty(state, p, card)
+export const smuggleCost = (state: GameState, p: PlayerId, card: CardDef) =>
+  (card.keywords.smuggle ?? 0) + aspectPenalty(state, p, card)
 
-function keywordsOf(state: GameState, unit: UnitState): Keywords {
+export const controlsArrakis = (state: GameState, p: PlayerId) =>
+  def(state, state.players[p].base).traits.includes('Arrakis')
+
+// Printed keywords, and those gained while their controller has an Arrakis base
+export function keywordsOf(state: GameState, unit: UnitState): Keywords {
   const card = def(state, unit)
-  return unit.leader ? (card.unit?.keywords ?? {}) : card.keywords
+  const printed = (unit.leader ? card.unit?.keywords : card.keywords) ?? {}
+  const gained = unit.leader ? card.unit?.arrakisKeywords : card.arrakisKeywords
+  if (!gained || !controlsArrakis(state, controllerOf(state, unit))) return printed
+  const keywords: Keywords = { ...printed }
+  for (const [name, value] of Object.entries(gained) as [keyof Keywords, number | boolean][]) {
+    if (typeof value === 'number') (keywords[name] as number) = ((keywords[name] as number) ?? 0) + value
+    else (keywords[name] as boolean) = true
+  }
+  return keywords
 }
 
 const effectsOn = (state: GameState, unit: UnitState) => state.effects.filter((e) => e.unit === unit.id)
@@ -189,6 +213,71 @@ function findUnit(state: GameState, id: string) {
 }
 
 const controllerOf = (state: GameState, unit: UnitState): PlayerId => (state.players[0].units.includes(unit) ? 0 : 1)
+
+// --- Tokens (3.7) ---
+
+const tokenDef = (state: GameState, name: string) =>
+  Object.values(state.defs).find((d) => d.token && d.name === name) as CardDef
+
+function createSpice(state: GameState, p: PlayerId, count = 1) {
+  const spice = tokenDef(state, 'Spice')
+  for (let i = 0; i < count; i++) state.players[p].spice.push({ id: `s${state.nextId++}`, def: spice.id })
+  log(state, `${state.players[p].name} creates ${count === 1 ? 'a Spice token' : `${count} Spice tokens`}`, p)
+}
+
+// A friendly Spice token, the one named or any, defeated: gone from the game
+function defeatSpice(state: GameState, p: PlayerId, id?: string) {
+  const player = state.players[p]
+  const token = player.spice.find((t) => id === undefined || t.id === id)
+  if (!token) return false
+  player.spice = player.spice.filter((t) => t !== token)
+  log(state, `${player.name} defeats a Spice token`, p)
+  return true
+}
+
+// A token unit enters play exhausted, like any unit (3.5.3)
+function createUnitToken(state: GameState, p: PlayerId, name: string) {
+  const token = tokenDef(state, name)
+  const unit: UnitState = {
+    id: `t${state.nextId++}`,
+    def: token.id,
+    owner: p,
+    arena: token.arena ?? 'ground',
+    damage: 0,
+    exhausted: true,
+    upgrades: [],
+    entered: state.phaseCount,
+  }
+  state.players[p].units.push(unit)
+  log(state, `${state.players[p].name} creates a ${name} token`, p)
+  queueAmbush(state, p, unit)
+  return unit
+}
+
+function giveToken(state: GameState, unit: UnitState, name: string) {
+  const token = tokenDef(state, name)
+  unit.upgrades.push({ id: `k${state.nextId++}`, def: token.id, owner: controllerOf(state, unit) })
+  log(state, `${nameOf(state, unit)} gets ${/^[AEIOU]/.test(name) ? 'an' : 'a'} ${name} token`, controllerOf(state, unit))
+}
+
+// Damage to a unit, unless a Shield token on it prevents it and is defeated instead, one Shield
+// for each time damage is dealt (3.7.6): the damage dealt
+function damageUnit(state: GameState, unit: UnitState, amount: number) {
+  if (amount <= 0) return 0
+  const shield = unit.upgrades.find((u) => def(state, u).token && def(state, u).name === 'Shield')
+  if (shield) {
+    unit.upgrades = unit.upgrades.filter((u) => u !== shield)
+    log(state, `A Shield token prevents the damage to ${nameOf(state, unit)}`, controllerOf(state, unit))
+    return 0
+  }
+  unit.damage += amount
+  return amount
+}
+
+// An upgrade leaving play: to its owner's discard pile, a token set aside (3.7.3)
+function discardUpgrade(state: GameState, upgrade: Inst & { owner: PlayerId }) {
+  if (!def(state, upgrade).token) state.players[upgrade.owner].discard.push({ id: upgrade.id, def: upgrade.def })
+}
 
 // --- Resolving abilities: questions and triggers ---
 
@@ -273,11 +362,11 @@ function defeatUnit(state: GameState, unit: UnitState) {
   const player = state.players[p]
   player.units = player.units.filter((u) => u !== unit)
   state.effects = state.effects.filter((e) => e.unit !== unit.id)
-  for (const { owner, ...upgrade } of unit.upgrades) state.players[owner].discard.push(upgrade)
+  for (const upgrade of unit.upgrades) discardUpgrade(state, upgrade)
   if (unit.leader) {
     player.leader.deployed = false
     player.leader.exhausted = true
-  } else {
+  } else if (!def(state, unit).token) {
     state.players[unit.owner].discard.push({ id: unit.id, def: unit.def })
   }
   log(state, `${nameOf(state, unit)} is defeated`, p)
@@ -312,7 +401,10 @@ function attackTargets(state: GameState, p: PlayerId, attacker: UnitState): (str
   // Sentinel (7.5.11): while an enemy in the arena has it, only those can be attacked, unless
   // the attacker has Saboteur (7.5.10)
   const sentinels = keywordsOf(state, attacker).saboteur ? [] : enemies.filter((u) => keywordsOf(state, u).sentinel)
-  return sentinels.length ? sentinels.map((u) => u.id) : [...enemies.map((u) => u.id), 'base']
+  if (sentinels.length) return sentinels.map((u) => u.id)
+  // Hidden (7.5.18): not the phase it entered play
+  const hidden = (u: UnitState) => keywordsOf(state, u).hidden && u.entered === state.phaseCount
+  return [...enemies.filter((u) => !hidden(u)).map((u) => u.id), 'base']
 }
 
 function choose<T>(list: T[], count: number): T[][] {
@@ -341,6 +433,9 @@ function actionAbilities(state: GameState, p: PlayerId) {
   }
   for (const unit of player.units)
     offer(unit.id, unitScript(state, unit), unit.exhausted, { id: unit.id, controller: p, def: def(state, unit) })
+  // Spice tokens are all alike: one stands for them
+  const spice = player.spice[0]
+  if (spice) offer(spice.id, scriptOf(state, spice), false, { id: spice.id, controller: p, def: def(state, spice) })
   return found
 }
 
@@ -376,14 +471,21 @@ export function legalActions(state: GameState, p: PlayerId): Action[] {
   const actions: Action[] = [{ type: 'pass' }]
   const ready = readyResources(player)
   const units = [...state.players[0].units, ...state.players[1].units]
-  for (const card of player.hand) {
+  const plays = (card: Inst, cost: number, smuggle?: boolean) => {
     const d = def(state, card)
-    if (playCost(state, p, d) > ready) continue
+    if (cost > ready || (d.spiceCost ?? 0) > player.spice.length) return
+    const extra = smuggle ? { smuggle } : {}
     if (d.type === 'upgrade') {
-      for (const unit of units) actions.push({ type: 'play', card: card.id, attachTo: unit.id })
+      for (const unit of units) actions.push({ type: 'play', card: card.id, attachTo: unit.id, ...extra })
     } else {
-      actions.push({ type: 'play', card: card.id })
+      actions.push({ type: 'play', card: card.id, ...extra })
     }
+  }
+  for (const card of player.hand) plays(card, playCost(state, p, def(state, card)))
+  // Smuggle (7.5.14): from the resources. A ready card helps pay for itself, so it counts among
+  // the ready resources.
+  for (const { card } of player.resources) {
+    if (def(state, card).keywords.smuggle !== undefined) plays(card, smuggleCost(state, p, def(state, card)), true)
   }
   for (const unit of player.units) {
     if (unit.exhausted) continue
@@ -488,7 +590,7 @@ function perform(state: GameState, p: PlayerId, action: Action) {
       state.passes++
       break
     case 'play':
-      playCard(state, p, action.card, action.attachTo)
+      playCard(state, p, action.card, action.attachTo, action.smuggle ? 'smuggle' : 'hand')
       state.passes = 0
       break
     case 'attack':
@@ -568,6 +670,7 @@ function moveToResources(player: PlayerState, cards: string[], exhausted: boolea
 
 function startActionPhase(state: GameState) {
   state.phase = 'action'
+  state.phaseCount++
   state.active = state.initiative
   state.initiativeTaken = false
   state.passes = 0
@@ -590,6 +693,7 @@ function nextTurn(state: GameState) {
 // action phase ends with it.
 function startRegroup(state: GameState) {
   state.phase = 'regroup'
+  state.phaseCount++
   state.effects = state.effects.filter((e) => e.until !== 'phase')
   log(state, `Round ${state.round}: regroup phase`)
   for (const p of [0, 1] as const) draw(state, p, 2)
@@ -597,26 +701,51 @@ function startRegroup(state: GameState) {
   for (const pl of state.players) pl.regroupDone = false
 }
 
-function playCard(state: GameState, p: PlayerId, id: string, attachTo?: string) {
+// Where a card is played from: the hand, or the resources using Smuggle or Plot
+type PlayedFrom = 'hand' | 'smuggle' | 'plot'
+
+function playCard(state: GameState, p: PlayerId, id: string, attachTo?: string, from: PlayedFrom = 'hand') {
   const player = state.players[p]
-  const card = player.hand.find((c) => c.id === id) as Inst
+  let card: Inst
+  if (from === 'hand') {
+    card = player.hand.find((c) => c.id === id) as Inst
+    pay(player, playCost(state, p, def(state, card)))
+    player.hand = player.hand.filter((c) => c !== card)
+  } else {
+    // 7.5.14e-g, 7.5.19c: the card helps pay for itself, and the top card of the deck takes its
+    // place, exhausted (none when the deck is empty)
+    const slot = player.resources.find((r) => r.card.id === id) as PlayerState['resources'][number]
+    card = slot.card
+    let cost = from === 'smuggle' ? smuggleCost(state, p, def(state, card)) : playCost(state, p, def(state, card))
+    if (cost > 0 && !slot.exhausted) {
+      slot.exhausted = true
+      cost--
+    }
+    pay(player, cost)
+    const top = player.deck.shift()
+    if (top) player.resources[player.resources.indexOf(slot)] = { card: top, exhausted: true }
+    else player.resources = player.resources.filter((r) => r !== slot)
+  }
   const d = def(state, card)
-  pay(player, playCost(state, p, d))
-  player.hand = player.hand.filter((c) => c !== card)
-  const self: Self = { id: card.id, controller: p, def: d }
+  // An additional cost: Spice tokens to defeat
+  for (let i = 0; i < (d.spiceCost ?? 0); i++) defeatSpice(state, p)
+  const using = from === 'hand' ? '' : ` using ${from === 'smuggle' ? 'Smuggle' : 'Plot'}`
+  const self: Self = { id: card.id, controller: p, def: d, smuggled: from === 'smuggle', plot: from === 'plot' }
   if (d.type === 'unit') {
     // 3.5.3: a unit enters play exhausted
-    player.units.push({ ...card, owner: p, arena: d.arena ?? 'ground', damage: 0, exhausted: true, upgrades: [] })
-    log(state, `${player.name} plays ${d.name}`, p)
+    const unit: UnitState = { ...card, owner: p, arena: d.arena ?? 'ground', damage: 0, exhausted: true, upgrades: [], entered: state.phaseCount }
+    player.units.push(unit)
+    log(state, `${player.name} plays ${d.name}${using}`, p)
     queue(state, p, d.name, scriptOf(state, card).whenPlayed, self)
+    queueAmbush(state, p, unit)
   } else if (d.type === 'upgrade') {
     const unit = findUnit(state, attachTo as string) as UnitState
     unit.upgrades.push({ ...card, owner: p })
-    log(state, `${player.name} attaches ${d.name} to ${nameOf(state, unit)}`, p)
+    log(state, `${player.name} attaches ${d.name} to ${nameOf(state, unit)}${using}`, p)
     queue(state, p, d.name, scriptOf(state, card).whenPlayed, { ...self, other: unit.id })
   } else {
     // An event resolves its text, then goes to the discard pile
-    log(state, `${player.name} plays ${d.name}`, p)
+    log(state, `${player.name} plays ${d.name}${using}`, p)
     const effect = scriptOf(state, card).play
     if (effect) effect(new Game(state), self)
     else log(state, `(${d.name}'s text doesn't do anything yet)`)
@@ -634,6 +763,63 @@ function playCard(state: GameState, p: PlayerId, id: string, attachTo?: string) 
         })
   checkDefeats(state)
   resolveTriggers(state)
+}
+
+// Ambush (7.5.5): as it enters play, it may attack an enemy unit, exhausted as it is. The AI
+// attacks a unit it defeats or outlasts, the dearest first.
+function queueAmbush(state: GameState, p: PlayerId, unit: UnitState) {
+  if (!keywordsOf(state, unit).ambush) return
+  ;(current as Run).queue.push({
+    player: p,
+    label: `${nameOf(state, unit)}: Ambush`,
+    run: () => {
+      const still = findUnit(state, unit.id)
+      if (!still) return
+      const targets = attackTargets(state, p, still).filter((t) => t !== 'base')
+      const left = (u: UnitState) => hpOf(state, u) - u.damage
+      const good = targets
+        .map((t) => findUnit(state, t) as UnitState)
+        .filter((t) => powerOf(state, still, true) >= left(t) || powerOf(state, t) < left(still))
+        .sort((a, b) => def(state, b).cost - def(state, a).cost)[0]
+      const pick = new Game(state).chooseOne(p, `${nameOf(state, still)}: Ambush, choose an enemy unit to attack`, targets, {
+        optional: true,
+        ai: good?.id ?? 'none',
+        source: still.def,
+      })
+      if (pick) attack(state, p, still.id, pick)
+    },
+  })
+}
+
+// Plot (7.5.19): when you deploy a leader, play any of your Plot cards from your resources, one
+// after the other, each paid for in full
+function queuePlots(state: GameState, p: PlayerId) {
+  const player = state.players[p]
+  if (!player.resources.some((r) => def(state, r.card).keywords.plot)) return
+  ;(current as Run).queue.push({
+    player: p,
+    label: 'Plot',
+    run: () => {
+      const g = new Game(state)
+      for (;;) {
+        const ready = readyResources(player)
+        const ids = player.resources
+          .filter((r) => {
+            const d = def(state, r.card)
+            const cost = playCost(state, p, d) - (r.exhausted ? 0 : 1)
+            return d.keywords.plot && cost <= ready - (r.exhausted ? 0 : 1) && (d.spiceCost ?? 0) <= player.spice.length
+          })
+          .map((r) => r.card.id)
+        const id = g.chooseOne(p, 'Plot: choose a card to play from your resources', ids, { optional: true, ai: ids[0] })
+        if (!id) return
+        const d = def(state, (player.resources.find((r) => r.card.id === id) as PlayerState['resources'][number]).card)
+        const units = g.units().map((u) => u.id)
+        const to = d.type === 'upgrade' ? g.chooseOne(p, `Choose a unit for ${d.name}`, units, { ai: 'help' }) : null
+        if (d.type === 'upgrade' && !to) return
+        playCard(state, p, id, to ?? undefined, 'plot')
+      }
+    },
+  })
 }
 
 // What an attack may do differently, for an ability that makes one
@@ -676,10 +862,11 @@ function attack(state: GameState, p: PlayerId, attackerId: string, target: strin
     } else {
       const remaining = Math.max(0, hpOf(state, defender) - defender.damage)
       const back = powerOf(state, defender)
-      defender.damage += power
-      still.damage += back
-      // Overwhelm (7.5.7): damage beyond what defeats the defender goes to its controller's base
-      if (keywords.overwhelm && power > remaining) enemy.base.damage += power - remaining
+      const dealt = damageUnit(state, defender, power)
+      damageUnit(state, still, back)
+      // Overwhelm (7.5.7): damage beyond what defeats the defender goes to its controller's base,
+      // unless a Shield token prevented it (7.5.7e)
+      if (keywords.overwhelm && dealt && power > remaining) enemy.base.damage += power - remaining
     }
     checkDefeats(state)
     resolveTriggers(state)
@@ -701,6 +888,7 @@ function deploy(state: GameState, p: PlayerId) {
     exhausted: false,
     leader: true,
     upgrades: [],
+    entered: state.phaseCount,
   }
   player.units.push(unit)
   log(state, `${player.name} deploys ${nameOf(state, player.leader)}`, p)
@@ -709,14 +897,23 @@ function deploy(state: GameState, p: PlayerId) {
     controller: p,
     def: def(state, unit),
   })
+  queueAmbush(state, p, unit)
+  queuePlots(state, p)
   resolveTriggers(state)
 }
 
 // What an Action ability says, for a button that uses it
-export function abilityLabel(state: GameState, p: PlayerId, source: string, index: number) {
+// Where an Action ability is: on the leader, a unit, a Spice token
+function abilitySource(state: GameState, p: PlayerId, source: string) {
   const player = state.players[p]
   const unit = source === 'leader' ? undefined : findUnit(state, source)
-  const ability = (unit ? unitScript(state, unit) : scriptOf(state, player.leader)).actions?.[index]
+  const spice = player.spice.find((t) => t.id === source)
+  const card = unit ?? spice ?? player.leader
+  return { unit, card, abilities: unit ? unitScript(state, unit) : scriptOf(state, card) }
+}
+
+export function abilityLabel(state: GameState, p: PlayerId, source: string, index: number) {
+  const ability = abilitySource(state, p, source).abilities.actions?.[index]
   if (!ability) return ''
   const cost = [ability.resources && `${ability.resources} resource${ability.resources > 1 ? 's' : ''}`, ability.exhaust && 'exhaust']
   const paid = cost.filter(Boolean).join(', ')
@@ -726,14 +923,13 @@ export function abilityLabel(state: GameState, p: PlayerId, source: string, inde
 // An Action ability: pay its cost, exhausting the card when it says so, then resolve it
 function useAbility(state: GameState, p: PlayerId, source: string, index: number) {
   const player = state.players[p]
-  const unit = source === 'leader' ? undefined : (findUnit(state, source) as UnitState)
-  const card = unit ?? player.leader
-  const ability = (unit ? unitScript(state, unit) : scriptOf(state, player.leader)).actions?.[index]
+  const { unit, card, abilities } = abilitySource(state, p, source)
+  const ability = abilities.actions?.[index]
   if (!ability) throw new IllegalAction('No such ability')
   pay(player, ability.resources ?? 0)
   if (ability.exhaust) {
     if (unit) unit.exhausted = true
-    else player.leader.exhausted = true
+    else if (source === 'leader') player.leader.exhausted = true
   }
   log(state, `${player.name} uses ${nameOf(state, card)}: ${ability.label}`, p)
   ability.run(new Game(state), { id: source, controller: p, def: def(state, card) })
@@ -768,9 +964,8 @@ export class Game {
     if (owner !== undefined) return nameOf(this.state, this.state.players[owner].base)
     const unit = this.unit(id)
     if (unit) return nameOf(this.state, unit)
-    for (const pl of this.state.players)
-      for (const card of [...pl.hand, ...pl.deck, ...pl.discard]) if (card.id === id) return nameOf(this.state, card)
-    return id
+    const card = this.cardInfo(id)
+    return card ? nameOf(this.state, card) : id
   }
   unit(id: string) {
     return findUnit(this.state, id)
@@ -858,7 +1053,8 @@ export class Game {
   }
   private cardInfo(id: string) {
     for (const pl of this.state.players)
-      for (const card of [...pl.hand, ...pl.deck, ...pl.discard]) if (card.id === id) return card
+      for (const card of [...pl.hand, ...pl.deck, ...pl.discard, ...pl.resources.map((r) => r.card)])
+        if (card.id === id) return card
     return undefined
   }
 
@@ -866,18 +1062,18 @@ export class Game {
   log(text: string, player?: PlayerId) {
     log(this.state, text, player)
   }
-  // To a unit or a base (base0, base1)
+  // To a unit or a base (base0, base1): the damage dealt, none when a Shield token prevents it
   damage(target: string, amount: number, from?: Self) {
-    if (amount <= 0) return
+    if (amount <= 0) return 0
     const owner = baseOwner(target)
     if (owner !== undefined) this.state.players[owner].base.damage += amount
     else {
       const unit = this.unit(target)
-      if (!unit) return
-      unit.damage += amount
+      if (!unit || !damageUnit(this.state, unit, amount)) return 0
     }
     this.log(`${from ? `${from.def.name} deals` : 'Dealt'} ${amount} damage to ${this.name(target)}`, from?.controller)
     checkDefeats(this.state)
+    return amount
   }
   heal(target: string, amount: number, from?: Self) {
     const owner = baseOwner(target)
@@ -897,7 +1093,7 @@ export class Game {
       const upgrade = unit.upgrades.find((u) => u.id === upgradeId)
       if (!upgrade) continue
       unit.upgrades = unit.upgrades.filter((u) => u !== upgrade)
-      this.state.players[upgrade.owner].discard.push({ id: upgrade.id, def: upgrade.def })
+      discardUpgrade(this.state, upgrade)
       this.log(`${nameOf(this.state, upgrade)} on ${nameOf(this.state, unit)} is defeated`)
       checkDefeats(this.state)
     }
@@ -972,6 +1168,55 @@ export class Game {
     else player.deck.push(card)
     this.log(`${player.name} puts a card on the ${where} of their deck`, p)
   }
+  // A card from a deck to its hand
+  drawCard(p: PlayerId, cardId: string) {
+    const player = this.state.players[p]
+    const card = player.deck.find((c) => c.id === cardId)
+    if (!card) return
+    player.deck = player.deck.filter((c) => c !== card)
+    player.hand.push(card)
+    player.drawn++
+    this.log(`${player.name} draws a card`, p)
+  }
+  // A card of a deck put on top of it
+  toTop(p: PlayerId, cardId: string) {
+    const deck = this.state.players[p].deck
+    const card = deck.find((c) => c.id === cardId)
+    if (card) this.state.players[p].deck = [card, ...deck.filter((c) => c !== card)]
+  }
+
+  // Tokens
+  controlsArrakis(p: PlayerId) {
+    return controlsArrakis(this.state, p)
+  }
+  spice(p: PlayerId) {
+    return this.state.players[p].spice.length
+  }
+  createSpice(p: PlayerId, count = 1) {
+    createSpice(this.state, p, count)
+  }
+  // A friendly Spice token, this one or any: whether there was one to defeat
+  defeatSpice(p: PlayerId, id?: string) {
+    return defeatSpice(this.state, p, id)
+  }
+  // A token unit (Fremen), exhausted unless readied: its id
+  createToken(p: PlayerId, name: string, options: { ready?: boolean } = {}) {
+    const unit = createUnitToken(this.state, p, name)
+    if (options.ready) unit.exhausted = false
+    return unit.id
+  }
+  // A token upgrade: Experience, Shield, Weakness
+  giveToken(unitId: string, name: string, count = 1) {
+    const unit = this.unit(unitId)
+    if (!unit) return
+    for (let i = 0; i < count; i++) giveToken(this.state, unit, name)
+    checkDefeats(this.state)
+  }
+  tokens(unitId: string, name: string) {
+    const unit = this.unit(unitId)
+    return unit ? unit.upgrades.filter((u) => this.def(u).token && this.def(u).name === name).length : 0
+  }
+
   // Attack with a unit, its controller choosing what it attacks. The unit may be exhausted
   // when the ability says so.
   attackWith(unitId: string, options: AttackOptions & { exhausted?: boolean; noBases?: boolean } = {}) {

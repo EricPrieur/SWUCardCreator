@@ -1,6 +1,6 @@
-import { abilityLabel, hpOf, legalActions, powerOf, waitingFor } from './game.ts'
+import { abilityLabel, hpOf, keywordsOf, legalActions, powerOf, waitingFor } from './game.ts'
 import { scriptStatus } from './scripts.ts'
-import type { Action, CardDef, GameState, Inst, LogEntry, Phase, PlayerId, Prompt, UnitState } from './types.ts'
+import type { Action, CardDef, GameState, Inst, Keywords, LogEntry, Phase, PlayerId, Prompt, UnitState } from './types.ts'
 
 // What one player is shown of the game: the open information, their own hand and resources,
 // and only the size of everything hidden (the opponent's hand and resources, both decks)
@@ -17,8 +17,9 @@ export type SideView = {
   discard: Inst[]
   // card is null for the opponent's: resources are facedown
   resources: { card: Inst | null; exhausted: boolean }[]
-  // With their power and HP as they are now, upgrades and all
-  units: (UnitState & { power: number; hp: number })[]
+  // With their power, HP and keywords as they are now, upgrades and all
+  units: (UnitState & { power: number; hp: number; keywords: Keywords })[]
+  spice: Inst[]
 }
 
 export type PlayerView = {
@@ -55,7 +56,8 @@ export function viewFor(state: GameState, you: PlayerId): PlayerView {
       drawn: player.drawn,
       discard: player.discard.map((c) => ({ ...c })),
       resources: player.resources.map((r) => ({ card: mine ? { ...r.card } : null, exhausted: r.exhausted })),
-      units: structuredClone(player.units).map((u) => ({ ...u, power: powerOf(state, u), hp: hpOf(state, u) })),
+      units: player.units.map((u) => ({ ...structuredClone(u), power: powerOf(state, u), hp: hpOf(state, u), keywords: keywordsOf(state, u) })),
+      spice: player.spice.map((t) => ({ ...t })),
     }
   }) as [SideView, SideView]
 
@@ -69,7 +71,7 @@ export function viewFor(state: GameState, you: PlayerId): PlayerView {
   for (const side of players) {
     named.add(side.leader.def)
     named.add(side.base.def)
-    for (const c of [...(side.hand ?? []), ...side.discard]) named.add(c.def)
+    for (const c of [...(side.hand ?? []), ...side.discard, ...side.spice]) named.add(c.def)
     for (const r of side.resources) if (r.card) named.add(r.card.def)
     for (const u of side.units) {
       named.add(u.def)
