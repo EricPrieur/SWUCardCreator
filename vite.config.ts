@@ -98,9 +98,56 @@ function publishSets(): Plugin {
   }
 }
 
+const featuredFile = resolve(import.meta.dirname, 'public/sim/featured-decks.json')
+
+// For the Deck Builder's Feature button, on this computer only: puts a deck in the Simulator's
+// Featured Decks, public/sim/featured-decks.json, which the site serves once committed (so a
+// deck is featured once, here, and reaches the site with the next push).
+//   PUT    /__featured        a deck: { id, name, leader, base, cards }, added or replacing its old copy
+//   DELETE /__featured/<id>   the deck taken out
+function featuredDecks(): Plugin {
+  return {
+    name: 'featured-decks',
+    apply: 'serve',
+    configureServer(server) {
+      server.middlewares.use('/__featured', (req, res) => {
+        const fail = (status: number, message: string) => {
+          res.statusCode = status
+          res.end(message)
+        }
+        const chunks: Buffer[] = []
+        req.on('data', (chunk: Buffer) => chunks.push(chunk))
+        req.on('end', () => {
+          type Featured = { id: string; name: string; leader: string; base: string; cards: { id: string; count: number }[] }
+          const list: Featured[] = existsSync(featuredFile) ? JSON.parse(readFileSync(featuredFile, 'utf-8')) : []
+          const save = (next: Featured[]) => {
+            writeFileSync(featuredFile, JSON.stringify(next, null, 2) + '\n')
+            res.end('ok')
+          }
+          if (req.method === 'PUT') {
+            let deck: Featured
+            try {
+              const body = JSON.parse(Buffer.concat(chunks).toString())
+              deck = { id: String(body.id), name: String(body.name), leader: String(body.leader), base: String(body.base), cards: [] }
+              deck.cards = body.cards.map((c: { id: string; count: number }) => ({ id: String(c.id), count: Number(c.count) }))
+            } catch {
+              return fail(400, 'Bad deck')
+            }
+            const at = list.findIndex((d) => d.id === deck.id)
+            return save(at < 0 ? [...list, deck] : list.map((d, i) => (i === at ? deck : d)))
+          }
+          const id = decodeURIComponent((req.url ?? '').split('?')[0].replace(/^\//, ''))
+          if (req.method === 'DELETE' && id) return save(list.filter((d) => d.id !== id))
+          fail(405, 'Not allowed')
+        })
+      })
+    },
+  }
+}
+
 // https://vite.dev/config/
 export default defineConfig({
   // Relative, so the built site works from any folder: GitHub Pages serves it from /<repo>/
   base: './',
-  plugins: [react(), artList(), publishSets()],
+  plugins: [react(), artList(), publishSets(), featuredDecks()],
 })

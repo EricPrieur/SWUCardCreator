@@ -1,12 +1,16 @@
-import { applyAction, hpOf, keywordsOf, legalActions, playCost, powerOf } from './game.ts'
+import { applyAction, hpOf, keywordsOf, legalActions, playCost, powerOf, waitingFor } from './game.ts'
 import type { Action, GameState, PlayerId, Prompt, UnitState } from './types.ts'
 
 // The opponent to play against. Before the action phase it follows a few rules of thumb. In it,
-// it looks one move ahead: each move it may make is played out on a copy of the game, the
-// questions the move asks answered by rule of thumb (quickAnswer), and the board it leaves is
-// scored (evaluate). It makes the move that scores best, and gives up the turn once no move
-// gains anything. Its own questions are answered the same way.
-export function chooseAction(state: GameState, p: PlayerId): Action | undefined {
+// it looks ahead: each move it may make is played out on a copy of the game, the questions the
+// move asks answered by rule of thumb (quickAnswer), and the board it leaves is scored
+// (evaluate). Its best few moves are then played on with the opponent's best reply among what
+// it can see. It makes the move that holds up best, and gives up the turn once no move gains
+// anything. Its own questions are answered the way its moves are chosen first.
+// `why`, if given, gets the moves it weighed in the action phase, best first, with what each
+// gains: what a game's record keeps of its reasons.
+export type Weighed = { action: Action; gain: number }
+export function chooseAction(state: GameState, p: PlayerId, why?: Weighed[]): Action | undefined {
   if (state.prompt) return state.prompt.player === p ? bestAnswer(state, p) : undefined
   const actions = legalActions(state, p)
   if (!actions.length) return undefined
@@ -42,17 +46,57 @@ export function chooseAction(state: GameState, p: PlayerId): Action | undefined 
       a.type !== 'initiative' &&
       !(a.type === 'ability' && spice.has(a.source) && player.spice.length <= needed),
   )
-  const now = evaluate(state, p)
-  let best: Action | undefined
-  let bestGain = MIN_GAIN
   // Past its time budget, it judges the moves left without trying its later answers
   const start = performance.now()
-  for (const move of moves) {
-    const gain = scoreOf(state, p, move, p, performance.now() - start < BUDGET) - now
-    if (gain > bestGain) [best, bestGain] = [move, gain]
+  const tried = moves.map((move) => {
+    const deep = performance.now() - start < BUDGET
+    const after = outcome(state, p, move, p, deep)
+    const single = after ? evaluate(after, p) : -Infinity
+    return { move, after, single, best: Math.max(single, deep ? combo(state, p, move) : -Infinity) }
+  })
+  const done = actions.find((a) => a.type === 'initiative') ?? { type: 'pass' }
+  // Then its most promising moves again, each after the opponent's best reply, and passing
+  // the same way, so as not to leave a unit open to an easy attack. A follow-up attack it
+  // planned keeps its worth. Short of time, it goes by the first look.
+  const promising = tried.filter((t) => t.after && t.best > -Infinity).sort((a, b) => b.best - a.best).slice(0, REPLY_WIDTH)
+  if (promising.length && performance.now() - start < BUDGET) {
+    // Doing nothing gives the opponent their turn as it is now. (Passing may end the phase,
+    // but what they could do then, such as deploying their leader, they still will.)
+    const stay = afterReply({ ...state, active: p === 0 ? 1 : 0 }, p)
+    const weighed = promising.map((t) => ({ action: t.move, gain: afterReply(t.after!, p) + Math.max(0, t.best - t.single) - stay }))
+    return pick(weighed, done, why)
   }
-  if (best) return best
-  return actions.find((a) => a.type === 'initiative') ?? { type: 'pass' }
+  const now = evaluate(state, p)
+  return pick(
+    tried.map((t) => ({ action: t.move, gain: t.best - now })),
+    done,
+    why,
+  )
+}
+
+// The move that gains the most, if any gains enough; else it is done for now
+function pick(weighed: Weighed[], done: Action, why?: Weighed[]) {
+  weighed.sort((a, b) => b.gain - a.gain)
+  why?.push(...weighed.filter((w) => w.gain > -Infinity).map((w) => ({ action: w.action, gain: Math.round(w.gain * 100) / 100 })))
+  return weighed[0] && weighed[0].gain > MIN_GAIN ? weighed[0].action : done
+}
+
+// How many of its moves it tries against the opponent's replies
+const REPLY_WIDTH = 8
+
+// The score for `me` once the opponent has made the reply that is worst for it, among what
+// they can do without the cards in their hand, which the AI doesn't see: attack, use their
+// leader, their units' and Spice tokens' abilities, pass. None when it isn't their turn.
+function afterReply(state: GameState, me: PlayerId) {
+  const foe = me === 0 ? 1 : 0
+  if (state.phase !== 'action' || state.prompt || !waitingFor(state).includes(foe)) return evaluate(state, me)
+  let worst = Infinity
+  for (const reply of legalActions(state, foe)) {
+    if (reply.type === 'play') continue
+    const after = outcome(state, foe, reply, me, false)
+    if (after) worst = Math.min(worst, evaluate(after, me))
+  }
+  return worst === Infinity ? evaluate(state, me) : worst
 }
 
 // How long a move may take to choose (ms) before it thinks less of the rest, so the page never
@@ -65,6 +109,9 @@ const BUDGET = 250
 export type DeckPlan = { curve: number[]; average: number; leader: number; top: number; target: number }
 const plans = new WeakMap<object, [DeckPlan?, DeckPlan?]>()
 // Costs from 0 to this, the dearer ones counted with it
+// Which AI this is, kept with each game it plays, to tell its versions apart in the stats
+export const AI_VERSION = '2026-10-30 reply'
+
 export const CURVE_TOP = 8
 
 export function deckPlan(state: GameState, p: PlayerId): DeckPlan {
@@ -113,8 +160,48 @@ const MIN_GAIN = 0.25
 // move the engine refuses scores nothing. Its own questions on the way are each tried (once:
 // those they lead to are answered by rule of thumb), the opponent's answered by rule of thumb.
 function scoreOf(state: GameState, p: PlayerId, move: Action, me: PlayerId, deep = true): number {
+  const after = outcome(state, p, move, me, deep)
+  return after ? evaluate(after, me) : -Infinity
+}
+
+// The game after a move and the questions it asks, or nothing for a move the engine refuses
+function outcome(state: GameState, p: PlayerId, move: Action, me: PlayerId, deep: boolean): GameState | undefined {
   try {
-    return evaluate(settle(applyAction(lean(state), p, move), me, deep), me)
+    return settle(applyAction(lean(state), p, move), me, deep)
+  } catch {
+    return undefined
+  }
+}
+
+// An attack on a unit that only pays off once other attacks finish it (a Sentinel no one unit
+// can defeat): played on, its other units attacking it in turn, the best each time, as long as
+// it stands. Each attack after the first counts a little less, the opponent acting between.
+const COMBO_COST = 0.4
+function combo(state: GameState, p: PlayerId, move: Action): number {
+  if (move.type !== 'attack' || move.target === 'base') return -Infinity
+  try {
+    let game = settle(applyAction(lean(state), p, move), p, false)
+    let best = -Infinity
+    for (let step = 1; step <= 2; step++) {
+      if (game.phase !== 'action' || !game.players[p === 0 ? 1 : 0].units.some((u) => u.id === move.target)) break
+      const again = { ...game, active: p }
+      let next: GameState | undefined
+      let nextScore = -Infinity
+      for (const attack of legalActions(again, p)) {
+        if (attack.type !== 'attack' || attack.target !== move.target) continue
+        try {
+          const after = settle(applyAction(again, p, attack), p, false)
+          const score = evaluate(after, p)
+          if (score > nextScore) [next, nextScore] = [after, score]
+        } catch {
+          // a follow-up the engine refuses
+        }
+      }
+      if (!next) break
+      game = next
+      best = Math.max(best, nextScore - COMBO_COST * step)
+    }
+    return best
   } catch {
     return -Infinity
   }
@@ -163,7 +250,7 @@ function side(state: GameState, p: PlayerId) {
   // The base's health left, each point dearer as it runs out
   const left = Math.max(0, state.defs[player.base.def].hp - player.base.damage)
   let score = left + Math.max(0, 10 - left) * 0.6
-  for (const unit of player.units) score += unitWorth(state, unit)
+  for (const unit of player.units) score += unitWorth(state, unit, blocked(state, p, unit))
   score += player.hand.length * 1.5 + player.resources.length + player.spice.length
   // A Fortification keeps giving while its base stands
   score += (player.base.upgrades?.length ?? 0) * 1.5
@@ -171,13 +258,23 @@ function side(state: GameState, p: PlayerId) {
   return score
 }
 
-// A unit by its power, the health it has left and its keywords; less when it will soon be
-// gone (defeated, or back to its owner, at the regroup phase)
-function unitWorth(state: GameState, unit: UnitState) {
+// Whether an enemy Sentinel stands in a unit's arena: its power can't reach the base until the
+// Sentinel is gone
+function blocked(state: GameState, p: PlayerId, unit: UnitState) {
+  const foe = state.players[p === 0 ? 1 : 0]
+  return foe.units.some((u) => u.arena === unit.arena && keywordsOf(state, u).sentinel)
+}
+
+// A unit by its power (less while a Sentinel blocks it), the health it has left, its keywords
+// and what it cost; less when it will soon be gone (defeated, or back to its owner, at the
+// regroup phase)
+function unitWorth(state: GameState, unit: UnitState, isBlocked = false) {
   const keywords = keywordsOf(state, unit)
+  const card = state.defs[unit.def]
   let worth =
     1 +
-    0.7 * powerOf(state, unit) +
+    (isBlocked ? 0.4 : 0.7) * powerOf(state, unit) +
+    0.25 * (unit.leader ? 0 : card.cost) +
     0.5 * Math.max(0, hpOf(state, unit) - unit.damage) +
     (keywords.sentinel ? 1 : 0) +
     (keywords.overwhelm || keywords.saboteur || keywords.grit ? 0.5 : 0) +

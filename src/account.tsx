@@ -12,8 +12,16 @@ import {
   type Session,
   type User,
 } from './api'
+import { CardsTab, DecksTab, defaultFilter, FilterBar, GamesTab, StatsTab, type GameFilter } from './AdminGames'
 
-type AdminUser = User & { lastLoginAt: string | null; usedBytes: number; cardCount: number; permanent: boolean }
+type AdminUser = User & {
+  lastLoginAt: string | null
+  usedBytes: number
+  cardCount: number
+  gameCount: number
+  lastGameAt: string | null
+  permanent: boolean
+}
 
 export function formatBytes(bytes: number) {
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`
@@ -303,8 +311,53 @@ function SettingsModal(props: {
 
 const MB = 1024 * 1024
 
+const ADMIN_TABS = [
+  ['users', 'Users'],
+  ['stats', 'Stats'],
+  ['games', 'Games'],
+  ['decks', 'Decks'],
+  ['cards', 'Cards'],
+] as const
+type AdminTab = (typeof ADMIN_TABS)[number][0]
+
 function AdminModal(props: { session: Session; focus?: number; onClose: () => void }) {
   const { session, focus, onClose } = props
+  const [tab, setTab] = useState<AdminTab>('users')
+  const [filter, setFilter] = useState<GameFilter>(defaultFilter)
+  return (
+    <Modal title="Admin" wide onClose={onClose}>
+      <nav className="tabs admin-tabs">
+        {ADMIN_TABS.map(([value, label]) => (
+          <a
+            key={value}
+            href="#"
+            aria-current={tab === value ? 'page' : undefined}
+            onClick={(event) => {
+              event.preventDefault()
+              setTab(value)
+            }}
+          >
+            {label}
+          </a>
+        ))}
+      </nav>
+      {tab !== 'users' && <FilterBar filter={filter} onChange={setFilter} />}
+      {tab === 'users' && <UsersTab session={session} focus={focus} />}
+      {tab === 'stats' && <StatsTab session={session} filter={filter} />}
+      {tab === 'games' && <GamesTab session={session} filter={filter} />}
+      {tab === 'decks' && <DecksTab session={session} filter={filter} />}
+      {tab === 'cards' && <CardsTab session={session} filter={filter} />}
+      <div className="account-buttons">
+        <button className="button button-primary" type="button" onClick={onClose}>
+          Close
+        </button>
+      </div>
+    </Modal>
+  )
+}
+
+function UsersTab(props: { session: Session; focus?: number }) {
+  const { session, focus } = props
   const [users, setUsers] = useState<AdminUser[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   // The account asked for, scrolled to and marked once the list is in
@@ -334,7 +387,7 @@ function AdminModal(props: { session: Session; focus?: number; onClose: () => vo
   }
 
   return (
-    <Modal title="Admin" wide onClose={onClose}>
+    <>
       {error && <p className="account-error">{error}</p>}
       {!users ? (
         !error && <p className="account-note">Loading…</p>
@@ -348,6 +401,7 @@ function AdminModal(props: { session: Session; focus?: number; onClose: () => vo
                 <th title="May use the game simulator; admins always may">Tester</th>
                 <th title="May make cards public">Public?</th>
                 <th>Cards</th>
+                <th title="Games played in the Simulator">Games</th>
                 <th>Storage</th>
                 <th>Joined</th>
                 <th>Last login</th>
@@ -391,6 +445,7 @@ function AdminModal(props: { session: Session; focus?: number; onClose: () => vo
                     />
                   </td>
                   <td>{user.cardCount}</td>
+                  <td title={user.lastGameAt ? `Last game ${formatDate(user.lastGameAt)}` : undefined}>{user.gameCount}</td>
                   <td>
                     {formatBytes(user.usedBytes)} of{' '}
                     {user.permanent ? (
@@ -407,12 +462,7 @@ function AdminModal(props: { session: Session; focus?: number; onClose: () => vo
           </table>
         </div>
       )}
-      <div className="account-buttons">
-        <button className="button button-primary" type="button" onClick={onClose}>
-          Close
-        </button>
-      </div>
-    </Modal>
+    </>
   )
 }
 

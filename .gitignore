@@ -39,3 +39,5 @@ public/art
 # The local database of npm run local
 server/.localdb
 server/.localdata
+# Game records the tools write (server/tools)
+server/records

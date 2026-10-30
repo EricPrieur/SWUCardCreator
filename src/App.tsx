@@ -2692,6 +2692,69 @@ function DeckImageView(props: { url: string; fileName: string; note: string; onC
 
 // Decks made of the Showroom's cards, where a deck can keep to some sets (the DUNE cards
 // for one) and then only offers theirs; or of a Showcase's cards, all of one set.
+// The Simulator's Featured Decks, decks anyone may play there: on this computer an admin puts
+// the deck shown in them, or updates or takes out its copy there (public/sim/featured-decks.json,
+// which reaches the site with the next push)
+type FeaturedDeck = { id: string; name: string; leader: string; base: string; cards: { id: string; count: number }[] }
+function FeatureButton(props: { deck: Deck; onNote: (note: string) => void }) {
+  const { deck, onNote } = props
+  const [featured, setFeatured] = useState<FeaturedDeck[] | null>(null)
+  const load = () =>
+    fetch(asset('/sim/featured-decks.json'), { cache: 'no-store' })
+      .then((response) => (response.ok ? response.json() : []))
+      .then(setFeatured, () => setFeatured([]))
+  useEffect(() => {
+    load()
+  }, [])
+  if (!featured || !deck.leader || !deck.base) return null
+  const copy: FeaturedDeck = {
+    id: deck.id,
+    name: deck.name,
+    leader: deck.leader,
+    base: deck.base,
+    cards: deck.cards.map(({ id, count }) => ({ id, count })),
+  }
+  const there = featured.find((d) => d.id === deck.id)
+  const same = there && JSON.stringify(there) === JSON.stringify(copy)
+  // A deck that can't be played isn't offered to everyone
+  const short = copy.cards.reduce((sum, { count }) => sum + count, 0) < 50
+  const send = async (method: 'PUT' | 'DELETE') => {
+    const response = await fetch(method === 'PUT' ? '/__featured' : `/__featured/${encodeURIComponent(deck.id)}`, {
+      method,
+      body: method === 'PUT' ? JSON.stringify(copy) : undefined,
+    })
+    if (!response.ok) return onNote(`Could not change the Featured Decks: ${await response.text()}`)
+    onNote(
+      method === 'DELETE'
+        ? `${deck.name} is out of the Featured Decks; the site follows with the next push.`
+        : `${deck.name} is ${there ? 'updated in' : 'in'} the Featured Decks; the site gets it with the next push.`,
+    )
+    load()
+  }
+  return (
+    <>
+      <button
+        className="button"
+        type="button"
+        disabled={same || short}
+        title={
+          short
+            ? 'A Featured Deck needs at least 50 cards'
+            : "The Simulator's Featured Decks, which anyone may play: written in public/sim/featured-decks.json"
+        }
+        onClick={() => send('PUT')}
+      >
+        {same ? 'Featured' : there ? 'Update Featured' : 'Feature'}
+      </button>
+      {there && (
+        <button className="button" type="button" onClick={() => send('DELETE')}>
+          Unfeature
+        </button>
+      )}
+    </>
+  )
+}
+
 function DeckBuilder(props: {
   cards: DeckCard[]
   // Where its choices are remembered, and its decks kept
@@ -3210,6 +3273,7 @@ function DeckBuilder(props: {
           <button className="button" type="button" onClick={() => importInput.current?.click()}>
             Import
           </button>
+          {import.meta.env.DEV && account?.user.isAdmin && <FeatureButton deck={deck} onNote={setNote} />}
           <input ref={importInput} type="file" accept=".json,application/json" hidden onChange={importDeck} />
           <button
             className="button"
@@ -4619,10 +4683,34 @@ function App() {
     window.scrollTo(0, 0)
   }
 
+  // Sign in, Ko-fi, Discord: in the top right corner of every page, the set's Showcase too
+  const accountBar = (
+    <AccountBar
+      localCards={localCount}
+      localDecks={localDeckCount}
+      onCopyLocal={async () => {
+        const done = localCount ? [importCards(loadCards())] : []
+        await saving.current
+        if (account && localDeckCount) {
+          try {
+            const copied = await copyLocalDecks(account)
+            done.push(`copied ${copied} deck${copied === 1 ? '' : 's'}`)
+            setDecksCopied((count) => count + 1)
+          } catch (err) {
+            done.push(`could not copy the decks: ${(err as Error).message}`)
+          }
+        }
+        const text = done.join('; ')
+        return text.charAt(0).toUpperCase() + text.slice(1)
+      }}
+    />
+  )
+
   if (showcase) {
     return (
       <main className="page">
         <header className="page-header">
+          {accountBar}
           <h1>{showcase === 'DUNE' ? 'Dune SWU' : showcase}</h1>
         </header>
         <Showcase folder={showcase} />
@@ -4634,25 +4722,7 @@ function App() {
   return (
     <main className="page">
       <header className="page-header">
-        <AccountBar
-          localCards={localCount}
-          localDecks={localDeckCount}
-          onCopyLocal={async () => {
-            const done = localCount ? [importCards(loadCards())] : []
-            await saving.current
-            if (account && localDeckCount) {
-              try {
-                const copied = await copyLocalDecks(account)
-                done.push(`copied ${copied} deck${copied === 1 ? '' : 's'}`)
-                setDecksCopied((count) => count + 1)
-              } catch (err) {
-                done.push(`could not copy the decks: ${(err as Error).message}`)
-              }
-            }
-            const text = done.join('; ')
-            return text.charAt(0).toUpperCase() + text.slice(1)
-          }}
-        />
+        {accountBar}
         <h1>SWU Card Creator</h1>
         <nav className="tabs">
           {tabs

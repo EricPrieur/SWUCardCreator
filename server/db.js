@@ -7,6 +7,11 @@ export const SCHEMA = 'dune'
 // 50 MB of card data and images per account; NULL is no limit
 export const DEFAULT_QUOTA = 50 * 1024 * 1024
 
+// Times are kept in UTC (TIMESTAMP columns have no zone): each connection writes them in UTC,
+// and they are read back as UTC, for the app to show in the time zone of whoever looks
+const TIMESTAMP = 1114
+pg.types.setTypeParser(TIMESTAMP, (text) => new Date(`${text.replace(' ', 'T')}Z`))
+
 let pool = null
 
 // The database to use: the one in DATABASE_URL, unless a test hands in its own
@@ -23,6 +28,7 @@ function getPool() {
       // Railway's proxy needs SSL; a database on this computer has none
       ssl: /localhost|127\.0\.0\.1/.test(url) ? false : { rejectUnauthorized: false },
     })
+    pool.on('connect', (client) => client.query(`SET TIME ZONE 'UTC'`))
   }
   return pool
 }
@@ -99,6 +105,32 @@ export async function initDB() {
       PRIMARY KEY (user_id, scope, id)
     )
   `)
+  // A game played in the Simulator, by an account or by anyone: its record (seed, decks and
+  // actions, which replay it exactly) and, to count it, how it went and each side's cards.
+  // key: what lets the browser that started it go on saving it. is_dev: played on this
+  // computer, kept out of the stats.
+  await query(`
+    CREATE TABLE IF NOT EXISTS ${SCHEMA}.games (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER REFERENCES ${SCHEMA}.users(id) ON DELETE SET NULL,
+      key CHAR(32) NOT NULL,
+      mode VARCHAR(16) NOT NULL DEFAULT 'ai',
+      status VARCHAR(16) NOT NULL DEFAULT 'playing',
+      winner SMALLINT,
+      draw BOOLEAN NOT NULL DEFAULT FALSE,
+      rounds INTEGER NOT NULL DEFAULT 0,
+      ai_version VARCHAR(64),
+      sides JSONB NOT NULL,
+      names JSONB NOT NULL DEFAULT '{}',
+      record JSONB NOT NULL,
+      bytes INTEGER NOT NULL DEFAULT 0,
+      is_dev BOOLEAN NOT NULL DEFAULT FALSE,
+      started_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      finished_at TIMESTAMP
+    )
+  `)
+  await query(`CREATE INDEX IF NOT EXISTS games_started ON ${SCHEMA}.games (started_at)`)
 }
 
 // The bytes an account uses: its cards' data, its images and its decks

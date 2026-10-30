@@ -30,7 +30,15 @@ database with The Chrome Grid without touching its tables.
 | `GET /api/public/cards` | Everyone's public cards, newest first; no sign-in needed. Admins also get the hidden ones. |
 | `GET /api/public/images/:id` | The JPG of a public card's side, for anyone |
 | `PATCH /api/admin/cards/:userId/:cardId` | Admins: `{ hidden }`, takes a card off the Community tab or puts it back |
+| `POST /api/games` | `{ record, summary }`: a Simulator game as it starts, signed in or not → `{ id, key }`. 60 starts an hour per address; 900 KB at most. |
+| `PUT /api/games/:id` | `{ record, summary, key }`: the game saved again (each round, and as it ends or is left), until it is over |
+| `GET /api/admin/game-stats` | Admins: games in the last hour, day and week, how they ended, how long they last, people's win rate against the AI and by AI version, games a day |
+| `GET /api/admin/games` | Admins: the latest games, without their records; `GET /api/admin/games/:id` one game with its record |
+| `GET /api/admin/deck-stats` | Admins: each leader and deck's games and wins, played by people and by the AI |
+| `GET /api/admin/card-stats` | Admins: each card's games in a deck, games played, and wins then; `?seat=human` or `ai` |
 | `GET /api/health` | `{ ok: true }` |
+
+The game lists and stats take `?days=` (none: all time) and `?dev=1` to count games played on localhost. A game still playing an hour after its last save counts as abandoned.
 
 Signed-in calls send `Authorization: Bearer <token>`; a token lasts 30 days.
 Each account gets 50 MB, counting its cards' data, its images and its decks. Images no card

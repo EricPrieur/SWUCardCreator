@@ -4,12 +4,14 @@ import { useAccount, type Session } from './api'
 import { Modal } from './account'
 import { loadAccountDecks } from './accountCards'
 import { loadDecks, type Deck } from './cards'
-import { chooseAction, CURVE_TOP, deckPlan } from '../server/engine/ai.ts'
+import { AI_VERSION, chooseAction, CURVE_TOP, deckPlan, type Weighed } from '../server/engine/ai.ts'
 import { cardDef, randomDeck, type SavedCard } from '../server/engine/cards.ts'
-import { applyAction, createGame } from '../server/engine/game.ts'
+import { createGame, sameAction } from '../server/engine/game.ts'
+import { recordAction, startRecord, type GameRecord } from '../server/engine/record.ts'
 import { scriptStatus } from '../server/engine/scripts.ts'
 import { viewFor, type SideView } from '../server/engine/view.ts'
 import type { Action, Arena, CardDef, GameState, PlayerId } from '../server/engine/types.ts'
+import { gameLog } from './gameLog'
 import './Simulator.css'
 
 // The game simulator: you against a first AI, on the DUNE set as exported to the Showcase,
@@ -39,7 +41,7 @@ const statShift = (now: number, printed = now) => (now > printed ? ' up' : now <
 type SetCards = { defs: CardDef[]; images: Record<string, { image: string; back?: string }>; spiceArt?: string }
 const BACK_SIDE = '#back'
 
-async function loadSet(): Promise<SetCards> {
+export async function loadSet(): Promise<SetCards> {
   const response = await fetch(asset(`/showcase/${SET}/showcase.json`))
   if (!response.ok) throw new Error(`The ${SET} set isn't exported`)
   const entries: { image: string; back?: string }[] = (await response.json()).cards
@@ -211,6 +213,13 @@ export function Simulator() {
   const [game, setGame] = useState<GameState | null>(null)
   // Each game its own table, which starts with nothing drawn yet
   const [gameNumber, setGameNumber] = useState(0)
+  // The game's record, each action added to it, and its saving to the server
+  const record = useRef<GameRecord | null>(null)
+  const log = useRef<ReturnType<typeof gameLog> | null>(null)
+  const gameNow = useRef(game)
+  gameNow.current = game
+  // A game left by leaving the page's Simulator
+  useEffect(() => () => void (gameNow.current && log.current?.left(gameNow.current)), [])
 
   useEffect(() => {
     loadSet()
@@ -235,6 +244,7 @@ export function Simulator() {
     if (!set) return
     const pick = <T,>(list: T[]) => list[Math.floor(Math.random() * list.length)]
     let yours: Deck | undefined
+    const deckNames: string[] = []
     const resolve = (choice: Choice, side: number) => {
       let deck: Deck | undefined
       if (choice.startsWith('deck:')) deck = decks.find((d) => `deck:${d.id}` === choice)
@@ -242,28 +252,39 @@ export function Simulator() {
       else if (choice === 'different-random' && decks.length)
         deck = pick(decks.length > 1 ? decks.filter((d) => d !== yours) : decks)
       if (side === YOU) yours = deck
+      deckNames[side] = deck?.name ?? 'Random'
       return deck ? deckList(deck, set) : randomDeck(set.defs)
     }
     const lists = choices.map(resolve)
     const names = lists.map((list) => set.defs.find((d) => d.id === list.leader)?.name ?? 'Player')
     setGameNumber((n) => n + 1)
-    setGame(
-      createGame({
-        seed: Date.now(),
-        defs: set.defs,
-        decks: lists.map((list, i) => ({
-          // Named after their leaders, the AI's marked when both play the same one
-          name: i === AI && names[1] === names[0] ? `${names[1]} (AI)` : names[i],
-          ...list,
-        })) as never,
-      }),
-    )
+    const seed = Date.now()
+    const named = lists.map((list, i) => ({
+      // Named after their leaders, the AI's marked when both play the same one
+      name: i === AI && names[1] === names[0] ? `${names[1]} (AI)` : names[i],
+      ...list,
+    })) as GameRecord['decks']
+    if (game) log.current?.left(game)
+    record.current = startRecord(seed, named, [{ kind: 'human' }, { kind: 'ai', version: AI_VERSION }])
+    log.current = gameLog(account, record.current, deckNames as [string, string])
+    const next = createGame({ seed, defs: set.defs, decks: named })
+    log.current.moved(next)
+    setGame(next)
+  }
+  const act = (state: GameState, p: PlayerId, action: Action, why?: Weighed[]) => {
+    const next = recordAction(record.current!, state, p, action, why)
+    log.current?.moved(next)
+    setGame(next)
+  }
+  const leave = () => {
+    if (game) log.current?.left(game)
+    setGame(null)
   }
 
   if (game && set) {
     return (
       <div className="sim">
-        <Table key={gameNumber} set={set} game={game} onGame={setGame} onNew={() => setGame(null)} onAgain={start} />
+        <Table key={gameNumber} set={set} game={game} onAct={act} onNew={leave} onAgain={start} />
       </div>
     )
   }
@@ -340,8 +361,6 @@ function Back() {
   return <div className="sim-back" style={{ backgroundImage: `url("${cardBack}")` }} />
 }
 
-const sameAction = (a: Action, b: Action) => JSON.stringify(a) === JSON.stringify(b)
-
 // Drawing a card, the starting hand and a mulligan's included: each flies from the deck to its
 // place in the hand, one after another, with a sound (The Chrome Grid's, from Kenney's CC0 packs)
 const DRAW_STAGGER = 110
@@ -415,7 +434,7 @@ function fly(image: string, from: DOMRect, to: DOMRect) {
 function Table(props: {
   set: SetCards
   game: GameState
-  onGame: (game: GameState) => void
+  onAct: (game: GameState, p: PlayerId, action: Action, why?: Weighed[]) => void
   onNew: () => void
   onAgain: () => void
 }) {
@@ -514,12 +533,12 @@ function Table(props: {
   // Who goes first and the mulligan are asked big, in the middle of the board
   const setup = !view.prompt && (view.phase === 'first' || view.phase === 'mulligan')
 
-  const act = (p: PlayerId, action: Action) => {
+  const act = (p: PlayerId, action: Action, why?: Weighed[]) => {
     if (action.type === 'play') {
       const card = game.players[p].hand.find((c) => c.id === action.card)
       if (card) setLast((now) => (p === 0 ? [card.def, now[1]] : [now[0], card.def]))
     }
-    props.onGame(applyAction(game, p, action))
+    props.onAct(game, p, action, why)
     // What you had picked stays while the AI acts, as in the setup resources chosen at once
     if (p === YOU) {
       setMode(null)
@@ -531,7 +550,6 @@ function Table(props: {
     setHover(null)
   }
   const can = (action: Action) => view.actions.some((a) => sameAction(a, action))
-  // In the engine's order of keys, which sameAction compares
   // The play that attaches a card to a unit, played the way chosen, among those the engine allows
   const sameWay = (a: Way, b: Way) => !!a.smuggle === !!b.smuggle && !!a.discard === !!b.discard && !!a.spice === !!b.spice
   const attachAction = (attach: { card: string } & Way, unit: string): Action =>
@@ -589,8 +607,10 @@ function Table(props: {
   useEffect(() => {
     if (game.phase === 'over' || !view.waitingFor.includes(AI)) return
     const timer = setTimeout(() => {
-      const action = chooseAction(game, AI)
-      if (action) act(AI, action)
+      const why: Weighed[] = []
+      const action = chooseAction(game, AI, why)
+      // The moves it weighed best kept with the game, to see why it did what it did
+      if (action) act(AI, action, why.slice(0, 3))
     }, AI_DELAY)
     return () => clearTimeout(timer)
   }, [game])
@@ -1071,7 +1091,9 @@ function Table(props: {
         {!!spice && (
           <div
             className={`sim-spice-pile${spiceAsked ? ' harm' : spiceUse ? ' can-act' : ''}`}
-            style={{ '--spice-art': `url("${set.spiceArt ?? img(spiceImage ?? '')}")` } as React.CSSProperties}
+            // In full: a url() in a custom property is read from the stylesheet's folder, which the
+            // site's relative paths (./showcase/…) would miss
+            style={{ '--spice-art': `url("${new URL(set.spiceArt ?? img(spiceImage ?? ''), document.baseURI).href}")` } as React.CSSProperties}
             title={spiceUse ? `Spice: ${spiceUse.label}` : `${spice} Spice token${spice > 1 ? 's' : ''}`}
             onMouseEnter={look(spiceImage)}
             onMouseLeave={leave}

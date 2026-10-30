@@ -58,6 +58,7 @@ const defs: CardDef[] = [
   card('troops', { ...scripted('Harkonnen Troops'), cost: 1, power: 2, hp: 1, traits: ['Harkonnen', 'Trooper'] }),
   card('sergeant', { ...scripted('Harkonnen Sergeant'), cost: 3, power: 3, hp: 3 }),
   card('kanly', { ...scripted('Kanly'), type: 'event', cost: 2, arena: undefined }),
+  card('adept', { cost: 4, power: 3, hp: 5, text: '[Sentinel]' }),
   card('thumper', { ...scripted('Thumper'), unique: true, type: 'upgrade', cost: 1, arena: undefined, traits: ['Fortification', 'Fremen'] }),
   card('refinery', { ...scripted('Carthag Refinery'), type: 'upgrade', cost: 2, arena: undefined, traits: ['Fortification', 'Harkonnen'] }),
   card('wall', { ...scripted('The Shield Wall'), type: 'upgrade', cost: 3, arena: undefined, traits: ['Fortification'] }),
@@ -369,4 +370,18 @@ test('A second copy of a unique card: its player keeps one, the other defeated b
   assert.deepEqual(state.players[0].base.upgrades?.map((u) => u.id), ['old'])
   // Thumper's When Played still resolves: its search
   assert.match(state.prompt?.text ?? '', /Thumper/)
+})
+
+test("The AI doesn't wait out a Sentinel: two Harkonnen Troops defeat it, then the rest attack the base", () => {
+  let state = table({ units0: ['troops', 'troops', 'sergeant'], units1: ['adept'] })
+  state.players[0].resources = []
+  state.players[0].leader.exhausted = true
+  const first = chooseAction(state, 0)!
+  assert.deepEqual(first, { type: 'attack', attacker: 'u00', target: 'u10' })
+  state = act(state, 0, first)
+  while (state.prompt) state = act(state, state.prompt.player, chooseAction(state, state.prompt.player)!)
+  state = act(state, 1, { type: 'pass' })
+  state = act(state, 0, chooseAction(state, 0)!)
+  while (state.prompt) state = act(state, state.prompt.player, chooseAction(state, state.prompt.player)!)
+  assert.equal(state.players[1].units.length, 0)
 })

@@ -677,7 +677,9 @@ export function legalActions(state: GameState, p: PlayerId): Action[] {
 
 // --- Taking an action ---
 
-const sameAction = (a: Action, b: Action) => JSON.stringify(a) === JSON.stringify(b)
+// The same action whatever the order of its keys, which a record kept in Postgres (JSONB) changes
+const keyed = (action: Action) => JSON.stringify(Object.entries(action).sort(([a], [b]) => a.localeCompare(b)))
+export const sameAction = (a: Action, b: Action) => keyed(a) === keyed(b)
 
 function checkAnswer(prompt: Prompt, picks: string[]) {
   const ids = new Set(prompt.options.map((o) => o.id))
