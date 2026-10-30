@@ -6,7 +6,7 @@
     "src": "The Shield Wall (art).webp",
     "zoom": 1
   },
-  "cost": 3,
+  "cost": 4,
   "name": "The Shield Wall",
   "text": "[FORTIFY]\nAttached base gains: \"Enemy ground units get [-1/-0] while attacking bases. \nYour units can't be defeated by enemy Shai-Hulud card abilities.\"",
   "block": "",
