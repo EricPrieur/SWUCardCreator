@@ -82,6 +82,12 @@ export type Abilities = {
   cantAttack?: (g: Game, self: Self, target: UnitState) => boolean
   // An upgrade's: "Attached unit can't be defeated by enemy card abilities."
   cantBeDefeatedByEnemies?: boolean
+  // Whether a friendly unit can't be defeated by an enemy card's ability (`from`)
+  cantBeDefeatedBy?: (g: Game, self: Self, from: Self) => boolean
+  // How much less a card its controller plays costs
+  costsLess?: (g: Game, self: Self, card: CardDef) => number
+  // "If you would create a Spice token, you may create 2 Spice tokens instead.": whether it does
+  moreSpice?: (g: Game, self: Self) => boolean
   // "Opponents play with their hands revealed."; "You may look at the top card of your deck at
   // any time."
   revealsHands?: boolean
@@ -269,7 +275,7 @@ const dune: CardScript[] = [
     text: '[When Played:] You may defeat an upgrade attached to an exhausted unit.',
     front: {
       whenPlayed: (g, self) => {
-        const upgrades = g.upgrades().filter((u) => u.unit.exhausted)
+        const upgrades = g.upgrades().filter((u) => u.unit?.exhausted)
         const pick = g.chooseOne(
           self.controller,
           `${self.def.name}: you may defeat an upgrade on an exhausted unit`,
@@ -354,7 +360,7 @@ const dune: CardScript[] = [
       whenPlayed: (g, self) => {
         const upgrades = g.upgrades()
         if (!upgrades.length || !g.canPay(self.controller, 2)) return
-        const enemies = upgrades.some((u) => g.controller(u.unit) !== self.controller)
+        const enemies = upgrades.some((u) => u.controller !== self.controller)
         if (!g.may(self.controller, `${self.def.name}: pay 2 to defeat an upgrade?`, { yes: 'Pay 2', no: 'Skip', ai: enemies, source: self.def.id }))
           return
         g.pay(self.controller, 2)
@@ -448,7 +454,7 @@ const dune: CardScript[] = [
     front: {
       play: (g, self) => {
         const upgrades = g.upgrades()
-        const enemyUpgrade = upgrades.some((u) => g.controller(u.unit) !== self.controller)
+        const enemyUpgrade = upgrades.some((u) => u.controller !== self.controller)
         const choice = g.option(self.controller, 'Sabotage: choose one', ['Defeat an upgrade', 'Deal 2 damage to a base'], {
           ai: enemyUpgrade ? 0 : 1,
           source: self.def.id,
@@ -626,7 +632,7 @@ const dune: CardScript[] = [
       whenPlayed: (g, self) => {
         const upgrades = g.upgrades().filter((u) => !g.def(u).unique)
         // The AI defeats an enemy's upgrade, never its own
-        const enemy = upgrades.find((u) => g.controller(u.unit) !== self.controller)
+        const enemy = upgrades.find((u) => u.controller !== self.controller)
         const pick = g.chooseOne(self.controller, 'Sardaukar Levenbrech: you may defeat a non-unique upgrade', upgrades.map((u) => u.id), {
           optional: true,
           ai: enemy?.id ?? 'none',
@@ -806,7 +812,7 @@ const dune: CardScript[] = [
       whenPlayed: (g, self) => {
         const p = self.controller
         const foe = enemy(g, self)
-        const upgrades = g.upgrades().filter((u) => g.controller(u.unit) === foe)
+        const upgrades = g.upgrades().filter((u) => u.unit && u.controller === foe)
         const ids = [...g.spiceIds(foe).slice(0, 1), ...upgrades.map((u) => u.id)]
         const real = upgrades.find((u) => !g.def(u).token || g.def(u).name !== 'Weakness')
         const pick = g.chooseOne(p, 'Fremen Saboteurs: you may defeat an enemy Spice token or an upgrade on an enemy unit', ids, {
@@ -896,7 +902,7 @@ const dune: CardScript[] = [
       whenDefeated: (g, self) => {
         g.exhaustLeader(self.controller)
         for (const upgrade of g.upgrades())
-          if (g.controller(upgrade.unit) === self.controller && g.def(upgrade).token && g.def(upgrade).name === 'Shield') g.defeatUpgrade(upgrade.id)
+          if (upgrade.controller === self.controller && g.def(upgrade).token && g.def(upgrade).name === 'Shield') g.defeatUpgrade(upgrade.id)
       },
     },
   },
@@ -963,7 +969,7 @@ const dune: CardScript[] = [
         const unit = g.unit(self.other ?? '')
         if (!unit || !g.hasTrait(unit, 'Trooper')) return
         const upgrades = g.upgrades().filter((u) => u.id !== self.id)
-        const theirs = upgrades.filter((u) => g.controller(u.unit) !== self.controller)
+        const theirs = upgrades.filter((u) => u.controller !== self.controller)
         const shield = theirs.find((u) => g.def(u).token && g.def(u).name === 'Shield')
         const mine = upgrades.find((u) => g.def(u).token && g.def(u).name === 'Weakness')
         const pick = g.chooseOne(self.controller, 'Lasgun: defeat another upgrade', upgrades.map((u) => u.id), {
@@ -974,7 +980,7 @@ const dune: CardScript[] = [
         if (!chosen) return
         const wasShield = g.def(chosen).token && g.def(chosen).name === 'Shield'
         g.defeatUpgrade(chosen.id)
-        if (wasShield) g.damage(chosen.unit.id, 3, self)
+        if (wasShield && chosen.unit) g.damage(chosen.unit.id, 3, self)
       },
     },
   },
@@ -1531,9 +1537,9 @@ const dune: CardScript[] = [
     front: {
       whenPlayed: (g, self) => {
         const p = self.controller
-        const upgrades = g.upgrades().filter((u) => g.def(u).token || (!g.def(u).unique && g.hasTrait(u, 'Item')))
+        const upgrades = g.upgrades().filter((u) => u.unit && (g.def(u).token || (!g.def(u).unique && g.hasTrait(u, 'Item'))))
         // The AI takes what helps it from an enemy unit
-        const good = upgrades.find((u) => g.controller(u.unit) !== p && g.def(u).name !== 'Weakness')
+        const good = upgrades.find((u) => u.controller !== p && g.def(u).name !== 'Weakness')
         const pick = g.chooseOne(p, 'Black Market Fence: you may take an Item or token upgrade', upgrades.map((u) => u.id), {
           optional: true,
           ai: good?.id ?? 'none',
@@ -1591,6 +1597,8 @@ const dune: CardScript[] = [
               optional: true,
               ai: 'best',
               source: self.def.id,
+              // The cards searched still in the deck
+              seen: top.map((c) => c.id).filter((id) => g.player(p).deck.some((c) => c.id === id)),
             })
             if (!pick) break
             budget -= g.def(g.card(pick)!).cost
@@ -1800,7 +1808,7 @@ const dune: CardScript[] = [
       whenPlayed: (g, self) => {
         if (!g.controlsArrakis(self.controller)) return
         for (const id of unitIds(g, (u) => !u.leader && g.hasTrait(u, 'Fremen'))) g.returnToHand(id)
-        for (const id of unitIds(g, (u) => u.id !== self.id && u.arena === 'ground' && !g.hasTrait(u, 'Fremen'))) g.defeat(id)
+        for (const id of unitIds(g, (u) => u.id !== self.id && u.arena === 'ground' && !g.hasTrait(u, 'Fremen'))) g.defeat(id, self)
       },
       afterAttack: (g, self) => g.toDeckBottom(self.id),
     },
@@ -2008,7 +2016,7 @@ const dune: CardScript[] = [
       play: (g, self) => {
         const p = self.controller
         const upgrades = g.upgrades()
-        const enemyUpgrade = upgrades.some((u) => g.controller(u.unit) !== p)
+        const enemyUpgrade = upgrades.some((u) => u.controller !== p)
         const choice = g.option(p, 'Family Atomics: choose one', ['Defeat an upgrade', 'Pay 3 to defeat a non-leader unit and deal 3 damage to your base'], {
           ai: !enemyUpgrade && g.canPay(p, 3) ? 1 : 0,
           source: self.def.id,
@@ -2026,6 +2034,46 @@ const dune: CardScript[] = [
         if (pick) g.defeat(pick)
         g.damage(`base${p}`, 3, self)
       },
+    },
+  },
+
+  // --- Fortifications (Fortify: on your base) ---
+  {
+    name: 'Thumper',
+    text: '[Fortify]\n[When Played:] Search the top 10 cards of your deck for a [Creature] card, reveal it and draw it.\n[Creature] cards you play cost [1] less. When you play a [{Creature}] card, defeat this upgrade.',
+    front: {
+      whenPlayed: (g, self) => searchDeck(g, self, 10, (d) => d.traits.includes('Creature'), 'a Creature card'),
+      costsLess: (_g, _self, card) => (card.traits.includes('Creature') ? 1 : 0),
+      triggersIf: { whenYouPlay: (_g, self) => !!self.otherDef?.traits.includes('Creature') },
+      whenYouPlay: (g, self) => g.defeatUpgrade(self.id),
+    },
+  },
+  {
+    name: 'Carthag Refinery',
+    text: '[Fortify]\nWhile you control an [{Arrakis}] base, if you would create a Spice token, you may create 2 Spice tokens instead. If you do, deal 1 damage to attached base.\n[{Harvester}] units you play cost [1] less.',
+    front: {
+      moreSpice: (g, self) => {
+        const p = self.controller
+        if (!g.controlsArrakis(p)) return false
+        // The AI takes the Spice while its base can spare the damage
+        const left = g.def(g.player(p).base).hp - g.player(p).base.damage
+        if (!g.may(p, 'Carthag Refinery: create 2 Spice tokens instead of 1, and deal 1 damage to your base?', { yes: 'Create 2', no: 'Create 1', ai: left > 6, source: self.def.id }))
+          return false
+        g.damage(`base${p}`, 1, self)
+        return true
+      },
+      costsLess: (_g, _self, card) => (card.type === 'unit' && card.traits.includes('Harvester') ? 1 : 0),
+    },
+  },
+  {
+    name: 'The Shield Wall',
+    text: '[FORTIFY]\nAttached base gains: "Enemy ground units get [-1/-0] while attacking bases. \nYour units can\'t be defeated by enemy Shai-Hulud card abilities."',
+    front: {
+      gives: (g, self, unit) =>
+        g.controller(unit) !== self.controller && unit.arena === 'ground' && g.attack?.attacker === unit.id && g.attack.target === 'base'
+          ? { power: -1 }
+          : undefined,
+      cantBeDefeatedBy: (_g, _self, from) => from.def.name === 'Shai-Hulud',
     },
   },
 
@@ -2281,7 +2329,10 @@ function searchDeck(g: Game, self: Self, count: number, test: (card: CardDef) =>
   const p = self.controller
   const top = g.top(p, count)
   const found = top.filter((c) => test(g.def(c))).map((c) => c.id)
-  const pick = g.chooseOne(p, `${self.def.name}: search the top ${count} cards of your deck for ${what}`, found, { ai: 'best', source: self.def.id })
+  const text = found.length
+    ? `${self.def.name}: search the top ${count} cards of your deck for ${what}`
+    : `${self.def.name}: no ${what.replace(/^an? /, '')} in the top ${count} cards of your deck`
+  const pick = g.chooseOne(p, text, found, { ai: 'best', source: self.def.id, seen: top.map((c) => c.id) })
   if (pick) {
     g.reveal(p, [pick], self)
     g.drawCard(p, pick)

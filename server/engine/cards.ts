@@ -23,11 +23,12 @@ const aspectNames: Aspect[] = ['Vigilance', 'Command', 'Aggression', 'Cunning', 
 const typeNames = { unit: 'unit', leader: 'leader', base: 'base', event: 'event', upgrade: 'upgrade' } as const
 
 // A frame's id names what it is: unit-vigilance-villainy-space, leader-cunning-heroism-unit,
-// base-command-text; unit-token-text-neutral for a token unit, spice-token for the Spice token.
-// Fortifications are not cards a deck plays yet.
+// base-command-text; unit-token-text-neutral for a token unit, spice-token for the Spice token;
+// fortification-cunning for a Fortification, an upgrade with Fortify.
 function frameFacts(frameId: string) {
   const words = frameId.split('-')
-  const type = words[0] === 'spice' ? ('token' as const) : typeNames[words[0] as keyof typeof typeNames]
+  const type =
+    words[0] === 'spice' ? ('token' as const) : words[0] === 'fortification' ? ('upgrade' as const) : typeNames[words[0] as keyof typeof typeNames]
   const aspects = words.flatMap((w) => aspectNames.filter((a) => a.toLowerCase() === w))
   const arena: Arena = words.includes('space') ? 'space' : 'ground'
   return { type, aspects, arena, token: words.includes('token') }
@@ -45,6 +46,7 @@ function addKeyword(keywords: Keywords, word: string) {
     case 'ambush':
     case 'hidden':
     case 'plot':
+    case 'fortify':
       keywords[name.toLowerCase() as 'sentinel'] = true
       return true
     case 'raid':
@@ -115,7 +117,7 @@ export function printedKeywords(text = ''): Keywords {
   return readText(text).keywords
 }
 
-// The engine's card for a saved one, or nothing for a card no deck plays (a fortification).
+// The engine's card for a saved one, or nothing for a frame it doesn't know.
 // A leader's Leader side keeps the deploy cost; its back is the unit.
 export function cardDef(card: SavedCard): CardDef | undefined {
   const front = frameFacts(card.frameId)

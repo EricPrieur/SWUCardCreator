@@ -56,7 +56,7 @@ export function viewFor(state: GameState, you: PlayerId): PlayerView {
     return {
       name: player.name,
       leader: { ...player.leader },
-      base: { ...player.base },
+      base: { ...player.base, upgrades: (player.base.upgrades ?? []).map((u) => ({ ...u })) },
       deckCount: player.deck.length,
       hand: mine || handRevealed(state, p as PlayerId) ? player.hand.map((c) => ({ ...c })) : null,
       ...(mine && seesTopCard(state, p as PlayerId) && player.deck[0] && { topCard: { ...player.deck[0] } }),
@@ -76,11 +76,13 @@ export function viewFor(state: GameState, you: PlayerId): PlayerView {
 
   const named = new Set<string>()
   if (asked && 'options' in asked) for (const option of asked.options) if (option.def) named.add(option.def)
+  if (asked && 'seen' in asked) for (const card of asked.seen ?? []) named.add(card.def)
   if (asked && 'source' in asked && asked.source) named.add(asked.source)
   if (asked && 'card' in asked && asked.card) named.add(asked.card)
   for (const side of players) {
     named.add(side.leader.def)
     named.add(side.base.def)
+    for (const up of side.base.upgrades ?? []) named.add(up.def)
     for (const c of [...(side.hand ?? []), ...side.discard, ...side.spice, ...(side.topCard ? [side.topCard] : [])]) named.add(c.def)
     for (const r of side.resources) if (r.card) named.add(r.card.def)
     for (const u of side.units) {

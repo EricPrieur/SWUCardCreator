@@ -17,6 +17,8 @@ export type Keywords = {
   ambush?: boolean
   hidden?: boolean
   plot?: boolean
+  // Fortify (7.5.21): an upgrade that attaches to your base, not a unit
+  fortify?: boolean
   // Smuggle [Y]: the cost to play it from your resources
   smuggle?: number
   // Not a printed keyword: "deals combat damage before the defender", while attacking
@@ -79,7 +81,8 @@ export type UnitState = Inst & {
 export type PlayerState = {
   name: string
   leader: { def: string; deployed: boolean; exhausted: boolean; epicUsed: boolean }
-  base: { def: string; damage: number }
+  // Fortifications attached to it (none in a game saved before them)
+  base: { def: string; damage: number; upgrades?: (Inst & { owner: PlayerId })[] }
   deck: Inst[]
   hand: Inst[]
   discard: Inst[]
@@ -119,6 +122,9 @@ export type Prompt = {
   kind: 'pick' | 'option'
   // def: the card, for one shown only in the question (in a hand, on top of a deck)
   options: { id: string; label?: string; def?: string }[]
+  // Every card looked at, in order, when only some may be picked (a deck searched): shown
+  // with the question, those among the options to pick
+  seen?: { id: string; def: string }[]
   min: number
   max: number
   // How the AI answers: a pick that 'harm's or 'help's, the option it takes

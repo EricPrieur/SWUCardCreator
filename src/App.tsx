@@ -1642,8 +1642,10 @@ function Showcase(props: { folder: string }) {
     (list?.cards ?? []).map((card) => ({ item: card, facts: showcaseFacts(card) })),
     'Showcase order',
   )
-  // The set's cards, or a Deck Builder that only uses them
-  const [view, setView] = useRemembered<'cards' | 'decks'>(`showcase.${props.folder}.view`, 'cards')
+  // The set's cards, a Deck Builder that only uses them, and for DUNE, the game simulator, which
+  // plays its cards: open to anyone here
+  const [view, setView] = useRemembered<'cards' | 'decks' | 'play'>(`showcase.${props.folder}.view`, 'cards')
+  const playable = props.folder === 'DUNE'
   useEffect(() => {
     if (list) document.title = list.title
   }, [list])
@@ -1652,7 +1654,7 @@ function Showcase(props: { folder: string }) {
   if (!list) return <p className="empty-note">Loading…</p>
   const views = (
     <nav className="tabs showcase-views">
-      {(['cards', 'decks'] as const).map((value) => (
+      {(playable ? (['cards', 'decks', 'play'] as const) : (['cards', 'decks'] as const)).map((value) => (
         <a
           key={value}
           href={window.location.hash}
@@ -1662,11 +1664,19 @@ function Showcase(props: { folder: string }) {
             setView(value)
           }}
         >
-          {value === 'cards' ? 'Cards' : 'Deck Builder'}
+          {value === 'cards' ? 'Cards' : value === 'decks' ? 'Deck Builder' : 'Simulator'}
         </a>
       ))}
     </nav>
   )
+  if (view === 'play' && playable) {
+    return (
+      <>
+        {views}
+        <Simulator />
+      </>
+    )
+  }
   if (view === 'decks') {
     return (
       <>

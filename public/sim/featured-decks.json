@@ -1,0 +1,150 @@
+[
+  {
+    "id": "93c7ef0e-837e-45b2-95f7-9f41b1f59833",
+    "name": "Fremen Red Aggro",
+    "leader": "bd745293-96c8-448b-80c7-c7ae304ea2d3",
+    "base": "57e8ef64-ebff-4e73-92ea-9ea72f6624d8",
+    "cards": [
+      {
+        "id": "0cd1cd92-e363-4058-8c5c-6dcb216491ad",
+        "count": 3
+      },
+      {
+        "id": "d9cd0927-2c13-4cfd-b6d5-6f247e8ef56b",
+        "count": 3
+      },
+      {
+        "id": "48449f2c-fdcc-4c8d-9eff-1f0280b64cf5",
+        "count": 3
+      },
+      {
+        "id": "f9404462-1ce4-4a94-ae31-3ababa1a6824",
+        "count": 2
+      },
+      {
+        "id": "bee6cf10-abef-4eec-9398-c9f79a5ebf7d",
+        "count": 3
+      },
+      {
+        "id": "1a8f71ce-8cef-451c-97c1-53ffeb094a2f",
+        "count": 2
+      },
+      {
+        "id": "12db351f-b35c-4c9a-a158-ee4acefdddb5",
+        "count": 2
+      },
+      {
+        "id": "b5a0d3e5-b64e-4a72-a2c7-5305a768032a",
+        "count": 3
+      },
+      {
+        "id": "6016d1f0-bb83-4a96-99e8-d6056a0413f9",
+        "count": 3
+      },
+      {
+        "id": "c64a1e84-663f-4c24-b763-c9027c6b29fa",
+        "count": 3
+      },
+      {
+        "id": "c8547544-fce6-4f97-8d59-63237aa515d1",
+        "count": 2
+      },
+      {
+        "id": "650c2968-1ee1-476e-b340-a4d1c8167720",
+        "count": 2
+      },
+      {
+        "id": "04248bb9-9b38-4fe3-b171-ef47ceda7294",
+        "count": 1
+      },
+      {
+        "id": "c354b308-81c7-4dc7-9232-c4fa66363c32",
+        "count": 3
+      },
+      {
+        "id": "9a4481da-e820-4e55-9ab8-62190c22eb0d",
+        "count": 3
+      },
+      {
+        "id": "92da8977-396e-4d52-8df0-44db6b58f66c",
+        "count": 2
+      },
+      {
+        "id": "1d5b1877-1a1c-43b9-b6be-c6216f824ac2",
+        "count": 2
+      },
+      {
+        "id": "7484d1ed-3110-4f06-aa0d-5090d4e04815",
+        "count": 3
+      },
+      {
+        "id": "7c85f602-4737-4736-a57c-78b46e362d72",
+        "count": 2
+      },
+      {
+        "id": "921fc6fb-b12b-421d-942a-6ff09e6dd189",
+        "count": 3
+      }
+    ]
+  },
+  {
+    "id": "6d5e48c1-25ea-4144-b8f3-76ce5738aa98",
+    "name": "Rabban Trooper",
+    "leader": "0eea4382-6661-4450-bdb5-99cbcdc26045",
+    "base": "003c87be-36d7-4aae-813f-c949e1c29ae1",
+    "cards": [
+      {
+        "id": "9f59a5c3-b53d-492a-8bef-dd80cbc56c45",
+        "count": 3
+      },
+      {
+        "id": "662183f9-cb70-4223-8fdc-5e55a2ba5498",
+        "count": 2
+      },
+      {
+        "id": "c837a582-921a-4943-b281-6fe74059c88d",
+        "count": 3
+      },
+      {
+        "id": "27bb6ad3-ad8e-4de3-aeb9-0066913132f2",
+        "count": 3
+      },
+      {
+        "id": "a50da882-75b5-4399-a035-e760c4f1aa23",
+        "count": 15
+      },
+      {
+        "id": "d9cd0927-2c13-4cfd-b6d5-6f247e8ef56b",
+        "count": 3
+      },
+      {
+        "id": "605ba3e7-7ad7-429c-a50d-e590eac3727b",
+        "count": 3
+      },
+      {
+        "id": "0259bc37-e0a4-4b2c-8b49-21bb04637b54",
+        "count": 3
+      },
+      {
+        "id": "31c94086-879b-4776-9223-c4f626cc4029",
+        "count": 3
+      },
+      {
+        "id": "df991edb-41a1-485e-b3ed-a9553a96f4f3",
+        "count": 3
+      },
+      {
+        "id": "bee6cf10-abef-4eec-9398-c9f79a5ebf7d",
+        "count": 3
+      },
+      {
+        "id": "10c9c976-6cb2-4091-84fb-7824c40da68e",
+        "count": 3
+      },
+      {
+        "id": "a2e50bfd-efeb-48fb-92af-1cb96ef98eca",
+        "count": 3
+      }
+    ]
+  }
+]

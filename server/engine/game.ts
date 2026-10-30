@@ -46,6 +46,8 @@ const nameOf = (state: GameState, inst: { def: string }) => def(state, inst).nam
 // A base, as a prompt or an ability names it
 export const baseId = (p: PlayerId) => `base${p}`
 const baseOwner = (id: string): PlayerId | undefined => (id === 'base0' ? 0 : id === 'base1' ? 1 : undefined)
+// The Fortifications on a player's base
+export const baseUpgrades = (state: GameState, p: PlayerId) => (state.players[p].base.upgrades ??= [])
 
 // 5.2: bases and leaders in play, a random player chosen to decide who starts with the
 // initiative; then, actions of their own, that choice, the 6 cards drawn, the mulligans and the
@@ -88,7 +90,7 @@ export function createGame(options: { seed: number; decks: [DeckList, DeckList];
     state.players[p] = {
       name: list.name,
       leader: { def: list.leader, deployed: false, exhausted: false, epicUsed: false },
-      base: { def: list.base, damage: 0 },
+      base: { def: list.base, damage: 0, upgrades: [] },
       deck,
       hand: [],
       discard: [],
@@ -262,6 +264,8 @@ const tokenDef = (state: GameState, name: string) =>
 
 function createSpice(state: GameState, p: PlayerId, count = 1) {
   const spice = tokenDef(state, 'Spice')
+  // "you may create 2 Spice tokens instead" (Carthag Refinery): one more each time it is used
+  if (current) for (const { self, abilities } of holders(state, p)) if (abilities.moreSpice?.(new Game(state, p), self)) count++
   for (let i = 0; i < count; i++) state.players[p].spice.push({ id: `s${state.nextId++}`, def: spice.id })
   log(state, `${state.players[p].name} creates ${count === 1 ? 'a Spice token' : `${count} Spice tokens`}`, p)
 }
@@ -377,7 +381,7 @@ function scriptOf(state: GameState, inst: { def: string }, side: 'front' | 'back
 const unitScript = (state: GameState, unit: UnitState) => scriptOf(state, unit, unit.leader ? 'back' : 'front')
 
 // What has abilities on a player's side: their base, their leader's leader side until it
-// deploys, their units and the upgrades on them
+// deploys, their units and the upgrades on them, the Fortifications on their base
 type Holder = { self: Self; abilities: Abilities }
 function holders(state: GameState, p: PlayerId): Holder[] {
   const player = state.players[p]
@@ -389,6 +393,8 @@ function holders(state: GameState, p: PlayerId): Holder[] {
     for (const upgrade of unit.upgrades)
       list.push({ self: { id: upgrade.id, controller: p, def: def(state, upgrade), attachedTo: unit.id }, abilities: scriptOf(state, upgrade) })
   }
+  for (const upgrade of player.base.upgrades ?? [])
+    list.push({ self: { id: upgrade.id, controller: p, def: def(state, upgrade), attachedTo: baseId(p) }, abilities: scriptOf(state, upgrade) })
   return list
 }
 
@@ -454,6 +460,35 @@ function checkDefeats(state: GameState) {
     state.winner = lost.length === 2 ? 'draw' : other(lost[0])
     log(state, state.winner === 'draw' ? 'Both bases fall: a draw' : `${state.players[state.winner].name} wins`)
   }
+}
+
+// 8.30.3: a player controls one copy of a unique card (the same name and subtitle). With two in
+// play, they choose the one to keep and the other is defeated at once, before any ability
+// waiting to resolve (1.15.5b); abilities of either copy being played or defeated still resolve.
+function checkUnique(state: GameState, p: PlayerId) {
+  const player = state.players[p]
+  const inPlay = [...player.units, ...player.units.flatMap((u) => u.upgrades), ...(player.base.upgrades ?? [])]
+  const copies = new Map<string, string[]>()
+  for (const card of inPlay) {
+    const d = def(state, card)
+    if (!d.unique || d.token) continue
+    const key = `${d.name}|${d.subtitle ?? ''}`
+    copies.set(key, [...(copies.get(key) ?? []), card.id])
+  }
+  for (const ids of copies.values()) {
+    if (ids.length < 2) continue
+    const g = new Game(state, p)
+    const name = g.name(ids[0])
+    const keep = g.chooseOne(p, `${name} is unique: choose the copy to keep, the other is defeated`, ids, { ai: 'help' }) ?? ids[ids.length - 1]
+    for (const id of ids) {
+      if (id === keep) continue
+      const unit = findUnit(state, id)
+      if (unit) defeatUnit(state, unit)
+      else g.defeatUpgrade(id)
+    }
+    log(state, `${player.name} keeps one ${name}: a player controls one copy of a unique card`, p)
+  }
+  checkDefeats(state)
 }
 
 function defeatUnit(state: GameState, unit: UnitState) {
@@ -602,7 +637,9 @@ export function legalActions(state: GameState, p: PlayerId): Action[] {
     const extra = { ...(from === 'smuggle' && { smuggle: true }), ...(from === 'discard' && { discard: true }), ...(spice && { spice: true }) }
     const fromDiscard = from === 'discard' ? scriptOf(state, card).discardPlay : undefined
     const self: Self = { id: card.id, controller: p, def: d }
-    if (d.type === 'upgrade') {
+    if (d.keywords.fortify) {
+      if (!fromDiscard || fromDiscard(g, self)) actions.push({ type: 'play', card: card.id, attachTo: baseId(p), ...extra })
+    } else if (d.type === 'upgrade') {
       for (const unit of units)
         if (canAttach(state, p, d, unit) && (!fromDiscard || fromDiscard(g, self, unit)))
           actions.push({ type: 'play', card: card.id, attachTo: unit.id, ...extra })
@@ -886,10 +923,16 @@ type PlayOptions = { discount?: number; free?: boolean; ignoreAdditional?: boole
 const discountFor = (state: GameState, p: PlayerId, card: CardDef) =>
   state.discounts.find((d) => d.player === p && card.traits.includes(d.trait))
 
+// "[Creature] cards you play cost [1] less.": what the cards on a player's side take off
+function costsLess(state: GameState, p: PlayerId, card: CardDef) {
+  const g = new Game(state)
+  return holders(state, p).reduce((sum, { self, abilities }) => sum + (abilities.costsLess?.(g, self, card) ?? 0), 0)
+}
+
 function priceOf(state: GameState, p: PlayerId, card: CardDef, from: PlayedFrom, options: PlayOptions = {}) {
   if (options.free || options.spiceInstead) return 0
   const cost = from === 'smuggle' ? smuggleCost(state, p, card) : playCost(state, p, card)
-  return Math.max(0, cost - (options.discount ?? 0) - (discountFor(state, p, card)?.amount ?? 0))
+  return Math.max(0, cost - (options.discount ?? 0) - (discountFor(state, p, card)?.amount ?? 0) - costsLess(state, p, card))
 }
 
 // What a card in a player's hand costs them to play now: its cost, aspects missing and
@@ -979,6 +1022,11 @@ function playCard(state: GameState, p: PlayerId, id: string, attachTo?: string, 
     log(state, `${player.name} plays ${d.name}${using}`, p)
     queue(state, p, d.name, scriptOf(state, card).whenPlayed, self)
     queueAmbush(state, p, unit)
+  } else if (d.keywords.fortify) {
+    // 7.5.21: onto its player's own base
+    baseUpgrades(state, p).push({ ...card, owner: p })
+    log(state, `${player.name} attaches ${d.name} to ${nameOf(state, player.base)}${using}`, p)
+    queue(state, p, d.name, scriptOf(state, card).whenPlayed, { ...self, other: baseId(p), attachedTo: baseId(p) })
   } else if (d.type === 'upgrade') {
     const unit = findUnit(state, attachTo as string) as UnitState
     unit.upgrades.push({ ...card, owner: p })
@@ -996,6 +1044,8 @@ function playCard(state: GameState, p: PlayerId, id: string, attachTo?: string, 
       log(state, `${player.name} puts ${d.name} into play as a resource`, p)
     } else player.discard.push(card)
   }
+  // A second copy of a unique card: one is defeated before its When Played resolves
+  if (d.type !== 'event') checkUnique(state, p)
   // Abilities that trigger on another card being played
   trigger(state, p, 'whenYouPlay', { other: card.id, otherDef: d }, card.id)
   checkDefeats(state)
@@ -1180,6 +1230,7 @@ function deploy(state: GameState, p: PlayerId) {
     controller: p,
     def: def(state, unit),
   })
+  checkUnique(state, p)
   queueAmbush(state, p, unit)
   queuePlots(state, p)
   resolveTriggers(state)
@@ -1222,7 +1273,8 @@ function useAbility(state: GameState, p: PlayerId, source: string, index: number
 
 // --- What abilities can do ---
 
-type Choice = { optional?: boolean; ai?: Prompt['ai']; source?: string }
+// seen: the cards looked at, those not among ids shown too
+type Choice = { optional?: boolean; ai?: Prompt['ai']; source?: string; seen?: string[] }
 
 // The game as card scripts see and change it: what is where, questions for the players, and
 // the effects cards have. Damage and defeats are dealt with as they happen.
@@ -1281,9 +1333,13 @@ export class Game {
   get attack() {
     return this.state.attack
   }
-  // Every upgrade in play, with the unit it is on
-  upgrades() {
-    return this.units().flatMap((unit) => unit.upgrades.map((upgrade) => ({ ...upgrade, unit })))
+  // Every upgrade in play, with its controller and the unit it is on (none for a Fortification,
+  // on its controller's base)
+  upgrades(): (Inst & { owner: PlayerId; controller: PlayerId; unit?: UnitState })[] {
+    return [
+      ...this.units().flatMap((unit) => unit.upgrades.map((upgrade) => ({ ...upgrade, controller: controllerOf(this.state, unit), unit }))),
+      ...([0, 1] as const).flatMap((p) => (this.state.players[p].base.upgrades ?? []).map((upgrade) => ({ ...upgrade, controller: p }))),
+    ]
   }
   player(p: PlayerId) {
     return this.state.players[p]
@@ -1292,13 +1348,19 @@ export class Game {
   // Asking. A question with nothing to choose from isn't asked.
   // A card in a hand, deck or discard pile is shown in the question: only the player asked sees it
   choose(player: PlayerId, text: string, ids: string[], options: Choice & { min?: number; max?: number } = {}) {
-    if (!ids.length) return []
+    // Nothing to choose: no question, unless there are cards looked at to show
+    if (!ids.length && !options.seen?.length) return []
     const min = Math.min(options.min ?? 1, ids.length)
     const max = Math.min(options.max ?? 1, ids.length)
+    const seen = options.seen?.flatMap((id) => {
+      const card = this.cardInfo(id)
+      return card ? [{ id, def: card.def }] : []
+    })
     return ask({
       player,
       text,
       source: options.source,
+      ...(seen && { seen }),
       kind: 'pick',
       options: ids.map((id) => ({ id, label: this.name(id), def: this.cardInfo(id)?.def })),
       min,
@@ -1346,7 +1408,15 @@ export class Game {
   }
   private cardInfo(id: string) {
     for (const pl of this.state.players)
-      for (const card of [...pl.hand, ...pl.deck, ...pl.discard, ...pl.resources.map((r) => r.card), ...pl.spice])
+      for (const card of [
+        ...pl.hand,
+        ...pl.deck,
+        ...pl.discard,
+        ...pl.resources.map((r) => r.card),
+        ...pl.spice,
+        ...pl.units.flatMap((u) => u.upgrades),
+        ...(pl.base.upgrades ?? []),
+      ])
         if (card.id === id) return card
     return undefined
   }
@@ -1388,19 +1458,34 @@ export class Game {
     damaged.damage -= healed
     this.log(`${from ? `${from.def.name} heals` : 'Healed'} ${healed} damage from ${this.name(target)}`, from?.controller)
   }
-  // A unit an upgrade keeps from being defeated by enemy card abilities isn't
-  defeat(unitId: string) {
+  // A unit an upgrade keeps from being defeated by enemy card abilities isn't; nor one a card
+  // on its side keeps from being defeated by the card whose ability it is (`from`)
+  defeat(unitId: string, from?: Self) {
     const unit = this.unit(unitId)
     if (!unit) return
+    const p = controllerOf(this.state, unit)
     const safe = unit.upgrades.some((u) => scriptOf(this.state, u).cantBeDefeatedByEnemies)
-    if (safe && this.by !== undefined && this.by !== controllerOf(this.state, unit)) {
+    if (safe && this.by !== undefined && this.by !== p) {
       this.log(`${nameOf(this.state, unit)} can't be defeated by enemy card abilities`)
+      return
+    }
+    const guard = from && from.controller !== p && holders(this.state, p).find(({ self, abilities }) => abilities.cantBeDefeatedBy?.(this, self, from))
+    if (guard) {
+      this.log(`${guard.self.def.name}: ${nameOf(this.state, unit)} can't be defeated by ${from.def.name}`, p)
       return
     }
     defeatUnit(this.state, unit)
     checkDefeats(this.state)
   }
   defeatUpgrade(upgradeId: string) {
+    for (const p of [0, 1] as const) {
+      const base = this.state.players[p].base
+      const upgrade = base.upgrades?.find((u) => u.id === upgradeId)
+      if (!upgrade) continue
+      base.upgrades = base.upgrades!.filter((u) => u !== upgrade)
+      discardUpgrade(this.state, upgrade)
+      this.log(`${nameOf(this.state, upgrade)} on ${nameOf(this.state, base)} is defeated`)
+    }
     for (const unit of this.units()) {
       const upgrade = unit.upgrades.find((u) => u.id === upgradeId)
       if (!upgrade) continue
@@ -1568,6 +1653,7 @@ export class Game {
     const before = controllerOf(this.state, unit)
     moveUnit(this.state, unit, p)
     if (untilRegroup && before !== p) this.state.borrowed.push({ unit: unitId, owner: unit.owner })
+    checkUnique(this.state, p)
   }
   // An upgrade moved to another unit
   moveUpgrade(upgradeId: string, unitId: string) {
@@ -1686,7 +1772,8 @@ export class Game {
     const price = priceOf(this.state, p, d, from, options) - spiceRoom(this.state, p, d)
     if (price > ready) return false
     if (!options.ignoreAdditional && !canPayAdditional(this.state, p, d)) return false
-    if (d.type === 'upgrade' && !this.units((u) => canAttach(this.state, p, d, u)).length) return false
+    // 7.5.21b: a Fortification needs no unit to attach to
+    if (d.type === 'upgrade' && !d.keywords.fortify && !this.units((u) => canAttach(this.state, p, d, u)).length) return false
     return slot ? true : price <= ready
   }
   playCard(p: PlayerId, cardId: string, options: PlayOptions & { smuggle?: boolean } = {}) {
@@ -1694,7 +1781,8 @@ export class Game {
     const from = this.placeOf(p, cardId, options.smuggle) as PlayedFrom
     const d = this.def(this.cardInfo(cardId)!)
     let attachTo: string | undefined
-    if (d.type === 'upgrade') {
+    if (d.keywords.fortify) attachTo = baseId(p)
+    else if (d.type === 'upgrade') {
       const units = this.units((u) => canAttach(this.state, p, d, u)).map((u) => u.id)
       attachTo = this.chooseOne(p, `Choose a unit for ${d.name}`, units, { ai: 'help', source: d.id }) ?? undefined
       if (!attachTo) return false

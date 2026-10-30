@@ -58,6 +58,11 @@ const defs: CardDef[] = [
   card('troops', { ...scripted('Harkonnen Troops'), cost: 1, power: 2, hp: 1, traits: ['Harkonnen', 'Trooper'] }),
   card('sergeant', { ...scripted('Harkonnen Sergeant'), cost: 3, power: 3, hp: 3 }),
   card('kanly', { ...scripted('Kanly'), type: 'event', cost: 2, arena: undefined }),
+  card('thumper', { ...scripted('Thumper'), unique: true, type: 'upgrade', cost: 1, arena: undefined, traits: ['Fortification', 'Fremen'] }),
+  card('refinery', { ...scripted('Carthag Refinery'), type: 'upgrade', cost: 2, arena: undefined, traits: ['Fortification', 'Harkonnen'] }),
+  card('wall', { ...scripted('The Shield Wall'), type: 'upgrade', cost: 3, arena: undefined, traits: ['Fortification'] }),
+  card('creature', { cost: 3, power: 3, hp: 3, traits: ['Creature'] }),
+  card('harvester', { ...scripted('Spice Harvester'), cost: 3, power: 2, hp: 4, traits: ['Vehicle', 'Harvester'] }),
   card('pawn', { name: 'Pawn of the Sisterhood', type: 'upgrade', cost: 2, arena: undefined, text: 'Attach to a non-[{Bene Gesserit}], non-[{Vehicle}] unit.\nAttached unit gains [Sentinel].' }),
 ]
 
@@ -285,4 +290,83 @@ test('Harkonnen Sergeant offers the Trooper it draws at its cost then, played by
   assert.deepEqual(state.prompt!.play, { card: 'k1', cost: 0 })
   state = answer(state, 'yes')
   assert.ok(state.players[0].units.some((u) => u.id === 'k1'))
+})
+
+test('Thumper attaches to your base, with no unit in play, and finds a Creature that costs 1 less', () => {
+  let state = table({ hand0: ['thumper'], deck0: ['big', 'creature', 'big', 'big'] })
+  assert.deepEqual(legalActions(state, 0).filter((a) => a.type === 'play'), [{ type: 'play', card: 'h0', attachTo: 'base0' }])
+  state = act(state, 0, { type: 'play', card: 'h0', attachTo: 'base0' })
+  state = answer(state, 'k1')
+  assert.deepEqual(state.players[0].base.upgrades?.map((u) => u.id), ['h0'])
+  assert.equal(viewFor(state, 0).players[0].prices?.k1, 2)
+  state.active = 0
+  state = act(state, 0, { type: 'play', card: 'k1' })
+  assert.deepEqual(state.players[0].base.upgrades, [], 'playing a Creature defeats it')
+  assert.ok(state.players[0].discard.some((c) => c.id === 'h0'))
+})
+
+test('Carthag Refinery: Harvesters cost 1 less, and a Spice token may be 2 for 1 damage to the base', () => {
+  let state = table({ base0: 'arrakis', hand0: ['harvester'] })
+  state.players[0].base.upgrades = [{ id: 'ref', def: 'refinery', owner: 0 }]
+  assert.equal(viewFor(state, 0).players[0].prices?.h0, 2)
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  state = answer(state, 'yes')
+  assert.equal(state.players[0].spice.length, 2)
+  assert.equal(state.players[0].base.damage, 1)
+})
+
+test("The Shield Wall: enemy ground attackers get -1/-0 at a base, and Shai-Hulud can't defeat your units", () => {
+  let state = table({ base0: 'arrakis', units0: ['big'], units1: ['small'], hand0: ['worm'] })
+  state.players[1].base.upgrades = [{ id: 'wall', def: 'wall', owner: 1 }]
+  state = act(state, 0, { type: 'attack', attacker: 'u00', target: 'base' })
+  assert.equal(state.players[1].base.damage, 4)
+  state.active = 0
+  state.players[0].resources.push(...Array.from({ length: 2 }, (_, i) => ({ card: { id: `rx${i}`, def: 'big' }, exhausted: false })))
+  for (const r of state.players[0].resources) r.exhausted = false
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  assert.ok(state.players[1].units.some((u) => u.id === 'u10'))
+  assert.ok(!state.players[0].units.some((u) => u.id === 'u00'), 'your own units have no Shield Wall')
+})
+
+test('Family Atomics defeats a Fortification and draws a card', () => {
+  let state = table({ hand0: ['atomics'] })
+  state.players[1].base.upgrades = [{ id: 'wall', def: 'wall', owner: 1 }]
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  state = answer(state, '0')
+  state = answer(state, 'wall')
+  assert.deepEqual(state.players[1].base.upgrades, [])
+  assert.ok(state.players[1].discard.some((c) => c.id === 'wall'))
+  assert.equal(state.players[0].hand.length, 1)
+})
+
+test('A deck search shows every card looked at, even when none may be taken', () => {
+  let state = table({ hand0: ['thumper'], deck0: ['big', 'creature', 'small'] })
+  state = act(state, 0, { type: 'play', card: 'h0', attachTo: 'base0' })
+  assert.deepEqual(state.prompt!.seen?.map((c) => c.id), ['k0', 'k1', 'k2'])
+  assert.deepEqual(state.prompt!.options.map((o) => o.id), ['k1'])
+  state = table({ hand0: ['thumper'], deck0: ['big', 'small'] })
+  state = act(state, 0, { type: 'play', card: 'h0', attachTo: 'base0' })
+  assert.equal(state.prompt!.max, 0, 'nothing found: shown, with nothing to pick')
+  state = answer(state)
+  assert.equal(state.prompt, null)
+})
+
+test('A second copy of a unique card: its player keeps one, the other defeated before When Played resolves', () => {
+  let state = table({ units0: ['paul'], units1: ['small'], hand0: ['paul', 'thumper', 'thumper'] })
+  state.players[0].units[0].damage = 3
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  assert.match(state.prompt!.text, /unique/)
+  assert.deepEqual(state.prompt!.options.map((o) => o.id), ['u00', 'h0'])
+  state = answer(state, 'h0')
+  assert.deepEqual(state.players[0].units.map((u) => u.id), ['h0'])
+  assert.ok(state.players[0].discard.some((c) => c.id === 'u00'))
+  // A unique Fortification too
+  state.active = 0
+  state.players[0].base.upgrades = [{ id: 'old', def: 'thumper', owner: 0 }]
+  state = act(state, 0, { type: 'play', card: 'h1', attachTo: 'base0' })
+  assert.equal(state.prompt!.options[1].def, 'thumper', 'the copies are shown as cards')
+  state = answer(state, 'old')
+  assert.deepEqual(state.players[0].base.upgrades?.map((u) => u.id), ['old'])
+  // Thumper's When Played still resolves: its search
+  assert.match(state.prompt?.text ?? '', /Thumper/)
 })

@@ -165,6 +165,8 @@ function side(state: GameState, p: PlayerId) {
   let score = left + Math.max(0, 10 - left) * 0.6
   for (const unit of player.units) score += unitWorth(state, unit)
   score += player.hand.length * 1.5 + player.resources.length + player.spice.length
+  // A Fortification keeps giving while its base stands
+  score += (player.base.upgrades?.length ?? 0) * 1.5
   if (state.initiative === p) score += 0.5
   return score
 }

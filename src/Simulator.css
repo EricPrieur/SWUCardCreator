@@ -921,32 +921,125 @@
   font-weight: 700;
   line-height: 1.6;
 }
-.sim-stats {
+.sim-face {
   position: absolute;
-  top: 0.4vh;
-  right: -0.6vh;
-  padding: 0.1vh 0.6vh;
-  border-radius: 0.6vh;
-  background: #000;
-  border: 1px solid var(--spice);
-  color: #ffd9a8;
-  font-size: 1.4vh;
-  font-weight: 800;
+  left: 50%;
+  top: 50%;
+  width: var(--uw);
+  height: var(--uh);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  transition: transform 0.2s;
 }
+.sim-unit.exhausted .sim-face {
+  transform: translate(-50%, -50%) rotate(90deg);
+}
+/* Over the printed power (left) and HP (right): half as large again, turned with the card */
+.sim-stat {
+  position: absolute;
+  top: 63.7%;
+  width: 19%;
+  height: 15.5%;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  transform: translate(-50%, -50%);
+  border: 0.2vh solid #fff;
+  border-radius: 0.6vh;
+  box-shadow: 0 0.2vh 0.6vh rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 2.1vh;
+  font-weight: 900;
+  text-shadow: 0 0.1vh 0.2vh rgba(0, 0, 0, 0.7);
+}
+.sim-stat.power {
+  left: 10.3%;
+  background: linear-gradient(#e0413a, #9c1c1c);
+}
+.sim-stat.hp {
+  left: 89.2%;
+  background: linear-gradient(#3fa6e6, #155f9c);
+}
+.sim-stat.up {
+  border-color: #6dff7a;
+  color: #c9ffcc;
+}
+.sim-stat.down {
+  border-color: #ff8a80;
+  color: #ffd0cc;
+}
+.sim-stat b {
+  display: block;
+  line-height: 1;
+  transition: transform 0.2s;
+}
+
+/* Tokens in the card's top right corner: +1 for each Experience, green; -1 for each
+   Weakness, red, to its left */
+.sim-xp {
+  position: absolute;
+  top: -0.6vh;
+  right: -0.6vh;
+  display: flex;
+  gap: 0.3vh;
+  z-index: 3;
+}
+.sim-xp i {
+  padding: 0 0.6vh;
+  border-radius: 0.8vh;
+  background: #1f7a2a;
+  border: 1px solid #6dff7a;
+  color: #eaffea;
+  font-size: 1.5vh;
+  font-style: normal;
+  font-weight: 900;
+  line-height: 1.5;
+}
+.sim-xp i.down {
+  background: #8a1f1f;
+  border-color: #ff8a80;
+  color: #ffe5e2;
+}
+.sim-unit-slot {
+  isolation: isolate;
+}
+/* The card over the banners tucked under it */
+.sim-unit-slot > .sim-unit {
+  z-index: 10;
+}
+/* Tucked under the card as it lies: under its bottom edge, which an exhausted card (turned,
+   centred in a square) has higher up and wider */
 .sim-upgrades {
+  --tuck: 1.2vh;
   display: grid;
-  gap: 0.2vh;
-  max-width: var(--uh);
+  width: calc(var(--uw) * 0.86);
+  margin-top: calc(-0.3vh - var(--tuck));
+}
+.sim-unit-slot.exhausted .sim-upgrades {
+  width: calc(var(--uh) * 0.86);
+  margin-top: calc(-0.3vh - var(--tuck) - (var(--uh) - var(--uw)) / 2);
 }
 .sim-upgrades span {
-  padding: 0 0.5vh;
-  border-radius: 0.4vh;
-  background: rgba(120, 60, 10, 0.7);
+  position: relative;
+  margin-top: calc(-1 * var(--tuck));
+  padding: var(--tuck) 0.6vh 0.2vh;
+  border: 1px solid #c9893b;
+  border-radius: 0 0 0.6vh 0.6vh;
+  background: linear-gradient(#2b1806, #5a3410);
+  color: #ffd9a8;
   font-size: 1.1vh;
+  font-weight: 800;
+  text-align: center;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  box-shadow: 0 0.3vh 0.6vh rgba(0, 0, 0, 0.5);
   cursor: default;
+}
+.sim-upgrades span:first-child {
+  margin-top: 0;
 }
 
 .sim-landscape.can-act {
@@ -1329,4 +1422,100 @@
 }
 .size-tiny .sim-copies span {
   font-size: 1.2vh;
+}
+
+/* Fortifications: banners tucked under the top edge of their base, each peeking out above
+   the one before, the name hoverable for the full card */
+.sim-base-slot > .sim-landscape {
+  z-index: 1;
+}
+.sim-fortifications {
+  position: absolute;
+  left: 6%;
+  right: 6%;
+  bottom: calc(100% - 1.2vh);
+  display: flex;
+  flex-direction: column-reverse;
+  z-index: 0;
+}
+.sim-fortification {
+  margin-bottom: -0.9vh;
+  padding: 0.25vh 0.8vh 1.2vh;
+  border: 1px solid #c9893b;
+  border-radius: 0.6vh 0.6vh 0 0;
+  background: linear-gradient(#5a3410, #2b1806);
+  color: #ffd9a8;
+  font-size: 1.15vh;
+  font-weight: 800;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-shadow: 0 -0.3vh 0.6vh rgba(0, 0, 0, 0.5);
+  cursor: default;
+}
+.sim-fortification:first-child {
+  margin-bottom: 0;
+}
+
+/* A deck searched: the cards you may take framed green, the others dimmed */
+.sim-choice-cards button.can-pick {
+  border-color: #6dd66b;
+  box-shadow: 0 0 1.4vh rgba(109, 214, 107, 0.7);
+}
+.sim-choice-cards button.cant-pick {
+  cursor: default;
+  filter: brightness(0.55) saturate(0.6);
+}
+.sim-choice-cards button.cant-pick:hover {
+  border-color: transparent;
+  filter: brightness(0.8) saturate(0.8);
+}
+/* Many cards searched: smaller, so the 10 of a Thumper fit */
+.sim-choice-cards:has(> :nth-child(6)) img {
+  height: 20vh;
+}
+
+/* Upgrade and Fortification banners in the colour of their card's aspect */
+.sim-upgrades span.aspect-vigilance,
+.sim-tags.aspect-vigilance span,
+.sim-fortification.aspect-vigilance {
+  background: linear-gradient(#123a5e, #1f5f96);
+  border-color: #6fb4ec;
+  color: #e3f2ff;
+}
+.sim-upgrades span.aspect-command,
+.sim-tags.aspect-command span,
+.sim-fortification.aspect-command {
+  background: linear-gradient(#173f22, #2a6e3a);
+  border-color: #7cd68c;
+  color: #e5ffe9;
+}
+.sim-upgrades span.aspect-aggression,
+.sim-tags.aspect-aggression span,
+.sim-fortification.aspect-aggression {
+  background: linear-gradient(#5a1414, #9a2626);
+  border-color: #f08a7e;
+  color: #ffe6e2;
+}
+.sim-upgrades span.aspect-cunning,
+.sim-tags.aspect-cunning span,
+.sim-fortification.aspect-cunning {
+  background: linear-gradient(#6a5208, #a8840f);
+  border-color: #f5d35a;
+  color: #fff7d6;
+}
+.sim-upgrades span.aspect-heroism,
+.sim-tags.aspect-heroism span,
+.sim-fortification.aspect-heroism {
+  background: linear-gradient(#cfcabb, #f2efe6);
+  border-color: #fff;
+  color: #2a2418;
+}
+.sim-upgrades span.aspect-villainy,
+.sim-tags.aspect-villainy span,
+.sim-fortification.aspect-villainy {
+  background: linear-gradient(#0e0e0e, #2c2c2c);
+  border-color: #8a8a8a;
+  color: #eee;
 }

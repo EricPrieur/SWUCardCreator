@@ -24,6 +24,14 @@ const AI: PlayerId = 1
 const AI_DELAY = 700
 
 const img = (image: string) => asset(`/showcase/${SET}/${image}.jpg`)
+// A banner's colour: its card's first aspect, Vigilance to Command before Heroism or Villainy
+const ASPECT_ORDER = ['Vigilance', 'Command', 'Aggression', 'Cunning', 'Heroism', 'Villainy']
+const aspectClass = (aspects: string[]) => {
+  const first = ASPECT_ORDER.find((a) => aspects.includes(a))
+  return first ? ` aspect-${first.toLowerCase()}` : ''
+}
+// A stat's class beside its printed value: ' up' when raised, ' down' when lowered
+const statShift = (now: number, printed = now) => (now > printed ? ' up' : now < printed ? ' down' : '')
 
 // The set's cards, and each one's images: its front and a leader's unit side. A two-sided
 // base is two cards, its second side's id ending in BACK_SIDE, as the Deck Builder has it.
@@ -66,13 +74,23 @@ const deckSources = [
   { from: `${SET} Showcase`, scope: `showcase:${SET}`, key: `dune-unlimited.decks.${SET}` },
 ]
 
+// Decks anyone may try, signed in or not, which ship with the site
+const FEATURED = 'Featured Decks'
+async function loadFeaturedDecks(): Promise<SavedDeck[]> {
+  const response = await fetch(asset('/sim/featured-decks.json')).catch(() => undefined)
+  if (!response?.ok) return []
+  const decks: Pick<Deck, 'id' | 'name' | 'leader' | 'base' | 'cards'>[] = await response.json()
+  return decks.map((deck) => ({ ...deck, id: `featured-${deck.id}`, sets: [SET], sideboard: [], from: FEATURED }))
+}
+
 async function loadSavedDecks(account: Session | null, set: SetCards): Promise<SavedDeck[]> {
-  const lists = await Promise.all(
-    deckSources.map(async ({ from, scope, key }) => {
+  const lists = await Promise.all([
+    loadFeaturedDecks(),
+    ...deckSources.map(async ({ from, scope, key }) => {
       const decks = account ? await loadAccountDecks(account, scope).catch(() => [] as Deck[]) : loadDecks(key)
       return decks.map((deck) => ({ ...deck, from }))
     }),
-  )
+  ])
   const known = new Set(set.defs.map((d) => d.id))
   return lists
     .flat()
@@ -117,12 +135,12 @@ function DeckPicker(props: {
   const chosen = props.value.startsWith('deck:') ? decks.find((deck) => `deck:${deck.id}` === props.value) : undefined
   // A remembered deck that is gone is a random one
   const value = props.value.startsWith('deck:') && !chosen ? 'random-generated' : props.value
-  const groups = deckSources.map(({ from }) => ({ from, decks: decks.filter((deck) => deck.from === from) }))
+  const groups = [FEATURED, ...deckSources.map(({ from }) => from)].map((from) => ({ from, decks: decks.filter((deck) => deck.from === from) }))
   const about: Record<string, string> = {
     'random-generated': `A random leader and base, with 50 cards of the ${SET} set they can pay for.`,
-    random: decks.length ? 'One of your decks, picked at random.' : 'You have no decks yet: a random deck is made instead.',
+    random: decks.length ? 'One of the decks in this list, picked at random.' : 'There are no decks yet: a random deck is made instead.',
     'different-random':
-      decks.length > 1 ? 'One of your decks at random, not the one you play.' : 'One of your decks, picked at random.',
+      decks.length > 1 ? 'One of the decks in this list at random, not the one you play.' : 'One of the decks in this list, picked at random.',
   }
   return (
     <div className={`sim-picker ${props.side}`}>
@@ -483,7 +501,13 @@ function Table(props: {
   const askedOn = (id: string) => !!asked && asked.kind === 'pick' && asked.options.some((o) => o.id === id)
   // Cards in your hand are picked there, red for a discard
   const handIds = new Set(me.hand?.map((c) => c.id))
-  const shown = asked?.kind === 'pick' ? asked.options.filter((o) => !boardIds.has(o.id) && !handIds.has(o.id)) : []
+  // A deck searched shows every card looked at, those you may take framed green
+  const shown: { id: string; label?: string; def?: string; can?: boolean }[] =
+    asked?.kind !== 'pick'
+      ? []
+      : asked.seen
+        ? asked.seen.map((c) => ({ ...c, can: askedOn(c.id) }))
+        : asked.options.filter((o) => !boardIds.has(o.id) && !handIds.has(o.id))
   const harmful = !!asked && /discard/i.test(asked.text)
   // A question about a card off the board is asked beside it, apart from the board
   const apart = !!shown.length || !!asked?.card || !!menu
@@ -625,7 +649,7 @@ function Table(props: {
     const count = asked.max > 1 ? ` (${picked.length}/${asked.max})` : ''
     prompt = askText(asked) + count
     buttons = [
-      ...(asked.min === 0 ? [{ label: asked.max === 1 ? 'Skip' : 'None', onClick: () => answer([]) }] : []),
+      ...(asked.min === 0 ? [{ label: asked.max === 0 ? 'OK' : asked.max === 1 ? 'Skip' : 'None', onClick: () => answer([]) }] : []),
       ...(asked.max > 1 || asked.min > 1
         ? [{ label: 'Done', kind: 'go', disabled: picked.length < asked.min || !picked.length, onClick: () => answer(picked) }]
         : []),
@@ -678,7 +702,7 @@ function Table(props: {
       } else if (attacker) {
         prompt = `Choose a target for ${defOf(attacker.def).name}`
       } else if (attachCard) {
-        prompt = `Choose a unit for ${defOf(attachCard.def).name}`
+        prompt = `Choose ${defOf(attachCard.def).keywords.fortify ? 'your base' : 'a unit'} for ${defOf(attachCard.def).name}`
       } else {
         prompt = 'Your turn: play a card, attack or pass'
       }
@@ -766,10 +790,14 @@ function Table(props: {
   const clickBase = (id: string) => {
     if (asked) return askedOn(id) && pickAnswer(id)
     if (id === 'base' && mode?.kind === 'attack' && isTarget('base')) act(YOU, { type: 'attack', attacker: mode.attacker, target: 'base' })
+    else if (mode?.kind === 'attach' && isTarget(id)) act(YOU, attachAction(mode, id))
   }
 
   const unitView = (side: SideView, arena: Arena) => (u: SideView['units'][number]) => {
     const d = defOf(u.def)
+    const tokenCount = (name: string) => u.upgrades.filter((up) => defOf(up.def).token && defOf(up.def).name === name).length
+    const [experience, weakness] = [tokenCount('Experience'), tokenCount('Weakness')]
+    const banners = u.upgrades.filter((up) => !(defOf(up.def).token && ['Experience', 'Weakness'].includes(defOf(up.def).name)))
     const keywords = u.keywords
     const printed = u.leader ? d.unit : d
     const target = isTarget(u.id)
@@ -799,7 +827,7 @@ function Table(props: {
     ].filter(Boolean)
     const image = imageOf(u.def, u.leader)
     return (
-      <div key={u.id} className="sim-unit-slot">
+      <div key={u.id} className={`sim-unit-slot${u.exhausted ? ' exhausted' : ''}`}>
         <button
           type="button"
           className={classes.filter(Boolean).join(' ')}
@@ -826,26 +854,43 @@ function Table(props: {
               ))}
             </span>
           )}
-          {!!tags.length && (
-            <span className="sim-tags">
-              {tags.map((tag) => (
-                <span key={tag as string}>{tag}</span>
-              ))}
+          {/* What lies on the card, turned with it when it is exhausted: its power and HP now,
+              larger than the printed ones they cover (hovered, the card shows them as printed),
+              green when raised, red when lowered; its keywords; its tokens */}
+          <span className="sim-face" aria-hidden="true">
+            {!!tags.length && (
+              <span className={`sim-tags${aspectClass(d.aspects)}`}>
+                {tags.map((tag) => (
+                  <span key={tag as string}>{tag}</span>
+                ))}
+              </span>
+            )}
+            {/* Top right: +1 for each Experience token, and to its left -1 for each Weakness token */}
+            {!!(experience || weakness) && (
+              <span className="sim-xp">
+                {!!weakness && <i className="down">-{weakness}</i>}
+                {!!experience && <i>+{experience}</i>}
+              </span>
+            )}
+            <span className={`sim-stat power${statShift(u.power, printed?.power)}`}>
+              <b>{u.power}</b>
             </span>
-          )}
-          {(u.power !== printed?.power || u.hp !== printed?.hp) && (
-            <span className="sim-stats" title="Power and HP now">
-              {u.power}/{u.hp}
+            <span className={`sim-stat hp${statShift(u.hp, printed?.hp)}`}>
+              <b>{u.hp}</b>
             </span>
-          )}
+          </span>
           {!!u.damage && <span className="sim-damage">{u.damage}</span>}
         </button>
-        {!!u.upgrades.length && (
+        {/* Its upgrades, banners tucked under the card's bottom edge as it lies, ready or
+            exhausted, each hoverable for the full card. Experience and Weakness tokens are the
+            badge above it. */}
+        {!!banners.length && (
           <span className="sim-upgrades">
-            {u.upgrades.map((up) => (
+            {banners.map((up, i) => (
               <span
                 key={up.id}
-                className={defOf(up.def).token ? `token ${defOf(up.def).name.toLowerCase()}` : undefined}
+                className={defOf(up.def).token ? `token ${defOf(up.def).name.toLowerCase()}` : aspectClass(defOf(up.def).aspects).trim() || undefined}
+                style={{ zIndex: 9 - i }}
                 onMouseEnter={look(imageOf(up.def))}
                 onMouseLeave={leave}
               >
@@ -986,7 +1031,9 @@ function Table(props: {
     const image = imageOf(side.base.def)
     const hp = defOf(side.base.def).hp
     const id = side === me ? `base${YOU}` : `base${AI}`
-    const target = asked ? askedOn(id) : side === opp && isTarget('base')
+    // Your own base is a target for a Fortification being played
+    const target = asked ? askedOn(id) : side === opp ? isTarget('base') : mode?.kind === 'attach' && isTarget(id)
+    const forts = side.base.upgrades ?? []
     // Your Spice tokens are alike: their Action is used on the first one that can
     const spiceUse = side === me ? side.spice.flatMap((t) => abilitiesOf(t.id))[0] : undefined
     const spice = side.spice.length
@@ -998,6 +1045,16 @@ function Table(props: {
     const spiceYes = spiceAsked && asked?.options.some((o) => o.id === 'yes') ? () => answer(['yes']) : undefined
     return (
       <div className="sim-base-slot">
+        {/* Its Fortifications, tucked under its top edge: a banner with each one's name */}
+        {!!forts.length && (
+          <div className="sim-fortifications">
+            {forts.map((f) => (
+              <span key={f.id} className={`sim-fortification${aspectClass(defOf(f.def).aspects)}`} onMouseEnter={look(imageOf(f.def))} onMouseLeave={leave}>
+                {defOf(f.def).name}
+              </span>
+            ))}
+          </div>
+        )}
         <button
           type="button"
           className={`sim-landscape base${target ? ' target' : ''}${asked && picked.includes(id) ? ' chosen' : ''}`}
@@ -1378,10 +1435,10 @@ function Table(props: {
                 <button
                   key={o.id}
                   type="button"
-                  className={picked.includes(o.id) ? 'picked' : undefined}
+                  className={[picked.includes(o.id) && 'picked', o.can && 'can-pick', o.can === false && 'cant-pick'].filter(Boolean).join(' ') || undefined}
                   onMouseEnter={look(image)}
                   onMouseLeave={leave}
-                  onClick={() => pickAnswer(o.id)}
+                  onClick={() => o.can !== false && pickAnswer(o.id)}
                 >
                   {image ? <img src={img(image)} alt={o.def ? defOf(o.def).name : ''} /> : <span>{o.label ?? o.id}</span>}
                 </button>
