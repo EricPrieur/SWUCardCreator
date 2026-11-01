@@ -12,7 +12,7 @@
   "text": "While you control another [{Atreides}] unit, this unit gains [Restore 1].",
   "power": 2,
   "trait": "Atreides, Trooper",
-  "number": "056",
+  "number": "057",
   "rarity": "C",
   "frameId": "unit-command-heroism",
   "setCode": "DUNE",

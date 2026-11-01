@@ -64,6 +64,14 @@ const defs: CardDef[] = [
   card('wall', { ...scripted('The Shield Wall'), type: 'upgrade', cost: 3, arena: undefined, traits: ['Fortification'] }),
   card('creature', { cost: 3, power: 3, hp: 3, traits: ['Creature'] }),
   card('harvester', { ...scripted('Spice Harvester'), cost: 3, power: 2, hp: 4, traits: ['Vehicle', 'Harvester'] }),
+  card('volley', { ...scripted('Lasgun Volley'), type: 'event', cost: 3, arena: undefined }),
+  card('dropship', { ...scripted('Harkonnen Drop Ship'), cost: 6, power: 4, hp: 5, arena: 'space' }),
+  card('warrior', { cost: 1, power: 3, hp: 1, traits: ['Fremen', 'Trooper'] }),
+  card('sardaukar', { cost: 2, power: 4, hp: 3, traits: ['Sardaukar', 'Trooper'], text: 'As an additional cost to play this unit, defeat a friendly Spice token.' }),
+  card('breeding', { ...scripted('Selective Breeding'), type: 'upgrade', cost: 1, power: 1, hp: 1, arena: undefined, traits: ['Bene Gesserit'] }),
+  card('brute', { cost: 4, power: 4, hp: 3 }),
+  card('bulwark', { cost: 5, power: 3, hp: 5 }),
+  card('heighliner', { ...scripted('Guild Heighliner'), cost: 10, power: 2, hp: 10, arena: 'space' }),
   card('pawn', { name: 'Pawn of the Sisterhood', type: 'upgrade', cost: 2, arena: undefined, text: 'Attach to a non-[{Bene Gesserit}], non-[{Vehicle}] unit.\nAttached unit gains [Sentinel].' }),
 ]
 
@@ -384,4 +392,98 @@ test("The AI doesn't wait out a Sentinel: two Harkonnen Troops defeat it, then t
   state = act(state, 0, chooseAction(state, 0)!)
   while (state.prompt) state = act(state, state.prompt.player, chooseAction(state, state.prompt.player)!)
   assert.equal(state.players[1].units.length, 0)
+})
+
+test('The AI keeps its Spice token for the Lasgun Volley in its hand, and digs with it otherwise', () => {
+  const spiceDig = (hand: string[]) => {
+    const state = table({ hand0: hand })
+    state.players[0].resources = []
+    state.players[0].leader.exhausted = true
+    state.players[0].spice = [{ id: 'sp', def: 'token-spice' }]
+    return chooseAction(state, 0)
+  }
+  assert.deepEqual(spiceDig(['big']), { type: 'ability', source: 'sp', index: 0 })
+  assert.notEqual(spiceDig(['volley'])?.type, 'ability')
+})
+
+test("Harkonnen Drop Ship plays any Trooper that costs 2 or less from the discard pile, a Sardaukar Trooper only with its Spice token", () => {
+  let state = table({ hand0: ['dropship'], discard0: ['warrior', 'sardaukar', 'small', 'troops'] })
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  assert.deepEqual(state.prompt?.options.map((o) => o.id).sort(), ['d0', 'd3'])
+  state = answer(state, 'd0')
+  state = answer(state, 'd3')
+  assert.deepEqual(state.players[0].units.map((u) => u.def).sort(), ['dropship', 'troops', 'warrior'])
+
+  state = table({ hand0: ['dropship'], discard0: ['sardaukar'] })
+  state.players[0].spice = [{ id: 'sp', def: 'token-spice' }]
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  state = answer(state, 'd0')
+  assert.equal(state.players[0].spice.length, 0)
+  assert.ok(state.players[0].units.some((u) => u.def === 'sardaukar'))
+})
+
+test('Guild Heighliner plays ground units from the top 8 cards of the deck for free, with Ambush, up to 8 cost', () => {
+  let state = table({ hand0: ['heighliner'], units1: ['small'], deck0: ['small', 'big', 'shuttle', 'big', 'frail', 'small', 'small', 'small', 'paul'] })
+  state.players[0].resources = Array.from({ length: 10 }, (_, i) => ({ card: { id: `rr${i}`, def: 'big' }, exhausted: false }))
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  // The space unit isn't offered, nor the 9th card
+  assert.deepEqual(state.prompt?.options.map((o) => o.id).sort(), ['k0', 'k1', 'k3', 'k4', 'k5', 'k6', 'k7'])
+  assert.equal(state.prompt?.seen?.length, 8)
+  state = answer(state, 'k1')
+  // Ambush: it may attack an enemy unit as it comes in (declined here)
+  assert.match(state.prompt?.text ?? '', /Ambush/)
+  state = answer(state)
+  // 3 cost left: a 5-cost unit no longer fits
+  assert.deepEqual(state.prompt?.options.map((o) => o.id).sort(), ['k0', 'k4', 'k5', 'k6', 'k7'])
+  state = answer(state, 'k4')
+  while (state.prompt) state = answer(state)
+  assert.deepEqual(state.players[0].units.map((u) => u.def).sort(), ['big', 'frail', 'heighliner'])
+  // The 6 left go under the 9th card
+  assert.equal(state.players[0].deck[0].def, 'paul')
+  assert.equal(state.players[0].deck.length, 7)
+})
+
+test("The AI attacks the base before playing a unit when the attacker would be traded away first", () => {
+  const state = table({ units0: ['brute'], units1: ['creature'], hand0: ['bulwark'] })
+  state.players[0].leader.epicUsed = true
+  // The opponent can't deploy their leader in reply
+  state.players[1].resources = state.players[1].resources.slice(0, 3)
+  assert.deepEqual(chooseAction(state, 0), { type: 'attack', attacker: 'u00', target: 'base' })
+})
+
+test('Selective Breeding gives a Weakness token only when attached to a Bene Gesserit unit', () => {
+  const play = (unit: string) => {
+    let state = table({ units0: [unit], units1: ['fremen'], hand0: ['breeding'] })
+    state = act(state, 0, { type: 'play', card: 'h0', attachTo: 'u00' })
+    if (state.prompt) state = answer(state, 'u10')
+    return state.players[1].units[0].upgrades.map((u) => state.defs[u.def].name)
+  }
+  assert.deepEqual(play('sister'), ['Weakness'])
+  assert.deepEqual(play('small'), [])
+})
+
+test('The AI takes the initiative to act first when the units it faces can defeat its base next round, unless it can deal with them now', () => {
+  const danger = (units0: string[]) => {
+    const state = table({ units0, units1: ['big'], hand0: ['frail'] })
+    state.players[1].hand = []
+    // The opponent can't deploy their leader
+    state.players[1].resources = state.players[1].resources.slice(0, 3)
+    state.players[0].leader.epicUsed = true
+    state.players[1].units[0].exhausted = true
+    state.players[0].base.damage = state.defs[state.players[0].base.def].hp - 5
+    state.initiative = 1
+    return { action: chooseAction(state, 0)!, state }
+  }
+  assert.deepEqual(danger(['small']).action, { type: 'initiative' })
+  // With a unit that can trade with the threat, it doesn't hit the base first, which would let
+  // the opponent take the initiative and attack first next round: it trades, or takes the
+  // initiative to trade first next round
+  const { action, state } = danger(['big'])
+  assert.ok(
+    [JSON.stringify({ type: 'attack', attacker: 'u00', target: 'u10' }), JSON.stringify({ type: 'initiative' })].includes(JSON.stringify(action)),
+    JSON.stringify(action),
+  )
+  // And the opponent, given the chance, takes the initiative from it
+  let after = act(state, 0, { type: 'attack', attacker: 'u00', target: 'base' })
+  assert.deepEqual(chooseAction(after, 1), { type: 'initiative' })
 })

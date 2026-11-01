@@ -32,6 +32,8 @@ export type SideView = {
 export type PlayerView = {
   you: PlayerId
   round: number
+  // Which phase of the game this is, to tell the units that entered play in it
+  phaseCount: number
   phase: Phase
   active: PlayerId
   initiative: PlayerId
@@ -95,6 +97,7 @@ export function viewFor(state: GameState, you: PlayerId): PlayerView {
   return {
     you,
     round: state.round,
+    phaseCount: state.phaseCount,
     phase: state.phase,
     active: state.active,
     initiative: state.initiative,

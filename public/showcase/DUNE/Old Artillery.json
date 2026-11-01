@@ -13,7 +13,7 @@
   "text": "[When Played/On Attack:] Defeat a non-unique upgrade.",
   "power": 3,
   "trait": "Vehicle",
-  "number": "098",
+  "number": "099",
   "rarity": "U",
   "frameId": "unit-aggression",
   "setCode": "DUNE",

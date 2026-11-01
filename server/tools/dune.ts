@@ -27,7 +27,8 @@ export function loadDefs(): CardDef[] {
 }
 
 type Featured = { name: string; leader: string; base: string; cards: { id: string; count: number }[] }
-export const featured: Featured[] = JSON.parse(readFileSync(`${root}public/sim/featured-decks.json`, 'utf8'))
+// FEATURED: another list of decks, to compare versions of a deck
+export const featured: Featured[] = JSON.parse(readFileSync(process.env.FEATURED ?? `${root}public/sim/featured-decks.json`, 'utf8'))
 
 // A Featured Deck as the engine takes it, by its name (any case, any part of it)
 export function deckList(name: string, defs: CardDef[]): DeckList {

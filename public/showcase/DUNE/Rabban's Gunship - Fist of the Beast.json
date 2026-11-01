@@ -1,5 +1,5 @@
 {
-  "hp": 4,
+  "hp": 3,
   "id": "2c8983ce-812a-4ad1-a542-5a1a585a92a1",
   "art": {
     "x": 1,
@@ -12,7 +12,7 @@
   "text": "[When you play a [{Harkonnen}] unit (including this one):] You may deal 1 damage to a friendly unit. If you do, deal 2 damage to a ground unit or base.",
   "power": 4,
   "trait": "Harkonnen, Vehicle, Fighter",
-  "number": "084",
+  "number": "085",
   "rarity": "R",
   "unique": true,
   "frameId": "unit-aggression-villainy-space",

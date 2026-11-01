@@ -22,6 +22,15 @@
   color: var(--sand);
   font-size: 0.9rem;
   overflow: hidden;
+  /* Taps answer at once, without zooming or selecting text */
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.sim input {
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 .sim button {
@@ -270,6 +279,7 @@
   grid-template-rows: auto minmax(0, 1fr) auto;
   min-width: 0;
   height: 100vh;
+  height: 100dvh;
 }
 .sim-strip {
   display: flex;
@@ -1518,4 +1528,148 @@
   background: linear-gradient(#0e0e0e, #2c2c2c);
   border-color: #8a8a8a;
   color: #eee;
+}
+
+/* A window of cards apart is dragged by its edges, and hides to a Reveal button */
+.sim-choice.movable {
+  cursor: move;
+}
+.sim-choice.movable .sim-choice-cards,
+.sim-choice.movable .sim-choice-buttons {
+  cursor: default;
+}
+.sim-choice-buttons {
+  position: relative;
+  padding-left: 7rem;
+  padding-right: 7rem;
+}
+.sim-choice-hide.sim-button {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  min-width: 0;
+  padding: 0.5rem 0.9rem;
+  font-size: 0.85rem;
+}
+.sim-choice-reveal.sim-button {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  z-index: 110;
+  min-width: 0;
+  padding: 0.5rem 1.1rem;
+  box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.6);
+}
+.sim-choice-reveal.sim-button:hover:not(:disabled) {
+  transform: none;
+  filter: brightness(1.18);
+}
+.sim-number {
+  min-width: 9rem;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid #f0a75a;
+  border-radius: 10px;
+  background: #2a1d10;
+  color: var(--sand);
+  font: inherit;
+  font-weight: 700;
+}
+
+/* Phones and small screens: the board takes the whole width, the chat and the log open over it */
+.sim-panel-toggles,
+.sim-turn-hint {
+  display: none;
+}
+@media (max-width: 900px), (max-height: 500px) {
+  .sim {
+    grid-template-columns: minmax(0, 1fr);
+    font-size: 0.8rem;
+  }
+  .sim-chat,
+  .sim-log {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    z-index: 120;
+    width: min(18rem, 80vw);
+    background: rgba(10, 7, 5, 0.96);
+    box-shadow: 0 0 2rem rgba(0, 0, 0, 0.7);
+    transition: transform 0.2s ease;
+  }
+  .sim-chat {
+    left: 0;
+    transform: translateX(-105%);
+  }
+  .sim-log {
+    right: 0;
+    transform: translateX(105%);
+  }
+  .sim-chat.open,
+  .sim-log.open {
+    transform: none;
+  }
+  .sim-panel-toggles {
+    display: contents;
+  }
+  .sim-panel-toggle {
+    position: fixed;
+    top: 50%;
+    z-index: 125;
+    padding: 0.6rem 0.35rem;
+    border: 1px solid var(--line);
+    background: rgba(28, 20, 14, 0.9);
+    color: var(--sand);
+    writing-mode: vertical-rl;
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+  .sim-panel-toggle.chat {
+    left: 0;
+    border-radius: 0 8px 8px 0;
+  }
+  .sim-panel-toggle.log {
+    right: 0;
+    border-radius: 8px 0 0 8px;
+  }
+  .sim-panel-toggle[aria-pressed='true'] {
+    border-color: var(--spice);
+  }
+  .sim-button {
+    min-width: 0;
+    padding: 0.5rem 0.8rem;
+  }
+  .sim-preview {
+    height: 80vh;
+    height: 80dvh;
+  }
+  .sim-preview.left {
+    left: 1.5rem;
+  }
+  .sim-preview.right {
+    right: 1.5rem;
+  }
+  .sim-choice {
+    max-width: 96vw;
+    max-height: 92dvh;
+    overflow: auto;
+    padding: 0.8rem;
+  }
+}
+@media (orientation: portrait) and (max-width: 700px) {
+  .sim-turn-hint {
+    display: flex;
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    background: rgba(18, 13, 9, 0.97);
+    color: var(--sand);
+    font-size: 1.2rem;
+    font-weight: 700;
+    text-align: center;
+  }
 }

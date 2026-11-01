@@ -12,7 +12,7 @@
   "text": "While you control an [{Arrakis}] base, this unit gains [Ambush] and [Hidden].",
   "power": 4,
   "trait": "Fremen, Trooper",
-  "number": "110",
+  "number": "111",
   "rarity": "C",
   "frameId": "unit-cunning-heroism",
   "setCode": "DUNE",

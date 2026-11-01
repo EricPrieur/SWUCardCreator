@@ -111,11 +111,11 @@
       },
       {
         "id": "a50da882-75b5-4399-a035-e760c4f1aa23",
-        "count": 10
+        "count": 8
       },
       {
         "id": "d9cd0927-2c13-4cfd-b6d5-6f247e8ef56b",
-        "count": 3
+        "count": 2
       },
       {
         "id": "605ba3e7-7ad7-429c-a50d-e590eac3727b",
@@ -131,7 +131,7 @@
       },
       {
         "id": "df991edb-41a1-485e-b3ed-a9553a96f4f3",
-        "count": 3
+        "count": 2
       },
       {
         "id": "bee6cf10-abef-4eec-9398-c9f79a5ebf7d",
@@ -143,15 +143,23 @@
       },
       {
         "id": "a2e50bfd-efeb-48fb-92af-1cb96ef98eca",
-        "count": 2
-      },
-      {
-        "id": "0b72ff5a-bc19-4218-bbfb-c71830007a2c",
         "count": 3
       },
       {
         "id": "f81a4036-4ca9-4ecc-bcc6-9a7a5a6487d2",
         "count": 3
+      },
+      {
+        "id": "2c8983ce-812a-4ad1-a542-5a1a585a92a1",
+        "count": 2
+      },
+      {
+        "id": "bde1d101-2de5-4f97-9932-6ace9c542dd0",
+        "count": 2
+      },
+      {
+        "id": "759969a1-5f0c-4978-9b4c-855efd6ff0df",
+        "count": 2
       }
     ]
   },
@@ -159,18 +167,10 @@
     "id": "84e56547-03a4-48ee-bb95-ba14791f502f",
     "name": "Jessica BG",
     "leader": "81db9788-0cf6-4614-b6f0-e5757241ae3d",
-    "base": "cbfe10ae-229b-44d3-a9a6-b39100d4b8f3#back",
+    "base": "003c87be-36d7-4aae-813f-c949e1c29ae1",
     "cards": [
       {
         "id": "b8c8468e-bac1-42e2-abb0-57b317523ad7",
-        "count": 3
-      },
-      {
-        "id": "bad799dd-a5f5-4d51-a7a6-928bca64ea46",
-        "count": 3
-      },
-      {
-        "id": "85d7f7a4-81b3-4725-8132-ffe4d34b5c7b",
         "count": 3
       },
       {
@@ -206,10 +206,6 @@
         "count": 2
       },
       {
-        "id": "f7e4c8c9-97d7-4912-aad4-44aad461cd29",
-        "count": 3
-      },
-      {
         "id": "a11b3db0-22ce-4c86-8a19-e7eb86ac884a",
         "count": 3
       },
@@ -222,10 +218,6 @@
         "count": 3
       },
       {
-        "id": "95717e4a-5015-40f5-8133-026ecc95dc44",
-        "count": 2
-      },
-      {
         "id": "87577ef3-b817-4ae7-8b97-3c6d88659254",
         "count": 2
       },
@@ -236,6 +228,22 @@
       {
         "id": "50ddfd6c-0845-40ee-9aaa-31fa2f085950",
         "count": 2
+      },
+      {
+        "id": "5340e3f4-3941-402c-ae35-7cc97cd0ec57",
+        "count": 3
+      },
+      {
+        "id": "a5c93f7f-de1c-48d4-b0d8-b350c63e036e",
+        "count": 2
+      },
+      {
+        "id": "bad799dd-a5f5-4d51-a7a6-928bca64ea46",
+        "count": 3
+      },
+      {
+        "id": "76df7610-5ba8-4520-be7a-25d2320fef14",
+        "count": 3
       }
     ]
   }

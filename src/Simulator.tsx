@@ -12,6 +12,7 @@ import { scriptStatus } from '../server/engine/scripts.ts'
 import { viewFor, type SideView } from '../server/engine/view.ts'
 import type { Action, Arena, CardDef, GameState, PlayerId } from '../server/engine/types.ts'
 import { gameLog } from './gameLog'
+import { combatSounds } from './combatSounds'
 import './Simulator.css'
 
 // The game simulator: you against a first AI, on the DUNE set as exported to the Showcase,
@@ -274,6 +275,7 @@ export function Simulator() {
   const act = (state: GameState, p: PlayerId, action: Action, why?: Weighed[]) => {
     const next = recordAction(record.current!, state, p, action, why)
     log.current?.moved(next)
+    combatSounds(state, next, (sound, delay, cut) => setTimeout(() => play(sound, 0.6, cut), delay))
     setGame(next)
   }
   const leave = () => {
@@ -399,12 +401,26 @@ let soundOn = (() => {
   }
 })()
 
-function play(sound: string, volume: number) {
+// cut: stop it after this long (ms), fading out, for a sound that runs on (an engine's loop)
+function play(sound: string, volume: number, cut?: number) {
   if (!soundOn) return
   const audio = new Audio(sound)
   audio.volume = volume
   // A browser may refuse sound until the page has been clicked: silent, then
   audio.play().catch(() => {})
+  if (cut) {
+    const FADE = 300
+    setTimeout(() => {
+      const start = performance.now()
+      const fade = () => {
+        const left = 1 - (performance.now() - start) / FADE
+        if (left <= 0) return audio.pause()
+        audio.volume = volume * left
+        requestAnimationFrame(fade)
+      }
+      fade()
+    }, Math.max(0, cut - FADE))
+  }
 }
 const playDraw = () => play(drawSound, 0.35)
 
@@ -442,6 +458,8 @@ function Table(props: {
   const [mode, setMode] = useState<Mode>(null)
   const [picked, setPicked] = useState<string[]>([])
   const [hover, setHover] = useState<Hover>(null)
+  // On a small screen, the chat or the log slides over the board when opened
+  const [panel, setPanel] = useState<'chat' | 'log' | null>(null)
   // The last card each player played, which the engine doesn't keep
   const [last, setLast] = useState<[string | null, string | null]>([null, null])
   const [chat, setChat] = useState<{ who: 'me' | 'opp'; text: string }[]>([])
@@ -480,6 +498,22 @@ function Table(props: {
     }
   }, [pileOpen])
   const [menu, setMenu] = useState<{ card: string; landscape?: boolean; options: { label: string; run: () => void }[] } | null>(null)
+  // A number asked for, picked from a list; the window of cards apart moves, and hides
+  const [number, setNumber] = useState<{ key: string; id: string } | null>(null)
+  const [choiceAt, setChoiceAt] = useState({ x: 0, y: 0 })
+  const [choiceHidden, setChoiceHidden] = useState<string | null>(null)
+  const drag = (event: React.MouseEvent) => {
+    if (event.button !== 0 || (event.target as Element).closest('button, select, img')) return
+    event.preventDefault()
+    const from = { x: event.clientX - choiceAt.x, y: event.clientY - choiceAt.y }
+    const move = (e: MouseEvent) => setChoiceAt({ x: e.clientX - from.x, y: e.clientY - from.y })
+    const up = () => {
+      document.removeEventListener('mousemove', move)
+      document.removeEventListener('mouseup', up)
+    }
+    document.addEventListener('mousemove', move)
+    document.addEventListener('mouseup', up)
+  }
 
   // Each click on something that answers it clicks
   useEffect(() => {
@@ -644,6 +678,8 @@ function Table(props: {
 
   let prompt = ''
   let buttons: { label: string; kind?: string; onClick?: () => void; disabled?: boolean }[] = []
+  let numbers: { value: string; options: { id: string; label: string }[]; onChange: (id: string) => void } | null = null
+  const askedKey = asked ? `${asked.source ?? ''}|${asked.text}|${asked.options.map((o) => o.id).join(',')}` : ''
   const waitText = `${opp.name} is ${view.phase === 'action' ? 'choosing an action' : 'deciding'}…`
   const answer = (picks: string[]) => act(YOU, { type: 'answer', picks })
   const pickAnswer = (id: string) => {
@@ -658,6 +694,16 @@ function Table(props: {
   }
   if (view.prompt && !asked) {
     prompt = `${opp.name} is choosing…`
+  } else if (asked?.kind === 'option' && asked.options.length > 2 && asked.options.every((o) => /^\d/.test(o.label ?? o.id))) {
+    // How many: a list of the numbers, and Confirm
+    prompt = askText(asked)
+    const chosen = number?.key === askedKey && asked.options.some((o) => o.id === number.id) ? number.id : asked.options[0].id
+    numbers = {
+      value: chosen,
+      options: asked.options.map((o) => ({ id: o.id, label: o.label ?? o.id })),
+      onChange: (id) => setNumber({ key: askedKey, id }),
+    }
+    buttons = [{ label: 'Confirm', kind: 'go', onClick: () => answer([chosen]) }]
   } else if (asked?.kind === 'option') {
     prompt = askText(asked)
     buttons = asked.options.map((o, i) => ({
@@ -739,6 +785,15 @@ function Table(props: {
           ]
       break
   }
+  const numberList = numbers && (
+    <select className="sim-number" value={numbers.value} onChange={(e) => numbers?.onChange(e.target.value)}>
+      {numbers.options.map((o) => (
+        <option key={o.id} value={o.id}>
+          {o.label}
+        </option>
+      ))}
+    </select>
+  )
 
   // What a card on the table can do, clicked: its Action abilities, and a leader's deploy or a
   // unit's attack. One is done at once; more are offered to choose from.
@@ -839,8 +894,8 @@ function Table(props: {
       keywords.saboteur && 'Saboteur',
       keywords.overwhelm && 'Overwhelm',
       keywords.grit && 'Grit',
-      keywords.ambush && 'Ambush',
-      // Only while it protects the unit: the phase it entered play
+      // Ambush and Hidden only count the phase it entered play
+      keywords.ambush && u.entered === view.phaseCount && 'Ambush',
       u.hidden && 'Hidden',
       keywords.raid && `Raid ${keywords.raid}`,
       keywords.restore && `Restore ${keywords.restore}`,
@@ -1018,6 +1073,7 @@ function Table(props: {
         </div>
         {who === 'me' && !apart && !setup && (
           <div className="sim-actions">
+            {numberList}
             {buttons.map((b) => (
               <button key={b.label} type="button" className={`sim-button ${b.kind ?? ''}`} disabled={b.disabled} onClick={b.onClick}>
                 {b.label}
@@ -1282,7 +1338,15 @@ function Table(props: {
 
   return (
     <>
-      <aside className="sim-chat">
+      <div className="sim-panel-toggles">
+        {(['chat', 'log'] as const).map((which) => (
+          <button key={which} type="button" className={`sim-panel-toggle ${which}`} aria-pressed={panel === which} onClick={() => setPanel(panel === which ? null : which)}>
+            {which === 'chat' ? 'Chat' : 'Log'}
+          </button>
+        ))}
+      </div>
+      <div className="sim-turn-hint">Turn your phone sideways to play</div>
+      <aside className={`sim-chat${panel === 'chat' ? ' open' : ''}`}>
         <h2>Chat</h2>
         <div className="sim-messages">
           {chat.map((m, i) => (
@@ -1352,7 +1416,7 @@ function Table(props: {
         {strip(me, 'me')}
       </div>
 
-      <aside className="sim-log">
+      <aside className={`sim-log${panel === 'log' ? ' open' : ''}`}>
         <div className="sim-tools">
           <span>Round {view.round}</span>
           <button
@@ -1444,8 +1508,22 @@ function Table(props: {
           </div>
         </div>
       )}
-      {apart && asked && (
-        <div className="sim-choice">
+      {apart && asked && choiceHidden === askedKey && (
+        <button
+          type="button"
+          className="sim-button go sim-choice-reveal"
+          style={{ transform: `translate(calc(-50% + ${choiceAt.x}px), calc(-50% + ${choiceAt.y}px))` }}
+          onClick={() => setChoiceHidden(null)}
+        >
+          Reveal
+        </button>
+      )}
+      {apart && asked && choiceHidden !== askedKey && (
+        <div
+          className="sim-choice movable"
+          style={{ transform: `translate(calc(-50% + ${choiceAt.x}px), calc(-50% + ${choiceAt.y}px))` }}
+          onMouseDown={drag}
+        >
           <p>{prompt}</p>
           <div className="sim-choice-cards">
             {asked.card && (
@@ -1468,6 +1546,10 @@ function Table(props: {
             })}
           </div>
           <div className="sim-choice-buttons">
+            <button type="button" className="sim-button sim-choice-hide" onClick={() => setChoiceHidden(askedKey)}>
+              Hide
+            </button>
+            {numberList}
             {buttons.map((b) => (
               <button key={b.label} type="button" className={`sim-button ${b.kind ?? ''}`} disabled={b.disabled} onClick={b.onClick}>
                 {b.label}

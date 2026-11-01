@@ -12,7 +12,7 @@
   "text": "Attach to a non-[{Bene Gesserit}], non-[{Vehicle}] unit.\nAttached unit gains [Sentinel].",
   "power": 1,
   "trait": "Bene Gesserit",
-  "number": "047",
+  "number": "048",
   "rarity": "U",
   "frameId": "upgrade-vigilance",
   "setCode": "DUNE",

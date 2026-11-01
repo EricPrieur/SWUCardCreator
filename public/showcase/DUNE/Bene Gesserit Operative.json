@@ -9,7 +9,7 @@
   },
   "cost": 3,
   "name": "Bene Gesserit Operative",
-  "text": "[Saboteur]\n[Hidden]\n[On Attack:] If this unit is attacking a base, that base's controller discards a card from their hand.",
+  "text": "[Saboteur]\n[Hidden]\n[Restore 2]",
   "power": 3,
   "trait": "Bene Gesserit, Spy",
   "number": "038",

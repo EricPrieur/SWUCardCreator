@@ -2,15 +2,20 @@
 // server/records/<name>.jsonl (not committed). Seats are swapped each game.
 //
 //   node tools/matchup.ts rabban jessica 100 [seed] [name]
+//
+// VARIANT=path/to/variant.ts plays a card change first: a module whose default export changes
+// the cards (and their scripts) in place, to see what a change would do before making it.
 import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import { chooseAction, type Weighed } from '../engine/ai.ts'
 import { createGame } from '../engine/game.ts'
+import { scripts } from '../engine/scripts.ts'
 import { recordAction, startRecord } from '../engine/record.ts'
 import { deckList, loadDefs } from './dune.ts'
 
 const [a = 'rabban', b = 'jessica', count = '20', seedArg = '1', nameArg] = process.argv.slice(2)
 const defs = loadDefs()
+if (process.env.VARIANT) (await import(pathToFileURL(process.env.VARIANT).href)).default(defs, scripts)
 const decks = [deckList(a, defs), deckList(b, defs)]
 const name = nameArg ?? `${a}-${b}`
 const dir = fileURLToPath(new URL('../records/', import.meta.url))

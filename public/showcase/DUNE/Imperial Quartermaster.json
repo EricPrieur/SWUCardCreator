@@ -12,7 +12,7 @@
   "text": "[When Played:] You may pay [2]. If you do, defeat an upgrade.",
   "power": 4,
   "trait": "Emperor, Official",
-  "number": "071",
+  "number": "072",
   "rarity": "C",
   "frameId": "unit-command",
   "setCode": "DUNE",

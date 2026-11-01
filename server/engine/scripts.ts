@@ -575,7 +575,7 @@ const dune: CardScript[] = [
   },
   {
     name: 'Fedaykin Death Commando',
-    text: '[Grit]\n[When Played:] Give an Experience token to this unit for each other friendly [{Fremen}] unit.\n[When Defeated:] Create a Fremen token.',
+    text: '[When Played:] Give an Experience token to this unit for each other friendly [{Fremen}] unit.\n[When Defeated:] Create a Fremen token.',
     front: {
       whenPlayed: (g, self) => {
         const fremen = g.units((u) => g.controller(u) === self.controller && u.id !== self.id && g.hasTrait(u, 'Fremen'))
@@ -995,6 +995,19 @@ const dune: CardScript[] = [
     },
   },
   {
+    name: 'Selective Breeding',
+    text: 'Attach to a non-[{Vehicle}] unit.\n[When Played:] If attached unit is a [{Bene Gesserit}] unit, give a Weakness token to a non-[{Vehicle}] unit.',
+    front: {
+      whenPlayed: (g, self) => {
+        const unit = g.unit(self.other ?? '')
+        if (!unit || !g.hasTrait(unit, 'Bene Gesserit')) return
+        const targets = g.units((u) => !g.hasTrait(u, 'Vehicle')).map((u) => u.id)
+        const pick = g.chooseOne(self.controller, 'Selective Breeding: give a Weakness token to a non-Vehicle unit', targets, { ai: 'harm', source: self.def.id })
+        if (pick) g.giveToken(pick, 'Weakness')
+      },
+    },
+  },
+  {
     name: 'Personal Shield',
     text: 'Attach to a friendly unit.\n[When Played:] If you control an [{Arrakis}] base, defeat attached unit. Otherwise, give a Shield token to attached unit.\n[When the regroup phase starts:] If attached unit has no Shield token, give a Shield token to it.',
     front: {
@@ -1026,23 +1039,25 @@ const dune: CardScript[] = [
   {
     name: 'Lady Jessica',
     subtitle: 'Bene Gesserit',
-    text: '[When you play a [{Bene Gesserit}] card:] You may exhaust this leader. If you do, exhaust an enemy non-leader ground unit that costs [#4] or less.',
+    text: '[When you play a [{Bene Gesserit}] card:] You may exhaust this leader. If you do, exhaust an enemy non-leader unit that costs [#4] or less and heal 1 from your base.',
     backText:
-      '[Restore 2]\n[When Deployed:] Return a [{Bene Gesserit}] or [{Fremen}] unit from your discard pile to your hand.\nWhen a friendly Spice token is defeated: Heal 2 damage from a unit or base.',
+      '[Restore 2]\n[When Deployed:] Return a [{Bene Gesserit}] or [{Fremen}] unit from your discard pile to your hand.\nWhen a friendly Spice token is defeated: Heal 2 damage from your base.',
     front: {
       triggersIf: { whenYouPlay: (g, self) => !!self.otherDef?.traits.includes('Bene Gesserit') && g.leaderReady(self.controller) },
       whenYouPlay: (g, self) => {
         const p = self.controller
         if (!self.otherDef?.traits.includes('Bene Gesserit') || !g.leaderReady(p)) return
-        const targets = g.units((u) => g.controller(u) !== p && !u.leader && u.arena === 'ground' && g.cost(u) <= 4 && !u.exhausted)
-        if (!targets.length) return
-        if (!g.may(p, 'Lady Jessica: exhaust this leader to exhaust an enemy ground unit that costs 4 or less?', { yes: 'Exhaust', no: 'Skip', source: self.def.id })) return
+        const targets = g.units((u) => g.controller(u) !== p && !u.leader && g.cost(u) <= 4 && !u.exhausted)
+        // Worth it for a unit to exhaust, or for the heal
+        if (!targets.length && !g.player(p).base.damage) return
+        if (!g.may(p, 'Lady Jessica: exhaust this leader to exhaust an enemy unit that costs 4 or less and heal 1 from your base?', { yes: 'Exhaust', no: 'Skip', source: self.def.id })) return
         g.exhaustLeader(p)
-        const pick = g.chooseOne(p, 'Lady Jessica: exhaust an enemy non-leader ground unit that costs 4 or less', targets.map((u) => u.id), {
+        const pick = g.chooseOne(p, 'Lady Jessica: exhaust an enemy non-leader unit that costs 4 or less', targets.map((u) => u.id), {
           ai: 'harm',
           source: self.def.id,
         })
         if (pick) g.exhaust(pick)
+        g.heal(`base${p}`, 1, self)
       },
     },
     back: {
@@ -1059,7 +1074,7 @@ const dune: CardScript[] = [
         if (pick) g.fromDiscard(p, pick)
       },
       whenSpiceDefeated: (g, self) => {
-        if (self.spice?.owner === self.controller) healOne(g, self, 2)
+        if (self.spice?.owner === self.controller) g.heal(`base${self.controller}`, 2, self)
       },
     },
   },
@@ -1620,10 +1635,9 @@ const dune: CardScript[] = [
   },
   {
     name: 'Harkonnen Drop Ship',
-    text: '[When Played/On Attack:] You may play up to 2 [{Harkonnen}] [{Trooper}] units that cost [#2] or less from your discard pile for free.',
+    text: '[When Played:] You may play up to 2 [{Trooper}] units that cost [#2] or less from your discard pile for free.',
     front: {
       whenPlayed: (g, self) => dropShip(g, self),
-      onAttack: (g, self) => dropShip(g, self),
     },
   },
   {
@@ -1649,28 +1663,38 @@ const dune: CardScript[] = [
   },
   {
     name: 'Guild Heighliner',
-    text: 'As you play this unit, you may defeat any number of friendly Spice tokens. It costs [1] less for each Spice token defeated this way.\n[When Played:] Play any number of ground units from your hand with a combined cost of [#8] or less for free. They gain [Ambush] for this phase.',
+    text: '[Sentinel]\nAs you play this unit, you may defeat any number of friendly Spice tokens. It costs [1] less for each Spice token defeated this way.\n[When Played:] Search the top 8 cards of your deck for any number of ground units with a combined cost of [#8] or less and play them for free. They gain [Ambush] for this phase.',
     front: {
       spiceReduces: 99,
       whenPlayed: (g, self) => {
         const p = self.controller
+        const top = g.top(p, 8)
         let budget = 8
         for (;;) {
-          const ids = g
-            .player(p)
-            .hand.filter((c) => g.def(c).type === 'unit' && g.def(c).arena === 'ground' && g.def(c).cost <= budget && g.canPlay(p, c.id, { free: true }))
-            .map((c) => c.id)
-          const pick = g.chooseOne(p, `Guild Heighliner: you may play a ground unit from your hand for free (up to ${budget} cost left)`, ids, {
+          // The cards searched still in the deck, those it may play among them
+          const left = top.map((c) => c.id).filter((id) => g.player(p).deck.some((c) => c.id === id))
+          const ids = left.filter((id) => {
+            const d = g.def(g.card(id)!)
+            return d.type === 'unit' && d.arena === 'ground' && d.cost <= budget && g.canPlay(p, id, { free: true })
+          })
+          if (!ids.length) {
+            if (budget === 8) g.log('Guild Heighliner finds no ground unit to play', p)
+            break
+          }
+          const pick = g.chooseOne(p, `Guild Heighliner: you may play a ground unit from the top 8 cards of your deck for free (up to ${budget} cost left)`, ids, {
             optional: true,
             ai: 'best',
             source: self.def.id,
+            seen: left,
           })
-          if (!pick) return
+          if (!pick) break
           budget -= g.def(g.card(pick)!).cost
           // Ambush before it enters play, so it may attack as it does
           g.grant(pick, { ambush: true }, 'phase')
           g.playCard(p, pick, { free: true })
         }
+        // The cards searched and left go to the bottom of the deck
+        g.shuffleToBottom(p, top.map((c) => c.id))
       },
     },
   },
@@ -1789,15 +1813,6 @@ const dune: CardScript[] = [
         if (!top) return
         g.mill(self.controller, top.id)
         if (g.hasTrait(top, 'Bene Gesserit') && self.other && g.unit(self.other)) g.buff(self.other, -2, 0, 'attack')
-      },
-    },
-  },
-  {
-    name: 'Bene Gesserit Operative',
-    text: "[Saboteur]\n[Hidden]\n[On Attack:] If this unit is attacking a base, that base's controller discards a card from their hand.",
-    front: {
-      onAttack: (g, self) => {
-        if (self.attack?.target === 'base') g.discardChosen(enemy(g, self), 1, 'Bene Gesserit Operative makes you discard a card', self.def.id)
       },
     },
   },
@@ -2359,9 +2374,10 @@ const carryall = (g: Game, self: Self) =>
   )
 
 function dropShip(g: Game, self: Self) {
-  const troopers = (d: CardDef) => d.type === 'unit' && d.traits.includes('Harkonnen') && d.traits.includes('Trooper') && d.cost <= 2
+  // Free of its cost, not of an additional one: a Sardaukar Trooper still takes its Spice token
+  const troopers = (d: CardDef) => d.type === 'unit' && d.traits.includes('Trooper') && d.cost <= 2
   for (let i = 0; i < 2; i++)
-    if (!playFromDiscard(g, self, `Harkonnen Drop Ship: you may play a Harkonnen Trooper unit that costs 2 or less from your discard pile (${2 - i} left)`, troopers)) return
+    if (!playFromDiscard(g, self, `Harkonnen Drop Ship: you may play a Trooper unit that costs 2 or less from your discard pile (${2 - i} left)`, troopers)) return
 }
 
 const isFremenOrSister = (g: Game, card: { def: string }) =>

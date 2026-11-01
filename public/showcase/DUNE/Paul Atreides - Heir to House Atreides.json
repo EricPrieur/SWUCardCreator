@@ -12,7 +12,7 @@
   "text": "[On Attack:] Discard the top card of your deck. If its cost is equal to the defender's cost, deal 1 damage to the defender or to a base.",
   "power": 3,
   "trait": "Atreides",
-  "number": "058",
+  "number": "059",
   "rarity": "U",
   "unique": true,
   "frameId": "unit-command-heroism",

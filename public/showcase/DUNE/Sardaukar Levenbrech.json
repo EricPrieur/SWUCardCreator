@@ -12,7 +12,7 @@
   "text": "As an additional cost to play this unit, defeat a friendly Spice token.\n[When Played:] You may defeat a non-unique upgrade.",
   "power": 4,
   "trait": "Emperor, Sardaukar, Trooper",
-  "number": "052",
+  "number": "053",
   "rarity": "U",
   "frameId": "unit-command-villainy",
   "setCode": "DUNE",

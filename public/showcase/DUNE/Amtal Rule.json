@@ -10,7 +10,7 @@
   "name": "Amtal Rule",
   "text": "Attack with a ground unit, even if it's exhausted. It can't attack bases for this attack. If it's a [{Ginaz}] unit, it deals its combat damage before the defender.",
   "trait": "Tactic",
-  "number": "099",
+  "number": "100",
   "rarity": "C",
   "frameId": "event-aggression",
   "setCode": "DUNE",

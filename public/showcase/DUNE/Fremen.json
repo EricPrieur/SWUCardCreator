@@ -10,7 +10,7 @@
   "cost": 1,
   "name": "Fremen",
   "text": "While you control an [{Arrakis}] base, this unit gains [Raid 1].",
-  "power": 2,
+  "power": 1,
   "trait": "Fremen, Trooper",
   "number": "001",
   "rarity": "",
