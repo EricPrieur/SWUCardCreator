@@ -73,7 +73,8 @@ router.post('/games', optionalUser, async (req, res) => {
   }
 })
 
-// Saved again; a game over stays as it ended
+// Saved again. A game over stays as it ended, unless its player took moves back since (Undo
+// against the AI), which the record counts: then it goes on
 router.put('/games/:id', async (req, res) => {
   const id = Number(req.params.id)
   if (!Number.isInteger(id)) return res.status(400).json({ error: 'Bad game id' })
@@ -83,7 +84,8 @@ router.put('/games/:id', async (req, res) => {
     const { rowCount } = await query(
       `UPDATE ${SCHEMA}.games SET status = $3::VARCHAR, winner = $4, draw = $5, rounds = $6, sides = $7, names = $8, record = $9, bytes = $10,
          updated_at = NOW(), finished_at = CASE WHEN $3::VARCHAR = 'playing' THEN NULL ELSE NOW() END
-       WHERE id = $1 AND key = $2 AND status = 'playing'`,
+       WHERE id = $1 AND key = $2
+         AND (status = 'playing' OR COALESCE(($9::JSONB->>'undos')::INT, 0) > COALESCE((record->>'undos')::INT, 0))`,
       [id, String(req.body?.key ?? ''), game.status, game.winner, game.draw, game.rounds, game.sides, game.names, game.record, game.bytes],
     )
     if (!rowCount) return res.status(404).json({ error: 'Game not found' })

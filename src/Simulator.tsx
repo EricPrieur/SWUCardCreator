@@ -7,11 +7,11 @@ import { loadDecks, type Deck } from './cards'
 import { AI_VERSION, chooseAction, CURVE_TOP, deckPlan, type Weighed } from '../server/engine/ai.ts'
 import { cardDef, randomDeck, type SavedCard } from '../server/engine/cards.ts'
 import { createGame, sameAction } from '../server/engine/game.ts'
-import { recordAction, startRecord, type GameRecord } from '../server/engine/record.ts'
+import { recordAction, replay, startRecord, type GameRecord } from '../server/engine/record.ts'
 import { scriptStatus } from '../server/engine/scripts.ts'
 import { viewFor, type SideView } from '../server/engine/view.ts'
 import type { Action, Arena, CardDef, GameState, PlayerId } from '../server/engine/types.ts'
-import { gameLog } from './gameLog'
+import { gameLog, type SavedGame } from './gameLog'
 import { combatSounds } from './combatSounds'
 import './Simulator.css'
 
@@ -126,6 +126,28 @@ function rememberedChoices(): [Choice, Choice] {
   return ['random-generated', 'random-generated']
 }
 
+// The game being played, kept in this browser after each move so that a reload (or coming back
+// to the Simulator) can resume it, its server save going on too
+const CURRENT_KEY = 'dune-unlimited.simulator.current'
+type KeptGame = { record: GameRecord; deckNames: [string, string]; server: SavedGame | null }
+
+function keptGame(): KeptGame | null {
+  try {
+    const kept = JSON.parse(localStorage.getItem(CURRENT_KEY) ?? 'null')
+    return kept?.record?.actions ? kept : null
+  } catch {
+    return null
+  }
+}
+function keepGame(kept: KeptGame | null) {
+  try {
+    if (kept) localStorage.setItem(CURRENT_KEY, JSON.stringify(kept))
+    else localStorage.removeItem(CURRENT_KEY)
+  } catch {
+    // Not kept, then: a reload ends the game
+  }
+}
+
 function DeckPicker(props: {
   title: string
   side: 'me' | 'opp'
@@ -222,8 +244,10 @@ export function Simulator() {
   // The game before each of your moves, and how long its record was then: Undo takes back your
   // last move and the AI's since, as many times as you like
   const history = useRef<{ state: GameState; steps: number }[]>([])
-  // A game left by leaving the page's Simulator
-  useEffect(() => () => void (gameNow.current && log.current?.left(gameNow.current)), [])
+  // The game kept in this browser: the one being played, or one a reload left to resume
+  const kept = useRef<KeptGame | null>(null)
+  const [waiting, setWaiting] = useState<KeptGame | null>(keptGame)
+  const keep = () => keepGame(kept.current)
 
   useEffect(() => {
     loadSet()
@@ -269,34 +293,85 @@ export function Simulator() {
       ...list,
     })) as GameRecord['decks']
     if (game) log.current?.left(game)
+    else abandon()
     record.current = startRecord(seed, named, [{ kind: 'human' }, { kind: 'ai', version: AI_VERSION }])
-    log.current = gameLog(account, record.current, deckNames as [string, string])
+    const game_: KeptGame = { record: record.current, deckNames: deckNames as [string, string], server: null }
+    kept.current = game_
+    log.current = gameLog(account, record.current, game_.deckNames, null, (saved) => {
+      game_.server = saved
+      if (kept.current === game_ && gameNow.current?.phase !== 'over') keep()
+    })
     const next = createGame({ seed, defs: set.defs, decks: named })
     log.current.moved(next)
+    keep()
     history.current = []
     setGame(next)
   }
+  // The game kept as it is now, or no longer once it is over
+  const keepAt = (state: GameState) => keepGame(state.phase === 'over' ? null : kept.current)
   const act = (state: GameState, p: PlayerId, action: Action, why?: Weighed[]) => {
     if (p === YOU) history.current.push({ state, steps: record.current!.actions.length })
     const next = recordAction(record.current!, state, p, action, why)
     log.current?.moved(next)
+    keepAt(next)
     combatSounds(state, next, (sound, delay, cut) => setTimeout(() => play(sound, 0.6, cut), delay))
     setGame(next)
   }
   const undo = () => {
     const last = history.current.pop()
-    const kept = record.current
-    if (!last || !kept) return
+    const played = record.current
+    if (!last || !played) return
     // The record as if those moves were never made, the times taken back counted
-    kept.actions.length = last.steps
-    delete kept.result
-    kept.undos = (kept.undos ?? 0) + 1
+    played.actions.length = last.steps
+    delete played.result
+    played.undos = (played.undos ?? 0) + 1
     log.current?.undone()
+    keepAt(last.state)
     setGame(last.state)
   }
   const leave = () => {
     if (game) log.current?.left(game)
+    kept.current = null
+    keep()
     setGame(null)
+  }
+  // The game a reload left, rebuilt from its record: your moves can still be taken back
+  const rebuild = (waited: KeptGame) => {
+    const before: { state: GameState; steps: number }[] = []
+    try {
+      const state = replay(waited.record, set!.defs, undefined, (s, step, i) => {
+        if (step.p === YOU) before.push({ state: s, steps: i })
+      })
+      return { state, before }
+    } catch {
+      // Cards changed since in a way the game can't be played back
+      return null
+    }
+  }
+  const resume = () => {
+    if (!waiting || !set) return
+    const rebuilt = rebuild(waiting)
+    setWaiting(null)
+    if (!rebuilt || rebuilt.state.phase === 'over') return keepGame(null)
+    const game_ = waiting
+    kept.current = game_
+    record.current = game_.record
+    log.current = gameLog(account, game_.record, game_.deckNames, game_.server, (saved) => {
+      game_.server = saved
+      if (kept.current === game_ && gameNow.current?.phase !== 'over') keep()
+    })
+    log.current.moved(rebuilt.state)
+    history.current = rebuilt.before
+    setGameNumber((n) => n + 1)
+    setGame(rebuilt.state)
+  }
+  // The game a reload left, not resumed: saved as left
+  const abandon = () => {
+    if (!waiting) return
+    setWaiting(null)
+    keepGame(null)
+    const rebuilt = set && rebuild(waiting)
+    if (rebuilt && rebuilt.state.phase !== 'over') gameLog(account, waiting.record, waiting.deckNames, waiting.server).left(rebuilt.state)
   }
 
   if (game && set) {
@@ -340,6 +415,19 @@ export function Simulator() {
         </div>
       ) : (
         <div className="sim-menu-panel">
+          {waiting && (
+            <div className="sim-resume">
+              <p>
+                You have a game in progress: {waiting.record.decks[YOU].name} against {waiting.record.decks[AI].name}.
+              </p>
+              <button type="button" className="sim-button go" onClick={resume}>
+                Resume game
+              </button>
+              <button type="button" className="sim-button" onClick={abandon}>
+                Abandon it
+              </button>
+            </div>
+          )}
           <div className="sim-pickers">
             <DeckPicker title="Your Deck" side="me" value={choices[0]} decks={decks} set={set} onChange={(c) => choose(0, c)} />
             <DeckPicker title="AI Deck" side="opp" value={choices[1]} decks={decks} set={set} onChange={(c) => choose(1, c)} />

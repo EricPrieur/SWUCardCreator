@@ -78,6 +78,12 @@ test('a game is saved as it starts and as it ends, and counted in the stats', as
   assert.equal((await call('PUT', `/games/${start.body.id}`, { record, summary, key: start.body.key })).status, 200)
   // Over, it stays as it ended
   assert.equal((await call('PUT', `/games/${start.body.id}`, { record, summary, key: start.body.key })).status, 404)
+  // Unless moves were taken back since: it goes on, then ends again, and stays so
+  const undone = { ...record, undos: 1 }
+  const going = { ...summary, status: 'playing', winner: null }
+  assert.equal((await call('PUT', `/games/${start.body.id}`, { record: undone, summary: going, key: start.body.key })).status, 200)
+  assert.equal((await call('PUT', `/games/${start.body.id}`, { record: undone, summary, key: start.body.key })).status, 200)
+  assert.equal((await call('PUT', `/games/${start.body.id}`, { record: undone, summary, key: start.body.key })).status, 404)
 
   // One left halfway, by an account
   const left = summarize(half.record, half.state, { left: true, decks: half.decks })
