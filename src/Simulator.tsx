@@ -219,6 +219,9 @@ export function Simulator() {
   const log = useRef<ReturnType<typeof gameLog> | null>(null)
   const gameNow = useRef(game)
   gameNow.current = game
+  // The game before each of your moves, and how long its record was then: Undo takes back your
+  // last move and the AI's since, as many times as you like
+  const history = useRef<{ state: GameState; steps: number }[]>([])
   // A game left by leaving the page's Simulator
   useEffect(() => () => void (gameNow.current && log.current?.left(gameNow.current)), [])
 
@@ -270,13 +273,26 @@ export function Simulator() {
     log.current = gameLog(account, record.current, deckNames as [string, string])
     const next = createGame({ seed, defs: set.defs, decks: named })
     log.current.moved(next)
+    history.current = []
     setGame(next)
   }
   const act = (state: GameState, p: PlayerId, action: Action, why?: Weighed[]) => {
+    if (p === YOU) history.current.push({ state, steps: record.current!.actions.length })
     const next = recordAction(record.current!, state, p, action, why)
     log.current?.moved(next)
     combatSounds(state, next, (sound, delay, cut) => setTimeout(() => play(sound, 0.6, cut), delay))
     setGame(next)
+  }
+  const undo = () => {
+    const last = history.current.pop()
+    const kept = record.current
+    if (!last || !kept) return
+    // The record as if those moves were never made, the times taken back counted
+    kept.actions.length = last.steps
+    delete kept.result
+    kept.undos = (kept.undos ?? 0) + 1
+    log.current?.undone()
+    setGame(last.state)
   }
   const leave = () => {
     if (game) log.current?.left(game)
@@ -286,7 +302,15 @@ export function Simulator() {
   if (game && set) {
     return (
       <div className="sim">
-        <Table key={gameNumber} set={set} game={game} onAct={act} onNew={leave} onAgain={start} />
+        <Table
+          key={gameNumber}
+          set={set}
+          game={game}
+          onAct={act}
+          onUndo={history.current.length ? undo : undefined}
+          onNew={leave}
+          onAgain={start}
+        />
       </div>
     )
   }
@@ -451,6 +475,8 @@ function Table(props: {
   set: SetCards
   game: GameState
   onAct: (game: GameState, p: PlayerId, action: Action, why?: Weighed[]) => void
+  // Taking back your last move, when there is one
+  onUndo?: () => void
   onNew: () => void
   onAgain: () => void
 }) {
@@ -502,6 +528,30 @@ function Table(props: {
   const [number, setNumber] = useState<{ key: string; id: string } | null>(null)
   const [choiceAt, setChoiceAt] = useState({ x: 0, y: 0 })
   const [choiceHidden, setChoiceHidden] = useState<string | null>(null)
+  // Where each unit sits in its half of an arena, by id: it keeps its place as others come and
+  // go, a new one taking the first free place in the front row (from the centre out), then in
+  // the rows behind. How many fit in a row, by arena, from its width.
+  const places = useRef(new Map<string, number>())
+  const [perRow, setPerRow] = useState<Record<Arena, number>>({ ground: 6, space: 6 })
+  const arenas = useRef(new Map<Arena, HTMLElement>())
+  useEffect(() => {
+    const measure = () => {
+      const unit = window.innerHeight * 0.13 * 0.718
+      const gap = window.innerWidth * 0.008
+      const fit = (kind: Arena) => {
+        const width = (arenas.current.get(kind)?.clientWidth ?? 0) - window.innerHeight * 0.02
+        return Math.max(1, Math.floor((width + gap) / (unit + gap)))
+      }
+      setPerRow((now) => {
+        const next = { ground: fit('ground'), space: fit('space') }
+        return now.ground === next.ground && now.space === next.space ? now : next
+      })
+    }
+    const observer = new ResizeObserver(measure)
+    for (const el of arenas.current.values()) observer.observe(el)
+    measure()
+    return () => observer.disconnect()
+  }, [])
   const drag = (event: React.MouseEvent) => {
     if (event.button !== 0 || (event.target as Element).closest('button, select, img')) return
     event.preventDefault()
@@ -582,6 +632,13 @@ function Table(props: {
     }
     // The hovered card may leave the board without a mouseleave
     setHover(null)
+  }
+  // Your last move taken back, and what you had begun choosing with it
+  const undo = () => {
+    setMode(null)
+    setPicked([])
+    setMenu(null)
+    props.onUndo?.()
   }
   const can = (action: Action) => view.actions.some((a) => sameAction(a, action))
   // The play that attaches a card to a unit, played the way chosen, among those the engine allows
@@ -785,6 +842,8 @@ function Table(props: {
           ]
       break
   }
+  // A question the action may be taken back from
+  if (asked?.cancel) buttons = [{ label: 'Cancel', onClick: () => act(YOU, { type: 'cancel' }) }, ...buttons]
   const numberList = numbers && (
     <select className="sim-number" value={numbers.value} onChange={(e) => numbers?.onChange(e.target.value)}>
       {numbers.options.map((o) => (
@@ -1073,6 +1132,10 @@ function Table(props: {
         </div>
         {who === 'me' && !apart && !setup && (
           <div className="sim-actions">
+            {/* First, so at the bottom: the move the game goes on with is on top */}
+            <button type="button" className="sim-button undo" disabled={!props.onUndo} title="Take back your last move (and the AI's since)" onClick={undo}>
+              ↶ Undo
+            </button>
             {numberList}
             {buttons.map((b) => (
               <button key={b.label} type="button" className={`sim-button ${b.kind ?? ''}`} disabled={b.disabled} onClick={b.onClick}>
@@ -1166,11 +1229,53 @@ function Table(props: {
     )
   }
 
+  // One side's half of an arena: each unit in its place, the front row by the centre line
+  const half = (side: SideView, kind: Arena, who: 'opp' | 'me') => {
+    const row = perRow[kind]
+    const units = side.units.filter((u) => u.arena === kind)
+    const key = (id: string) => `${who}|${kind}|${id}`
+    // The places of units gone are free again
+    const taken = new Set<number>()
+    for (const u of units) {
+      const at = places.current.get(key(u.id))
+      if (at !== undefined && !taken.has(at)) taken.add(at)
+      else places.current.delete(key(u.id))
+    }
+    for (const u of units) {
+      if (places.current.has(key(u.id))) continue
+      let at = 0
+      while (taken.has(at)) at++
+      places.current.set(key(u.id), at)
+      taken.add(at)
+    }
+    const rows = Math.max(1, ...units.map((u) => Math.floor(places.current.get(key(u.id))! / row) + 1))
+    // From the centre out: the middle place, then one to its left, one to its right…
+    const middle = Math.floor(row / 2)
+    const column = (i: number) => middle + (i % 2 ? -(i + 1) / 2 : i / 2) + 1
+    return (
+      <div className={`sim-half ${who}`} style={{ gridTemplateColumns: `repeat(${row}, minmax(var(--uw), auto))` }}>
+        {units.map((u) => {
+          const at = places.current.get(key(u.id))!
+          const r = Math.floor(at / row)
+          return (
+            <div key={u.id} className="sim-place" style={{ gridColumn: column(at % row), gridRow: who === 'me' ? r + 1 : rows - r }}>
+              {unitView(side, kind)(u)}
+            </div>
+          )
+        })}
+      </div>
+    )
+  }
   const arena = (kind: Arena) => (
-    <section className={`sim-arena ${kind}`}>
+    <section
+      className={`sim-arena ${kind}`}
+      ref={(el) => {
+        if (el) arenas.current.set(kind, el)
+      }}
+    >
       <span className="sim-arena-name">{kind}</span>
-      <div className="sim-half opp">{opp.units.filter((u) => u.arena === kind).map(unitView(opp, kind))}</div>
-      <div className="sim-half me">{me.units.filter((u) => u.arena === kind).map(unitView(me, kind))}</div>
+      {half(opp, kind, 'opp')}
+      {half(me, kind, 'me')}
     </section>
   )
 

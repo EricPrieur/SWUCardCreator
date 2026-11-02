@@ -12,7 +12,7 @@
   "text": "[When Played:] Search the top 5 cards of your deck for a [{Bene Gesserit}] unit, reveal it and draw it.",
   "power": 2,
   "trait": "Bene Gesserit, Vehicle, Transport",
-  "number": "042",
+  "number": "043",
   "rarity": "U",
   "frameId": "unit-vigilance-space",
   "setCode": "DUNE",

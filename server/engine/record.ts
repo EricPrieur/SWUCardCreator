@@ -13,6 +13,9 @@ export type GameRecord = {
   players: [Seat, Seat]
   actions: Step[]
   result?: { winner: PlayerId | 'draw' | null; rounds: number }
+  // How many times a person took back moves (the AI's since going with them): those moves are
+  // no longer in the record
+  undos?: number
   // When it was played, and anything a tool wants to note (a matchup's name)
   at?: string
   note?: string

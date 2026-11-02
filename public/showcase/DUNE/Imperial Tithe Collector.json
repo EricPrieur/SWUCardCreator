@@ -1,20 +1,20 @@
 {
   "hp": 6,
   "id": "4427b72d-eb11-4d7a-8e86-0fa567b45887",
+  "art": {
+    "x": 0,
+    "y": 6,
+    "src": "Imperial Tithe Collector (art).webp",
+    "zoom": 1.16
+  },
   "cost": 6,
   "name": "Imperial Tithe Collector",
   "text": "[Sentinel]\n[When Played/On Attack:] If an opponent controls a Spice token, they defeat it. If they do, create a Spice token and give an Experience token to this unit.",
   "power": 4,
   "trait": "Emperor, Official",
-  "number": "083",
+  "number": "085",
   "rarity": "U",
   "frameId": "unit-command",
   "setCode": "DUNE",
-  "language": "EN",
-  "art": {
-    "src": "Imperial Tithe Collector (art).webp",
-    "zoom": 1.16,
-    "x": 0,
-    "y": 6
-  }
+  "language": "EN"
 }

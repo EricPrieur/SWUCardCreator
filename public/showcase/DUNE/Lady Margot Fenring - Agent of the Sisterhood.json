@@ -21,7 +21,7 @@
   "text": "[When Played/On Attack:] Choose an enemy non-leader unit. You may discard a card from your hand. If you do and it costs [#4] or less, take control of it. Otherwise, exhaust it. At the start of the regroup phase, its owner takes control of it.",
   "power": 4,
   "trait": "Bene Gesserit, Emperor",
-  "number": "045",
+  "number": "046",
   "rarity": "L",
   "unique": true,
   "frameId": "unit-vigilance",

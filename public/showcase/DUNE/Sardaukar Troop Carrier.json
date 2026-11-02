@@ -1,0 +1,21 @@
+{
+  "hp": 3,
+  "id": "461be39a-10e8-49d8-b7f5-e61852826732",
+  "art": {
+    "x": 0,
+    "y": -26,
+    "src": "Sardaukar Troop Carrier (art).webp",
+    "zoom": 1,
+    "rotate": 0
+  },
+  "cost": 2,
+  "name": "Sardaukar Troop Carrier",
+  "text": "[When Played/On Attack:] The next [{Trooper}] unit you play this phase costs [1] less.",
+  "power": 1,
+  "trait": "Emperor, Vehicle, Transport",
+  "number": "057",
+  "rarity": "C",
+  "frameId": "unit-command-villainy-space",
+  "setCode": "DUNE",
+  "language": "EN"
+}

@@ -944,6 +944,14 @@ const dune: CardScript[] = [
     },
   },
   {
+    name: 'Sardaukar Troop Carrier',
+    text: '[When Played/On Attack:] The next [{Trooper}] unit you play this phase costs [1] less.',
+    front: {
+      whenPlayed: (g, self) => g.discountNext(self.controller, 'Trooper', 1),
+      onAttack: (g, self) => g.discountNext(self.controller, 'Trooper', 1),
+    },
+  },
+  {
     name: 'Gurney Halleck',
     subtitle: 'Warrior-Troubadour',
     text: '[Saboteur]\n[When Played/On Attack:] Give an Experience token to another friendly [{Atreides}] unit.',
@@ -1174,6 +1182,7 @@ const dune: CardScript[] = [
             const pick = g.chooseOne(self.controller, 'Shaddam IV: play a Sardaukar card from your hand, ignoring its additional costs', ids, {
               ai: 'best',
               source: self.def.id,
+              cancel: true,
             })
             if (pick) g.playCard(self.controller, pick, { ignoreAdditional: true })
           },
@@ -1389,6 +1398,84 @@ const dune: CardScript[] = [
         if (!g.unit(pick) || !g.spice(p)) return
         if (g.may(p, `Lasgun Volley: defeat a Spice token to deal 2 more damage to ${g.name(pick)}?`, { yes: 'Defeat a Spice token', no: 'Skip', source: self.def.id }) && g.defeatSpice(p))
           g.damage(pick, 2, self)
+      },
+    },
+  },
+  {
+    name: "Kynes's Dream",
+    text: 'Heal 3 damage from a unit or base. Then, you may defeat up to 2 friendly Spice tokens. Heal 3 damage from your base for each Spice token defeated this way.',
+    front: {
+      play: (g, self) => {
+        const p = self.controller
+        healOne(g, self, 3)
+        if (!g.spice(p)) return
+        const counts = Array.from({ length: Math.min(2, g.spice(p)) + 1 }, (_, k) => `${k} (heal ${3 * k})`)
+        // The AI spends only for damage there is to heal
+        const worth = Math.min(counts.length - 1, Math.floor(g.player(p).base.damage / 3))
+        const spent = g.option(p, "Kynes's Dream: defeat how many Spice tokens?", counts, { ai: worth, source: self.def.id })
+        let healed = 0
+        for (let k = 0; k < spent; k++) if (g.defeatSpice(p)) healed += 3
+        g.heal(`base${p}`, healed, self)
+      },
+    },
+  },
+  {
+    name: 'House Levy',
+    text: "Search the top 5 cards of your deck for a unit, reveal it and draw it. If it's a [{Trooper}] unit, you may also reveal and draw a [{Trooper}] unit from among the other cards.",
+    front: {
+      play: (g, self) => {
+        const p = self.controller
+        const top = g.top(p, 5).map((c) => c.id)
+        const trooper = (id: string) => g.def(g.card(id)!).type === 'unit' && g.hasTrait(g.card(id)!, 'Trooper')
+        const units = top.filter((id) => g.def(g.card(id)!).type === 'unit')
+        const text = units.length ? 'House Levy: search the top 5 cards of your deck for a unit' : 'House Levy: no unit in the top 5 cards of your deck'
+        const pick = g.chooseOne(p, text, units, { ai: 'best', source: self.def.id, seen: top })
+        const taken = pick ? [pick] : []
+        if (pick && trooper(pick)) {
+          const rest = top.filter((id) => id !== pick)
+          const more = g.chooseOne(p, 'House Levy: you may also draw a Trooper unit', rest.filter(trooper), { optional: true, ai: 'best', source: self.def.id, seen: rest })
+          if (more) taken.push(more)
+        }
+        if (taken.length) {
+          g.reveal(p, taken, self)
+          for (const id of taken) g.drawCard(p, id)
+        } else g.log('House Levy finds nothing', p)
+        g.shuffleToBottom(p, top.filter((id) => !taken.includes(id)))
+      },
+    },
+  },
+  {
+    name: 'Crossfire',
+    text: 'Attack with a [{Trooper}] unit. It gains [Saboteur] and gets [+1/+0] for this attack. Then, you may attack with another [{Trooper}] unit. It gains [Saboteur] and gets [+1/+0] for this attack.',
+    front: {
+      play: (g, self) => {
+        let first: string | undefined
+        for (const optional of [false, true]) {
+          const ids = friendlyIds(g, self, (u) => u.id !== first && g.hasTrait(u, 'Trooper') && g.canAttack(u.id))
+          const text = optional ? 'Crossfire: you may attack with another Trooper unit' : 'Crossfire: attack with a Trooper unit'
+          const pick = g.chooseOne(self.controller, text, ids, { optional, ai: 'help', source: self.def.id })
+          if (!pick) return
+          // Granted before the attack, so that it ignores Sentinel
+          g.grant(pick, { saboteur: true }, 'attack')
+          if (!g.attackWith(pick, { power: 1 })) g.state.effects = g.state.effects.filter((e) => !(e.unit === pick && e.until === 'attack'))
+          first = pick
+        }
+      },
+    },
+  },
+  {
+    name: 'Plans Within Plans',
+    text: 'Attack with a unit. It gets [+2/+0] for this attack. You may defeat a friendly Spice token. If you do, it gets [+4/+0] instead.',
+    front: {
+      play: (g, self) => {
+        const p = self.controller
+        const pick = g.chooseOne(p, 'Plans Within Plans: attack with a unit', friendlyIds(g, self, (u) => g.canAttack(u.id)), { ai: 'help', source: self.def.id })
+        if (!pick) return
+        const more =
+          g.spice(p) > 0 &&
+          g.may(p, `Plans Within Plans: defeat a Spice token so that ${g.name(pick)} gets +4/+0 instead?`, { yes: 'Defeat a Spice token', no: 'Skip', ai: g.spice(p) > 1, source: self.def.id }) &&
+          g.defeatSpice(p)
+        g.attackWith(pick, { power: more ? 4 : 2 })
       },
     },
   },
@@ -1661,7 +1748,7 @@ const dune: CardScript[] = [
   },
   {
     name: 'Sardaukar Legion',
-    text: 'As an additional cost to play this unit, defeat a friendly Spice token.\n[When Played:] Search the top 10 cards of your deck for any number of [{Sardaukar}] units and reveal them. You may defeat up to 3 friendly Spice tokens. Play any number of the revealed units with a combined cost of [#2] or less for each Spice token defeated this way, for free, ignoring their additional costs.',
+    text: 'As an additional cost to play this unit, defeat a friendly Spice token.\n[When Played:] Search the top 10 cards of your deck for any number of [{Sardaukar}] units and reveal them. You may defeat up to 2 friendly Spice tokens. Play any number of the revealed units with a combined cost of [#3] or less for each Spice token defeated this way, for free, ignoring their additional costs.',
     front: {
       whenPlayed: (g, self) => {
         const p = self.controller
@@ -1670,10 +1757,10 @@ const dune: CardScript[] = [
         if (revealed.length) g.reveal(p, revealed.map((c) => c.id), self)
         else g.log('Sardaukar Legion finds no Sardaukar unit', p)
         if (revealed.length && g.spice(p)) {
-          const counts = Array.from({ length: Math.min(3, g.spice(p)) + 1 }, (_, n) => `${n} (up to ${2 * n} cost)`)
+          const counts = Array.from({ length: Math.min(2, g.spice(p)) + 1 }, (_, n) => `${n} (up to ${3 * n} cost)`)
           const spent = g.option(p, 'Sardaukar Legion: defeat how many Spice tokens?', counts, { ai: counts.length - 1, source: self.def.id })
           for (let i = 0; i < spent; i++) g.defeatSpice(p)
-          let budget = 2 * spent
+          let budget = 3 * spent
           for (;;) {
             const ids = revealed
               .filter((c) => g.def(c).cost <= budget && g.canPlay(p, c.id, { free: true, ignoreAdditional: true }))

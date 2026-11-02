@@ -246,5 +246,93 @@
         "count": 3
       }
     ]
+  },
+  {
+    "id": "51705f53-17e9-41fb-a891-38928d061e66",
+    "name": "Shaddam Sardaukar",
+    "leader": "2fb57847-cfcf-474c-9b75-19d509feb052",
+    "base": "57e8ef64-ebff-4e73-92ea-9ea72f6624d8",
+    "cards": [
+      {
+        "id": "9f59a5c3-b53d-492a-8bef-dd80cbc56c45",
+        "count": 3
+      },
+      {
+        "id": "ef288baa-d8ab-48ff-8e07-9b1558de7edb",
+        "count": 2
+      },
+      {
+        "id": "7e3fc552-6c87-4d05-913f-17f5ab9f2f47",
+        "count": 3
+      },
+      {
+        "id": "972f8a5d-d416-4210-909d-341c7ff2bd45",
+        "count": 3
+      },
+      {
+        "id": "744cb873-87dd-4e54-bb3c-58c60700cb11",
+        "count": 3
+      },
+      {
+        "id": "289c0ad6-7185-44c0-904c-b721af6ee10e",
+        "count": 3
+      },
+      {
+        "id": "b63da887-2266-4434-bb99-8101a18ecf9c",
+        "count": 2
+      },
+      {
+        "id": "3f4a5f78-4647-438a-b66e-31c29de340b5",
+        "count": 2
+      },
+      {
+        "id": "95717e4a-5015-40f5-8133-026ecc95dc44",
+        "count": 3
+      },
+      {
+        "id": "f760e371-12fc-43c4-93ff-5fa3da9487f7",
+        "count": 3
+      },
+      {
+        "id": "76de506d-cc7b-4b78-bd3d-c13a4ac6232f",
+        "count": 1
+      },
+      {
+        "id": "743b3c9f-ddf9-47ff-800f-19c275024ae2",
+        "count": 3
+      },
+      {
+        "id": "f58aaebd-0cd6-4cbf-a792-c2109bfc6112",
+        "count": 2
+      },
+      {
+        "id": "4427b72d-eb11-4d7a-8e86-0fa567b45887",
+        "count": 1
+      },
+      {
+        "id": "6c24f2ff-cdc5-4d40-b66b-503e523b5ad1",
+        "count": 2
+      },
+      {
+        "id": "57613afc-674d-40aa-afbc-5dadccaca9d7",
+        "count": 3
+      },
+      {
+        "id": "605ba3e7-7ad7-429c-a50d-e590eac3727b",
+        "count": 3
+      },
+      {
+        "id": "31c94086-879b-4776-9223-c4f626cc4029",
+        "count": 3
+      },
+      {
+        "id": "68dd1bdd-9a71-4b58-9b5b-37adadae3cb6",
+        "count": 2
+      },
+      {
+        "id": "10c9c976-6cb2-4091-84fb-7824c40da68e",
+        "count": 3
+      }
+    ]
   }
 ]

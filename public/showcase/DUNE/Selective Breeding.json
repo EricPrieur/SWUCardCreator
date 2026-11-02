@@ -13,7 +13,7 @@
   "text": "Attach to a non-[{Vehicle}] unit.\n[When Played:] If attached unit is a [{Bene Gesserit}] unit, give a Weakness token to a non-[{Vehicle}] unit.",
   "power": 1,
   "trait": "Bene Gesserit",
-  "number": "050",
+  "number": "051",
   "rarity": "C",
   "frameId": "upgrade-vigilance",
   "setCode": "DUNE",

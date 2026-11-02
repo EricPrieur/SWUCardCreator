@@ -52,7 +52,15 @@ const defs: CardDef[] = [
   card('terror', { ...scripted("The Emperor's Terror"), type: 'event', cost: 6, arena: undefined, traits: ['Emperor', 'Tactic'] }),
   card('household', { ...scripted('Imperial Household Guard'), cost: 2, power: 2, hp: 3 }),
   card('collector', { ...scripted('Imperial Tithe Collector'), cost: 6, power: 4, hp: 6 }),
+  card('legion', { ...scripted('Sardaukar Legion'), cost: 7, power: 5, hp: 6, traits: ['Sardaukar', 'Trooper'] }),
+  card('shaddamLeader', { ...scriptedBy('Shaddam IV', 'Padishah Emperor'), type: 'leader', cost: 7, unit: { power: 5, hp: 8, arena: 'ground', keywords: {} } }),
   card('shaddam', { ...scriptedBy('Shaddam IV', 'Lion Throne'), cost: 6, power: 6, hp: 8, unique: true, traits: ['Emperor', 'Official'] }),
+  card('soldier', { cost: 2, power: 2, hp: 2, traits: ['Trooper'] }),
+  card('carrier', { ...scripted('Sardaukar Troop Carrier'), cost: 2, power: 1, hp: 3, arena: 'space' }),
+  card('kynesDream', { ...scripted("Kynes's Dream"), type: 'event', cost: 2, arena: undefined }),
+  card('levy', { ...scripted('House Levy'), type: 'event', cost: 2, arena: undefined }),
+  card('crossfire', { ...scripted('Crossfire'), type: 'event', cost: 2, arena: undefined }),
+  card('plans', { ...scripted('Plans Within Plans'), type: 'event', cost: 2, arena: undefined }),
 ]
 
 const act = (state: GameState, p: PlayerId, action: Action) => applyAction(state, p, action)
@@ -311,4 +319,124 @@ test("Imperial Tithe Collector: an opponent's Spice token for one of yours and a
   state = act(state, 0, { type: 'attack', attacker: 'u00', target: 'u10' })
   assert.equal(state.players[0].spice.length, 1)
   assert.equal(state.players[0].units[0].upgrades.length, 0)
+})
+
+test("Shaddam IV's Action: a Sardaukar unit with no Spice token costs only its cost, and it may be taken back", () => {
+  let state = table({ base0: 'caladan', hand0: ['burseg', 'executioner'] })
+  state.players[0].leader.def = 'shaddamLeader'
+  state.players[0].resources = state.players[0].resources.slice(0, 5)
+  const use: Action = { type: 'ability', source: 'leader', index: 0 }
+  state = act(state, 0, use)
+  assert.deepEqual(state.prompt!.options.map((o) => o.id), ['h0', 'h1'], 'Burseg, 5 for 5 ready resources')
+  assert.ok(state.prompt!.cancel)
+  const before = state
+  state = act(state, 0, { type: 'cancel' })
+  assert.equal(state.prompt, null)
+  assert.ok(!state.players[0].leader.exhausted, 'the leader ready again')
+  assert.equal(state.players[0].hand.length, 2)
+  assert.equal(state.active, 0, 'still your turn')
+  state = act(before, 0, { type: 'answer', picks: ['h0'] })
+  assert.equal(state.players[0].units[0].def, 'burseg')
+  assert.equal(state.players[0].resources.filter((r) => !r.exhausted).length, 0)
+})
+
+test('Sardaukar Legion: up to 2 Spice tokens, each for 3 cost of revealed Sardaukar units played free', () => {
+  let state = table({ hand0: ['legion'], deck0: ['burseg', 'executioner', 'trooper', 'bashar'] })
+  state.players[0].resources = Array.from({ length: 7 }, (_, i) => ({ card: { id: `r${i}`, def: 'trooper' }, exhausted: false }))
+  const token = state.players[0].spice[0]
+  state.players[0].spice = [0, 1, 2, 3].map((i) => ({ ...token, id: `spice${i}` }))
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  // One spent on its additional cost: 3 left, at most 2 of them for the units
+  assert.deepEqual(state.prompt!.options.map((o) => o.label), ['0 (up to 0 cost)', '1 (up to 3 cost)', '2 (up to 6 cost)'])
+  state = answer(state, '2')
+  state = answer(state, 'd0')
+  assert.equal(state.players[0].spice.length, 1)
+  // 1 cost left: neither the Executioner nor the Bashar, the cards searched only shown
+  assert.deepEqual(state.prompt!.options, [])
+  state = answer(state)
+  assert.equal(state.prompt, null)
+  assert.deepEqual(state.players[0].units.map((u) => u.def).sort(), ['burseg', 'legion'])
+})
+
+test('Sardaukar Troop Carrier: the next Trooper unit played this phase costs 1 less, and each discount waiting adds up', () => {
+  let state = table({ hand0: ['carrier', 'soldier', 'soldier'] })
+  const ready = (s: GameState) => s.players[0].resources.filter((r) => !r.exhausted).length
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  assert.equal(ready(state), 4)
+  state.active = 0
+  state = act(state, 0, { type: 'play', card: 'h1' })
+  assert.equal(ready(state), 3, 'the first Trooper for 1')
+  state.active = 0
+  state = act(state, 0, { type: 'play', card: 'h2' })
+  assert.equal(ready(state), 1, 'the second one at full cost')
+  // When Played and On Attack the same phase: 2 less for the next one
+  state = table({ hand0: ['carrier', 'soldier'] })
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  state.players[0].units[0].exhausted = false
+  state.active = 0
+  state = act(state, 0, { type: 'attack', attacker: state.players[0].units[0].id, target: 'base' })
+  state.active = 0
+  state = act(state, 0, { type: 'play', card: 'h1' })
+  assert.equal(ready(state), 4, 'the soldier for 0')
+})
+
+test("Kynes's Dream: heal 3 from a unit or base, then 3 from your base for each of up to 2 Spice tokens", () => {
+  let state = table({ hand0: ['kynesDream'] })
+  state.players[0].spice.push({ id: 'spice2', def: state.players[0].spice[0].def })
+  state.players[0].base.damage = 10
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  state = answer(state, 'base0')
+  assert.equal(state.players[0].base.damage, 7)
+  assert.equal(state.prompt!.options.length, 3, '0, 1 or 2 Spice tokens')
+  state = answer(state, '2')
+  assert.equal(state.players[0].base.damage, 1)
+  assert.equal(state.players[0].spice.length, 0)
+})
+
+test('House Levy: a unit from the top 5, and a second Trooper unit when the first is one', () => {
+  let state = table({ hand0: ['levy'], deck0: ['big', 'soldier', 'soldier', 'trooper', 'guard', 'big'] })
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  state = answer(state, 'd1')
+  assert.deepEqual(state.prompt!.options.map((o) => o.id), ['d2'], 'only the other Trooper')
+  state = answer(state, 'd2')
+  assert.deepEqual(state.players[0].hand.map((c) => c.id), ['d1', 'd2'])
+  assert.equal(state.players[0].deck[0].id, 'd5', 'the rest to the bottom')
+  // Not a Trooper: just the one
+  state = table({ hand0: ['levy'], deck0: ['big', 'soldier', 'guard'] })
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  state = answer(state, 'd0')
+  assert.equal(state.prompt, null)
+  assert.deepEqual(state.players[0].hand.map((c) => c.id), ['d0'])
+})
+
+test('Crossfire: two Trooper attacks with Saboteur and +1/+0', () => {
+  let state = table({ hand0: ['crossfire'], units0: ['soldier', 'soldier', 'big'], units1: ['guard'] })
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  assert.deepEqual(state.prompt!.options.map((o) => o.id), ['u00', 'u01'], 'Troopers only')
+  state = answer(state, 'u00')
+  assert.ok(state.prompt!.options.some((o) => o.id === 'base1'), 'past the Sentinel')
+  state = answer(state, 'base1')
+  assert.equal(state.players[1].base.damage, 3)
+  assert.deepEqual(state.prompt!.options.map((o) => o.id), ['u01'])
+  state = answer(state, 'u01')
+  state = answer(state, 'base1')
+  assert.equal(state.players[1].base.damage, 6)
+  assert.equal(powerOf(state, state.players[0].units[0]), 2, 'only for the attack')
+  assert.ok(!keywordsOf(state, state.players[0].units[0]).saboteur)
+})
+
+test('Plans Within Plans: +2/+0 for the attack, or +4/+0 for a Spice token', () => {
+  let state = table({ hand0: ['plans', 'plans'], units0: ['trooper', 'big'] })
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  state = answer(state, 'u00')
+  state = answer(state, 'yes')
+  state = answer(state, 'base1')
+  assert.equal(state.players[1].base.damage, 6)
+  assert.equal(state.players[0].spice.length, 0)
+  state.active = 0
+  state = act(state, 0, { type: 'play', card: 'h1' })
+  state = answer(state, 'u01')
+  assert.deepEqual(state.prompt!.options.map((o) => o.id), ['base1'], 'no Spice left to ask for')
+  state = answer(state, 'base1')
+  assert.equal(state.players[1].base.damage, 13)
 })

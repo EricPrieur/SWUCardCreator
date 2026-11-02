@@ -39,6 +39,8 @@ export function describe(state: GameState, p: PlayerId, action: Action): string 
       const labels = action.picks.map((id) => prompt?.options.find((o) => o.id === id)?.label ?? nameIn(state, id))
       return `answer "${prompt?.text ?? '?'}": ${labels.join(', ') || 'nothing'}`
     }
+    case 'cancel':
+      return 'take the action back'
     case 'resource':
       return action.cards.length ? `resource ${action.cards.map((id) => nameIn(state, id)).join(', ')}` : 'resource nothing'
     case 'mulligan':

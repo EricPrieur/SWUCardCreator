@@ -703,6 +703,10 @@ export function applyAction(game: GameState, p: PlayerId, action: Action): GameS
     log(state, `${state.players[p].name} concedes`, p)
     return state
   }
+  if (action.type === 'cancel') {
+    if (!game.prompt?.cancel || p !== game.prompt.player || !game.pending) throw new IllegalAction('Nothing to take back')
+    return game.pending.base
+  }
   if (game.prompt) {
     if (action.type !== 'answer' || p !== game.prompt.player) throw new IllegalAction('An answer is awaited')
     checkAnswer(game.prompt, action.picks)
@@ -921,9 +925,10 @@ type PlayedFrom = 'hand' | 'discard' | 'smuggle' | 'plot' | 'deck'
 // spiceInstead: "for free by defeating a friendly Spice token"
 type PlayOptions = { discount?: number; free?: boolean; ignoreAdditional?: boolean; spiceInstead?: boolean }
 
-// The next card of a trait a player plays this phase costs less (Bene Gesserit Sister)
-const discountFor = (state: GameState, p: PlayerId, card: CardDef) =>
-  state.discounts.find((d) => d.player === p && card.traits.includes(d.trait))
+// The next card of a trait a player plays this phase costs less (Bene Gesserit Sister); each
+// such discount waiting applies to that card
+const discountsFor = (state: GameState, p: PlayerId, card: CardDef) =>
+  state.discounts.filter((d) => d.player === p && card.traits.includes(d.trait))
 
 // "[Creature] cards you play cost [1] less.": what the cards on a player's side take off
 function costsLess(state: GameState, p: PlayerId, card: CardDef) {
@@ -934,7 +939,7 @@ function costsLess(state: GameState, p: PlayerId, card: CardDef) {
 function priceOf(state: GameState, p: PlayerId, card: CardDef, from: PlayedFrom, options: PlayOptions = {}) {
   if (options.free || options.spiceInstead) return 0
   const cost = from === 'smuggle' ? smuggleCost(state, p, card) : playCost(state, p, card)
-  return Math.max(0, cost - (options.discount ?? 0) - (discountFor(state, p, card)?.amount ?? 0) - costsLess(state, p, card))
+  return Math.max(0, cost - (options.discount ?? 0) - discountsFor(state, p, card).reduce((sum, d) => sum + d.amount, 0) - costsLess(state, p, card))
 }
 
 // What a card in a player's hand costs them to play now: its cost, aspects missing and
@@ -942,9 +947,9 @@ function priceOf(state: GameState, p: PlayerId, card: CardDef, from: PlayedFrom,
 export const handPrice = (state: GameState, p: PlayerId, card: CardDef) => priceOf(state, p, card, 'hand')
 
 // How much less a card may cost for the Spice tokens defeated as it is played (CHOAM Dividend,
-// Guild Heighliner)
+// Guild Heighliner), never below none when they are all needed for its additional cost
 const spiceRoom = (state: GameState, p: PlayerId, card: CardDef) =>
-  Math.min(state.players[p].spice.length - (card.spiceCost ?? 0), abilitiesOf(card, 'front').spiceReduces ?? 0)
+  Math.max(0, Math.min(state.players[p].spice.length - (card.spiceCost ?? 0), abilitiesOf(card, 'front').spiceReduces ?? 0))
 
 // A card name opponents can't play this phase (The Voice)
 const isBanned = (state: GameState, p: PlayerId, card: CardDef) => state.banned.some((b) => b.player === p && b.name === card.name)
@@ -994,8 +999,8 @@ function playCard(state: GameState, p: PlayerId, id: string, attachTo?: string, 
     else player.resources = player.resources.filter((r) => r !== slot)
   }
   const d = def(state, card)
-  const discount = discountFor(state, p, d)
-  if (discount && !options.free && !options.spiceInstead) state.discounts = state.discounts.filter((x) => x !== discount)
+  const used = discountsFor(state, p, d)
+  if (!options.free && !options.spiceInstead) state.discounts = state.discounts.filter((x) => !used.includes(x))
   if (options.spiceInstead) defeatSpice(state, p)
   // An additional cost: Spice tokens to defeat, unless a card lets it be ignored. With the Spice
   // to pay, its controller chooses.
@@ -1276,7 +1281,8 @@ function useAbility(state: GameState, p: PlayerId, source: string, index: number
 // --- What abilities can do ---
 
 // seen: the cards looked at, those not among ids shown too
-type Choice = { optional?: boolean; ai?: Prompt['ai']; source?: string; seen?: string[] }
+// cancel: the action may be taken back from this question, its first
+type Choice = { optional?: boolean; ai?: Prompt['ai']; source?: string; seen?: string[]; cancel?: boolean }
 
 // The game as card scripts see and change it: what is where, questions for the players, and
 // the effects cards have. Damage and defeats are dealt with as they happen.
@@ -1363,6 +1369,7 @@ export class Game {
       text,
       source: options.source,
       ...(seen && { seen }),
+      ...(options.cancel && { cancel: true }),
       kind: 'pick',
       options: ids.map((id) => ({ id, label: this.name(id), def: this.cardInfo(id)?.def })),
       min,

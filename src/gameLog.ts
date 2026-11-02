@@ -33,6 +33,10 @@ export function gameLog(session: Session | null, record: GameRecord, decks: [str
         send(state)
       }
     },
+    // Moves taken back: a game over may go on again, its end saved anew
+    undone() {
+      done = false
+    },
     // Left before it was over
     left(state: GameState) {
       if (done) return

@@ -1,0 +1,19 @@
+{
+  "id": "267e2c5d-3014-4982-aefa-a3144b77f3da",
+  "art": {
+    "x": 0,
+    "y": 37,
+    "src": "Kynes's Dream (art).webp",
+    "zoom": 1,
+    "rotate": 0
+  },
+  "cost": 2,
+  "name": "Kynes's Dream",
+  "text": "Heal 3 damage from a unit or base. Then, you may defeat up to 2 friendly Spice tokens. Heal 3 damage from your base for each Spice token defeated this way.",
+  "trait": "Fremen",
+  "number": "038",
+  "rarity": "C",
+  "frameId": "event-vigilance-heroism",
+  "setCode": "DUNE",
+  "language": "EN"
+}

@@ -1,5 +1,5 @@
 {
-  "hp": 4,
+  "hp": 3,
   "id": "27bb6ad3-ad8e-4de3-aeb9-0066913132f2",
   "art": {
     "x": -2,
@@ -12,7 +12,7 @@
   "text": "Friendly [{Trooper}] units gain [Raid 1].",
   "power": 3,
   "trait": "Harkonnen, Vehicle, Fighter",
-  "number": "093",
+  "number": "096",
   "rarity": "U",
   "frameId": "unit-aggression-villainy-space",
   "setCode": "DUNE",

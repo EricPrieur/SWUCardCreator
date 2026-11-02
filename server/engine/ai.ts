@@ -39,10 +39,11 @@ export function chooseAction(state: GameState, p: PlayerId, why?: Weighed[]): Ac
   }
 
   // A Spice token's ability only while it has more tokens than its cards will want: those in its
-  // hand, and, with a deck of cards that spend Spice, a token kept for those still to come (none
-  // on a base that pays off for each token spent)
+  // hand, all of them together (up to SPICE_KEPT), and, with a deck of cards that spend Spice, a
+  // token kept for those still to come (none on a base that pays off for each token spent)
   const reserve = spicePays(state, p) ? 0 : deckPlan(state, p).spiceReserve
-  const needed = Math.max(reserve, ...player.hand.map((c) => spiceWanted(state.defs[c.def])))
+  const inHand = player.hand.reduce((sum, c) => sum + spiceWanted(state.defs[c.def]), 0)
+  const needed = Math.max(reserve, Math.min(SPICE_KEPT, inHand))
   const spice = new Set(player.spice.map((t) => t.id))
   // Taking the initiative ends its turn: a move of its own only in danger, the opponent going
   // first next round, to act before the units that threaten it can attack
@@ -60,7 +61,7 @@ export function chooseAction(state: GameState, p: PlayerId, why?: Weighed[]): Ac
     const deep = performance.now() - start < BUDGET
     const after = outcome(state, p, move, p, deep)
     const single = after ? evaluate(after, p) : -Infinity
-    return { move, after, single, best: Math.max(single, deep ? combo(state, p, move) : -Infinity) }
+    return { move, after, single, best: Math.max(single, deep ? combo(state, p, move) : -Infinity) + leaderPlays(state, p, move, after) }
   })
   const done = actions.find((a) => a.type === 'initiative') ?? { type: 'pass' }
   // Then its most promising moves again, each after the opponent's best reply, and passing
@@ -93,6 +94,14 @@ export function chooseAction(state: GameState, p: PlayerId, why?: Weighed[]): Ac
     done,
     why,
   )
+}
+
+// A leader's action that plays a card (Shaddam IV's): it comes back each round, so a card played
+// with it costs little more than the resources it takes. Worth this much more than the board shows.
+const LEADER_PLAY = 1.5
+function leaderPlays(state: GameState, p: PlayerId, move: Action, after: GameState | undefined) {
+  if (move.type !== 'ability' || move.source !== 'leader' || !after) return 0
+  return after.players[p].hand.length < state.players[p].hand.length ? LEADER_PLAY : 0
 }
 
 // The move that gains the most, if any gains enough; else it is done for now
@@ -150,15 +159,17 @@ export type DeckPlan = { curve: number[]; average: number; leader: number; top: 
 const plans = new WeakMap<object, [DeckPlan?, DeckPlan?]>()
 // Costs from 0 to this, the dearer ones counted with it
 // Which AI this is, kept with each game it plays, to tell its versions apart in the stats
-export const AI_VERSION = '2026-10-31 initiative'
+export const AI_VERSION = '2026-11-02 spice'
 
 export const CURVE_TOP = 8
 
-// The Spice tokens a card wants: its additional cost, or those its text may spend for more
-// (Lasgun Volley's one, The Baron's Wrath's any number, counted as two)
+// The Spice tokens a card wants: its additional cost and those its text may spend for more
+// (Sardaukar Legion's up to 2), or those its text alone may spend (Lasgun Volley's one, The
+// Baron's Wrath's or Shaddam IV's any number, counted as three)
 export function spiceWanted(d: CardDef) {
-  if (d.spiceCost) return d.spiceCost
-  if (/defeat any number of friendly Spice tokens/i.test(d.text ?? '')) return 2
+  const upTo = (d.text ?? '').match(/may defeat up to (\d+) friendly Spice tokens/i)
+  if (d.spiceCost) return d.spiceCost + (upTo ? Number(upTo[1]) : 0)
+  if (/defeat any number of friendly Spice tokens/i.test(d.text ?? '')) return 3
   const may = (d.text ?? '').match(/may defeat (a|\d+) friendly Spice tokens?/i)
   return may ? (/^\d+$/.test(may[1]) ? Number(may[1]) : 1) : 0
 }
@@ -170,6 +181,20 @@ const SPICE_WORTH = 1
 const SPICE_BASE_BONUS = 0.5
 // A deck with this many cards that spend Spice keeps a token for them
 const SPICE_SPENDERS = 4
+// The most Spice tokens it keeps for the cards in its hand
+const SPICE_KEPT = 3
+// A Spice token kept for a card in its hand it can soon pay for: worth more than one to spend
+const SPICE_KEPT_WORTH = 1.5
+// What each resource is worth more, up to those its plan aims for (a resource sooner is a turn
+// gained: CHOAM Dividend for one Spice token, three turns in)
+const RAMP = 2.5
+// The Spice tokens it keeps for the cards in its hand it can pay for this round or the next
+function spiceKept(state: GameState, p: PlayerId) {
+  const player = state.players[p]
+  const soon = player.resources.length + 1
+  const wanted = player.hand.reduce((sum, c) => sum + (playCost(state, p, state.defs[c.def]) <= soon ? spiceWanted(state.defs[c.def]) : 0), 0)
+  return Math.min(SPICE_KEPT, wanted)
+}
 
 export function deckPlan(state: GameState, p: PlayerId): DeckPlan {
   const known = plans.get(state.defs) ?? []
@@ -307,18 +332,27 @@ function bestAnswer(state: GameState, p: PlayerId, deep = true): Action {
 // which. A game won or lost still counts the board, so with every move losing it still makes
 // the one that does the most, in case the opponent doesn't see their win.
 export function evaluate(state: GameState, p: PlayerId) {
-  const board = side(state, p) - side(state, p === 0 ? 1 : 0)
+  const board = side(state, p, true) - side(state, p === 0 ? 1 : 0)
   if (state.phase === 'over') return state.winner === p ? 1000 + board : state.winner === 'draw' ? board : -1000 + board
   return board
 }
 
-function side(state: GameState, p: PlayerId) {
+// own: the side of the player judging, whose hand and deck it knows: its Spice tokens kept for the
+// cards in its hand it can soon pay for, and its resources short of its plan, count for more
+function side(state: GameState, p: PlayerId, own = false) {
   const player = state.players[p]
   // The base's health left, each point dearer as it runs out
   const left = Math.max(0, state.defs[player.base.def].hp - player.base.damage)
   let score = left + Math.max(0, 10 - left) * 0.6
   for (const unit of player.units) score += unitWorth(state, unit, blocked(state, p, unit))
-  score += player.hand.length * 1.5 + player.resources.length + player.spice.length * spiceWorth(state, p)
+  const kept = own ? Math.min(player.spice.length, spiceKept(state, p)) : 0
+  const short = own ? Math.min(player.resources.length, deckPlan(state, p).target) : 0
+  score +=
+    player.hand.length * 1.5 +
+    player.resources.length +
+    RAMP * short +
+    kept * SPICE_KEPT_WORTH +
+    (player.spice.length - kept) * spiceWorth(state, p)
   // A Fortification keeps giving while its base stands
   score += (player.base.upgrades?.length ?? 0) * 1.5
   if (state.initiative === p) score += 0.5

@@ -129,6 +129,8 @@ export type Prompt = {
   max: number
   // How the AI answers: a pick that 'harm's or 'help's, the option it takes
   ai?: 'harm' | 'help' | 'cheap' | string
+  // The action's first question, which it may be taken back from: the game as it was before it
+  cancel?: boolean
 }
 
 // The action a prompt interrupted: the game as it was before it, and the answers given so far.
@@ -209,6 +211,8 @@ export type Action =
   // A leader's or unit's Action ability, by its number on the card
   | { type: 'ability'; source: string; index: number }
   | { type: 'answer'; picks: string[] }
+  // Taking back the action a question that allows it interrupted
+  | { type: 'cancel' }
   | { type: 'initiative' }
   | { type: 'pass' }
   | { type: 'concede' }

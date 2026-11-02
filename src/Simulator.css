@@ -128,8 +128,9 @@
 }
 .sim-tools {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 0.6rem;
+  gap: 0.35rem;
   margin-bottom: 1rem;
   padding-bottom: 0.8rem;
   border-bottom: 1px solid var(--line);
@@ -137,11 +138,12 @@
 }
 .sim-tools span {
   flex: 1;
+  white-space: nowrap;
   color: var(--spice);
   font-weight: 700;
 }
 .sim-tools button {
-  padding: 0.2rem 0.5rem;
+  padding: 0.2rem 0.4rem;
   border: 1px solid var(--line);
   border-radius: 6px;
   background: none;
@@ -469,6 +471,10 @@
   align-self: center;
   flex: none;
 }
+/* Undo, below the others and set apart from them */
+.sim-button.undo {
+  margin-top: 0.6rem;
+}
 /* Buttons in the desert's colours: weathered leather, spice for what moves the game on */
 .sim-button {
   min-width: 9rem;
@@ -537,20 +543,22 @@
   color: rgba(232, 215, 181, 0.06);
   pointer-events: none;
 }
+/* Each unit in its place (a column and row set by the table), so others coming and going
+   don't move it */
 .sim-half {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
   justify-content: center;
+  justify-items: center;
   gap: 0.8vw;
   padding: 1vh;
   min-height: 0;
 }
 /* Each side's units sit by the centre line, facing the other's */
 .sim-half.opp {
-  align-content: flex-end;
+  align-content: end;
 }
 .sim-half.me {
-  align-content: flex-start;
+  align-content: start;
   border-top: 1px dashed var(--line);
 }
 
