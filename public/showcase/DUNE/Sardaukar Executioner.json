@@ -1,0 +1,20 @@
+{
+  "hp": 4,
+  "id": "f760e371-12fc-43c4-93ff-5fa3da9487f7",
+  "art": {
+    "x": 0,
+    "y": 3,
+    "src": "Sardaukar Executioner (art).webp",
+    "zoom": 1
+  },
+  "cost": 4,
+  "name": "Sardaukar Executioner",
+  "text": "As an additional cost to play this unit, defeat a friendly Spice token.\n[On Attack:] If the defender is a damaged non-leader unit, defeat it.",
+  "power": 5,
+  "trait": "Emperor, Sardaukar, Trooper",
+  "number": "058",
+  "rarity": "U",
+  "frameId": "unit-command-villainy",
+  "setCode": "DUNE",
+  "language": "EN"
+}

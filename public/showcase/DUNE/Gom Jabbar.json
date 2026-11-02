@@ -13,7 +13,7 @@
   "text": "Attach to a non-[{Vehicle}], non-leader unit.\nAttached unit gains: \"When this unit becomes exhausted, defeat it unless its controller discards a card from their hand.\"",
   "power": 0,
   "trait": "Bene Gesserit",
-  "number": "033",
+  "number": "035",
   "rarity": "U",
   "frameId": "upgrade-vigilance-villainy",
   "setCode": "DUNE",

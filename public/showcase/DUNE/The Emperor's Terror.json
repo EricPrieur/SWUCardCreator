@@ -1,0 +1,19 @@
+{
+  "id": "f58aaebd-0cd6-4cbf-a792-c2109bfc6112",
+  "art": {
+    "x": 0,
+    "y": 23,
+    "src": "The Emperor's Terror (art).webp",
+    "zoom": 1,
+    "rotate": 0
+  },
+  "cost": 6,
+  "name": "The Emperor's Terror",
+  "text": "Ready each friendly [{Sardaukar}] unit. They get [+2/+0] and [Overwhelm] for this phase.",
+  "trait": "Emperor, Tactic",
+  "number": "062",
+  "rarity": "R",
+  "frameId": "event-command-villainy",
+  "setCode": "DUNE",
+  "language": "EN"
+}

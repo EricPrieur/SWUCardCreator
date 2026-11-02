@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { applyAction, createGame, legalActions } from './game.ts'
+import { applyAction, createGame, hpOf, keywordsOf, legalActions, powerOf, traitsOf } from './game.ts'
 import { readText } from './cards.ts'
 import { scripts, scriptStatus } from './scripts.ts'
 import { IllegalAction, type Action, type CardDef, type GameState, type PlayerId, type UnitState } from './types.ts'
@@ -21,6 +21,10 @@ const card = (id: string, extra: Partial<CardDef>): CardDef => ({
   ...readText(extra.text),
   ...extra,
 })
+const scriptedBy = (name: string, subtitle: string) => {
+  const script = scripts.find((s) => s.name === name && s.subtitle === subtitle)!
+  return { name, subtitle, ...readText(script.text), text: script.text, backText: script.backText }
+}
 const scripted = (name: string) => {
   const script = scripts.find((s) => s.name === name)!
   return { name, subtitle: script.subtitle, ...readText(script.text), text: script.text, backText: script.backText }
@@ -42,6 +46,13 @@ const defs: CardDef[] = [
   card('shieldTrooper', { ...scripted('Atreides Shield Trooper'), cost: 2, power: 2, hp: 2 }),
   card('desertPower', { ...scripted('Desert Power'), type: 'event', cost: 4, arena: undefined }),
   card('runner', { ...scripted('Spice Runner'), cost: 1, power: 2, hp: 1 }),
+  card('executioner', { ...scripted('Sardaukar Executioner'), cost: 4, power: 5, hp: 4, traits: ['Sardaukar', 'Trooper'] }),
+  card('burseg', { ...scripted('Sardaukar Burseg'), cost: 5, power: 4, hp: 7, traits: ['Sardaukar', 'Official'] }),
+  card('falseColors', { ...scripted('False Colors'), type: 'event', cost: 2, arena: undefined, traits: ['Sardaukar', 'Tactic'] }),
+  card('terror', { ...scripted("The Emperor's Terror"), type: 'event', cost: 6, arena: undefined, traits: ['Emperor', 'Tactic'] }),
+  card('household', { ...scripted('Imperial Household Guard'), cost: 2, power: 2, hp: 3 }),
+  card('collector', { ...scripted('Imperial Tithe Collector'), cost: 6, power: 4, hp: 6 }),
+  card('shaddam', { ...scriptedBy('Shaddam IV', 'Lion Throne'), cost: 6, power: 6, hp: 8, unique: true, traits: ['Emperor', 'Official'] }),
 ]
 
 const act = (state: GameState, p: PlayerId, action: Action) => applyAction(state, p, action)
@@ -177,7 +188,7 @@ test('Fremen tokens: created, readied, Raid 1 with an Arrakis base, set aside wh
   let state = table({ hand0: ['desertPower'], units1: ['big'] })
   state = act(state, 0, { type: 'play', card: 'h0' })
   const fremen = state.players[0].units
-  assert.equal(fremen.length, 2)
+  assert.equal(fremen.length, 3)
   assert.ok(fremen.every((u) => !u.exhausted))
   assert.equal(scriptStatus(state.defs[fremen[0].def]), 'scripted', 'its text is the engine’s')
   state.active = 0
@@ -185,7 +196,7 @@ test('Fremen tokens: created, readied, Raid 1 with an Arrakis base, set aside wh
   assert.equal(state.players[1].base.damage, 3, '2 power, Raid 1')
   state.active = 0
   state = act(state, 0, { type: 'attack', attacker: fremen[1].id, target: 'u10' })
-  assert.equal(state.players[0].units.length, 1)
+  assert.equal(state.players[0].units.length, 2)
   assert.deepEqual(state.players[0].discard.map((c) => c.def), ['desertPower'], 'the token is not discarded')
 })
 
@@ -196,4 +207,108 @@ test('a When Defeated Spice token, and tokens on a defeated unit are set aside',
   assert.deepEqual(state.players[0].discard.map((c) => c.def), ['runner'])
   assert.equal(state.players[0].spice.length, 2)
   assert.throws(() => act(state, 0, { type: 'pass' }), IllegalAction, 'the turn passed')
+})
+
+test('Imperial Household Guard: Sentinel and +1/+0 while it has a Shield token', () => {
+  const state = table({ units0: ['household'] })
+  const guard = state.players[0].units[0]
+  assert.equal(powerOf(state, guard), 2)
+  assert.ok(!keywordsOf(state, guard).sentinel)
+  guard.upgrades.push({ id: 's', def: 'token-shield', owner: 0 })
+  assert.equal(powerOf(state, guard), 3)
+  assert.ok(keywordsOf(state, guard).sentinel)
+})
+
+test('Sardaukar Executioner defeats a damaged non-leader defender before combat damage; others fight', () => {
+  let state = table({ units0: ['executioner'], units1: ['big'] })
+  state.players[1].units[0].damage = 1
+  state = act(state, 0, { type: 'attack', attacker: 'u00', target: 'u10' })
+  assert.deepEqual(state.players[1].units, [])
+  assert.equal(state.players[0].units[0].damage, 0, 'no damage back')
+  state = table({ units0: ['executioner'], units1: ['crusher'] })
+  state = act(state, 0, { type: 'attack', attacker: 'u00', target: 'u10' })
+  assert.equal(state.players[1].units[0].damage, 5)
+  // Nor a damaged leader
+  state = table({ units0: ['executioner'], units1: ['leader'] })
+  state.players[1].units[0].leader = true
+  state.players[1].units[0].damage = 1
+  state = act(state, 0, { type: 'attack', attacker: 'u00', target: 'u10' })
+  assert.equal(state.players[0].units[0].damage, 3, 'the leader fought back')
+})
+
+test('Sardaukar Burseg: other friendly Sardaukar units get +1/+1', () => {
+  const state = table({ units0: ['burseg', 'executioner', 'big'], units1: ['executioner'] })
+  const [burseg, executioner, big] = state.players[0].units
+  assert.equal(powerOf(state, executioner), 6)
+  assert.equal(hpOf(state, executioner), 5)
+  assert.equal(powerOf(state, burseg), 4, 'not itself')
+  assert.equal(powerOf(state, big), 5, 'not others')
+  assert.equal(powerOf(state, state.players[1].units[0]), 5, 'not enemies')
+})
+
+test('False Colors: a Sardaukar unit for 2 less, no Spice spent, with Ambush and the Harkonnen trait', () => {
+  let state = table({ hand0: ['falseColors', 'executioner'], units1: ['trooper'] })
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  state = answer(state, 'h1')
+  assert.match(state.prompt!.text, /Ambush/)
+  state = answer(state, 'u10')
+  assert.deepEqual(state.players[1].units, [])
+  const executioner = state.players[0].units[0]
+  assert.equal(state.players[0].spice.length, 1, 'its additional cost ignored')
+  assert.equal(state.players[0].resources.filter((r) => !r.exhausted).length, 2, '2, then 4 - 2')
+  assert.ok(traitsOf(state, executioner).includes('Harkonnen'))
+})
+
+test("The Emperor's Terror readies friendly Sardaukar units with +2/+0 and Overwhelm", () => {
+  let state = table({ units0: ['executioner', 'big'], hand0: ['terror'] })
+  for (const u of state.players[0].units) u.exhausted = true
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  const [executioner, big] = state.players[0].units
+  assert.ok(!executioner.exhausted)
+  assert.equal(powerOf(state, executioner), 7)
+  assert.ok(keywordsOf(state, executioner).overwhelm)
+  assert.ok(big.exhausted, 'not a Sardaukar')
+  assert.equal(powerOf(state, big), 5)
+})
+
+test('Shaddam IV, Lion Throne: 2 Spice tokens, then each one for 3 damage, 1 to the base or 2 Experience tokens', () => {
+  let state = table({ units0: ['trooper', 'household'], units1: ['big'], hand0: ['shaddam'] })
+  state.players[0].units[1].upgrades.push({ id: 's', def: 'token-shield', owner: 0 })
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  assert.equal(state.players[0].spice.length, 3, 'the Arrakis one and 2 more')
+  assert.deepEqual(state.prompt!.options.map((o) => o.label?.replace('Defeat a Spice token: ', '')), [
+    'Stop',
+    'Deal 3 damage to an enemy unit',
+    'Deal 1 damage to an enemy base',
+    'Give 2 Experience tokens to a friendly unit with no upgrades',
+  ])
+  state = answer(state, '1')
+  state = answer(state, 'u10')
+  assert.equal(state.players[1].units[0].damage, 3)
+  state = answer(state, '2')
+  assert.equal(state.players[1].base.damage, 1)
+  state = answer(state, '3')
+  // Only the units with no upgrades: not the Shielded guard, nor Shaddam once he has the tokens
+  assert.deepEqual(state.prompt!.options.map((o) => o.id).sort(), ['u00', state.players[0].units[2].id].sort())
+  state = answer(state, 'u00')
+  assert.equal(state.players[0].units[0].upgrades.length, 2)
+  assert.equal(state.players[0].spice.length, 0)
+  assert.equal(state.prompt, null, 'no Spice token left to spend')
+})
+
+test("Imperial Tithe Collector: an opponent's Spice token for one of yours and an Experience token, when there is one", () => {
+  let state = table({ hand0: ['collector'], units1: ['trooper'] })
+  state.players[1].spice = [{ id: 'enemySpice', def: state.players[0].spice[0].def }]
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  const collector = state.players[0].units[0]
+  assert.equal(state.players[1].spice.length, 0)
+  assert.equal(state.players[0].spice.length, 2)
+  assert.equal(powerOf(state, collector), 5)
+  assert.equal(hpOf(state, collector), 7)
+  assert.ok(keywordsOf(state, collector).sentinel)
+  // None to take: nothing at all
+  state = table({ units0: ['collector'], units1: ['trooper'] })
+  state = act(state, 0, { type: 'attack', attacker: 'u00', target: 'u10' })
+  assert.equal(state.players[0].spice.length, 1)
+  assert.equal(state.players[0].units[0].upgrades.length, 0)
 })

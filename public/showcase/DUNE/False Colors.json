@@ -1,0 +1,19 @@
+{
+  "id": "68dd1bdd-9a71-4b58-9b5b-37adadae3cb6",
+  "art": {
+    "x": 0,
+    "y": 33,
+    "src": "False Colors (art).webp",
+    "zoom": 1,
+    "rotate": 0
+  },
+  "cost": 2,
+  "name": "False Colors",
+  "text": "Play a [{Sardaukar}] unit from your hand. It costs [#2] less, ignores its additional costs, and gains [Ambush] and the [{Harkonnen}] trait for this phase.",
+  "trait": "Sardaukar, Tactic",
+  "number": "029",
+  "rarity": "R",
+  "frameId": "event-command-aggression-villainy",
+  "setCode": "DUNE",
+  "language": "EN"
+}

@@ -13,7 +13,7 @@
   "text": "[When Played/On Attack:] If you control an [{Arrakis}] base and a [{Harvester}] [{Vehicle}] unit, create a Spice token.",
   "power": 1,
   "trait": "Vehicle, Fighter",
-  "number": "115",
+  "number": "124",
   "rarity": "C",
   "frameId": "unit-cunning-space",
   "setCode": "DUNE",

@@ -12,7 +12,7 @@
   "text": "[Sentinel]\nEnemy ground units get [-1/-0] while attacking a base.\n[When Played:] Search the top 5 cards of your deck for an [{Emperor}] card, reveal it and draw it.",
   "power": 4,
   "trait": "Emperor, Vehicle, Capital Ship",
-  "number": "030",
+  "number": "032",
   "rarity": "R",
   "unique": true,
   "frameId": "unit-vigilance-villainy-space",

@@ -1,0 +1,20 @@
+{
+  "hp": 7,
+  "id": "743b3c9f-ddf9-47ff-800f-19c275024ae2",
+  "art": {
+    "x": 0,
+    "y": 6,
+    "src": "Sardaukar Burseg (art).webp",
+    "zoom": 1
+  },
+  "cost": 5,
+  "name": "Sardaukar Burseg",
+  "text": "[Sentinel]\nAs an additional cost to play this unit, defeat a friendly Spice token.\nOther friendly [{Sardaukar}] units get [+1/+1].",
+  "power": 4,
+  "trait": "Emperor, Sardaukar, Official",
+  "number": "059",
+  "rarity": "R",
+  "frameId": "unit-command-villainy",
+  "setCode": "DUNE",
+  "language": "EN"
+}

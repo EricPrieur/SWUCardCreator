@@ -510,6 +510,11 @@ const dune: CardScript[] = [
     front: { whenDefeated: (g, self) => g.createSpice(self.controller) },
   },
   {
+    name: 'Sietch Water Guardian',
+    text: '[Sentinel]\n[When Defeated:] Create a Spice token.',
+    front: { whenDefeated: (g, self) => g.createSpice(self.controller) },
+  },
+  {
     name: 'Spice Smuggler',
     text: '[When Played:] Create a Spice token.\n[Smuggle [[3 Cunning]]]\n[When played using Smuggle:] Create a Spice token.',
     front: { whenPlayed: (g, self) => g.createSpice(self.controller, self.smuggled ? 2 : 1) },
@@ -566,10 +571,10 @@ const dune: CardScript[] = [
   },
   {
     name: 'Desert Power',
-    text: 'Create 2 Fremen tokens and ready them.',
+    text: 'Create 3 Fremen tokens and ready them.',
     front: {
       play: (g, self) => {
-        for (let i = 0; i < 2; i++) g.createToken(self.controller, 'Fremen', { ready: true })
+        for (let i = 0; i < 3; i++) g.createToken(self.controller, 'Fremen', { ready: true })
       },
     },
   },
@@ -639,6 +644,56 @@ const dune: CardScript[] = [
           source: self.def.id,
         })
         if (pick) g.defeatUpgrade(pick)
+      },
+    },
+  },
+  {
+    name: 'Sardaukar Executioner',
+    text: 'As an additional cost to play this unit, defeat a friendly Spice token.\n[On Attack:] If the defender is a damaged non-leader unit, defeat it.',
+    front: {
+      onAttack: (g, self) => {
+        const defender = self.attack?.target === 'base' ? undefined : g.unit(self.attack!.target)
+        if (defender?.damage && !defender.leader) g.defeat(defender.id, self)
+      },
+    },
+  },
+  {
+    name: 'Sardaukar Burseg',
+    text: '[Sentinel]\nAs an additional cost to play this unit, defeat a friendly Spice token.\nOther friendly [{Sardaukar}] units get [+1/+1].',
+    front: {
+      gives: (g, self, unit) =>
+        unit.id !== self.id && g.controller(unit) === self.controller && g.hasTrait(unit, 'Sardaukar') ? { power: 1, hp: 1 } : undefined,
+    },
+  },
+  {
+    name: 'False Colors',
+    text: 'Play a [{Sardaukar}] unit from your hand. It costs [#2] less, ignores its additional costs, and gains [Ambush] and the [{Harkonnen}] trait for this phase.',
+    front: {
+      play: (g, self) => {
+        const p = self.controller
+        const options = { discount: 2, ignoreAdditional: true }
+        const ids = g
+          .player(p)
+          .hand.filter((c) => g.def(c).type === 'unit' && g.hasTrait(c, 'Sardaukar') && g.canPlay(p, c.id, options))
+          .map((c) => c.id)
+        const pick = g.chooseOne(p, 'False Colors: play a Sardaukar unit from your hand', ids, { ai: 'best', source: self.def.id })
+        if (!pick) return
+        // Granted before it enters play, so that its Ambush happens as it does
+        g.grant(pick, { ambush: true }, 'phase', undefined, ['Harkonnen'])
+        if (!g.playCard(p, pick, options)) g.state.effects = g.state.effects.filter((e) => e.unit !== pick)
+      },
+    },
+  },
+  {
+    name: "The Emperor's Terror",
+    text: 'Ready each friendly [{Sardaukar}] unit. They get [+2/+0] and [Overwhelm] for this phase.',
+    front: {
+      play: (g, self) => {
+        for (const id of unitIds(g, (u) => g.controller(u) === self.controller && g.hasTrait(u, 'Sardaukar'))) {
+          g.ready(id)
+          g.buff(id, 2, 0, 'phase')
+          g.grant(id, { overwhelm: true }, 'phase')
+        }
       },
     },
   },
@@ -871,6 +926,21 @@ const dune: CardScript[] = [
     text: '[Sentinel]\n[When Defeated:] Give an Experience token to a friendly unit.',
     front: {
       whenDefeated: (g, self) => experienceTo(g, self, friendlyIds(g, self), 'Shadout Mapes: give an Experience token to a friendly unit'),
+    },
+  },
+  {
+    name: 'Imperial Household Guard',
+    text: 'While this unit has a Shield token, it gains [Sentinel] and gets [+1/+0].',
+    front: {
+      gives: (g, self, unit) => (unit.id === self.id && g.tokens(self.id, 'Shield') ? { keywords: { sentinel: true }, power: 1 } : undefined),
+    },
+  },
+  {
+    name: 'Imperial Tithe Collector',
+    text: '[Sentinel]\n[When Played/On Attack:] If an opponent controls a Spice token, they defeat it. If they do, create a Spice token and give an Experience token to this unit.',
+    front: {
+      whenPlayed: (g, self) => collectTithe(g, self),
+      onAttack: (g, self) => collectTithe(g, self),
     },
   },
   {
@@ -1256,17 +1326,17 @@ const dune: CardScript[] = [
   // --- Events that make or spend Spice ---
   {
     name: 'The Spice Must Flow',
-    text: 'Create 3 Spice tokens. If you control an [{Arrakis}] base, create 4 Spice tokens instead. Each opponent creates a Spice token.',
+    text: 'Create 4 Spice tokens. Each opponent creates a Spice token.',
     front: {
       play: (g, self) => {
-        g.createSpice(self.controller, g.controlsArrakis(self.controller) ? 4 : 3)
+        g.createSpice(self.controller, 4)
         g.createSpice(enemy(g, self))
       },
     },
   },
   {
     name: 'Spice Trance',
-    text: 'Look at the top 3 cards of your deck. Discard any number of them and put the rest back in any order. Create a Spice token. If you control an [{Arrakis}] base, create another Spice token.',
+    text: 'Look at the top 3 cards of your deck. Discard any number of them and put the rest back in any order. Create 2 Spice tokens.',
     front: {
       play: (g, self) => {
         const p = self.controller
@@ -1290,7 +1360,7 @@ const dune: CardScript[] = [
           rest = rest.filter((id) => id !== next)
         }
         for (const id of [...order, ...rest].reverse()) g.toTop(p, id)
-        g.createSpice(p, g.controlsArrakis(p) ? 2 : 1)
+        g.createSpice(p, 2)
       },
     },
   },
@@ -1623,6 +1693,18 @@ const dune: CardScript[] = [
         // The cards searched and left go to the bottom of the deck
         g.shuffleToBottom(p, top.map((c) => c.id))
       },
+    },
+  },
+  {
+    name: 'Shaddam IV',
+    subtitle: 'Lion Throne',
+    text: '[When Played:] Create 2 Spice tokens.\n[When Played/On Attack:] You may defeat any number of friendly Spice tokens. For each one, choose one (you may choose the same option more than once):\n• Deal 3 damage to an enemy unit.\n• Deal 1 damage to an enemy base.\n• Give 2 Experience tokens to a friendly unit with no upgrades.',
+    front: {
+      whenPlayed: (g, self) => {
+        g.createSpice(self.controller, 2)
+        lionThrone(g, self)
+      },
+      onAttack: (g, self) => lionThrone(g, self),
     },
   },
   {
@@ -2281,6 +2363,40 @@ function gurneyChoice(g: Game, self: Self) {
   }
   const pick = g.chooseOne(p, 'Gurney Halleck: play a card using Smuggle, for 2 less', smuggled, { ai: 'best', source: self.def.id })
   if (pick) g.playCard(p, pick, { smuggle: true, discount: 2 })
+}
+
+// Imperial Tithe Collector: an opponent's Spice token for one of yours and an Experience token
+function collectTithe(g: Game, self: Self) {
+  const foe = enemy(g, self)
+  if (!g.spice(foe) || !g.defeatSpice(foe)) return
+  g.createSpice(self.controller)
+  g.giveToken(self.id, 'Experience')
+}
+
+// Shaddam IV: a Spice token at a time, 3 damage to an enemy unit, 1 to the enemy base or 2
+// Experience tokens to a bare friendly unit. The AI spends them all, on units first.
+function lionThrone(g: Game, self: Self) {
+  const p = self.controller
+  for (;;) {
+    if (!g.spice(p)) return
+    const foes = unitIds(g, (u) => g.controller(u) !== p)
+    const bare = friendlyIds(g, self, (u) => u.upgrades.length === 0)
+    const modes = [
+      ...(foes.length ? [{ label: 'Deal 3 damage to an enemy unit', run: () => g.chooseOne(p, 'Shaddam IV: deal 3 damage to an enemy unit', foes, { ai: 'harm', source: self.def.id }), amount: 3 }] : []),
+      { label: 'Deal 1 damage to an enemy base', run: () => `base${enemy(g, self)}`, amount: 1 },
+      ...(bare.length ? [{ label: 'Give 2 Experience tokens to a friendly unit with no upgrades', run: () => g.chooseOne(p, 'Shaddam IV: give 2 Experience tokens to a friendly unit with no upgrades', bare, { ai: 'help', source: self.def.id }), amount: 0 }] : []),
+    ]
+    const labels = ['Stop', ...modes.map((m) => `Defeat a Spice token: ${m.label}`)]
+    const ai = foes.length ? 1 : bare.length ? labels.length - 1 : 1
+    const choice = g.option(p, `Shaddam IV: you may defeat a Spice token (${g.spice(p)} left)`, labels, { ai, source: self.def.id })
+    if (!choice) return
+    const mode = modes[choice - 1]
+    if (!g.defeatSpice(p)) return
+    const target = mode.run()
+    if (!target) continue
+    if (mode.amount) g.damage(target, mode.amount, self)
+    else g.giveToken(target, 'Experience', 2)
+  }
 }
 
 // "If you control an [{Arrakis}] base, create a Spice token."

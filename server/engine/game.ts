@@ -189,7 +189,7 @@ function grantsTo(state: GameState, unit: UnitState): Grant[] {
 
 // Its printed traits, and those it gains
 export function traitsOf(state: GameState, unit: UnitState) {
-  const gained = grantsTo(state, unit).flatMap((grant) => grant.traits ?? [])
+  const gained = [...grantsTo(state, unit), ...effectsOn(state, unit)].flatMap((grant) => grant.traits ?? [])
   return [...new Set([...def(state, unit).traits, ...gained])]
 }
 
@@ -1645,8 +1645,8 @@ export class Game {
     else player.leader.exhausted = true
   }
   // A keyword for a while: "gains [Raid 1] for this phase", or while a card stays in play
-  grant(unitId: string, keywords: Keywords, until: Effect['until'], source?: string) {
-    this.state.effects.push({ unit: unitId, power: 0, hp: 0, keywords, until, ...(source && { source }) })
+  grant(unitId: string, keywords: Keywords, until: Effect['until'], source?: string, traits?: string[]) {
+    this.state.effects.push({ unit: unitId, power: 0, hp: 0, keywords, until, ...(source && { source }), ...(traits && { traits }) })
   }
   // Control of a unit, for good or until the regroup phase starts
   takeControl(unitId: string, p: PlayerId, untilRegroup = false) {

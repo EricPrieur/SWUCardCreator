@@ -143,6 +143,8 @@ export type Effect = {
   power: number
   hp: number
   keywords?: Keywords
+  // Traits gained as well ("gains the [{Harkonnen}] trait for this phase")
+  traits?: string[]
   until: 'attack' | 'phase' | 'source'
   source?: string
 }

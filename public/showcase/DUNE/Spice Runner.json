@@ -12,7 +12,7 @@
   "text": "[When Defeated:] Create a Spice token.",
   "power": 2,
   "trait": "Underworld",
-  "number": "096",
+  "number": "105",
   "rarity": "C",
   "frameId": "unit-aggression",
   "setCode": "DUNE",

@@ -11,7 +11,7 @@
   "name": "War of Assassins",
   "text": "You may defeat 2 friendly Spice tokens. If you do, defeat a unit. Otherwise, defeat a non-leader unit.",
   "trait": "Tactic",
-  "number": "045",
+  "number": "048",
   "rarity": "C",
   "frameId": "event-vigilance",
   "setCode": "DUNE",
