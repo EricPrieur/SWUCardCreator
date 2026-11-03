@@ -12,7 +12,7 @@
   "text": "[On Attack:] You may defeat a friendly Spice token. If you do, this unit gets [+2/+0] for this attack.",
   "power": 3,
   "trait": "Underworld, Ginaz",
-  "number": "109",
+  "number": "116",
   "rarity": "U",
   "frameId": "unit-aggression",
   "setCode": "DUNE",

@@ -189,6 +189,9 @@ export type GameState = {
   borrowed: Borrowed[]
   // Units to defeat when the next regroup phase starts (Worm Signs)
   doomed: string[]
+  // Units that can't ready this round, the regroup phase included (Shigawire Snare); a game
+  // saved before it had none
+  held?: string[]
   // The attack under way, for what applies while attacking and the defender's own abilities
   attack: { attacker: string; target: string | 'base' } | null
   // The cards each player revealed last, and the card that made them reveal them (card ids);

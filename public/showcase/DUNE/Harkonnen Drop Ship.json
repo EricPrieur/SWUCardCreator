@@ -13,7 +13,7 @@
   "text": "[When Played:] You may play up to 2 [{Trooper}] units that cost [#2] or less from your discard pile for free.",
   "power": 3,
   "trait": "Harkonnen, Vehicle, Transport",
-  "number": "101",
+  "number": "106",
   "rarity": "R",
   "frameId": "unit-aggression-villainy-space",
   "setCode": "DUNE",

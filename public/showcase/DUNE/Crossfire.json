@@ -1,18 +1,18 @@
 {
   "id": "cdaeb7ae-f770-4fc6-be3c-c9070d9d6fb1",
+  "art": {
+    "x": 0,
+    "y": 0,
+    "src": "Crossfire (art).webp",
+    "zoom": 1
+  },
   "cost": 2,
   "name": "Crossfire",
   "text": "Attack with a [{Trooper}] unit. It gains [Saboteur] and gets [+1/+0] for this attack. Then, you may attack with another [{Trooper}] unit. It gains [Saboteur] and gets [+1/+0] for this attack.",
   "trait": "Tactic",
-  "number": "115",
+  "number": "122",
   "rarity": "U",
   "frameId": "event-aggression",
   "setCode": "DUNE",
-  "language": "EN",
-  "art": {
-    "src": "Crossfire (art).webp",
-    "zoom": 1,
-    "x": 0,
-    "y": 0
-  }
+  "language": "EN"
 }

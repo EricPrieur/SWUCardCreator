@@ -2,6 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { applyAction, createGame, hpOf, keywordsOf, legalActions, powerOf, traitsOf } from './game.ts'
 import { readText } from './cards.ts'
+import { chooseAction } from './ai.ts'
 import { scripts, scriptStatus } from './scripts.ts'
 import { IllegalAction, type Action, type CardDef, type GameState, type PlayerId, type UnitState } from './types.ts'
 
@@ -61,6 +62,17 @@ const defs: CardDef[] = [
   card('levy', { ...scripted('House Levy'), type: 'event', cost: 2, arena: undefined }),
   card('crossfire', { ...scripted('Crossfire'), type: 'event', cost: 2, arena: undefined }),
   card('plans', { ...scripted('Plans Within Plans'), type: 'event', cost: 2, arena: undefined }),
+  card('fremen', { cost: 2, power: 2, hp: 3, traits: ['Fremen', 'Trooper'] }),
+  card('snare', { ...scripted('Shigawire Snare'), type: 'event', cost: 2, arena: undefined }),
+  card('tanzerouft', { ...scripted('Tanzerouft'), type: 'event', cost: 2, arena: undefined }),
+  card('arrakeen', { ...scripted('Battle of Arrakeen'), type: 'event', cost: 4, arena: undefined }),
+  card('practice', { ...scripted('Weapons Practice'), type: 'event', cost: 3, arena: undefined }),
+  card('sister', { cost: 2, power: 1, hp: 3, traits: ['Bene Gesserit'] }),
+  card('honorGuard', { ...scripted('Kaitain Honor Guard'), cost: 3, power: 2, hp: 4 }),
+  card('duelist', { ...scripted('Ginaz Shield Duelist'), cost: 3, power: 3, hp: 2 }),
+  card('houseFrigate', { ...scripted('Great House Frigate'), cost: 5, power: 4, hp: 5, arena: 'space' }),
+  card('proctor', { ...scripted('Bene Gesserit Proctor'), cost: 5, power: 4, hp: 6, traits: ['Bene Gesserit'] }),
+  card('hoarder', { ...scripted('Harkonnen Spice Hoarder'), cost: 2, power: 1, hp: 3 }),
 ]
 
 const act = (state: GameState, p: PlayerId, action: Action) => applyAction(state, p, action)
@@ -439,4 +451,140 @@ test('Plans Within Plans: +2/+0 for the attack, or +4/+0 for a Spice token', () 
   assert.deepEqual(state.prompt!.options.map((o) => o.id), ['base1'], 'no Spice left to ask for')
   state = answer(state, 'base1')
   assert.equal(state.players[1].base.damage, 13)
+})
+
+test("Shigawire Snare: two units exhausted, one held for a Spice token: it doesn't ready at the regroup", () => {
+  let state = table({ hand0: ['snare'], units1: ['big', 'guard', 'trooper'] })
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  state = answer(state, 'u10', 'u11')
+  assert.deepEqual(state.players[1].units.map((u) => u.exhausted), [true, true, false])
+  state = answer(state, 'yes')
+  assert.deepEqual(state.prompt!.options.map((o) => o.id), ['u10', 'u11'], 'one of those units')
+  state = answer(state, 'u10')
+  assert.equal(state.players[0].spice.length, 0)
+  state = act(state, 1, { type: 'pass' })
+  state = act(state, 0, { type: 'pass' })
+  for (const p of [state.initiative, state.initiative === 0 ? 1 : 0] as PlayerId[]) state = act(state, p, { type: 'resource', cards: [] })
+  assert.equal(state.phase, 'action')
+  assert.deepEqual(state.players[1].units.map((u) => u.exhausted), [true, false, false], 'held for the round, regroup included')
+  // The next round, it readies again
+  state = act(state, state.active, { type: 'pass' })
+  state = act(state, state.active, { type: 'pass' })
+  for (const p of [state.initiative, state.initiative === 0 ? 1 : 0] as PlayerId[]) state = act(state, p, { type: 'resource', cards: [] })
+  assert.equal(state.players[1].units[0].exhausted, false)
+})
+
+test('Shigawire Snare: no Spice token, no question; the exhausted units ready at the regroup', () => {
+  let state = table({ base0: 'caladan', hand0: ['snare'], units1: ['big'] })
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  state = answer(state, 'u10')
+  assert.equal(state.prompt, null)
+  assert.equal(state.players[1].units[0].exhausted, true)
+})
+
+test('Tanzerouft: one Weakness token, two with a Fremen unit, on the same unit or two', () => {
+  let state = table({ base0: 'caladan', hand0: ['tanzerouft', 'tanzerouft'], units1: ['big', 'trooper'] })
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  state = answer(state, 'u10')
+  assert.equal(state.prompt, null, 'no Fremen unit, one token')
+  assert.equal(state.players[1].units[0].upgrades.length, 1)
+  state.players[0].units = [{ id: 'u00', def: 'fremen', owner: 0, arena: 'ground', damage: 0, exhausted: false, upgrades: [] }]
+  state.active = 0
+  state = act(state, 0, { type: 'play', card: 'h1' })
+  state = answer(state, 'u11')
+  state = answer(state, 'u11')
+  assert.equal(state.players[1].units.length, 1, 'the 2/2 is defeated by two Weakness tokens')
+})
+
+test('Battle of Arrakeen: 2 damage to each non-Fremen unit in the arena chosen', () => {
+  let state = table({ hand0: ['arrakeen'], units0: ['fremen', 'trooper', 'big'], units1: ['big', 'trooper', 'guard'] })
+  state.players[1].units[2].arena = 'space'
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  state = answer(state, '0')
+  assert.deepEqual(state.players[0].units.map((u) => [u.def, u.damage]), [['fremen', 0], ['big', 2]])
+  assert.deepEqual(state.players[1].units.map((u) => [u.def, u.damage]), [['big', 2], ['guard', 0]], 'space spared')
+})
+
+test('Weapons Practice: an Experience token to each of up to 3 friendly Troopers', () => {
+  let state = table({ hand0: ['practice'], units0: ['fremen', 'soldier', 'soldier', 'soldier', 'big'] })
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  assert.deepEqual(state.prompt!.options.map((o) => o.id), ['u00', 'u01', 'u02', 'u03'])
+  assert.equal(state.prompt!.max, 3)
+  state = answer(state, 'u00', 'u01', 'u02')
+  assert.deepEqual(state.players[0].units.map((u) => u.upgrades.length), [1, 1, 1, 0, 0])
+})
+
+const shields = (state: GameState, p: PlayerId) => state.players[p].units.map((u) => u.upgrades.filter((x) => state.defs[x.def].name === 'Shield').length)
+
+test('Kaitain Honor Guard: a Sentinel, shielded off Arrakis only', () => {
+  for (const [base, shielded] of [['caladan', 1], ['arrakis', 0]] as const) {
+    let state = table({ base0: base, hand0: ['honorGuard'] })
+    state = act(state, 0, { type: 'play', card: 'h0' })
+    assert.deepEqual(shields(state, 0), [shielded], base)
+    assert.equal(state.defs.honorGuard.keywords.sentinel, true)
+  }
+})
+
+test('Ginaz Shield Duelist: shielded off Arrakis before its Ambush attack, which it survives', () => {
+  let state = table({ base0: 'caladan', hand0: ['duelist'], units1: ['big'] })
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  while (state.prompt) state = answer(state, state.prompt.options.find((o) => o.id === 'u10' || o.id === 'yes')?.id ?? state.prompt.options[0].id)
+  assert.equal(state.players[1].units[0].damage, 3)
+  assert.deepEqual(shields(state, 0), [0], 'the shield took the damage')
+  assert.equal(state.players[0].units[0].damage, 0)
+})
+
+test('Great House Frigate: off Arrakis, Shield tokens to up to 2 other friendly units', () => {
+  let state = table({ base0: 'caladan', hand0: ['houseFrigate', 'houseFrigate'], units0: ['trooper', 'trooper', 'big'] })
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  assert.equal(state.prompt!.max, 2)
+  assert.ok(!state.prompt!.options.some((o) => state.defs[o.def ?? '']?.name === 'Great House Frigate'), 'other units only')
+  state = answer(state, 'u00', 'u02')
+  assert.deepEqual(shields(state, 0), [1, 0, 1, 0])
+  let arrakis = table({ hand0: ['houseFrigate'], units0: ['trooper'] })
+  arrakis = act(arrakis, 0, { type: 'play', card: 'h0' })
+  assert.equal(arrakis.prompt, null)
+  assert.deepEqual(shields(arrakis, 0), [0, 0])
+})
+
+test('Bene Gesserit Proctor: a Shield token to one Bene Gesserit unit, to each off Arrakis', () => {
+  let state = table({ hand0: ['proctor'], units0: ['sister', 'sister', 'trooper'] })
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  assert.equal(state.prompt!.options.length, 3, 'the sisters and the Proctor')
+  state = answer(state, 'u01')
+  assert.deepEqual(shields(state, 0), [0, 1, 0, 0])
+  let off = table({ base0: 'caladan', hand0: ['proctor'], units0: ['sister', 'sister', 'trooper'] })
+  off = act(off, 0, { type: 'play', card: 'h0' })
+  assert.deepEqual(shields(off, 0), [1, 1, 0, 1])
+})
+
+test('Harkonnen Spice Hoarder: a Spice token when played and on attack, off Arrakis only', () => {
+  let state = table({ base0: 'caladan', hand0: ['hoarder'], units0: ['hoarder'] })
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  assert.equal(state.players[0].spice.length, 1)
+  state.active = 0
+  state = act(state, 0, { type: 'attack', attacker: 'u00', target: 'base' })
+  assert.equal(state.players[0].spice.length, 2)
+  let arrakis = table({ hand0: ['hoarder'] })
+  arrakis = act(arrakis, 0, { type: 'play', card: 'h0' })
+  assert.equal(arrakis.players[0].spice.length, 1, 'only the base starting one')
+})
+
+test('Ginaz Shield Duelist: its Ambush may resolve first, the Shield token after, onto the damaged unit', () => {
+  let state = table({ base0: 'caladan', hand0: ['duelist'], units1: ['guard'] })
+  state.players[1].units[0].damage = 1
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  assert.equal(state.prompt!.text, 'Choose the ability to resolve first')
+  const ambush = state.prompt!.options.find((o) => /Ambush/.test(o.label ?? ''))!
+  state = answer(state, ambush.id)
+  state = answer(state, 'u10')
+  assert.equal(state.players[1].units.length, 0, 'the 1/3 is defeated')
+  assert.equal(state.players[0].units[0].damage, 1)
+  assert.deepEqual(shields(state, 0), [1], 'shielded after the fight: a 3/1 with a Shield token')
+  // The AI sees it too
+  let ai = table({ base0: 'caladan', hand0: ['duelist'], units1: ['guard'] })
+  ai.players[1].units[0].damage = 1
+  ai = act(ai, 0, { type: 'play', card: 'h0' })
+  const first = chooseAction(ai, 0)!
+  assert.equal(first.type === 'answer' && ai.prompt!.options.find((o) => o.id === first.picks[0])!.label?.includes('Ambush'), true)
 })

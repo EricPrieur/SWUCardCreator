@@ -63,6 +63,13 @@ export function chooseAction(state: GameState, p: PlayerId, why?: Weighed[]): Ac
     const single = after ? evaluate(after, p) : -Infinity
     return { move, after, single, best: Math.max(single, deep ? combo(state, p, move) : -Infinity) + leaderPlays(state, p, move, after) }
   })
+  // A move that wins is made at once: playing on first may look better, a win still in reach
+  // next action, but the opponent acts in between, with the cards in their hand it doesn't see
+  const win = tried.find((t) => t.after?.phase === 'over' && t.after.winner === p)
+  if (win) {
+    why?.push({ action: win.move, gain: Math.round((win.single - evaluate(state, p)) * 100) / 100 })
+    return win.move
+  }
   const done = actions.find((a) => a.type === 'initiative') ?? { type: 'pass' }
   // Then its most promising moves again, each after the opponent's best reply, and passing
   // the same way, so as not to leave a unit open to an easy attack. A follow-up attack it
@@ -159,7 +166,7 @@ export type DeckPlan = { curve: number[]; average: number; leader: number; top: 
 const plans = new WeakMap<object, [DeckPlan?, DeckPlan?]>()
 // Costs from 0 to this, the dearer ones counted with it
 // Which AI this is, kept with each game it plays, to tell its versions apart in the stats
-export const AI_VERSION = '2026-11-02 spice'
+export const AI_VERSION = '2026-11-02 lethal'
 
 export const CURVE_TOP = 8
 
@@ -371,7 +378,7 @@ function inDanger(state: GameState, p: PlayerId) {
   const left = state.defs[state.players[p].base.def].hp - state.players[p].base.damage
   let power = 0
   for (const unit of state.players[foe].units) {
-    if (state.doomed.includes(unit.id) || blocked(state, foe, unit)) continue
+    if (state.doomed.includes(unit.id) || state.held?.includes(unit.id) || blocked(state, foe, unit)) continue
     power += powerOf(state, unit) + (keywordsOf(state, unit).raid ?? 0)
   }
   return power >= left

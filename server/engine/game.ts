@@ -78,6 +78,7 @@ export function createGame(options: { seed: number; decks: [DeckList, DeckList];
     defeatedThisPhase: [],
     borrowed: [],
     doomed: [],
+    held: [],
     attack: null,
     revealed: [null, null],
     prompt: null,
@@ -842,12 +843,13 @@ function regroupResource(state: GameState, p: PlayerId, cards: string[]) {
   if (cards.length) log(state, `${player.name} resources a card`, p)
   if (!state.players.every((pl) => pl.regroupDone)) return
   for (const pl of state.players) {
-    for (const unit of pl.units) unit.exhausted = false
+    for (const unit of pl.units) if (!state.held?.includes(unit.id)) unit.exhausted = false
     for (const resource of pl.resources) resource.exhausted = false
     pl.leader.exhausted = false
   }
   state.round++
   state.usedThisRound = []
+  state.held = []
   startActionPhase(state)
 }
 
@@ -1139,6 +1141,11 @@ function attack(state: GameState, p: PlayerId, attackerId: string, target: strin
   const attacker = findUnit(state, attackerId) as UnitState
   const outer = state.attack
   state.attack = { attacker: attackerId, target }
+  // An attack an ability makes (Ambush, say) resolves its own abilities first: those already
+  // waiting (another When Played of the same unit) wait until it is over
+  const run = current as Run
+  const waiting = run.queue
+  run.queue = []
   if (options.power) state.effects.push({ unit: attackerId, power: options.power, hp: 0, until: 'attack' })
   if (options.firstStrike) state.effects.push({ unit: attackerId, power: 0, hp: 0, keywords: { firstStrike: true }, until: 'attack' })
   const defenderName = target === 'base' ? nameOf(state, enemy.base) : nameOf(state, findUnit(state, target) as UnitState)
@@ -1198,6 +1205,7 @@ function attack(state: GameState, p: PlayerId, attackerId: string, target: strin
   }
   state.effects = state.effects.filter((e) => !(e.until === 'attack' && e.unit === attackerId))
   state.attack = outer
+  run.queue = [...run.queue, ...waiting]
 }
 
 // A unit changing control: to the other player's side, as it is
@@ -1510,7 +1518,11 @@ export class Game {
   }
   ready(unitId: string) {
     const unit = this.unit(unitId)
-    if (unit) unit.exhausted = false
+    if (unit && !this.state.held?.includes(unitId)) unit.exhausted = false
+  }
+  // "It can't ready this round (including during the regroup phase)."
+  hold(unitId: string) {
+    this.state.held = [...(this.state.held ?? []), unitId]
   }
   // +power/+HP to a unit, for this attack or this phase
   buff(unitId: string, power: number, hp: number, until: Effect['until']) {

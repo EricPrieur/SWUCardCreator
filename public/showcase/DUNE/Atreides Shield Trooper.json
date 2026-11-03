@@ -12,7 +12,7 @@
   "text": "[When Played:] If you control an [{Arrakis}] base, give an Experience token to this unit. Otherwise, give a Shield token to this unit.",
   "power": 2,
   "trait": "Atreides, Trooper",
-  "number": "068",
+  "number": "071",
   "rarity": "C",
   "frameId": "unit-command-heroism",
   "setCode": "DUNE",

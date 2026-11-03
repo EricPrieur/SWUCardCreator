@@ -1,0 +1,18 @@
+{
+  "id": "40b4d211-3d9b-4480-aa61-6695f22244e6",
+  "art": {
+    "x": 0,
+    "y": 21,
+    "src": "Weapons Practice (art).webp",
+    "zoom": 1
+  },
+  "cost": 2,
+  "name": "Weapons Practice",
+  "text": "Give an Experience token to each of up to 3 friendly [{Trooper}] units.",
+  "trait": "Atreides",
+  "number": "083",
+  "rarity": "C",
+  "frameId": "event-command-heroism",
+  "setCode": "DUNE",
+  "language": "EN"
+}

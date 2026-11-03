@@ -394,6 +394,15 @@ test("The AI doesn't wait out a Sentinel: two Harkonnen Troops defeat it, then t
   assert.equal(state.players[1].units.length, 0)
 })
 
+test('The AI attacks for the win at once, not after playing the cards in its hand', () => {
+  // The opponent can do nothing it sees between its actions: the win looks as sure after a card
+  const state = table({ units0: ['frail'], units1: ['frail'], hand0: ['duncan', 'fremen'] })
+  state.players[1].base.damage = 29
+  state.players[1].resources = []
+  state.players[1].leader.exhausted = true
+  assert.deepEqual(chooseAction(state, 0), { type: 'attack', attacker: 'u00', target: 'base' })
+})
+
 test('The AI keeps its Spice token for the Lasgun Volley in its hand, and digs with it otherwise', () => {
   const spiceDig = (hand: string[]) => {
     const state = table({ hand0: hand })

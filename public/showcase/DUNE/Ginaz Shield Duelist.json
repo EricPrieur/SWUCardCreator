@@ -1,0 +1,21 @@
+{
+  "hp": 2,
+  "id": "77264d1c-9de0-456e-ae2f-e450f1a840e2",
+  "cost": 3,
+  "name": "Ginaz Shield Duelist",
+  "text": "[Ambush]\n[When Played:] If you don't control an [{Arrakis}] base, give a Shield token to this unit.",
+  "power": 3,
+  "trait": "Ginaz, Trooper",
+  "number": "111",
+  "rarity": "U",
+  "frameId": "unit-aggression",
+  "setCode": "DUNE",
+  "language": "EN",
+  "art": {
+    "src": "Ginaz Shield Duelist (art).webp",
+    "zoom": 1,
+    "x": 0,
+    "y": -9,
+    "rotate": 0
+  }
+}

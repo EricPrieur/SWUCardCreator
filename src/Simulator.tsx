@@ -1018,8 +1018,8 @@ function Table(props: {
   const unitView = (side: SideView, arena: Arena) => (u: SideView['units'][number]) => {
     const d = defOf(u.def)
     const tokenCount = (name: string) => u.upgrades.filter((up) => defOf(up.def).token && defOf(up.def).name === name).length
-    const [experience, weakness] = [tokenCount('Experience'), tokenCount('Weakness')]
-    const banners = u.upgrades.filter((up) => !(defOf(up.def).token && ['Experience', 'Weakness'].includes(defOf(up.def).name)))
+    const [experience, weakness, shields] = [tokenCount('Experience'), tokenCount('Weakness'), tokenCount('Shield')]
+    const banners = u.upgrades.filter((up) => !(defOf(up.def).token && ['Experience', 'Weakness', 'Shield'].includes(defOf(up.def).name)))
     const keywords = u.keywords
     const printed = u.leader ? d.unit : d
     const target = isTarget(u.id)
@@ -1035,6 +1035,9 @@ function Table(props: {
       attacker?.id === u.id && 'attacker',
       ready && 'can-act',
       u.hidden && 'hidden',
+      // A blue aura while it has a Shield token, stronger with two or more
+      shields > 0 && 'shielded',
+      shields > 1 && 'shielded-more',
     ]
     const tags = [
       keywords.sentinel && 'Sentinel',
@@ -1087,6 +1090,15 @@ function Table(props: {
                 ))}
               </span>
             )}
+            {/* Top left: its Shield tokens */}
+            {!!shields && (
+              <span className="sim-shields" title={`${shields} Shield token${shields > 1 ? 's' : ''}`}>
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 2 4 5v6c0 5 3.4 9.4 8 11 4.6-1.6 8-6 8-11V5l-8-3Z" />
+                </svg>
+                {shields}
+              </span>
+            )}
             {/* Top right: +1 for each Experience token, and to its left -1 for each Weakness token */}
             {!!(experience || weakness) && (
               <span className="sim-xp">
@@ -1105,7 +1117,7 @@ function Table(props: {
         </button>
         {/* Its upgrades, banners tucked under the card's bottom edge as it lies, ready or
             exhausted, each hoverable for the full card. Experience and Weakness tokens are the
-            badge above it. */}
+            badge above it, Shield tokens the badge at its top left. */}
         {!!banners.length && (
           <span className="sim-upgrades">
             {banners.map((up, i) => (

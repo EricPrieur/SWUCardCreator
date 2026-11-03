@@ -10,7 +10,7 @@
   "name": "CHOAM Dividend",
   "text": "While playing this event, you may defeat a friendly Spice token. If you do, it costs [1] less.\nPut this event into play as a resource.",
   "trait": "Supply",
-  "number": "088",
+  "number": "093",
   "rarity": "C",
   "frameId": "event-command",
   "setCode": "DUNE",

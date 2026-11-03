@@ -10,7 +10,7 @@
   "name": "Thumper",
   "text": "[Fortify]\n[When Played:] Search the top 10 cards of your deck for a [Creature] card, reveal it and draw it.\n[Creature] cards you play cost [1] less. When you play a [{Creature}] card, defeat this upgrade.",
   "trait": "Fortification, Fremen",
-  "number": "141",
+  "number": "150",
   "rarity": "U",
   "unique": true,
   "frameId": "fortification-cunning",

@@ -11,7 +11,7 @@
   "name": "Test of Humanity",
   "text": "Choose an enemy non-leader unit. Its controller may discard 2 cards from their hand. If they don't, defeat that unit.",
   "trait": "Bene Gesserit",
-  "number": "034",
+  "number": "035",
   "rarity": "R",
   "frameId": "event-vigilance-villainy",
   "setCode": "DUNE",

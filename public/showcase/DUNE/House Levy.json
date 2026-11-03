@@ -1,18 +1,18 @@
 {
   "id": "edd1e46a-7ec0-4ee9-afc1-2caa5559d2db",
+  "art": {
+    "x": 0,
+    "y": 0,
+    "src": "House Levy (art).webp",
+    "zoom": 1
+  },
   "cost": 2,
   "name": "House Levy",
   "text": "Search the top 5 cards of your deck for a unit, reveal it and draw it. If it's a [{Trooper}] unit, you may also reveal and draw a [{Trooper}] unit from among the other cards.",
   "trait": "Tactic",
-  "number": "086",
+  "number": "091",
   "rarity": "C",
   "frameId": "event-command",
   "setCode": "DUNE",
-  "language": "EN",
-  "art": {
-    "src": "House Levy (art).webp",
-    "zoom": 1,
-    "x": 0,
-    "y": 0
-  }
+  "language": "EN"
 }

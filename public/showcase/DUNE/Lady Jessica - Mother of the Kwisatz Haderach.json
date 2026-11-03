@@ -20,7 +20,7 @@
   "text": "[Restore 3]\n[When Played/On Attack:] Look at an opponent's hand and choose a card in it. This phase, they can't play cards with that name. Draw a card.",
   "power": 3,
   "trait": "Bene Gesserit, Atreides",
-  "number": "077",
+  "number": "080",
   "rarity": "L",
   "unique": true,
   "frameId": "unit-command-heroism",

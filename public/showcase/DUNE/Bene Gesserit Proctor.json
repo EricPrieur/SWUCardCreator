@@ -1,0 +1,20 @@
+{
+  "hp": 6,
+  "id": "c5e22454-d416-46f7-b970-6a92fa29feeb",
+  "art": {
+    "x": 0,
+    "y": 7,
+    "src": "Bene Gesserit Proctor (art).webp",
+    "zoom": 1
+  },
+  "cost": 5,
+  "name": "Bene Gesserit Proctor",
+  "text": "[When Played:] Give a Shield token to a friendly [{Bene Gesserit}] unit. If you don't control an [{Arrakis}] base, give a Shield token to each friendly [{Bene Gesserit}] unit instead.",
+  "power": 4,
+  "trait": "Bene Gesserit",
+  "number": "048",
+  "rarity": "U",
+  "frameId": "unit-vigilance",
+  "setCode": "DUNE",
+  "language": "EN"
+}

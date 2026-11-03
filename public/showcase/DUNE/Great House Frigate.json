@@ -1,0 +1,21 @@
+{
+  "hp": 5,
+  "id": "847a25ed-c373-4578-9838-032fe050fe32",
+  "cost": 5,
+  "name": "Great House Frigate",
+  "text": "[When Played:] If you don't control an [{Arrakis}] base, give a Shield token to each of up to 2 other friendly units.",
+  "power": 4,
+  "trait": "Vehicle, Capital Ship",
+  "number": "089",
+  "rarity": "U",
+  "frameId": "unit-command-space",
+  "setCode": "DUNE",
+  "language": "EN",
+  "art": {
+    "src": "Great House Frigate (art).webp",
+    "zoom": 1,
+    "x": 0,
+    "y": 0,
+    "rotate": 0
+  }
+}

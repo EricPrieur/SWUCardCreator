@@ -630,6 +630,54 @@ const dune: CardScript[] = [
       whenPlayed: (g, self) => g.giveToken(self.id, g.controlsArrakis(self.controller) ? 'Experience' : 'Shield'),
     },
   },
+  // --- Payoffs off Arrakis ---
+  {
+    name: 'Kaitain Honor Guard',
+    text: "[Sentinel]\n[When Played:] If you don't control an [{Arrakis}] base, give a Shield token to this unit.",
+    front: { whenPlayed: offArrakisShield },
+  },
+  {
+    name: 'Ginaz Shield Duelist',
+    text: "[Ambush]\n[When Played:] If you don't control an [{Arrakis}] base, give a Shield token to this unit.",
+    front: { whenPlayed: offArrakisShield },
+  },
+  {
+    name: 'Great House Frigate',
+    text: "[When Played:] If you don't control an [{Arrakis}] base, give a Shield token to each of up to 2 other friendly units.",
+    front: {
+      whenPlayed: (g, self) => {
+        if (g.controlsArrakis(self.controller)) return
+        const others = friendlyIds(g, self, (u) => u.id !== self.id)
+        const picks = g.choose(self.controller, 'Great House Frigate: give a Shield token to each of up to 2 other friendly units', others, {
+          min: 0,
+          max: 2,
+          ai: 'help',
+          source: self.def.id,
+        })
+        for (const id of picks) g.giveToken(id, 'Shield')
+      },
+    },
+  },
+  {
+    name: 'Bene Gesserit Proctor',
+    text: "[When Played:] Give a Shield token to a friendly [{Bene Gesserit}] unit. If you don't control an [{Arrakis}] base, give a Shield token to each friendly [{Bene Gesserit}] unit instead.",
+    front: {
+      whenPlayed: (g, self) => {
+        const sisters = friendlyIds(g, self, (u) => g.hasTrait(u, 'Bene Gesserit'))
+        if (!g.controlsArrakis(self.controller)) {
+          for (const id of sisters) g.giveToken(id, 'Shield')
+          return
+        }
+        const pick = g.chooseOne(self.controller, 'Bene Gesserit Proctor: give a Shield token to a friendly Bene Gesserit unit', sisters, { ai: 'help', source: self.def.id })
+        if (pick) g.giveToken(pick, 'Shield')
+      },
+    },
+  },
+  {
+    name: 'Harkonnen Spice Hoarder',
+    text: "[When Played/On Attack:] If you don't control an [{Arrakis}] base, create a Spice token.",
+    front: { whenPlayed: offArrakisSpice, onAttack: offArrakisSpice },
+  },
   {
     name: 'Sardaukar Levenbrech',
     text: 'As an additional cost to play this unit, defeat a friendly Spice token.\n[When Played:] You may defeat a non-unique upgrade.',
@@ -1117,7 +1165,7 @@ const dune: CardScript[] = [
   {
     name: 'Lady Jessica',
     subtitle: 'Bene Gesserit',
-    text: '[When you play a [{Bene Gesserit}] card:] You may exhaust this leader. If you do, exhaust an enemy non-leader unit that costs [#4] or less and heal 1 from your base.',
+    text: '[When you play a [{Bene Gesserit}] card:] You may exhaust this leader. If you do, exhaust an enemy non-leader unit that costs [#4] or less.',
     backText:
       '[Restore 2]\n[When Deployed:] Return a [{Bene Gesserit}] or [{Fremen}] unit from your discard pile to your hand.\nWhen a friendly Spice token is defeated: Heal 2 damage from your base.',
     front: {
@@ -1126,16 +1174,15 @@ const dune: CardScript[] = [
         const p = self.controller
         if (!self.otherDef?.traits.includes('Bene Gesserit') || !g.leaderReady(p)) return
         const targets = g.units((u) => g.controller(u) !== p && !u.leader && g.cost(u) <= 4 && !u.exhausted)
-        // Worth it for a unit to exhaust, or for the heal
-        if (!targets.length && !g.player(p).base.damage) return
-        if (!g.may(p, 'Lady Jessica: exhaust this leader to exhaust an enemy unit that costs 4 or less and heal 1 from your base?', { yes: 'Exhaust', no: 'Skip', source: self.def.id })) return
+        // Worth it only for a unit to exhaust
+        if (!targets.length) return
+        if (!g.may(p, 'Lady Jessica: exhaust this leader to exhaust an enemy unit that costs 4 or less?', { yes: 'Exhaust', no: 'Skip', source: self.def.id })) return
         g.exhaustLeader(p)
         const pick = g.chooseOne(p, 'Lady Jessica: exhaust an enemy non-leader unit that costs 4 or less', targets.map((u) => u.id), {
           ai: 'harm',
           source: self.def.id,
         })
         if (pick) g.exhaust(pick)
-        g.heal(`base${p}`, 1, self)
       },
     },
     back: {
@@ -1476,6 +1523,72 @@ const dune: CardScript[] = [
           g.may(p, `Plans Within Plans: defeat a Spice token so that ${g.name(pick)} gets +4/+0 instead?`, { yes: 'Defeat a Spice token', no: 'Skip', ai: g.spice(p) > 1, source: self.def.id }) &&
           g.defeatSpice(p)
         g.attackWith(pick, { power: more ? 4 : 2 })
+      },
+    },
+  },
+  {
+    name: 'Shigawire Snare',
+    text: "Exhaust up to 2 enemy units. You may defeat a friendly Spice token. If you do, choose one of those units. It can't ready this round (including during the regroup phase).",
+    front: {
+      play: (g, self) => {
+        const p = self.controller
+        const enemies = unitIds(g, (u) => g.controller(u) !== p)
+        const picks = g.choose(p, 'Shigawire Snare: exhaust up to 2 enemy units', enemies, { min: 0, max: 2, ai: 'harm', source: self.def.id })
+        for (const id of picks) g.exhaust(id)
+        if (!picks.length || !g.spice(p)) return
+        const hold =
+          g.may(p, "Shigawire Snare: defeat a Spice token so that one of those units can't ready this round?", { yes: 'Defeat a Spice token', no: 'Skip', ai: g.spice(p) > 1, source: self.def.id }) &&
+          g.defeatSpice(p)
+        if (!hold) return
+        const pick = g.chooseOne(p, "Shigawire Snare: choose a unit that can't ready this round", picks.filter((id) => g.unit(id)), { ai: 'harm', source: self.def.id })
+        if (pick) {
+          g.hold(pick)
+          g.log(`${g.name(pick)} can't ready this round`, p)
+        }
+      },
+    },
+  },
+  {
+    name: 'Tanzerouft',
+    text: 'Give a Weakness token to an enemy unit. If you control a [{Fremen}] unit, give a Weakness token to an enemy unit.',
+    front: {
+      play: (g, self) => {
+        const p = self.controller
+        const times = friendlyIds(g, self, (u) => g.hasTrait(u, 'Fremen')).length ? 2 : 1
+        for (let k = 0; k < times; k++) {
+          const pick = g.chooseOne(p, 'Tanzerouft: give a Weakness token to an enemy unit', unitIds(g, (u) => g.controller(u) !== p), { ai: 'harm', source: self.def.id })
+          if (pick) g.giveToken(pick, 'Weakness')
+        }
+      },
+    },
+  },
+  {
+    name: 'Battle of Arrakeen',
+    text: 'Choose an arena. Deal 2 damage to each non-[{Fremen}] unit in that arena.',
+    front: {
+      play: (g, self) => {
+        const p = self.controller
+        const hit = (arena: string) => unitIds(g, (u) => u.arena === arena && !g.hasTrait(u, 'Fremen'))
+        // The AI hits the arena with the most enemy units against its own
+        const net = (arena: string) => hit(arena).reduce((sum, id) => sum + (g.controller(g.unit(id)!) === p ? -1 : 1), 0)
+        const arena = g.option(p, 'Battle of Arrakeen: choose an arena', ['Ground', 'Space'], { ai: net('space') > net('ground') ? 1 : 0, source: self.def.id })
+        for (const id of hit(arena ? 'space' : 'ground')) if (g.unit(id)) g.damage(id, 2, self)
+      },
+    },
+  },
+  {
+    name: 'Weapons Practice',
+    text: 'Give an Experience token to each of up to 3 friendly [{Trooper}] units.',
+    front: {
+      play: (g, self) => {
+        const troopers = friendlyIds(g, self, (u) => g.hasTrait(u, 'Trooper'))
+        const picks = g.choose(self.controller, 'Weapons Practice: give an Experience token to each of up to 3 friendly Trooper units', troopers, {
+          min: 0,
+          max: 3,
+          ai: 'help',
+          source: self.def.id,
+        })
+        for (const id of picks) g.giveToken(id, 'Experience')
       },
     },
   },
@@ -2489,6 +2602,15 @@ function lionThrone(g: Game, self: Self) {
 // "If you control an [{Arrakis}] base, create a Spice token."
 function arrakisSpice(g: Game, self: Self) {
   if (g.controlsArrakis(self.controller)) g.createSpice(self.controller)
+}
+
+// Off Arrakis, the Houses' Holtzman shields (on Arrakis they draw the worms), and Spice from
+// off-world hoards
+function offArrakisShield(g: Game, self: Self) {
+  if (!g.controlsArrakis(self.controller)) g.giveToken(self.id, 'Shield')
+}
+function offArrakisSpice(g: Game, self: Self) {
+  if (!g.controlsArrakis(self.controller)) g.createSpice(self.controller)
 }
 
 // Harkonnen Harvester: Spice, and more Spice for hurting your own. The AI hurts the unit with
