@@ -75,6 +75,7 @@ export function createGame(options: { seed: number; decks: [DeckList, DeckList];
     usedThisRound: [],
     discounts: [],
     banned: [],
+    awakened: [],
     defeatedThisPhase: [],
     borrowed: [],
     doomed: [],
@@ -629,14 +630,19 @@ export function legalActions(state: GameState, p: PlayerId): Action[] {
   const g = new Game(state)
   // How: using Smuggle, from the discard pile, for a Spice token instead of its cost. Keys in
   // the order an action lists them, which comparing actions needs.
-  const plays = (card: Inst, from: PlayedFrom, spice = false) => {
+  const plays = (card: Inst, from: PlayedFrom, spice = false, awakened = false) => {
     const d = def(state, card)
     if (isBanned(state, p, d)) return
     if (spice) {
       if (!player.spice.length) return
-    } else if (priceOf(state, p, d, from) - spiceRoom(state, p, d) > ready || !canPayAdditional(state, p, d)) return
-    const extra = { ...(from === 'smuggle' && { smuggle: true }), ...(from === 'discard' && { discard: true }), ...(spice && { spice: true }) }
-    const fromDiscard = from === 'discard' ? scriptOf(state, card).discardPlay : undefined
+    } else if (priceOf(state, p, d, from, { free: awakened }) - spiceRoom(state, p, d) > ready || !canPayAdditional(state, p, d)) return
+    const extra = {
+      ...(from === 'smuggle' && { smuggle: true }),
+      ...(from === 'discard' && { discard: true }),
+      ...(spice && { spice: true }),
+      ...(awakened && { awakened: true }),
+    }
+    const fromDiscard = from === 'discard' && !awakened ? scriptOf(state, card).discardPlay : undefined
     const self: Self = { id: card.id, controller: p, def: d }
     if (d.keywords.fortify) {
       if (!fromDiscard || fromDiscard(g, self)) actions.push({ type: 'play', card: card.id, attachTo: baseId(p), ...extra })
@@ -662,6 +668,7 @@ export function legalActions(state: GameState, p: PlayerId): Action[] {
     const abilities = scriptOf(state, card)
     if (abilities.discardPlay) plays(card, 'discard')
     if (abilities.spicePlay) plays(card, 'discard', true)
+    if (isAwakened(state, p, def(state, card))) plays(card, 'discard', false, true)
   }
   for (const unit of player.units) {
     if (unit.exhausted) continue
@@ -778,12 +785,16 @@ function perform(state: GameState, p: PlayerId, action: Action) {
       log(state, `${player.name} takes the initiative`, p)
       state.passes++
       break
-    case 'play':
+    case 'play': {
+      const awakened = !!(action.discard && action.awakened) && wakeUp(state, p, action.card)
       playCard(state, p, action.card, action.attachTo, action.smuggle ? 'smuggle' : action.discard ? 'discard' : 'hand', {
         spiceInstead: action.spice,
+        free: awakened,
+        awakened,
       })
       state.passes = 0
       break
+    }
     case 'attack':
       attack(state, p, action.attacker, action.target)
       state.passes = 0
@@ -865,6 +876,7 @@ function moveToResources(player: PlayerState, cards: string[], exhausted: boolea
 function endPhase(state: GameState) {
   state.discounts = []
   state.banned = []
+  state.awakened = []
   state.defeatedThisPhase = []
 }
 
@@ -925,7 +937,8 @@ type PlayedFrom = 'hand' | 'discard' | 'smuggle' | 'plot' | 'deck'
 // What an ability changes in the cost of a card it plays: "It costs [1] less", "for free"
 // (which leaves additional costs to pay, 1.8), "ignoring its additional costs"
 // spiceInstead: "for free by defeating a friendly Spice token"
-type PlayOptions = { discount?: number; free?: boolean; ignoreAdditional?: boolean; spiceInstead?: boolean }
+// awakened: it gains "[When Played:] Ready this unit." (The Sleeper Has Awakened)
+type PlayOptions = { discount?: number; free?: boolean; ignoreAdditional?: boolean; spiceInstead?: boolean; awakened?: boolean }
 
 // The next card of a trait a player plays this phase costs less (Bene Gesserit Sister); each
 // such discount waiting applies to that card
@@ -952,6 +965,28 @@ export const handPrice = (state: GameState, p: PlayerId, card: CardDef) => price
 // Guild Heighliner), never below none when they are all needed for its additional cost
 const spiceRoom = (state: GameState, p: PlayerId, card: CardDef) =>
   Math.max(0, Math.min(state.players[p].spice.length - (card.spiceCost ?? 0), abilitiesOf(card, 'front').spiceReduces ?? 0))
+
+// A unit a player may play from their discard pile for free this phase (The Sleeper Has Awakened)
+const isAwakened = (state: GameState, p: PlayerId, card: CardDef) =>
+  card.type === 'unit' && (state.awakened ?? []).some((a) => a.player === p && a.name === card.name)
+
+// Playing it uses that permission up
+function wakeUp(state: GameState, p: PlayerId, id: string) {
+  const card = state.players[p].discard.find((c) => c.id === id)
+  const name = card && def(state, card).name
+  const i = (state.awakened ?? []).findIndex((a) => a.player === p && a.name === name)
+  if (i < 0) return false
+  state.awakened!.splice(i, 1)
+  return true
+}
+
+// The unit gains "[When Played:] Ready this unit.", which resolves with its other When Played
+// abilities, in the order its controller chooses
+function queueWakeUp(state: GameState, p: PlayerId, id: string) {
+  const unit = findUnit(state, id)
+  if (!unit || !current) return
+  current.queue.push({ player: p, label: `${nameOf(state, unit)}: ready this unit`, run: () => new Game(state, p).ready(id) })
+}
 
 // A card name opponents can't play this phase (The Voice)
 const isBanned = (state: GameState, p: PlayerId, card: CardDef) => state.banned.some((b) => b.player === p && b.name === card.name)
@@ -1030,6 +1065,7 @@ function playCard(state: GameState, p: PlayerId, id: string, attachTo?: string, 
     player.units.push(unit)
     log(state, `${player.name} plays ${d.name}${using}`, p)
     queue(state, p, d.name, scriptOf(state, card).whenPlayed, self)
+    if (options.awakened) queueWakeUp(state, p, unit.id)
     queueAmbush(state, p, unit)
   } else if (d.keywords.fortify) {
     // 7.5.21: onto its player's own base
@@ -1131,7 +1167,7 @@ function queuePlots(state: GameState, p: PlayerId) {
 }
 
 // What an attack may do differently, for an ability that makes one
-type AttackOptions = { power?: number; firstStrike?: boolean }
+type AttackOptions = { power?: number; firstStrike?: boolean; overwhelm?: boolean }
 
 // 6.3: exhaust the attacker, resolve its On Attack abilities and those it triggers, then both
 // deal their damage at once
@@ -1147,7 +1183,17 @@ function attack(state: GameState, p: PlayerId, attackerId: string, target: strin
   const waiting = run.queue
   run.queue = []
   if (options.power) state.effects.push({ unit: attackerId, power: options.power, hp: 0, until: 'attack' })
-  if (options.firstStrike) state.effects.push({ unit: attackerId, power: 0, hp: 0, keywords: { firstStrike: true }, until: 'attack' })
+  if (options.firstStrike || options.overwhelm)
+    state.effects.push({
+      unit: attackerId,
+      power: 0,
+      hp: 0,
+      keywords: {
+        ...(options.firstStrike && { firstStrike: true }),
+        ...(options.overwhelm && { overwhelm: true }),
+      },
+      until: 'attack',
+    })
   const defenderName = target === 'base' ? nameOf(state, enemy.base) : nameOf(state, findUnit(state, target) as UnitState)
   log(state, `${player.name} attacks ${defenderName} with ${nameOf(state, attacker)}`, p)
   exhaustUnit(state, attacker)
@@ -1715,6 +1761,11 @@ export class Game {
   ban(p: PlayerId, name: string) {
     this.state.banned.push({ player: p, name })
     this.log(`${this.state.players[p].name} can't play ${name} this phase`)
+  }
+  // "For this phase, you may play a unit with that name from your discard pile for free."
+  awaken(p: PlayerId, name: string) {
+    this.state.awakened = [...(this.state.awakened ?? []), { player: p, name }]
+    this.log(`${this.state.players[p].name} may play ${name} from their discard pile for free this phase`, p)
   }
   // Defeated when the next regroup phase starts
   doom(unitId: string) {

@@ -185,6 +185,9 @@ export type GameState = {
   // units defeated (their card ids)
   discounts: Discount[]
   banned: { player: PlayerId; name: string }[]
+  // Unit names a player may play from their discard pile for free this phase, readied as they
+  // are played (The Sleeper Has Awakened); a game saved before it had none
+  awakened?: { player: PlayerId; name: string }[]
   defeatedThisPhase: string[]
   borrowed: Borrowed[]
   // Units to defeat when the next regroup phase starts (Worm Signs)
@@ -208,7 +211,7 @@ export type Action =
   | { type: 'resource'; cards: string[] }
   // From the hand; from the resources using Smuggle; from the discard pile when the card says
   // so; for a Spice token instead of its cost when the card says so
-  | { type: 'play'; card: string; attachTo?: string; smuggle?: boolean; discard?: boolean; spice?: boolean }
+  | { type: 'play'; card: string; attachTo?: string; smuggle?: boolean; discard?: boolean; spice?: boolean; awakened?: boolean }
   | { type: 'attack'; attacker: string; target: string | 'base' }
   | { type: 'deploy' }
   // A leader's or unit's Action ability, by its number on the card

@@ -148,6 +148,18 @@ function discardOr(g: Game, self: Self, count: number, otherwise: (unitId: strin
 }
 
 // "Look at the top card of your deck. You may put it on the bottom of your deck or discard it."
+// Baron Vladimir Harkonnen, Siridar-Baron: his other Harkonnen units, which may attack a unit
+// even when exhausted, +2/+0 and Overwhelm
+const henchmen = (g: Game, self: Self) =>
+  friendlyIds(g, self, (u) => u.id !== self.id && g.hasTrait(u, 'Harkonnen') && g.canAttack(u.id, { exhausted: true, noBases: true }))
+function henchmanAttack(g: Game, self: Self) {
+  const pick = g.chooseOne(self.controller, 'Baron Vladimir Harkonnen: attack with another Harkonnen unit, even if it is exhausted (+2/+0, Overwhelm)', henchmen(g, self), {
+    ai: 'help',
+    source: self.def.id,
+  })
+  if (pick) g.attackWith(pick, { exhausted: true, noBases: true, power: 2, overwhelm: true })
+}
+
 // Glossu Rabban: the AI's strongest unit that can attack and survives 1 damage
 const rabbanPick = (g: Game, self: Self) =>
   friendlyIds(g, self, (u) => g.canAttack(u.id) && g.hp(u) - u.damage > 1).sort((a, b) => g.power(g.unit(b)!) - g.power(g.unit(a)!))[0]
@@ -1074,6 +1086,24 @@ const dune: CardScript[] = [
     },
   },
   {
+    name: 'Baron Vladimir Harkonnen',
+    subtitle: 'Siridar-Baron',
+    text: "[Overwhelm]\n[When Played:] Attack with another friendly [{Harkonnen}] unit, even if it's exhausted. It can't attack bases and gets [+2/+0] and [Overwhelm] for this attack.\n[Action:] Defeat a friendly Spice token. If you do, use this unit's [When Played] ability. Use this ability only once each round.",
+    front: {
+      whenPlayed: (g, self) => henchmanAttack(g, self),
+      actions: [
+        {
+          label: 'a Spice token: another Harkonnen unit attacks, even if exhausted',
+          can: (g, self) => !g.used(self) && g.spice(self.controller) > 0 && henchmen(g, self).length > 0,
+          run: (g, self) => {
+            g.use(self)
+            if (g.defeatSpice(self.controller)) henchmanAttack(g, self)
+          },
+        },
+      ],
+    },
+  },
+  {
     name: 'Feyd-Rautha Harkonnen',
     subtitle: 'na-Baron',
     text: '[Sentinel]\n[When this unit attacks or is attacked:] Give a Weakness token to the other unit in the combat.',
@@ -1686,6 +1716,20 @@ const dune: CardScript[] = [
     },
   },
   {
+    name: 'Stilgar',
+    subtitle: 'Desert Commander',
+    text: '[Sentinel]\n[When Played:] If you control an [{Arrakis}] base, create a Fremen token.\nWhen a friendly [{Fremen}] unit is defeated: Heal 2 damage from a unit or base.',
+    front: {
+      whenPlayed: (g, self) => {
+        if (g.controlsArrakis(self.controller)) g.createToken(self.controller, 'Fremen')
+      },
+      // Another Fremen unit, or Stilgar himself: gone from play, he heals as he's defeated
+      triggersIf: { whenFriendlyDefeated: (_g, self) => !!self.otherDef?.traits.includes('Fremen') },
+      whenFriendlyDefeated: (g, self) => healOne(g, self, 2),
+      whenDefeated: (g, self) => healOne(g, self, 2),
+    },
+  },
+  {
     name: "Harkonnen Heavy 'Thopter",
     text: 'Friendly [{Trooper}] units gain [Raid 1].',
     front: {
@@ -2214,6 +2258,35 @@ const dune: CardScript[] = [
   },
   {
     name: 'Paul Atreides',
+    subtitle: "Muad'Dib",
+    text: 'While you control an [{Arrakis}] base, each friendly [{Fremen}] unit gets [+1/+0] and gains [Ambush].\n[When Played:] Create 2 Fremen tokens.',
+    front: {
+      // Himself included, and the tokens he creates: each may attack an enemy unit as it enters
+      gives: (g, self, unit) =>
+        g.controller(unit) === self.controller && g.hasTrait(unit, 'Fremen') && g.controlsArrakis(self.controller)
+          ? { power: 1, keywords: { ambush: true } }
+          : undefined,
+      whenPlayed: (g, self) => {
+        for (let i = 0; i < 2; i++) g.createToken(self.controller, 'Fremen')
+      },
+    },
+  },
+  {
+    name: 'The Sleeper Has Awakened',
+    text: 'Defeat a friendly unit. For this phase, you may play a unit with the same name as that unit from your discard pile for free. It gains "[When Played:] Ready this unit."',
+    front: {
+      play: (g, self) => {
+        const p = self.controller
+        const pick = g.chooseOne(p, 'The Sleeper Has Awakened: defeat a friendly unit', friendlyIds(g, self), { ai: rebirth(g, p), source: self.def.id })
+        if (!pick) return
+        const name = g.def(g.unit(pick)!).name
+        g.defeat(pick, self)
+        g.awaken(p, name)
+      },
+    },
+  },
+  {
+    name: 'Paul Atreides',
     subtitle: 'Usul',
     text: "While you control an [{Arrakis}] base, this unit gains [Hidden].\n[On Attack:] Look at the top card of your deck. You may discard it. If you do and it's a [{Fremen}] card, this unit gets [+2/+0] for this attack.",
     front: {
@@ -2703,6 +2776,20 @@ function dropShip(g: Game, self: Self) {
   const troopers = (d: CardDef) => d.type === 'unit' && d.traits.includes('Trooper') && d.cost <= 2
   for (let i = 0; i < 2; i++)
     if (!playFromDiscard(g, self, `Harkonnen Drop Ship: you may play a Trooper unit that costs 2 or less from your discard pile (${2 - i} left)`, troopers)) return
+}
+
+// The Sleeper Has Awakened: the AI defeats the unit that comes back the strongest, the dearest
+// unit of its name in the discard pile or itself (a token or leader unit doesn't go there),
+// a damaged one first
+function rebirth(g: Game, p: PlayerId) {
+  const discard = g.player(p).discard.map((c) => g.def(c)).filter((d) => d.type === 'unit')
+  const back = (id: string) => {
+    const u = g.unit(id)!
+    const d = g.def(u)
+    const own = d.token || u.leader ? 0 : d.cost
+    return Math.max(own, ...discard.filter((x) => x.name === d.name).map((x) => x.cost)) * 10 + u.damage
+  }
+  return g.units((u) => g.controller(u) === p).map((u) => u.id).sort((a, b) => back(b) - back(a))[0] ?? 'none'
 }
 
 const isFremenOrSister = (g: Game, card: { def: string }) =>

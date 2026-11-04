@@ -12,7 +12,7 @@
   "text": "[Hidden]\n[When Played/On Attack:] If you control an [{Arrakis}] base, create a Spice token.\n",
   "power": 1,
   "trait": "Underworld, Vehicle, Harvester",
-  "number": "141",
+  "number": "145",
   "rarity": "C",
   "frameId": "unit-cunning",
   "setCode": "DUNE",

@@ -1471,6 +1471,12 @@
 .sim-pile.open {
   cursor: pointer;
 }
+/* Glowing as a resource that can be played using Smuggle does, with a card in it to play */
+.sim-pile.playable img {
+  outline: 0.3vh solid #7cd66b;
+  box-shadow: 0 0 1.2vh rgba(124, 214, 107, 0.6);
+  border-radius: 0.45vh;
+}
 .sim-pile.open:hover img {
   filter: brightness(1.15);
 }

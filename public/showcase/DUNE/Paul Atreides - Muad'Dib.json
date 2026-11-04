@@ -1,0 +1,30 @@
+{
+  "hp": 8,
+  "id": "9f8ca78c-696d-4879-858d-8485d6565b64",
+  "art": {
+    "x": 1,
+    "y": 8,
+    "src": "Paul Atreides - Muad'Dib (art).webp",
+    "zoom": 1.08
+  },
+  "cost": 9,
+  "look": {
+    "textGlow": 0,
+    "lightText": true,
+    "panelBlur": 0,
+    "panelFill": 0.5,
+    "solidIcons": true,
+    "frameOpacity": 0
+  },
+  "name": "Paul Atreides",
+  "text": "While you control an [{Arrakis}] base, each friendly [{Fremen}] unit gets [+1/+0] and gains [Ambush].\n[When Played:] Create 2 Fremen tokens.",
+  "power": 8,
+  "trait": "Atreides, Fremen",
+  "number": "138",
+  "rarity": "L",
+  "unique": true,
+  "frameId": "unit-cunning-heroism",
+  "setCode": "DUNE",
+  "language": "EN",
+  "subtitle": "Muad'Dib"
+}

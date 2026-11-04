@@ -13,7 +13,7 @@
   "text": "[When Played:] Create a Spice token.\n[Smuggle [[3 Cunning]]]\n[When played using Smuggle:] Create a Spice token.",
   "power": 2,
   "trait": "Underworld",
-  "number": "139",
+  "number": "143",
   "rarity": "C",
   "frameId": "unit-cunning",
   "setCode": "DUNE",

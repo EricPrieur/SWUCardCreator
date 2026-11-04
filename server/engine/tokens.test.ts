@@ -73,6 +73,12 @@ const defs: CardDef[] = [
   card('houseFrigate', { ...scripted('Great House Frigate'), cost: 5, power: 4, hp: 5, arena: 'space' }),
   card('proctor', { ...scripted('Bene Gesserit Proctor'), cost: 5, power: 4, hp: 6, traits: ['Bene Gesserit'] }),
   card('hoarder', { ...scripted('Harkonnen Spice Hoarder'), cost: 2, power: 1, hp: 3 }),
+  card('siridar', { ...scriptedBy('Baron Vladimir Harkonnen', 'Siridar-Baron'), cost: 8, power: 8, hp: 8, unique: true, traits: ['Harkonnen', 'Official'] }),
+  card('harkonnen', { cost: 2, power: 2, hp: 2, traits: ['Harkonnen', 'Trooper'] }),
+  card('muaddib', { ...scriptedBy('Paul Atreides', "Muad'Dib"), cost: 9, power: 8, hp: 8, unique: true, traits: ['Atreides', 'Fremen'] }),
+  card('stilgarUnit', { ...scriptedBy('Stilgar', 'Desert Commander'), cost: 5, power: 4, hp: 6, unique: true, traits: ['Fremen', 'Official'] }),
+  card('heir', { name: 'Paul Atreides', subtitle: 'Heir to House Atreides', cost: 2, power: 2, hp: 3, unique: true, traits: ['Atreides'] }),
+  card('sleeper', { ...scripted('The Sleeper Has Awakened'), type: 'event', cost: 5, arena: undefined }),
 ]
 
 const act = (state: GameState, p: PlayerId, action: Action) => applyAction(state, p, action)
@@ -588,3 +594,135 @@ test('Ginaz Shield Duelist: its Ambush may resolve first, the Shield token after
   const first = chooseAction(ai, 0)!
   assert.equal(first.type === 'answer' && ai.prompt!.options.find((o) => o.id === first.picks[0])!.label?.includes('Ambush'), true)
 })
+
+test('Baron Vladimir Harkonnen, Siridar-Baron: another Harkonnen unit attacks a unit, exhausted, +2/+0 and Overwhelm', () => {
+  let state = table({ hand0: ['siridar'], units0: ['harkonnen', 'trooper'], units1: ['trooper'] })
+  state.players[0].units[0].exhausted = true
+  for (let i = 0; i < 2; i++) state.players[0].resources.push({ card: { id: `rx${i}`, def: 'trooper' }, exhausted: false })
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  assert.deepEqual(state.prompt!.options.map((o) => o.id), ['u00'], 'Harkonnen units only, exhausted ones too, not himself')
+  state = answer(state, 'u00')
+  assert.deepEqual(state.prompt!.options.map((o) => o.id), ['u10'], "it can't attack the base")
+  state = answer(state, 'u10')
+  assert.equal(state.players[1].units.length, 0)
+  assert.equal(state.players[1].base.damage, 2, '4 power into a 2/2: 2 more to the base')
+  assert.equal(state.defs.siridar.keywords.overwhelm, true)
+})
+
+test('Baron Vladimir Harkonnen, Siridar-Baron: a Spice token uses the When Played again, once each round', () => {
+  let state = table({ units0: ['siridar', 'harkonnen'], units1: ['big', 'big'] })
+  state.players[0].units[1].exhausted = true
+  state.players[0].spice.push({ ...state.players[0].spice[0], id: 'sp2' })
+  const baron = (s: GameState) => legalActions(s, 0).some((a) => a.type === 'ability' && a.source === 'u00')
+  assert.ok(baron(state))
+  state = act(state, 0, { type: 'ability', source: 'u00', index: 0 })
+  state = answer(state, 'u01')
+  state = answer(state, 'u10')
+  assert.equal(state.players[1].units[0].damage, 4)
+  assert.equal(state.players[1].base.damage, 0, 'no Overwhelm damage left over')
+  assert.equal(state.players[0].spice.length, 1)
+  state.active = 0
+  assert.ok(!baron(state), 'once each round, a Spice token left or not')
+})
+
+test('Stilgar, Desert Commander: a friendly Fremen unit defeated, himself included, heals 2 damage from a unit or base', () => {
+  let state = table({ units0: ['stilgarUnit', 'fremen', 'trooper'], units1: ['crusher'] })
+  state.players[0].units[0].damage = 3
+  state = act(state, 0, { type: 'attack', attacker: 'u02', target: 'u10' })
+  assert.equal(state.prompt, null, 'not for a unit that is not Fremen')
+  state.active = 0
+  state = act(state, 0, { type: 'attack', attacker: 'u01', target: 'u10' })
+  assert.match(state.prompt!.text, /Stilgar/)
+  state = answer(state, 'u00')
+  assert.equal(state.players[0].units[0].damage, 1)
+  state.players[0].base.damage = 5
+  state.players[1].units[0].damage = 0
+  state.active = 0
+  state = act(state, 0, { type: 'attack', attacker: 'u00', target: 'u10' })
+  assert.equal(state.players[0].units.length, 0, 'Stilgar is defeated')
+  state = answer(state, 'base0')
+  assert.equal(state.players[0].base.damage, 3)
+  assert.equal(state.prompt, null, 'he heals once as he is defeated')
+  assert.equal(state.defs.stilgarUnit.keywords.sentinel, true)
+})
+
+test('Stilgar, Desert Commander: a Fremen token when played, on Arrakis only', () => {
+  for (const [base, made] of [['arrakis', 1], ['caladan', 0]] as const) {
+    let state = table({ base0: base, hand0: ['stilgarUnit'] })
+    state = act(state, 0, { type: 'play', card: 'h0' })
+    assert.equal(state.players[0].units.length, 1 + made, base)
+  }
+})
+
+test("Paul Atreides, Muad'Dib: on Arrakis each friendly Fremen unit gets +1/+0 and Ambush, him and his 2 tokens included", () => {
+  for (const base of ['arrakis', 'caladan']) {
+    let state = table({ base0: base, hand0: ['muaddib'], units0: ['fremen'], units1: ['big', 'big', 'big'] })
+    for (let i = 0; i < 3; i++) state.players[0].resources.push({ card: { id: `rx${i}`, def: 'trooper' }, exhausted: false })
+    assert.equal(powerOf(state, state.players[0].units[0]), 2, 'not in play yet')
+    state = act(state, 0, { type: 'play', card: 'h0' })
+    const asked: string[] = []
+    while (state.prompt) {
+      asked.push(state.prompt.text)
+      const first = state.prompt.options.find((o) => /When Played/.test(o.label ?? '')) ?? state.prompt.options.find((o) => o.id !== 'none') ?? state.prompt.options[0]
+      state = answer(state, first.id)
+    }
+    const ambushes = asked.filter((t) => /Ambush, choose/.test(t)).length
+    const mine = state.players[0].units
+    if (base === 'arrakis') {
+      assert.equal(ambushes, 3, `Muad'Dib and both tokens: ${asked.join(' / ')}`)
+      assert.equal(powerOf(state, mine.find((u) => u.def === 'fremen')!), 3)
+    } else {
+      assert.equal(ambushes, 0)
+      assert.equal(mine.length, 4, 'him, the Fremen and 2 tokens')
+      assert.equal(powerOf(state, mine.find((u) => u.def === 'muaddib')!), 8)
+    }
+  }
+})
+
+// Answers every question, a When Played ability first, then what isn't "none"
+function settle(state: GameState, first = /When Played|ready this unit/) {
+  while (state.prompt) {
+    const o = state.prompt.options
+    state = answer(state, (o.find((x) => first.test(x.label ?? '')) ?? o.find((x) => x.id !== 'none') ?? o[0]).id)
+  }
+  return state
+}
+
+test("The Sleeper Has Awakened: the Heir defeated, Muad'Dib played from the discard pile for free this phase, ready", () => {
+  let state = table({ base0: 'caladan', hand0: ['sleeper'], units0: ['heir', 'fremen'] })
+  state.players[0].discard = [{ id: 'x0', def: 'muaddib' }]
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  assert.deepEqual(state.prompt?.options.map((o) => o.id), ['u00', 'u01'])
+  state = answer(state, 'u00')
+  assert.deepEqual(state.players[0].discard.map((c) => c.def).sort(), ['heir', 'muaddib', 'sleeper'])
+  // Another action later this phase: the Fremen can't come back, either Paul can, for free
+  state = act(state, 1, { type: 'pass' })
+  const wake = legalActions(state, 0).filter((a) => a.type === 'play' && a.awakened)
+  assert.deepEqual(wake.map((a) => a.type === 'play' && a.card).sort(), ['u00', 'x0'])
+  const spent = state.players[0].resources.filter((r) => r.exhausted).length
+  state = settle(act(state, 0, { type: 'play', card: 'x0', discard: true, awakened: true }))
+  const paul = state.players[0].units.find((u) => u.def === 'muaddib')!
+  assert.equal(paul.exhausted, false)
+  assert.equal(state.players[0].units.length, 4, "Muad'Dib, the Fremen and 2 tokens")
+  assert.equal(state.players[0].resources.filter((r) => r.exhausted).length, spent, 'for free')
+  // Once only
+  state = act(state, 1, { type: 'pass' })
+  assert.ok(!legalActions(state, 0).some((a) => a.type === 'play' && a.awakened))
+})
+
+test('The Sleeper Has Awakened: on Arrakis, Ambush first, then ready to attack again; it lasts this phase only', () => {
+  let state = table({ hand0: ['sleeper'], units0: ['muaddib'], units1: ['trooper'] })
+  state = answer(act(state, 0, { type: 'play', card: 'h0' }), 'u00')
+  state = act(state, 1, { type: 'pass' })
+  state = settle(act(state, 0, { type: 'play', card: 'u00', discard: true, awakened: true }), /Ambush|u10/)
+  const paul = state.players[0].units.find((u) => u.def === 'muaddib')!
+  assert.equal(state.players[1].units.length, 0, 'the Ambush defeated the trooper')
+  assert.equal(paul.exhausted, false, 'readied after it')
+  let other = table({ hand0: ['sleeper'], units0: ['fremen'] })
+  other = answer(act(other, 0, { type: 'play', card: 'h0' }), 'u00')
+  assert.equal(other.awakened?.length, 1)
+  other = act(act(other, 1, { type: 'pass' }), 0, { type: 'pass' })
+  assert.equal(other.phase, 'regroup')
+  assert.deepEqual(other.awakened, [])
+})
+

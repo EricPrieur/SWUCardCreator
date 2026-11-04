@@ -1,0 +1,22 @@
+{
+  "hp": 6,
+  "id": "80dd57c0-8e3a-4ae5-acec-91bb8d4e5d7c",
+  "art": {
+    "x": 0,
+    "y": 5,
+    "src": "Stilgar - Desert Commander (art).webp",
+    "zoom": 1
+  },
+  "cost": 5,
+  "name": "Stilgar",
+  "text": "[Sentinel]\n[When Played:] If you control an [{Arrakis}] base, create a Fremen token.\nWhen a friendly [{Fremen}] unit is defeated: Heal 2 damage from a unit or base.",
+  "power": 4,
+  "trait": "Fremen, Official",
+  "number": "136",
+  "rarity": "R",
+  "unique": true,
+  "frameId": "unit-cunning-heroism",
+  "setCode": "DUNE",
+  "language": "EN",
+  "subtitle": "Desert Commander"
+}

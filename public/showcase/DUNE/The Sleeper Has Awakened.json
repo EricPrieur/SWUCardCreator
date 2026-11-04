@@ -1,0 +1,26 @@
+{
+  "id": "102fad6f-6107-41af-ade7-dde2fbdbede3",
+  "art": {
+    "x": 0,
+    "y": 14,
+    "src": "The Sleeper Has Awakened (art).webp",
+    "zoom": 1
+  },
+  "cost": 5,
+  "look": {
+    "textGlow": 0,
+    "lightText": true,
+    "panelBlur": 0,
+    "panelFill": 0.5,
+    "solidIcons": true,
+    "frameOpacity": 0
+  },
+  "name": "The Sleeper Has Awakened",
+  "text": "Defeat a friendly unit. For this phase, you may play a unit with the same name as that unit from your discard pile for free. It gains \"[When Played:] Ready this unit.\"",
+  "trait": "Prophecy",
+  "number": "139",
+  "rarity": "L",
+  "frameId": "event-cunning-heroism",
+  "setCode": "DUNE",
+  "language": "EN"
+}

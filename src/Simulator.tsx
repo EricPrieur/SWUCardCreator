@@ -1142,11 +1142,13 @@ function Table(props: {
     const arriving = coming[who === 'me' ? YOU : AI]
     const top = side.discard[side.discard.length - 1]
     const ready = side.resources.filter((r) => !r.exhausted).length
+    // A card in your discard pile you can play now (Crysknife, The Sleeper Has Awakened)
+    const playable = who === 'me' && !mode && !asked && !pickCount && side.discard.some((c) => playsOf(c.id).length > 0)
     return (
       <div className={`sim-strip ${who}`}>
         <div
-          className={`sim-pile${top ? ' open' : ''}`}
-          title={top ? 'Discard pile: click to see it' : 'Discard pile'}
+          className={['sim-pile', top && 'open', playable && 'playable'].filter(Boolean).join(' ')}
+          title={playable ? 'Discard pile: a card in it can be played' : top ? 'Discard pile: click to see it' : 'Discard pile'}
           onClick={top ? () => setPileOpen(who === 'me' ? 'discard-me' : 'discard-opp') : undefined}
         >
           {top ? (

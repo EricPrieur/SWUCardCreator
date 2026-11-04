@@ -555,8 +555,10 @@ function solidAreas(frame: Frame, text: boolean, icons: boolean): string[] {
     for (const spot of [frame.power, frame.upgradePower]) {
       if (spot) areas.push(gem(spot.x, spot.y))
     }
+    // Its left edge stops short of the notch in the gem, where the frame's border (its
+    // aspect's color on a Heroism frame) shows through
     for (const spot of [frame.hp, frame.upgradeHp]) {
-      if (spot) areas.push(round(spot.x - 44, spot.y - 48, spot.x + 45, spot.y + 49))
+      if (spot) areas.push(round(spot.x - 41, spot.y - 48, spot.x + 45, spot.y + 49))
     }
     // The aspect icons: under the cost on most cards, one under another; down the
     // right side on a leader
@@ -565,7 +567,23 @@ function solidAreas(frame: Frame, text: boolean, icons: boolean): string[] {
         const x0 = frame.width > frame.height ? 878 : 598
         areas.push(hexagon(x0, 28 + index * 111, x0 + 90, 126 + index * 111))
       } else {
-        areas.push(hexagon(29, 111 + index * 72, 117, 189 + index * 72))
+        // Cut to the icon and the dark plinth under it, no wider: on an event the white
+        // text panel starts just right of it
+        const o = index * 72
+        areas.push(
+          polygon([
+            [41, 119 + o],
+            [103, 119 + o],
+            [107, 123 + o],
+            [107, 184 + o],
+            [94, 188 + o],
+            [80, 192 + o],
+            [66, 192 + o],
+            [51, 188 + o],
+            [37, 184 + o],
+            [37, 123 + o],
+          ]),
+        )
       }
     })
   }
