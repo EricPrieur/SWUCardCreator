@@ -1,0 +1,18 @@
+{
+  "id": "1e82243b-4e57-48c0-b004-e4414aa23fa0",
+  "art": {
+    "x": -26,
+    "y": 43,
+    "src": "Stunner Dart (art).webp",
+    "zoom": 2.28
+  },
+  "cost": 1,
+  "name": "Stunner Dart",
+  "text": "Exhaust a unit.\n[Smuggle [[1 Cunning]]]",
+  "trait": "Trick",
+  "number": "128",
+  "rarity": "C",
+  "frameId": "event-aggression",
+  "setCode": "DUNE",
+  "language": "EN"
+}

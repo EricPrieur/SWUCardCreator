@@ -79,6 +79,20 @@ const defs: CardDef[] = [
   card('stilgarUnit', { ...scriptedBy('Stilgar', 'Desert Commander'), cost: 5, power: 4, hp: 6, unique: true, traits: ['Fremen', 'Official'] }),
   card('heir', { name: 'Paul Atreides', subtitle: 'Heir to House Atreides', cost: 2, power: 2, hp: 3, unique: true, traits: ['Atreides'] }),
   card('sleeper', { ...scripted('The Sleeper Has Awakened'), type: 'event', cost: 5, arena: undefined }),
+  card('harah', { ...scripted('Harah'), cost: 1, power: 1, hp: 2, unique: true, traits: ['Fremen'] }),
+  card('ramallo', { ...scripted('Ramallo'), cost: 3, power: 1, hp: 3, unique: true, traits: ['Fremen', 'Bene Gesserit'], upgrade: { power: 2, hp: 2 }, attachedKeywords: { restore: 2 } }),
+  card('nefud', { ...scripted('Iakin Nefud'), cost: 3, power: 3, hp: 3, unique: true, traits: ['Harkonnen', 'Official'] }),
+  card('otheym', { ...scripted('Otheym'), cost: 2, power: 3, hp: 2, unique: true, traits: ['Fremen', 'Fedaykin'] }),
+  card('pardot', { ...scripted('Pardot Kynes'), cost: 3, power: 1, hp: 4, unique: true, traits: ['Fremen', 'Emperor'] }),
+  card('chaniUnit', { cost: 3, power: 3, hp: 5, unique: true, traits: ['Fremen'] }),
+  card('aramsham', { ...scriptedBy('Captain Aramsham', 'Sardaukar Hunter'), cost: 4, power: 4, hp: 5, unique: true, traits: ['Emperor', 'Sardaukar', 'Official'] }),
+  card('ambusher', { cost: 3, power: 3, hp: 3, text: '[Ambush]' }),
+  card('dart', { ...scripted('Stunner Dart'), type: 'event', cost: 1, arena: undefined, aspects: ['Aggression'], traits: ['Trick'] }),
+  card('goBetween', { ...scripted("Tuek's Go-Between"), cost: 3, power: 2, hp: 3, traits: ['Underworld'] }),
+  card('trick2', { type: 'event', cost: 2, arena: undefined, traits: ['Trick'] }),
+  card('jamis', { ...scripted('Jamis'), cost: 3, power: 3, hp: 4, unique: true, traits: ['Fremen'] }),
+  card('knife', { type: 'upgrade', cost: 2, power: 1, hp: 0, arena: undefined, traits: ['Item', 'Weapon'] }),
+  card('suit', { type: 'upgrade', cost: 1, power: 0, hp: 2, arena: undefined, traits: ['Item', 'Armor'] }),
 ]
 
 const act = (state: GameState, p: PlayerId, action: Action) => applyAction(state, p, action)
@@ -724,5 +738,154 @@ test('The Sleeper Has Awakened: on Arrakis, Ambush first, then ready to attack a
   other = act(act(other, 1, { type: 'pass' }), 0, { type: 'pass' })
   assert.equal(other.phase, 'regroup')
   assert.deepEqual(other.awakened, [])
+})
+
+test('Jamis: a Weapon upgrade from the discard pile for free, attached to him', () => {
+  let state = table({ base0: 'caladan', hand0: ['jamis', 'suit'], units0: ['fremen'] })
+  state.players[0].discard = [{ id: 'x0', def: 'knife' }]
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  assert.deepEqual(state.prompt?.options.filter((o) => o.id !== 'none').map((o) => o.id), ['x0'], 'a Weapon, not the Armor in hand')
+  state = settle(answer(state, 'x0'))
+  const jamis = state.players[0].units.find((u) => u.def === 'jamis')!
+  assert.deepEqual(jamis.upgrades.map((u) => u.def), ['knife'])
+  assert.equal(state.players[0].resources.filter((r) => r.exhausted).length, 3, 'only Jamis paid for')
+})
+
+test("Jamis: defeated, his upgrades go on to other friendly Fremen units for free", () => {
+  let state = table({ base0: 'caladan', units0: ['jamis', 'fremen', 'trooper'], units1: ['crusher'] })
+  state.players[0].units[0].upgrades = [
+    { id: 'k0', def: 'knife', owner: 0 },
+    { id: 's0', def: 'suit', owner: 0 },
+  ]
+  state = act(state, 0, { type: 'attack', attacker: 'u00', target: 'u10' })
+  assert.ok(!state.players[0].units.some((u) => u.def === 'jamis'))
+  assert.deepEqual(state.prompt?.options.filter((o) => o.id !== 'none').map((o) => o.id).sort(), ['k0', 's0'])
+  state = answer(state, 'k0')
+  assert.deepEqual(state.prompt?.options.map((o) => o.id), ['u01'], 'a Fremen unit only')
+  state = answer(state, 'u01')
+  state = answer(answer(state, 's0'), 'u01')
+  assert.deepEqual(state.players[0].units.find((u) => u.id === 'u01')!.upgrades.map((u) => u.def), ['knife', 'suit'])
+  assert.equal(state.players[0].resources.filter((r) => r.exhausted).length, 0, 'for free')
+  assert.equal(state.prompt, null)
+})
+
+test('Harah: an Experience token to another Fremen unit once a friendly Fremen unit was defeated this phase', () => {
+  // One of these attacks into the crusher and is defeated, then Harah is played
+  const play = (dies: string) => {
+    let state = table({ base0: 'caladan', hand0: ['harah'], units0: [dies, 'fremen'], units1: ['crusher'] })
+    state = settle(act(state, 0, { type: 'attack', attacker: 'u00', target: 'u10' }))
+    assert.ok(!state.players[0].units.some((u) => u.id === 'u00'))
+    state = act(state, 1, { type: 'pass' })
+    return settle(act(state, 0, { type: 'play', card: 'h0' }))
+  }
+  const upgradesOf = (state: GameState, def: string) => state.players[0].units.find((u) => u.def === def)!.upgrades.map((u) => state.defs[u.def].name)
+  assert.deepEqual(upgradesOf(play('fremen'), 'fremen'), ['Experience'])
+  assert.deepEqual(upgradesOf(play('fremen'), 'harah'), [], 'another unit')
+  assert.deepEqual(upgradesOf(play('trooper'), 'fremen'), [], 'a Fremen unit has to have been defeated')
+})
+
+test('Ramallo: heals 2, and 3 more for a Spice token', () => {
+  let state = table({ hand0: ['ramallo'] })
+  state.players[0].base.damage = 6
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  state = answer(state, 'base0')
+  assert.equal(state.players[0].base.damage, 4)
+  state = answer(state, 'yes')
+  assert.equal(state.players[0].base.damage, 1)
+  assert.equal(state.players[0].spice.length, 0)
+})
+
+test('Ramallo: defeated, she is attached to a Fremen or Bene Gesserit unit, +2/+2 and Restore 2, until it leaves play', () => {
+  let state = table({ base0: 'caladan', units0: ['ramallo', 'fremen', 'trooper'], units1: ['crusher'] })
+  state = act(state, 0, { type: 'attack', attacker: 'u00', target: 'u10' })
+  assert.deepEqual(state.prompt?.options.map((o) => o.id), ['u01'], 'not the trooper')
+  state = answer(state, 'u01')
+  const fremen = state.players[0].units.find((u) => u.id === 'u01')!
+  assert.deepEqual(fremen.upgrades.map((u) => u.def), ['ramallo'])
+  assert.ok(!state.players[0].discard.some((c) => c.def === 'ramallo'))
+  assert.equal(powerOf(state, fremen), 4)
+  assert.equal(hpOf(state, fremen), 5)
+  assert.equal(keywordsOf(state, fremen).restore, 2)
+  // The unit defeated, she goes to the discard pile as any upgrade does
+  state = act(state, 1, { type: 'pass' })
+  state = settle(act(state, 0, { type: 'attack', attacker: 'u01', target: 'u10' }))
+  assert.ok(state.players[0].discard.some((c) => c.def === 'ramallo'))
+})
+
+test('Iakin Nefud: other Harkonnen Troopers get +1/+0; a Spice token readies him', () => {
+  let state = table({ hand0: ['nefud'], units0: ['harkonnen', 'trooper'], units1: ['trooper'] })
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  state = answer(state, 'yes')
+  const mine = state.players[0].units
+  assert.equal(powerOf(state, mine.find((u) => u.def === 'harkonnen')!), 3)
+  assert.equal(powerOf(state, mine.find((u) => u.def === 'trooper')!), 2, 'not a Harkonnen')
+  const nefud = mine.find((u) => u.def === 'nefud')!
+  assert.equal(powerOf(state, nefud), 3, 'other units only')
+  assert.equal(nefud.exhausted, false)
+  assert.equal(state.players[0].spice.length, 0)
+})
+
+test('Otheym: a ready Fremen token with another unique Fremen unit only', () => {
+  for (const [others, made] of [[['fremen'], 0], [['chaniUnit'], 1]] as const) {
+    let state = table({ base0: 'caladan', hand0: ['otheym'], units0: [...others] })
+    state = settle(act(state, 0, { type: 'play', card: 'h0' }))
+    const tokens = state.players[0].units.filter((u) => !['otheym', ...others].includes(u.def))
+    assert.equal(tokens.length, made)
+    if (made) assert.equal(tokens[0].exhausted, false)
+  }
+})
+
+test('Pardot Kynes: a Spice token; 3 damage healed from the base at the regroup phase with 3 Spice tokens', () => {
+  for (const [extra, healed] of [[1, 3], [0, 0]] as const) {
+    let state = table({ hand0: ['pardot'] })
+    state.players[0].base.damage = 5
+    state = settle(act(state, 0, { type: 'play', card: 'h0' }))
+    assert.equal(state.players[0].spice.length, 2)
+    for (let i = 0; i < extra; i++) state.players[0].spice.push({ id: `sx${i}`, def: state.players[0].spice[0].def })
+    state = settle(act(act(state, 1, { type: 'pass' }), 0, { type: 'pass' }))
+    assert.equal(state.players[0].base.damage, 5 - healed)
+  }
+})
+
+test('Captain Aramsham: enemy units lose Hidden and Ambush; an Experience token to each other Sardaukar', () => {
+  let state = table({ hand0: ['aramsham'], units0: ['bashar', 'spy'], units1: ['spy', 'ambusher'] })
+  state = settle(act(state, 0, { type: 'play', card: 'h0' }))
+  assert.equal(state.players[0].spice.length, 0, 'his additional cost')
+  const [enemySpy, ambusher] = state.players[1].units
+  assert.equal(keywordsOf(state, enemySpy).hidden, undefined)
+  assert.equal(keywordsOf(state, ambusher).ambush, undefined)
+  assert.equal(keywordsOf(state, state.players[0].units.find((u) => u.def === 'spy')!).hidden, true, 'his own keep theirs')
+  const bashar = state.players[0].units.find((u) => u.def === 'bashar')!
+  assert.deepEqual(bashar.upgrades.map((u) => state.defs[u.def].name), ['Experience'])
+  assert.equal(state.players[0].units.find((u) => u.def === 'aramsham')!.upgrades.length, 0)
+})
+
+test('Stunner Dart: exhaust a unit, from the hand or using Smuggle', () => {
+  let state = table({ hand0: ['dart'], units1: ['big'] })
+  state = settle(act(state, 0, { type: 'play', card: 'h0' }))
+  assert.equal(state.players[1].units[0].exhausted, true)
+  state = table({ units1: ['big'] })
+  state.players[0].resources[0].card = { id: 'rd', def: 'dart' }
+  assert.ok(legalActions(state, 0).some((a) => a.type === 'play' && a.card === 'rd' && a.smuggle))
+  state = settle(act(state, 0, { type: 'play', card: 'rd', smuggle: true }))
+  assert.equal(state.players[1].units[0].exhausted, true)
+})
+
+test("Tuek's Go-Between: a Trick event from the discard pile, for 2 less", () => {
+  let state = table({ hand0: ['goBetween'], units1: ['big'] })
+  state.players[0].discard = [
+    { id: 'x0', def: 'dart' },
+    { id: 'x1', def: 'trick2' },
+    { id: 'x2', def: 'levy' },
+  ]
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  assert.deepEqual(state.prompt?.options.filter((o) => o.id !== 'none').map((o) => o.id), ['x0', 'x1'], 'Tricks only')
+  state = settle(answer(state, 'x1'))
+  assert.equal(state.players[0].resources.filter((r) => r.exhausted).length, 3, 'the 2-cost Trick for free')
+  assert.ok(state.players[0].discard.some((c) => c.id === 'x1'), 'back to the discard pile')
+  state = table({ hand0: ['goBetween'], units1: ['big'] })
+  state.players[0].discard = [{ id: 'x0', def: 'dart' }]
+  state = settle(answer(act(state, 0, { type: 'play', card: 'h0' }), 'x0'))
+  assert.equal(state.players[1].units[0].exhausted, true)
 })
 

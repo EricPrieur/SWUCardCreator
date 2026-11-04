@@ -53,8 +53,10 @@ export type CardDef = {
   startSpice?: number
   // An upgrade's "Attach to a friendly unit." or "Attach to a non-[{Vehicle}], non-leader unit."
   attach?: { friendly?: boolean; not?: string[]; nonLeader?: boolean }
-  // An upgrade's "Attached unit gains [Sentinel]."
+  // An upgrade's "Attached unit gains [Sentinel]."; a unit's, as it is attached as an upgrade
   attachedKeywords?: Keywords
+  // A unit attached as an upgrade (a pilot frame's second box): its modifiers then
+  upgrade?: { power: number; hp: number }
   // A leader's unit side
   unit?: { power: number; hp: number; arena: Arena; keywords: Keywords; arrakisKeywords?: Keywords }
   text?: string
@@ -189,6 +191,9 @@ export type GameState = {
   // are played (The Sleeper Has Awakened); a game saved before it had none
   awakened?: { player: PlayerId; name: string }[]
   defeatedThisPhase: string[]
+  // Every unit defeated this phase, tokens and leaders too: who controlled it, and its card; a
+  // game saved before it had none
+  fallen?: { player: PlayerId; def: string }[]
   borrowed: Borrowed[]
   // Units to defeat when the next regroup phase starts (Worm Signs)
   doomed: string[]

@@ -21,13 +21,16 @@ export type Self = {
   otherDef?: CardDef
   // An upgrade's unit
   attachedTo?: string
+  // A unit defeated: the upgrades that were on it (card ids)
+  upgrades?: string[]
   // A Spice token defeated: whose, and by whom
   spice?: { owner: PlayerId; by: PlayerId }
 }
 
 // What a card gives a unit for as long as it is in play: "Other friendly [{Sardaukar}] units gain
 // [Sentinel]."; traits: "Attached unit gains the [{Atreides}] trait."
-export type Grant = { keywords?: Keywords; power?: number; hp?: number; traits?: string[] }
+// loses: "Enemy units lose [Hidden] and [Ambush].", whatever gives them
+export type Grant = { keywords?: Keywords; power?: number; hp?: number; traits?: string[]; loses?: (keyof Keywords)[] }
 
 export type Ability = (g: Game, self: Self) => void
 
@@ -548,6 +551,25 @@ const dune: CardScript[] = [
     front: { play: (g, self) => g.createSpice(self.controller, self.smuggled ? 2 : 1) },
   },
   {
+    name: "Tuek's Go-Between",
+    text: '[When Played:] You may play a [{Trick}] event from your discard pile. It costs [2] less.\n[Smuggle [[4 Cunning]]]',
+    front: {
+      whenPlayed: (g, self) => {
+        const p = self.controller
+        const tricks = g
+          .player(p)
+          .discard.filter((c) => g.def(c).type === 'event' && g.hasTrait(c, 'Trick') && g.canPlay(p, c.id, { discount: 2 }))
+          .map((c) => c.id)
+        const pick = g.chooseOne(p, "Tuek's Go-Between: you may play a Trick event from your discard pile, for 2 less", tricks, {
+          optional: true,
+          ai: 'best',
+          source: self.def.id,
+        })
+        if (pick) g.playCard(p, pick, { discount: 2 })
+      },
+    },
+  },
+  {
     name: "Smuggler's Harvester",
     text: '[Hidden]\n[When Played/On Attack:] If you control an [{Arrakis}] base, create a Spice token.',
     front: { whenPlayed: arrakisSpice, onAttack: arrakisSpice },
@@ -556,6 +578,17 @@ const dune: CardScript[] = [
     name: 'Harkonnen Harvester',
     text: '[When Played/On Attack:] If you control an [{Arrakis}] base, create a Spice token, then you may deal 2 damage to a friendly unit. If you do, create another Spice token.',
     front: { whenPlayed: harkonnenHarvest, onAttack: harkonnenHarvest },
+  },
+  {
+    name: 'Pardot Kynes',
+    subtitle: 'First Planetologist',
+    text: '[When Played:] Create a Spice token.\n[When the regroup phase starts:] If you control 3 or more Spice tokens, heal 3 damage from your base.',
+    front: {
+      whenPlayed: (g, self) => g.createSpice(self.controller),
+      regroupStart: (g, self) => {
+        if (g.spice(self.controller) >= 3) g.heal(`base${self.controller}`, 3, self)
+      },
+    },
   },
   {
     name: 'Liet Kynes',
@@ -704,6 +737,17 @@ const dune: CardScript[] = [
           source: self.def.id,
         })
         if (pick) g.defeatUpgrade(pick)
+      },
+    },
+  },
+  {
+    name: 'Captain Aramsham',
+    subtitle: 'Sardaukar Hunter',
+    text: 'As an additional cost to play this unit, defeat a friendly Spice token.\nEnemy units lose [Hidden] and [Ambush].\n[When Played:] Give an Experience token to each other friendly [{Sardaukar}] unit.',
+    front: {
+      gives: (g, self, unit) => (g.controller(unit) !== self.controller ? { loses: ['hidden', 'ambush'] } : undefined),
+      whenPlayed: (g, self) => {
+        for (const id of friendlyIds(g, self, (u) => u.id !== self.id && g.hasTrait(u, 'Sardaukar'))) g.giveToken(id, 'Experience')
       },
     },
   },
@@ -909,6 +953,17 @@ const dune: CardScript[] = [
     },
   },
   {
+    name: 'Otheym',
+    subtitle: 'Fedaykin',
+    text: '[When Played:] If you control another unique [{Fremen}] unit, create a Fremen token and ready it.',
+    front: {
+      whenPlayed: (g, self) => {
+        if (friendlyIds(g, self, (u) => u.id !== self.id && g.def(u).unique && g.hasTrait(u, 'Fremen')).length)
+          g.createToken(self.controller, 'Fremen', { ready: true })
+      },
+    },
+  },
+  {
     name: 'Spice Hunter',
     text: '[On Attack:] If you control another [{Fremen}] unit, you may defeat an enemy Spice token. ',
     front: {
@@ -917,6 +972,42 @@ const dune: CardScript[] = [
         const foe = enemy(g, self)
         if (!g.spice(foe) || !g.units((u) => g.controller(u) === p && u.id !== self.id && g.hasTrait(u, 'Fremen')).length) return
         if (g.may(p, 'Spice Hunter: defeat an enemy Spice token?', { yes: 'Defeat it', no: 'Skip', source: self.def.id })) g.defeatSpice(foe, undefined, p)
+      },
+    },
+  },
+  {
+    name: 'Jamis',
+    subtitle: 'Challenger of Sietch Tabr',
+    text: "[When Played:] You may play a [{Weapon}] upgrade from your hand or discard pile for free, attached to this unit.\n[When Defeated:] For each upgrade that was attached to this unit, you may play it from your discard pile for free, attached to another friendly [{Fremen}] unit.",
+    front: {
+      whenPlayed: (g, self) => {
+        const p = self.controller
+        const weapons = [...g.player(p).hand, ...g.player(p).discard]
+          .filter((c) => g.def(c).type === 'upgrade' && g.hasTrait(c, 'Weapon') && g.canPlay(p, c.id, { free: true, onto: [self.id] }))
+          .map((c) => c.id)
+        const pick = g.chooseOne(p, 'Jamis: you may play a Weapon upgrade from your hand or discard pile for free, attached to him', weapons, {
+          optional: true,
+          ai: 'best',
+          source: self.def.id,
+        })
+        if (pick) g.playCard(p, pick, { free: true, onto: [self.id] })
+      },
+      // His crysknife and his water to the tribe: one upgrade after another, each onto a Fremen
+      whenDefeated: (g, self) => {
+        const p = self.controller
+        const fremen = () => friendlyIds(g, self, (u) => g.hasTrait(u, 'Fremen'))
+        let left = (self.upgrades ?? []).filter((id) => g.player(p).discard.some((c) => c.id === id))
+        while (left.length) {
+          const ids = left.filter((id) => g.canPlay(p, id, { free: true, onto: fremen() }))
+          const pick = g.chooseOne(p, "Jamis: you may play an upgrade that was attached to him from your discard pile for free, attached to another friendly Fremen unit", ids, {
+            optional: true,
+            ai: ids[0] ?? 'none',
+            source: self.def.id,
+          })
+          if (!pick) return
+          g.playCard(p, pick, { free: true, onto: fremen() })
+          left = left.filter((id) => id !== pick)
+        }
       },
     },
   },
@@ -986,6 +1077,48 @@ const dune: CardScript[] = [
     text: '[Sentinel]\n[When Defeated:] Give an Experience token to a friendly unit.',
     front: {
       whenDefeated: (g, self) => experienceTo(g, self, friendlyIds(g, self), 'Shadout Mapes: give an Experience token to a friendly unit'),
+    },
+  },
+  {
+    name: 'Harah',
+    subtitle: 'Widow of Jamis',
+    text: '[Restore 1]\n[When Played:] If a friendly [{Fremen}] unit was defeated this phase, give an Experience token to another friendly [{Fremen}] unit.',
+    front: {
+      whenPlayed: (g, self) => {
+        if (!g.fellThisPhase(self.controller, (d) => d.traits.includes('Fremen'))) return
+        experienceTo(g, self, friendlyIds(g, self, (u) => u.id !== self.id && g.hasTrait(u, 'Fremen')), 'Harah: give an Experience token to another friendly Fremen unit')
+      },
+    },
+  },
+  {
+    name: 'Ramallo',
+    subtitle: 'Reverend Mother of Sietch Tabr',
+    text: '[When Played:] Heal 2 damage from a unit or base. You may defeat a friendly Spice token. If you do, heal 3 damage from it.\n[When Defeated:] Attach this card as an upgrade to a friendly non-[{Vehicle}] [{Fremen}] or [{Bene Gesserit}] unit.',
+    front: {
+      whenPlayed: (g, self) => {
+        const p = self.controller
+        const damaged = [
+          ...g.units((u) => u.damage > 0).map((u) => u.id),
+          ...([0, 1] as PlayerId[]).filter((q) => g.player(q).base.damage > 0).map((q) => `base${q}`),
+        ]
+        const pick = g.chooseOne(p, 'Ramallo: heal 2 damage from a unit or base', damaged, { ai: 'help', source: self.def.id })
+        if (!pick) return
+        g.heal(pick, 2, self)
+        const left = pick.startsWith('base') ? g.player(Number(pick.slice(4)) as PlayerId).base.damage : (g.unit(pick)?.damage ?? 0)
+        if (!g.spice(p) || !left) return
+        if (g.may(p, `Ramallo: defeat a friendly Spice token to heal 3 more damage from ${g.name(pick)}?`, { yes: 'Defeat it', no: 'Skip', ai: left >= 3, source: self.def.id })) {
+          g.defeatSpice(p)
+          g.heal(pick, 3, self)
+        }
+      },
+      // Her lives pass into another: she stays in play, as an upgrade
+      whenDefeated: (g, self) => {
+        const p = self.controller
+        if (!g.player(p).discard.some((c) => c.id === self.id)) return
+        const ids = friendlyIds(g, self, (u) => !g.hasTrait(u, 'Vehicle') && (g.hasTrait(u, 'Fremen') || g.hasTrait(u, 'Bene Gesserit')))
+        const pick = g.chooseOne(p, 'Ramallo: attach her as an upgrade to a friendly non-Vehicle Fremen or Bene Gesserit unit', ids, { ai: 'help', source: self.def.id })
+        if (pick) g.attachFromDiscard(p, self.id, pick)
+      },
     },
   },
   {
@@ -1065,6 +1198,22 @@ const dune: CardScript[] = [
           source: self.def.id,
         })
         if (target) g.damage(target, g.power(me), self)
+      },
+    },
+  },
+  {
+    name: 'Iakin Nefud',
+    subtitle: 'Captain of the Guard',
+    text: 'Other friendly [{Harkonnen}] [{Trooper}] units get [+1/+0].\n[When Played:] You may defeat a friendly Spice token. If you do, ready this unit.',
+    front: {
+      gives: (g, self, unit) =>
+        unit.id !== self.id && g.controller(unit) === self.controller && g.hasTrait(unit, 'Harkonnen') && g.hasTrait(unit, 'Trooper') ? { power: 1 } : undefined,
+      // Semuta: a Spice token for an attack now
+      whenPlayed: (g, self) => {
+        const p = self.controller
+        if (!g.spice(p) || !g.may(p, 'Iakin Nefud: defeat a Spice token to ready him?', { yes: 'Defeat it', no: 'Skip', ai: g.canAttack(self.id, { exhausted: true }), source: self.def.id })) return
+        g.defeatSpice(p)
+        g.ready(self.id)
       },
     },
   },
@@ -2092,6 +2241,16 @@ const dune: CardScript[] = [
   },
 
   // --- Combat ---
+  {
+    name: 'Stunner Dart',
+    text: 'Exhaust a unit.\n[Smuggle [[1 Cunning]]]',
+    front: {
+      play: (g, self) => {
+        const pick = g.chooseOne(self.controller, 'Stunner Dart: exhaust a unit', unitIds(g, (u) => !u.exhausted), { ai: 'harm', source: self.def.id })
+        if (pick) g.exhaust(pick)
+      },
+    },
+  },
   {
     name: 'Amtal Rule',
     text: "Attack with a ground unit, even if it's exhausted. It can't attack bases for this attack. If it's a [{Ginaz}] unit, it deals its combat damage before the defender.",

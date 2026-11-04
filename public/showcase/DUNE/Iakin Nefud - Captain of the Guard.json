@@ -1,0 +1,22 @@
+{
+  "hp": 3,
+  "id": "3ce47676-fd6b-4731-a0ed-74d83cf9a6a0",
+  "art": {
+    "x": -10,
+    "y": -25,
+    "src": "Iakin Nefud - Captain of the Guard (art).webp",
+    "zoom": 1.24
+  },
+  "cost": 3,
+  "name": "Iakin Nefud",
+  "text": "Other friendly [{Harkonnen}] [{Trooper}] units get [+1/+0].\n[When Played:] You may defeat a friendly Spice token. If you do, ready this unit.",
+  "power": 4,
+  "trait": "Harkonnen, Official",
+  "number": "104",
+  "rarity": "U",
+  "unique": true,
+  "frameId": "unit-aggression-villainy",
+  "setCode": "DUNE",
+  "language": "EN",
+  "subtitle": "Captain of the Guard"
+}

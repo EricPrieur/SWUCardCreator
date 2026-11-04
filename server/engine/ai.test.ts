@@ -86,3 +86,24 @@ test('every script quotes its DUNE card exactly, so it plays it', (t) => {
     assert.equal(scriptStatus(card), 'scripted', `${script.name}'s script quotes its text`)
   }
 })
+
+test('a pilot frame is a unit, its upgrade box what it gives attached as an upgrade', () => {
+  const card: SavedCard = {
+    id: 'p',
+    frameId: 'pilot-vigilance-heroism',
+    name: 'Ramallo',
+    cost: 3,
+    power: 1,
+    hp: 3,
+    pilotText: 'Can only be played as a unit.\nAttached unit gains [Restore 2].',
+    upgradePower: 2,
+    upgradeHp: 2,
+  }
+  const def = cardDef(card)!
+  assert.equal(def.type, 'unit')
+  assert.equal(def.arena, 'ground')
+  assert.deepEqual(def.upgrade, { power: 2, hp: 2 })
+  assert.deepEqual(def.attachedKeywords, { restore: 2 })
+  assert.equal(cardDef({ ...card, frameId: 'pilot-vigilance-heroism-space' })!.arena, 'space')
+})
+

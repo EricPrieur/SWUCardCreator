@@ -20,7 +20,7 @@
   "text": "As an additional cost to play this unit, defeat a friendly Spice token.\n[When Played:] Search the top 10 cards of your deck for any number of [{Sardaukar}] units and reveal them. You may defeat up to 2 friendly Spice tokens. Play any number of the revealed units with a combined cost of [#3] or less for each Spice token defeated this way, for free, ignoring their additional costs.",
   "power": 5,
   "trait": "Emperor, Sardaukar, Trooper",
-  "number": "065",
+  "number": "069",
   "rarity": "L",
   "frameId": "unit-command-villainy",
   "setCode": "DUNE",

@@ -12,7 +12,7 @@
   "text": "Attach to a non-[{Vehicle}] unit.\nAttached unit gains [Restore 1], or [Restore 2] instead if it's a [{Fremen}] unit.",
   "power": 0,
   "trait": "Item, Armor",
-  "number": "153",
+  "number": "162",
   "rarity": "C",
   "frameId": "upgrade-cunning",
   "setCode": "DUNE",

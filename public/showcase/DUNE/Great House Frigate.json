@@ -13,7 +13,7 @@
   "text": "[When Played:] If you don't control an [{Arrakis}] base, give a Shield token to each of up to 2 other friendly units.",
   "power": 4,
   "trait": "Vehicle, Capital Ship",
-  "number": "089",
+  "number": "093",
   "rarity": "U",
   "frameId": "unit-command-space",
   "setCode": "DUNE",

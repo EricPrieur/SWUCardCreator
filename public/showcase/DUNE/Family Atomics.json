@@ -11,7 +11,7 @@
   "name": "Family Atomics",
   "text": "Choose one:\n• Defeat an upgrade. If it was a Fortification, draw a card.\n• Pay [3]. If you do, defeat a non-leader unit and deal 3 damage to your base.",
   "trait": "Tactic",
-  "number": "027",
+  "number": "028",
   "rarity": "R",
   "frameId": "event-vigilance-aggression",
   "setCode": "DUNE",

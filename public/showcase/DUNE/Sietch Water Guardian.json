@@ -12,7 +12,7 @@
   "text": "[Sentinel]\n[When Defeated:] Create a Spice token.",
   "power": 2,
   "trait": "Fremen",
-  "number": "038",
+  "number": "040",
   "rarity": "C",
   "frameId": "unit-vigilance-heroism",
   "setCode": "DUNE",

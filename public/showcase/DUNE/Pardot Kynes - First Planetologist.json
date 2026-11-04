@@ -1,0 +1,22 @@
+{
+  "hp": 4,
+  "id": "30cd19e1-5537-479b-81e6-a40cdc099044",
+  "art": {
+    "x": 0,
+    "y": -5,
+    "src": "Pardot Kynes - First Planetologist (art).webp",
+    "zoom": 0.68
+  },
+  "cost": 3,
+  "name": "Pardot Kynes",
+  "text": "[When Played:] Create a Spice token.\n[When the regroup phase starts:] If you control 3 or more Spice tokens, heal 3 damage from your base.",
+  "power": 1,
+  "trait": "Fremen, Emperor",
+  "number": "025",
+  "rarity": "R",
+  "unique": true,
+  "frameId": "unit-cunning-vigilance",
+  "setCode": "DUNE",
+  "language": "EN",
+  "subtitle": "First Planetologist"
+}

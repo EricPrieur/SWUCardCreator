@@ -13,7 +13,7 @@
   "text": "[Sentinel]\n[When Defeated:] Give an Experience token to a friendly unit.",
   "power": 1,
   "trait": "Fremen",
-  "number": "037",
+  "number": "039",
   "rarity": "U",
   "unique": true,
   "frameId": "unit-vigilance-heroism",

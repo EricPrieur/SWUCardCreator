@@ -1,0 +1,26 @@
+{
+  "hp": 3,
+  "id": "5ef1883f-c659-4737-a6de-cc060d20b81d",
+  "art": {
+    "x": 0,
+    "y": 0,
+    "src": "Ramallo - Reverend Mother of Sietch Tabr (art).webp",
+    "zoom": 1,
+    "rotate": 0
+  },
+  "cost": 3,
+  "name": "Ramallo",
+  "text": "[When Played:] Heal 2 damage from a unit or base. You may defeat a friendly Spice token. If you do, heal 3 damage from it.\n[When Defeated:] Attach this card as an upgrade to a friendly non-[{Vehicle}] [{Fremen}] or [{Bene Gesserit}] unit.",
+  "power": 1,
+  "trait": "Fremen, Bene Gesserit",
+  "number": "041",
+  "rarity": "R",
+  "unique": true,
+  "frameId": "pilot-vigilance-heroism",
+  "setCode": "DUNE",
+  "language": "EN",
+  "subtitle": "Reverend Mother of Sietch Tabr",
+  "pilotText": "Attached unit gains [Restore 2].",
+  "upgradeHp": 2,
+  "upgradePower": 2
+}

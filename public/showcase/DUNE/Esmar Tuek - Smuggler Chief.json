@@ -12,7 +12,7 @@
   "text": "[When Played:] If you control a [Command] unit, give 2 Experience tokens to a friendly [{Underworld}] unit. Then, if you control an [Aggression] unit, this unit may deal damage equal to its power to a unit.",
   "power": 3,
   "trait": "Underworld",
-  "number": "148",
+  "number": "157",
   "rarity": "R",
   "unique": true,
   "frameId": "unit-cunning",

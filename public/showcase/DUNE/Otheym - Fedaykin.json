@@ -1,0 +1,22 @@
+{
+  "hp": 2,
+  "id": "bc33e990-cdb4-48eb-b483-55e9b0d21d32",
+  "art": {
+    "x": 0,
+    "y": 0,
+    "src": "Otheym - Fedaykin (art).webp",
+    "zoom": 1
+  },
+  "cost": 2,
+  "name": "Otheym",
+  "text": "[When Played:] If you control another unique [{Fremen}] unit, create a Fremen token and ready it.",
+  "power": 3,
+  "trait": "Fremen, Fedaykin",
+  "number": "117",
+  "rarity": "U",
+  "unique": true,
+  "frameId": "unit-aggression-heroism",
+  "setCode": "DUNE",
+  "language": "EN",
+  "subtitle": "Fedaykin"
+}

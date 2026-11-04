@@ -77,6 +77,7 @@ export function createGame(options: { seed: number; decks: [DeckList, DeckList];
     banned: [],
     awakened: [],
     defeatedThisPhase: [],
+    fallen: [],
     borrowed: [],
     doomed: [],
     held: [],
@@ -203,8 +204,18 @@ export function keywordsOf(state: GameState, unit: UnitState): Keywords {
   if (gained && controlsArrakis(state, controllerOf(state, unit))) addKeywords(keywords, gained)
   for (const upgrade of unit.upgrades) addKeywords(keywords, def(state, upgrade).attachedKeywords)
   for (const effect of effectsOn(state, unit)) addKeywords(keywords, effect.keywords)
-  for (const grant of grantsTo(state, unit)) addKeywords(keywords, grant.keywords)
+  const grants = grantsTo(state, unit)
+  for (const grant of grants) addKeywords(keywords, grant.keywords)
+  // Lost, whatever gives them (Captain Aramsham)
+  for (const grant of grants) for (const name of grant.loses ?? []) delete keywords[name]
   return keywords
+}
+
+// An upgrade's printed modifiers; a unit card attached as an upgrade (Ramallo), those printed on
+// its upgrade box
+const modifier = (state: GameState, upgrade: Inst, stat: 'power' | 'hp') => {
+  const card = def(state, upgrade)
+  return card.type === 'upgrade' ? card[stat] : (card.upgrade?.[stat] ?? 0)
 }
 
 export function hpOf(state: GameState, unit: UnitState) {
@@ -212,7 +223,7 @@ export function hpOf(state: GameState, unit: UnitState) {
   const printed = unit.leader ? (card.unit?.hp ?? 0) : card.hp
   return (
     printed +
-    unit.upgrades.reduce((sum, u) => sum + def(state, u).hp, 0) +
+    unit.upgrades.reduce((sum, u) => sum + modifier(state, u, 'hp'), 0) +
     effectsOn(state, unit).reduce((sum, e) => sum + e.hp, 0) +
     grantsTo(state, unit).reduce((sum, grant) => sum + (grant.hp ?? 0), 0)
   )
@@ -229,7 +240,7 @@ export function powerOf(state: GameState, unit: UnitState, attacking = false) {
   return Math.max(
     0,
     printed +
-      unit.upgrades.reduce((sum, u) => sum + def(state, u).power, 0) +
+      unit.upgrades.reduce((sum, u) => sum + modifier(state, u, 'power'), 0) +
       effectsOn(state, unit).reduce((sum, e) => sum + e.power, 0) +
       grantsTo(state, unit).reduce((sum, grant) => sum + (grant.power ?? 0), 0) +
       (keywords.grit ? unit.damage : 0) +
@@ -514,6 +525,7 @@ function defeatUnit(state: GameState, unit: UnitState) {
     state.players[unit.owner].discard.push({ id: unit.id, def: unit.def })
     state.defeatedThisPhase.push(unit.id)
   }
+  state.fallen = [...(state.fallen ?? []), { player: p, def: unit.def }]
   log(state, `${nameOf(state, unit)} is defeated`, p)
   // A unit defeated in an attack knows it: "If this unit was defending, …"
   const inAttack = state.attack && (state.attack.attacker === unit.id || state.attack.target === unit.id) ? state.attack : undefined
@@ -521,6 +533,7 @@ function defeatUnit(state: GameState, unit: UnitState) {
     id: unit.id,
     controller: p,
     def: def(state, unit),
+    upgrades: unit.upgrades.map((u) => u.id),
     ...(inAttack && { attack: { ...inAttack } }),
   })
   trigger(state, p, 'whenFriendlyDefeated', { other: unit.id, otherDef: def(state, unit) })
@@ -878,6 +891,7 @@ function endPhase(state: GameState) {
   state.banned = []
   state.awakened = []
   state.defeatedThisPhase = []
+  state.fallen = []
 }
 
 function startActionPhase(state: GameState) {
@@ -1771,6 +1785,21 @@ export class Game {
   doom(unitId: string) {
     if (!this.state.doomed.includes(unitId)) this.state.doomed.push(unitId)
   }
+  // A card from a player's discard pile onto a unit as an upgrade, not played
+  attachFromDiscard(p: PlayerId, cardId: string, unitId: string) {
+    const player = this.state.players[p]
+    const card = player.discard.find((c) => c.id === cardId)
+    const unit = this.unit(unitId)
+    if (!card || !unit) return
+    player.discard = player.discard.filter((c) => c !== card)
+    unit.upgrades.push({ ...card, owner: p })
+    this.log(`${nameOf(this.state, card)} is attached to ${nameOf(this.state, unit)}`, p)
+  }
+  // Whether a unit of a player's like this was defeated this phase ("If a friendly [{Fremen}]
+  // unit was defeated this phase"), a token too
+  fellThisPhase(p: PlayerId, test: (card: CardDef) => boolean) {
+    return (this.state.fallen ?? []).some((f) => f.player === p && test(def(this.state, f)))
+  }
   defeatedThisPhase(cardId: string) {
     return this.state.defeatedThisPhase.includes(cardId)
   }
@@ -1831,7 +1860,8 @@ export class Game {
     this.playCard(p, cardId, play)
     return true
   }
-  canPlay(p: PlayerId, cardId: string, options: PlayOptions & { smuggle?: boolean } = {}) {
+  // onto: the units an upgrade may go on ("attached to this unit")
+  canPlay(p: PlayerId, cardId: string, options: PlayOptions & { smuggle?: boolean; onto?: string[] } = {}) {
     const from = this.placeOf(p, cardId, options.smuggle)
     const card = this.cardInfo(cardId)
     if (!from || !card) return false
@@ -1845,22 +1875,25 @@ export class Game {
     if (price > ready) return false
     if (!options.ignoreAdditional && !canPayAdditional(this.state, p, d)) return false
     // 7.5.21b: a Fortification needs no unit to attach to
-    if (d.type === 'upgrade' && !d.keywords.fortify && !this.units((u) => canAttach(this.state, p, d, u)).length) return false
+    if (d.type === 'upgrade' && !d.keywords.fortify && !this.attachable(p, d, options.onto).length) return false
     return slot ? true : price <= ready
   }
-  playCard(p: PlayerId, cardId: string, options: PlayOptions & { smuggle?: boolean } = {}) {
+  playCard(p: PlayerId, cardId: string, options: PlayOptions & { smuggle?: boolean; onto?: string[] } = {}) {
     if (!this.canPlay(p, cardId, options)) return false
     const from = this.placeOf(p, cardId, options.smuggle) as PlayedFrom
     const d = this.def(this.cardInfo(cardId)!)
     let attachTo: string | undefined
     if (d.keywords.fortify) attachTo = baseId(p)
     else if (d.type === 'upgrade') {
-      const units = this.units((u) => canAttach(this.state, p, d, u)).map((u) => u.id)
-      attachTo = this.chooseOne(p, `Choose a unit for ${d.name}`, units, { ai: 'help', source: d.id }) ?? undefined
+      attachTo = this.chooseOne(p, `Choose a unit for ${d.name}`, this.attachable(p, d, options.onto), { ai: 'help', source: d.id }) ?? undefined
       if (!attachTo) return false
     }
     playCard(this.state, p, cardId, attachTo, from, options)
     return true
+  }
+  // The units an upgrade may be attached to, among these if given
+  attachable(p: PlayerId, card: CardDef, onto?: string[]) {
+    return this.units((u) => canAttach(this.state, p, card, u) && (!onto || onto.includes(u.id))).map((u) => u.id)
   }
 
   // What a unit may attack, if it can attack at all: ready (unless the ability says it may be

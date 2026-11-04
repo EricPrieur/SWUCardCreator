@@ -1,0 +1,22 @@
+{
+  "hp": 4,
+  "id": "b315b6cc-75ec-4bd7-ba92-eaf36628f9e5",
+  "art": {
+    "x": 0,
+    "y": 5,
+    "src": "Jamis - Challenger of Sietch Tabr (art).webp",
+    "zoom": 1
+  },
+  "cost": 3,
+  "name": "Jamis",
+  "text": "[When Played:] You may play a [{Weapon}] upgrade from your hand or discard pile for free, attached to this unit.\n[When Defeated:] For each upgrade that was attached to this unit, you may play it from your discard pile for free, attached to another friendly [{Fremen}] unit.",
+  "power": 3,
+  "trait": "Fremen",
+  "number": "118",
+  "rarity": "R",
+  "unique": true,
+  "frameId": "unit-aggression-heroism",
+  "setCode": "DUNE",
+  "language": "EN",
+  "subtitle": "Challenger of Sietch Tabr"
+}

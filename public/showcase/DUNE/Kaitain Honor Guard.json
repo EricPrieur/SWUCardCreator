@@ -12,7 +12,7 @@
   "text": "[Sentinel]\n[When Played:] If you don't control an [{Arrakis}] base, give a Shield token to this unit.",
   "power": 2,
   "trait": "Emperor, Trooper",
-  "number": "032",
+  "number": "033",
   "rarity": "C",
   "frameId": "unit-vigilance-villainy",
   "setCode": "DUNE",

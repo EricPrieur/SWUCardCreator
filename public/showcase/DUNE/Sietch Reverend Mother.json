@@ -12,7 +12,7 @@
   "text": "[When Played:] Choose a [{Fremen}] or [{Bene Gesserit}] unit in your discard pile other than a Sietch Reverend Mother. Use its [When Played] ability as if it were this unit's.\n[When Defeated:] Return another [{Fremen}] or [{Bene Gesserit}] unit from your discard pile to your hand.",
   "power": 3,
   "trait": "Fremen, Bene Gesserit",
-  "number": "026",
+  "number": "027",
   "rarity": "R",
   "frameId": "unit-cunning-vigilance-heroism",
   "setCode": "DUNE",

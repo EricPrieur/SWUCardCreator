@@ -12,7 +12,7 @@
   "text": "As an additional cost to play this unit, defeat a friendly Spice token.\n[On Attack:] If the defender is a damaged non-leader unit, defeat it.",
   "power": 5,
   "trait": "Emperor, Sardaukar, Trooper",
-  "number": "063",
+  "number": "066",
   "rarity": "U",
   "frameId": "unit-command-villainy",
   "setCode": "DUNE",

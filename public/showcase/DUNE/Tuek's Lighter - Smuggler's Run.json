@@ -13,7 +13,7 @@
   "text": "[Raid 1]\n[When you defeat a friendly Spice token:] You may ready this unit. Use this ability only once each round.",
   "power": 2,
   "trait": "Underworld, Vehicle, Transport",
-  "number": "146",
+  "number": "154",
   "rarity": "U",
   "unique": true,
   "frameId": "unit-cunning-space",

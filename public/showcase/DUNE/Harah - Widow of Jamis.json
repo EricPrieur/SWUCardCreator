@@ -1,0 +1,22 @@
+{
+  "hp": 2,
+  "id": "a650b1d3-6d10-4073-9999-3f16da9c7b2a",
+  "art": {
+    "x": -6,
+    "y": 11,
+    "src": "Harah - Widow of Jamis (art).webp",
+    "zoom": 1.16
+  },
+  "cost": 1,
+  "name": "Harah",
+  "text": "[Restore 1]\n[When Played:] If a friendly [{Fremen}] unit was defeated this phase, give an Experience token to another friendly [{Fremen}] unit.",
+  "power": 1,
+  "trait": "Fremen",
+  "number": "038",
+  "rarity": "U",
+  "unique": true,
+  "frameId": "unit-vigilance-heroism",
+  "setCode": "DUNE",
+  "language": "EN",
+  "subtitle": "Widow of Jamis"
+}

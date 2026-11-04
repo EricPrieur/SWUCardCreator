@@ -12,7 +12,7 @@
   "text": "[When Played:] You may deal 1 damage to a ground unit.",
   "power": 2,
   "trait": "Atreides, Vehicle, Fighter",
-  "number": "074",
+  "number": "078",
   "rarity": "C",
   "frameId": "unit-command-heroism-space",
   "setCode": "DUNE",

@@ -11,6 +11,10 @@ export type SavedCard = {
   trait?: string
   text?: string
   backText?: string
+  // A pilot frame's second box: the card as an upgrade, its text and modifiers
+  pilotText?: string
+  upgradePower?: number
+  upgradeHp?: number
   unique?: boolean
   cost?: number
   power?: number
@@ -24,11 +28,18 @@ const typeNames = { unit: 'unit', leader: 'leader', base: 'base', event: 'event'
 
 // A frame's id names what it is: unit-vigilance-villainy-space, leader-cunning-heroism-unit,
 // base-command-text; unit-token-text-neutral for a token unit, spice-token for the Spice token;
-// fortification-cunning for a Fortification, an upgrade with Fortify.
+// fortification-cunning for a Fortification, an upgrade with Fortify; pilot-vigilance-heroism
+// for a unit that can be an upgrade too.
 function frameFacts(frameId: string) {
   const words = frameId.split('-')
   const type =
-    words[0] === 'spice' ? ('token' as const) : words[0] === 'fortification' ? ('upgrade' as const) : typeNames[words[0] as keyof typeof typeNames]
+    words[0] === 'spice'
+      ? ('token' as const)
+      : words[0] === 'fortification'
+        ? ('upgrade' as const)
+        : words[0] === 'pilot'
+          ? ('unit' as const)
+          : typeNames[words[0] as keyof typeof typeNames]
   const aspects = words.flatMap((w) => aspectNames.filter((a) => a.toLowerCase() === w))
   const arena: Arena = words.includes('space') ? 'space' : 'ground'
   return { type, aspects, arena, token: words.includes('token') }
@@ -145,6 +156,12 @@ export function cardDef(card: SavedCard): CardDef | undefined {
     def.cost = 0
   }
   if (front.type === 'unit') def.arena = front.arena
+  // Attached as an upgrade: its modifiers, and what it gives ("Attached unit gains [Restore 2].")
+  if (card.frameId.startsWith('pilot-')) {
+    def.upgrade = { power: card.upgradePower ?? 0, hp: card.upgradeHp ?? 0 }
+    const attached = readText(card.pilotText).attachedKeywords
+    if (attached) def.attachedKeywords = attached
+  }
   if (front.type === 'leader') {
     const back = readText(card.backText)
     def.unit = {

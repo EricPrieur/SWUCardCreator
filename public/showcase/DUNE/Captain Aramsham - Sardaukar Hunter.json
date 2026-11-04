@@ -1,0 +1,22 @@
+{
+  "hp": 5,
+  "id": "6690f6c6-c2cf-4102-b173-f36176ffc490",
+  "art": {
+    "x": 0,
+    "y": 4,
+    "src": "Captain Aramsham - Sardaukar Hunter (art).webp",
+    "zoom": 1.08
+  },
+  "cost": 4,
+  "name": "Captain Aramsham",
+  "text": "As an additional cost to play this unit, defeat a friendly Spice token.\nEnemy units lose [Hidden] and [Ambush].\n[When Played:] Give an Experience token to each other friendly [{Sardaukar}] unit.",
+  "power": 4,
+  "trait": "Emperor, Sardaukar, Official",
+  "number": "067",
+  "rarity": "R",
+  "unique": true,
+  "frameId": "unit-command-villainy",
+  "setCode": "DUNE",
+  "language": "EN",
+  "subtitle": "Sardaukar Hunter"
+}
