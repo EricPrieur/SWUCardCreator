@@ -13,7 +13,7 @@
   "text": "[When Played/On Attack:] The next [{Trooper}] unit you play this phase costs [1] less.",
   "power": 1,
   "trait": "Emperor, Vehicle, Transport",
-  "number": "063",
+  "number": "065",
   "rarity": "C",
   "frameId": "unit-command-villainy-space",
   "setCode": "DUNE",

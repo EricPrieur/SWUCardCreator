@@ -13,7 +13,7 @@
   "text": "[When Played:] If you control an [{Arrakis}] base, create a Fremen token.",
   "power": 1,
   "trait": "Bene Gesserit",
-  "number": "045",
+  "number": "046",
   "rarity": "C",
   "frameId": "unit-vigilance",
   "setCode": "DUNE",

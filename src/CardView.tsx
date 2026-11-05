@@ -568,8 +568,10 @@ function solidAreas(frame: Frame, text: boolean, icons: boolean): string[] {
         areas.push(hexagon(x0, 28 + index * 111, x0 + 90, 126 + index * 111))
       } else {
         // Cut to the icon and the dark plinth under it, no wider: on an event the white
-        // text panel starts just right of it
-        const o = index * 72
+        // text panel starts just right of it. A third icon sits 69 px under the second
+        // (tools/compose_frames.py), right on an event's tab: one step lower and a sliver
+        // of the tab shows under it
+        const o = index === 0 ? 0 : 72 + (index - 1) * 69
         areas.push(
           polygon([
             [41, 119 + o],

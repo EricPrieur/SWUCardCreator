@@ -57,18 +57,23 @@ def load(kind, key):
 
 def icon(aspect):
     x0, y0, x1, y1 = SLOT
-    block = load("unit", ICON_SOURCES[aspect])[y0:y1, x0:x1]
-    shape = block[..., 3] > 127
-    shape[:2] = False  # the top rows are the tip of the icon above
-    return block, shape
+    block = load("unit", ICON_SOURCES[aspect])[y0:y1, x0:x1].copy()
+    block[:2, :, 3] = 0  # the top rows are the tip of the icon above
+    return block
 
 
 def add_icon(frame, aspect, slot):
-    """Print an aspect icon in the 2nd or 3rd slot, over whatever is there."""
-    block, shape = icon(aspect)
+    """Print an aspect icon in the 2nd or 3rd slot, over whatever is there: blended by its alpha,
+    so its soft shadow falls on the frame below (an event's tab) without jagged edges."""
+    block = icon(aspect)
     x0, y0, x1, y1 = SLOT
     dy = SLOT_STEP * (slot - 2)
-    frame[y0 + dy:y1 + dy, x0:x1][shape] = block[shape]
+    under = frame[y0 + dy:y1 + dy, x0:x1]
+    a, b = block[..., 3:] / 255.0, under[..., 3:] / 255.0
+    alpha = a + b * (1 - a)
+    rgb = (block[..., :3] * a + under[..., :3] * b * (1 - a)) / np.maximum(alpha, 1e-6)
+    under[..., :3] = rgb
+    under[..., 3:] = alpha * 255
 
 
 def fade(left, right):

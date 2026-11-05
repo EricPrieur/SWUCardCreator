@@ -12,7 +12,7 @@
   "text": "<While you control another [{Atreides}] unit, this unit gains [Sentinel].>\n[When Defeated:] Give an Experience token to another friendly [{Atreides}] unit.",
   "power": 2,
   "trait": "Atreides, Trooper",
-  "number": "079",
+  "number": "081",
   "rarity": "C",
   "frameId": "unit-command-heroism",
   "setCode": "DUNE",

@@ -1,0 +1,26 @@
+{
+  "id": "ad95e0ec-ed55-4772-b08a-65693993bc8c",
+  "art": {
+    "x": 0,
+    "y": 0,
+    "src": "The Butlerian Jihad (art).webp",
+    "zoom": 1,
+    "rotate": 0
+  },
+  "cost": 7,
+  "look": {
+    "textGlow": 0,
+    "lightText": false,
+    "panelBlur": 0,
+    "panelFill": 0,
+    "frameOpacity": 1
+  },
+  "name": "The Butlerian Jihad",
+  "text": "Defeat each [{Vehicle}] unit.",
+  "trait": "Tactic",
+  "number": "057",
+  "rarity": "R",
+  "frameId": "event-vigilance",
+  "setCode": "DUNE",
+  "language": "EN"
+}

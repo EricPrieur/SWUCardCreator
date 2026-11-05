@@ -10,7 +10,7 @@
   "name": "Worm Signs",
   "text": "If you control an [{Arrakis}] base, choose a non-[{Fremen}] non-leader ground unit. Its controller chooses one:\n• Return it to its owner's hand.\n• Defeat it when the next regroup phase starts.",
   "trait": "Disaster",
-  "number": "168",
+  "number": "170",
   "rarity": "C",
   "frameId": "event-cunning",
   "setCode": "DUNE",

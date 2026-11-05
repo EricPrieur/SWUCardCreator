@@ -12,7 +12,7 @@
   "text": "[When Played:] Give a Shield token to a friendly [{Bene Gesserit}] unit. If you don't control an [{Arrakis}] base, give a Shield token to each friendly [{Bene Gesserit}] unit instead.",
   "power": 4,
   "trait": "Bene Gesserit",
-  "number": "051",
+  "number": "052",
   "rarity": "U",
   "frameId": "unit-vigilance",
   "setCode": "DUNE",

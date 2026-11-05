@@ -13,7 +13,7 @@
   "text": "While you control an [{Arrakis}] base, this unit gains [Hidden].\n[When Played:] If you control another [{Fremen}] unit, return an enemy non-leader unit that costs [#3] or less to its owner's hand.",
   "power": 4,
   "trait": "Fremen, Fedaykin, Trooper",
-  "number": "149",
+  "number": "151",
   "rarity": "U",
   "unique": false,
   "frameId": "unit-cunning-heroism",

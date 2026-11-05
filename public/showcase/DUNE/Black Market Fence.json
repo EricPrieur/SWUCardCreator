@@ -12,7 +12,7 @@
   "text": "[When Played:] You may take control of a non-unique [{Item}] upgrade or a token upgrade and attach it to a friendly unit.",
   "power": 3,
   "trait": "Underworld",
-  "number": "162",
+  "number": "164",
   "rarity": "U",
   "frameId": "unit-cunning",
   "setCode": "DUNE",

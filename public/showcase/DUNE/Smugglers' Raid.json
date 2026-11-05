@@ -11,7 +11,7 @@
   "name": "Smugglers' Raid",
   "text": "Attack with a unit. It gets [+2/+0] for this attack.\n[Smuggle] [[3 Cunning]]\n[When played using Smuggle:] Create a Spice token.",
   "trait": "Trick",
-  "number": "166",
+  "number": "168",
   "rarity": "C",
   "frameId": "event-cunning",
   "setCode": "DUNE",

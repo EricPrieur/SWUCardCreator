@@ -12,7 +12,7 @@
   "text": "[On Attack:] Deal 1 damage to a ground unit.",
   "power": 2,
   "trait": "Fremen, Vehicle",
-  "number": "145",
+  "number": "147",
   "rarity": "U",
   "unique": false,
   "frameId": "unit-cunning-heroism-space",

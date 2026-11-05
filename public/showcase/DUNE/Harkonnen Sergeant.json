@@ -12,7 +12,7 @@
   "text": "[When Played:] Search the top 5 cards of your deck for a [{Trooper}] unit, reveal it and draw it. You may play it now. It costs [1] less.",
   "power": 2,
   "trait": "Harkonnen, Trooper",
-  "number": "101",
+  "number": "103",
   "rarity": "U",
   "frameId": "unit-aggression-villainy",
   "setCode": "DUNE",

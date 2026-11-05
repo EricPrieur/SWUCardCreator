@@ -1842,6 +1842,30 @@ const dune: CardScript[] = [
     },
   },
   {
+    name: "Muad'Dib's Jihad",
+    text: 'Defeat each unit and each Spice token. If you control an [{Arrakis}] base, create a Fremen token for each friendly non-token [{Fremen}] unit defeated this way.',
+    front: {
+      play: (g, self) => {
+        const p = self.controller
+        const fremen = friendlyIds(g, self, (u) => !g.def(u).token && g.hasTrait(u, 'Fremen'))
+        // Leaders too: a defeated leader unit goes back to its leader side
+        for (const id of unitIds(g, () => true)) g.defeat(id, self)
+        for (const q of [0, 1] as PlayerId[]) for (const id of g.spiceIds(q)) g.defeatSpice(q, id, p)
+        if (!g.controlsArrakis(p)) return
+        for (const _ of fremen.filter((id) => !g.unit(id))) g.createToken(p, 'Fremen')
+      },
+    },
+  },
+  {
+    name: 'The Butlerian Jihad',
+    text: 'Defeat each [{Vehicle}] unit.',
+    front: {
+      play: (g, self) => {
+        for (const id of unitIds(g, (u) => g.hasTrait(u, 'Vehicle'))) g.defeat(id, self)
+      },
+    },
+  },
+  {
     name: 'Weapons Practice',
     text: 'Give an Experience token to each of up to 3 friendly [{Trooper}] units.',
     front: {

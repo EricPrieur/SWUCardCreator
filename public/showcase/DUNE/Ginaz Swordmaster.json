@@ -12,7 +12,7 @@
   "text": "[Ambush]\n[On Attack:] If you control another [{Ginaz}] unit, this unit deals its combat damage before the defender.",
   "power": 4,
   "trait": "Ginaz, Trooper",
-  "number": "125",
+  "number": "127",
   "rarity": "U",
   "frameId": "unit-aggression",
   "setCode": "DUNE",

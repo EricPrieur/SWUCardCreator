@@ -57,7 +57,7 @@ const defs: CardDef[] = [
   card('shaddamLeader', { ...scriptedBy('Shaddam IV', 'Padishah Emperor'), type: 'leader', cost: 7, unit: { power: 5, hp: 8, arena: 'ground', keywords: {} } }),
   card('shaddam', { ...scriptedBy('Shaddam IV', 'Lion Throne'), cost: 6, power: 6, hp: 8, unique: true, traits: ['Emperor', 'Official'] }),
   card('soldier', { cost: 2, power: 2, hp: 2, traits: ['Trooper'] }),
-  card('carrier', { ...scripted('Sardaukar Troop Carrier'), cost: 2, power: 1, hp: 3, arena: 'space' }),
+  card('carrier', { ...scripted('Sardaukar Troop Carrier'), cost: 2, power: 1, hp: 3, arena: 'space', traits: ['Emperor', 'Vehicle', 'Transport'] }),
   card('kynesDream', { ...scripted("Kynes's Dream"), type: 'event', cost: 2, arena: undefined }),
   card('levy', { ...scripted('House Levy'), type: 'event', cost: 2, arena: undefined }),
   card('crossfire', { ...scripted('Crossfire'), type: 'event', cost: 2, arena: undefined }),
@@ -99,6 +99,9 @@ const defs: CardDef[] = [
   card('contact', { ...scripted('Sietch Smuggler Contact'), cost: 4, power: 3, hp: 4, traits: ['Fremen', 'Underworld'] }),
   card('nightRaiders', { ...scripted('Fedaykin Night Raiders'), cost: 5, power: 4, hp: 5, traits: ['Fremen', 'Fedaykin', 'Trooper'] }),
   card('shishakli', { ...scriptedBy('Shishakli', 'Sietch Raider'), cost: 1, power: 2, hp: 2, unique: true, traits: ['Fremen', 'Trooper'] }),
+  card('fremenLeader', { type: 'leader', cost: 5, traits: ['Fremen'], unit: { power: 3, hp: 6, arena: 'ground', keywords: {} } }),
+  card('jihad', { ...scripted("Muad'Dib's Jihad"), type: 'event', cost: 9, arena: undefined, aspects: ['Aggression', 'Cunning', 'Heroism'], traits: ['Fremen', 'Tactic'] }),
+  card('butlerian', { ...scripted('The Butlerian Jihad'), type: 'event', cost: 7, arena: undefined, aspects: ['Vigilance'], traits: ['Tactic'] }),
   card('korba', { ...scripted('Korba'), cost: 6, power: 5, hp: 6, unique: true, traits: ['Fremen', 'Fedaykin', 'Official'] }),
 ]
 
@@ -905,6 +908,37 @@ test('Shishakli: ready again when you play a Trick event, after it resolves', ()
   assert.equal(state.players[0].units[0].exhausted, false, 'Stunner Dart is a Trick too')
 })
 
+test("Muad'Dib's Jihad: every unit and Spice token defeated, a Fremen token for each Fremen card on Arrakis", () => {
+  let state = rich(table({ hand0: ['jihad'], units0: ['shishakli', 'sandwalker', 'trooper'], units1: ['big', 'thopter'] }), 16)
+  state.players[0].units.push({ id: 'L0', def: 'leader', owner: 0, arena: 'ground', damage: 0, exhausted: false, leader: true, upgrades: [] })
+  state.players[0].leader.deployed = true
+  state.players[0].units.push({ id: 'tok', def: 'token-fremen', owner: 0, arena: 'ground', damage: 0, exhausted: false, upgrades: [] })
+  state.players[1].spice.push({ id: 'x1', def: 'token-spice' })
+  state = settle(act(state, 0, { type: 'play', card: 'h0' }))
+  assert.equal(state.players[1].units.length, 0)
+  assert.equal(state.players[0].leader.deployed, false, 'the leader back to its leader side')
+  assert.equal(state.players[0].spice.length + state.players[1].spice.length, 0)
+  // Shishakli and the Sandwalker: not the token or the Trooper
+  assert.deepEqual(state.players[0].units.map((u) => state.defs[u.def].name), ['Fremen', 'Fremen'])
+  // A Fremen leader unit counts too
+  state = rich(table({ hand0: ['jihad'] }), 16)
+  state.players[0].units.push({ id: 'L0', def: 'fremenLeader', owner: 0, arena: 'ground', damage: 0, exhausted: false, leader: true, upgrades: [] })
+  state.players[0].leader = { ...state.players[0].leader, def: 'fremenLeader', deployed: true }
+  state = settle(act(state, 0, { type: 'play', card: 'h0' }))
+  assert.equal(state.players[0].units.length, 1)
+  // Off Arrakis, no tokens
+  state = rich(table({ base0: 'caladan', hand0: ['jihad'], units0: ['shishakli'] }), 16)
+  state = settle(act(state, 0, { type: 'play', card: 'h0' }))
+  assert.equal(state.players[0].units.length, 0)
+})
+
+test('The Butlerian Jihad defeats each Vehicle unit, in both arenas', () => {
+  let state = rich(table({ hand0: ['butlerian'], units0: ['thopter', 'sandwalker'], units1: ['carrier', 'big'] }))
+  state = settle(act(state, 0, { type: 'play', card: 'h0' }))
+  assert.deepEqual(state.players[0].units.map((u) => u.def), ['sandwalker'])
+  assert.deepEqual(state.players[1].units.map((u) => u.def), ['big'])
+})
+
 test("Tuek's Go-Between: a Trick event from the discard pile, for 2 less", () => {
   let state = table({ hand0: ['goBetween'], units1: ['big'] })
   state.players[0].discard = [
@@ -925,8 +959,8 @@ test("Tuek's Go-Between: a Trick event from the discard pile, for 2 less", () =>
 
 
 // Enough ready resources to play anything off-aspect
-const rich = (state: GameState) => {
-  state.players[0].resources = Array.from({ length: 12 }, (_, i) => ({ card: { id: `rr${i}`, def: 'trooper' }, exhausted: false }))
+const rich = (state: GameState, count = 12) => {
+  state.players[0].resources = Array.from({ length: count }, (_, i) => ({ card: { id: `rr${i}`, def: 'trooper' }, exhausted: false }))
   return state
 }
 

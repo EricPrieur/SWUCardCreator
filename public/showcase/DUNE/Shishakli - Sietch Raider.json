@@ -1,22 +1,22 @@
 {
   "hp": 2,
   "id": "1bcd7b13-3c4b-4ac2-8341-f82954d78861",
+  "art": {
+    "x": 14,
+    "y": 10,
+    "src": "Shishakli - Sietch Raider (art).webp",
+    "zoom": 1.24
+  },
   "cost": 1,
   "name": "Shishakli",
   "text": "Whenever you play a [{Trick}] event, ready this unit.",
   "power": 2,
   "trait": "Fremen, Trooper",
-  "number": "140",
+  "number": "142",
   "rarity": "U",
   "unique": true,
   "frameId": "unit-cunning-heroism",
   "setCode": "DUNE",
   "language": "EN",
-  "subtitle": "Sietch Raider",
-  "art": {
-    "src": "Shishakli - Sietch Raider (art).webp",
-    "zoom": 1.24,
-    "x": 14,
-    "y": 10
-  }
+  "subtitle": "Sietch Raider"
 }
