@@ -592,6 +592,22 @@ function solidAreas(frame: Frame, text: boolean, icons: boolean): string[] {
   return areas
 }
 
+// The gold bar of a Legends card, cut from real ones by tools/extract_legends.py: along the
+// bottom of a unit, an event or a leader's unit side, longer along a leader's front, and
+// higher, between the game text and the box under it, on an upgrade, a fortification or a
+// pilot. Tokens, cut from 716 px scans as the Legends cards were, take the bar as cut: a
+// token unit where a unit has it, other tokens (upgrade, Spice, Credit) along the bottom of
+// their text box, where an upgrade has it. Always solid: it is printed over the frame,
+// whatever the frame's opacity. No Legends base was ever printed: a base takes the long bar
+// on the strip above its trait, a best guess.
+function legendsBar(frame: Frame) {
+  if (frame.type === 'Base') return 'base'
+  if (frame.token) return 'token-unit'
+  if (frame.type === 'Token') return 'token-upgrade'
+  if (frame.type === 'Leader' && frame.width > frame.height) return 'leader'
+  return frame.type === 'Upgrade' || frame.type === 'Fortification' || frame.pilotBox ? 'upgrade' : 'unit'
+}
+
 // The line along the bottom of a card, on a dark band across the art: the artist,
 // the block (a little left of the middle, as printed), the set and language, the
 // rarity's symbol and the card's number
@@ -770,6 +786,8 @@ export const CardView = memo(function CardView(props: {
   upgradeHp?: number
   // The line along the bottom
   line?: CardLine
+  // A Legends card's gold bar
+  legends?: boolean
   art?: Art
   look?: Look
   // Draw the small copy of the frame: for the frame picker, which shows them all at once
@@ -846,6 +864,9 @@ export const CardView = memo(function CardView(props: {
             src={asset(frame.subtitle.src)}
             alt=""
           />
+        )}
+        {props.legends && legendsBar(frame) && (
+          <img className="card-overlay" src={asset(`/templates/legends/${legendsBar(frame)}.png`)} alt="Legends" />
         )}
         {unique && frame.subtitle && props.subtitle && (
           <CardText frame={frame} box={frame.subtitle.box} className="card-subtitle" text={props.subtitle} />

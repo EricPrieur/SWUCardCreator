@@ -85,6 +85,8 @@ export type Card = {
   unique?: boolean
   // Unique units only: the line under the name
   subtitle?: string
+  // A Legends card: the gold bar along the bottom of its frame
+  legends?: boolean
   // Leader side only: the Epic Action box's text, when it is not the usual one
   epic?: string
   // Pilots only: the text of the Piloting box, and the power and HP the card gives

@@ -106,21 +106,23 @@ const commandVillainySubtitle = {
   src: '/templates/unit/command-villainy-subtitle.webp',
 }
 
-// Bases are landscape cards: one frame per aspect, with or without a game text box
-const basePapers: Partial<Record<Aspect, string>> = {
-  Vigilance: '#cbddeb',
-  Command: '#d0dcd3',
-  Aggression: '#e9dad3',
-  Cunning: '#ecdec4',
-}
+// Bases are landscape cards: one frame per aspect, and a neutral one with none (Lake
+// Country), with or without a game text box
+const basePapers: [string, Aspect[], string][] = [
+  ['vigilance', ['Vigilance'], '#cbddeb'],
+  ['command', ['Command'], '#d0dcd3'],
+  ['aggression', ['Aggression'], '#e9dad3'],
+  ['cunning', ['Cunning'], '#ecdec4'],
+  ['neutral', [], '#cfd1d3'],
+]
 
-const baseFrames: Frame[] = Object.entries(basePapers).flatMap(([aspect, paper]) =>
+const baseFrames: Frame[] = basePapers.flatMap(([key, aspects, paper]) =>
   [false, true].map((withText) => ({
-    id: `base-${aspect.toLowerCase()}${withText ? '-text' : ''}`,
+    id: `base-${key}${withText ? '-text' : ''}`,
     name: withText ? 'Base with text' : 'Base',
     type: 'Base' as const,
-    aspects: [aspect as Aspect],
-    src: `/templates/base/${aspect.toLowerCase()}${withText ? '-text' : ''}.webp`,
+    aspects,
+    src: `/templates/base/${key}${withText ? '-text' : ''}.webp`,
     width: 1000,
     height: 718,
     nameBox: { x: 180, y: 62, w: 645, h: 46, size: 38 },
@@ -429,6 +431,14 @@ const leaderFrames: Frame[] = (
     ['aggression-villainy', ['Aggression', 'Villainy'], '#d8bdb2'],
     ['cunning-heroism', ['Cunning', 'Heroism'], '#f3f3f3'],
     ['cunning-villainy', ['Cunning', 'Villainy'], '#dfca9f'],
+    // Leaders of neither Heroism nor Villainy: two aspects, no alignment
+    ['vigilance-command', ['Vigilance', 'Command'], '#ccdce5'],
+    ['vigilance-aggression', ['Vigilance', 'Aggression'], '#d2dce5'],
+    ['aggression-cunning', ['Aggression', 'Cunning'], '#eadcd1'],
+    ['command-cunning', ['Command', 'Cunning'], '#d6dcd0'],
+    // No card has been printed in these two: derived from the four above (extract_frames.py)
+    ['command-aggression', ['Command', 'Aggression'], '#d4dad2'],
+    ['cunning-vigilance', ['Cunning', 'Vigilance'], '#d6dcda'],
   ] as [string, Aspect[], string][]
 ).flatMap(([key, aspects, paper]): Frame[] => {
   const [unit] = unitFrames(key, aspects, paper)

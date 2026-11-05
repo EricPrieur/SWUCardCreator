@@ -860,9 +860,21 @@ BASE_HP = (blue, (10, 5, 160, 150), (835, 870, 1005, 1050))
 BASE_CUT_BELOW = 661  # artist / copyright strip
 
 
-def extract_bases():
-    cards = {aspect: np.stack([np.array(Image.open(SRC / "base" / (name + ".png")).convert("RGBA")).astype(np.float32)
-                               for name in pair]) for aspect, pair in BASES.items()}
+# The neutral base: one card without game text, a 716 px high scan (JTL). Its frame has the
+# shape of the others; the text box of the version with text is another aspect's, in its greys.
+NEUTRAL_BASE = "Lake Country"
+NEUTRAL_TEXT_FROM = "vigilance"
+NEUTRAL_ICON = (876, 24, 972, 136)  # where the others have their aspect icon: here only the name bar's end
+NEUTRAL_STAMP = (452, 646, 550, 661)  # its foil stamp, over the bottom edge of the location bar
+
+
+def base_cards():
+    return {aspect: np.stack([np.array(Image.open(SRC / "base" / (name + ".png")).convert("RGBA")).astype(np.float32)
+                              for name in pair]) for aspect, pair in BASES.items()}
+
+
+def base_outlines(cards):
+    """The alpha of a base without and with a text box: where each aspect's two cards agree."""
     # The frame has the same shape in every aspect: a pixel is frame when an
     # aspect's two cards agree there, in all aspects but at most one
     diffs = np.stack([np.abs(st[0, ..., :3] - st[1, ..., :3]).max(-1) for st in cards.values()])
@@ -877,7 +889,16 @@ def extract_bases():
     text_alpha = plain_alpha.copy()
     x0, y0, x1, y1 = BASE_TEXT_BOX
     text_alpha[y0:y1, x0:x1] = 1
-    scale = 718 / 1045 * 1.03  # a base is as big as the other cards, turned on its side
+    return plain_alpha, text_alpha
+
+
+BASE_SCALE = 718 / 1045 * 1.03  # a base is as big as the other cards, turned on its side
+
+
+def extract_bases():
+    cards = base_cards()
+    plain_alpha, text_alpha = base_outlines(cards)
+    scale = BASE_SCALE
 
     for aspect, st in cards.items():
         versions = {
@@ -894,6 +915,55 @@ def extract_bases():
             Image.fromarray(out, "RGBA").save(path)
         x0, y0, x1, y1 = BASE_NAME
         print("wrote base", aspect, "paper #%02x%02x%02x" % tuple(int(v) for v in np.median(rgb[y0:y1, x0:x1].reshape(-1, 3), 0)))
+
+
+def extract_neutral_base():
+    plain_alpha, text_alpha = base_outlines(base_cards())
+    # A 716 px high scan: its frame is 0.4% smaller and sits 2 px lower and to the right
+    im = Image.open(SRC / "base" / (NEUTRAL_BASE + ".png")).convert("RGBA")
+    scaled = im.resize((round(im.width * 1.004), round(im.height * 1.004)), Image.LANCZOS)
+    card = Image.new("RGBA", (1000, 718), (0, 0, 0, 0))
+    card.paste(scaled, (-2, -2))
+    st = np.array(card).astype(np.float32)[None]
+    rgb = st[0, ..., :3].copy()
+    plain_alpha, text_alpha = plain_alpha.copy(), text_alpha.copy()
+    # No aspect icon: of the art showing through its place, keep the name bar's rounded end,
+    # each row up to its dark outline (the row above's, on the light rows at its bottom)
+    x0, y0, x1, y1 = NEUTRAL_ICON
+    dark = rgb[y0:y1, x0:x1].mean(-1) < 90
+    bar = np.zeros(dark.shape, bool)
+    limit = None
+    for y in range(y1 - y0):
+        if y0 + y > 59:
+            break
+        xs = np.nonzero(dark[y])[0]
+        limit = xs.max() + 1 if len(xs) else limit
+        if limit is not None:
+            bar[y, :limit] = True
+    for alpha in (plain_alpha, text_alpha):
+        alpha[y0:y1, x0:x1] *= bar
+    # The stamp: the bar beside it, repeated
+    x0, y0, x1, y1 = NEUTRAL_STAMP
+    rgb[y0:y1, x0:x1] = rgb[y0:y1, x0 - 110:x1 - 110]
+    for alpha in (plain_alpha, text_alpha):
+        alpha[y0:y1, x0:x1] = alpha[y0:y1, x0 - 110:x1 - 110]
+    clear_panel_text(st, rgb, dict(panels=[(BASE_NAME, [0]), (BASE_LOCATION, [0])]))
+    blank_icon(rgb, BASE_HP, BASE_SCALE, plain_alpha > 0.5)
+    x0, y0, x1, y1 = BASE_NAME
+    paper = np.median(rgb[y0:y1, x0:x1].reshape(-1, 3), 0)
+    # The text box: another aspect's, its colours turned to greys as light as this card's paper
+    other = np.array(Image.open(OUT / "base" / (NEUTRAL_TEXT_FROM + "-text.png")).convert("RGB")).astype(np.float32)
+    x0, y0, x1, y1 = BASE_TEXT_BOX
+    box = other[y0:y1, x0:x1]
+    lum = box @ np.array([0.299, 0.587, 0.114], np.float32)
+    their = np.median(lum[15:-15, 15:-15])
+    grey = np.clip(lum[..., None] * (paper / their)[None, None], 0, 255)
+    with_text = rgb.copy()
+    with_text[y0:y1, x0:x1] = np.where(text_alpha[y0:y1, x0:x1, None] > 0, grey, with_text[y0:y1, x0:x1])
+    for name, colours, alpha in (("neutral", rgb, plain_alpha), ("neutral-text", with_text, text_alpha)):
+        out = np.dstack([colours, alpha * 255]).round().astype(np.uint8)
+        Image.fromarray(out, "RGBA").save(OUT / "base" / (name + ".png"))
+    print("wrote base neutral", "paper #%02x%02x%02x" % tuple(int(v) for v in paper))
 
 
 # ---- Upgrades
@@ -1269,66 +1339,248 @@ def fill_leftover_text(rgb, panel):
                 area[y, x] = area[clean[np.abs(clean - y).argmin()], x]
 
 
-def extract_leaders():
-    space = None
-    for suffix, side in LEADER_SIDES.items():
-        cards = {key: np.stack([np.array(Image.open(SRC / "leaders" / (name + side["card"] + ".png")).convert("RGBA"))
-                                .astype(np.float32) for name in pair]) for key, pair in LEADERS.items()}
-        cut, tail = side["cut"], side["tail"]
-        outlines = {}
-        for allegiance in ("heroism", "villainy"):
-            # A pixel is frame when a pair's two cards agree there, in all pairs but at most one
-            group = [st for key, st in cards.items() if key.endswith(allegiance)]
-            d = np.sort([np.abs(st[0, ..., :3] - st[1, ..., :3]).max(-1) for st in group], 0)[-2]
-            card = group[0][0, ..., 3] > 128
-            lab, sizes = components((d >= T1) & card)
-            art = lab == sizes.argmax()
-            lab, sizes = components(card & ~art)
-            solid = np.isin(lab, np.nonzero(sizes >= MIN_PIECE)[0])
-            outlines[allegiance] = np.where(solid, 1.0, np.clip((T2 - d) / (T2 - T1), 0, 1) * (dilate(solid) & ~solid))
-        # Under the frame the cards share their dark footer too. The sparkles are
-        # what both allegiances have there; the footer's leftovers differ.
-        below = np.minimum(outlines["heroism"], outlines["villainy"])[cut:cut + tail]
-        for alpha in outlines.values():
-            alpha[cut:cut + tail] = below
-            alpha[cut + tail:] = 0
-        for key, st in cards.items():
-            alpha = outlines[key.split("-")[1]].copy()
-            rgb = st[0, ..., :3].copy()
-            panels = dict(panels=[(panel, [0, 1]) for panel in side["panels"]])
-            clear_panel_text(st, rgb, panels)
-            # A second pass on the result alone clones paper over whatever the first left behind
-            clear_panel_text(rgb[None].copy(), rgb, dict(panels=[(panel, [0]) for panel in side["panels"]]))
-            for panel in side["panels"]:
-                fill_leftover_text(rgb, panel)
-            if suffix:
-                copy_empty_icons(rgb, "unit/command-villainy", [POWER_MID, HP_MID], cost=True)
-            else:  # the bar's bottom edge under the stamp is repeated from beside it
-                x0, y0, x1, y1 = LEADER_STAMP
-                rgb[y0:cut, x0:x1] = rgb[y0:cut, x0 - 70:x1 - 70]
-                alpha[cut:y1, x0:x1] = 0
-            out = np.dstack([rgb, alpha * 255]).round().astype(np.uint8)
-            path = OUT / "leader" / (key + suffix + ".png")
-            path.parent.mkdir(parents=True, exist_ok=True)
-            Image.fromarray(out, "RGBA").save(path)
-            x0, y0, x1, y1 = side["panels"][0]
-            paper = np.median(rgb[y0:y1, x0:x1].reshape(-1, 3), 0)
-            print("wrote leader", key + suffix, "paper #%02x%02x%02x" % tuple(int(v) for v in paper))
-            if suffix:  # the same frame for a Space unit: the bar reads the same in every colour
-                if space is None:
-                    card, _ = LEADER_SPACE
-                    space = load_upgrade(card, st[0, ..., :3], "leaders",
-                                         [(110, 48, 680, 62), (110, 100, 680, 114), (30, 905, 690, 944)])
-                x0, y0, x1, y1 = LEADER_SPACE[1]
-                out[y0:y1, x0:x1, :3] = space[y0:y1, x0:x1].round().astype(np.uint8)
-                # The bar runs on a little behind the aspect icon, whose colour differs:
-                # each row's run of the Ground bar's cream takes the Space bar's last column
-                tip = out[y0:y1, x1:x1 + 40, :3]
-                cream = np.abs(tip.astype(np.float32) - (235, 225, 176)).max(-1) < 45
-                for y, run in enumerate(cream):
-                    tip[y, :len(run) if run.all() else run.argmin()] = out[y0 + y, x1 - 2, :3]
-                Image.fromarray(out, "RGBA").save(OUT / "leader" / (key + suffix + "-space.png"))
+# Leaders of two colours and no Heroism or Villainy (HMW and ASH on): one card each, a 716
+# px scan lined up on ours. The frame has the Heroism leaders' shape; its pixels are the card's.
+UNALIGNED_LEADERS = {
+    "vigilance-command": "The Armorer",
+    "vigilance-aggression": "Asajj Ventress",
+    "aggression-cunning": "Fennec Shand",
+    "command-cunning": "Maz Kanata",
+}
+LEADER_PROBES = {"": [(430, 55, 880, 110), (20, 640, 980, 700), (460, 150, 890, 500)],
+                 "-unit": [(110, 55, 600, 110), (30, 630, 690, 680), (30, 900, 690, 945)]}
 
+
+def leader_outlines(side):
+    """Each allegiance's frame shape on one side: where a pair's two cards agree, in all pairs
+    but at most one. Also the pairs' cards."""
+    cards = {key: np.stack([np.array(Image.open(SRC / "leaders" / (name + side["card"] + ".png")).convert("RGBA"))
+                            .astype(np.float32) for name in pair]) for key, pair in LEADERS.items()}
+    cut, tail = side["cut"], side["tail"]
+    outlines = {}
+    for allegiance in ("heroism", "villainy"):
+        group = [st for key, st in cards.items() if key.endswith(allegiance)]
+        d = np.sort([np.abs(st[0, ..., :3] - st[1, ..., :3]).max(-1) for st in group], 0)[-2]
+        card = group[0][0, ..., 3] > 128
+        lab, sizes = components((d >= T1) & card)
+        art = lab == sizes.argmax()
+        lab, sizes = components(card & ~art)
+        solid = np.isin(lab, np.nonzero(sizes >= MIN_PIECE)[0])
+        outlines[allegiance] = np.where(solid, 1.0, np.clip((T2 - d) / (T2 - T1), 0, 1) * (dilate(solid) & ~solid))
+    # Under the frame the cards share their dark footer too. The sparkles are
+    # what both allegiances have there; the footer's leftovers differ.
+    below = np.minimum(outlines["heroism"], outlines["villainy"])[cut:cut + tail]
+    for alpha in outlines.values():
+        alpha[cut:cut + tail] = below
+        alpha[cut + tail:] = 0
+    return outlines, cards
+
+
+def write_leader(key, suffix, side, st, alpha, space):
+    """One leader frame from its card(s) and outline; `space` keeps the Space bar once loaded."""
+    cut = side["cut"]
+    alpha = alpha.copy()
+    rgb = st[0, ..., :3].copy()
+    panels = dict(panels=[(panel, list(range(len(st)))) for panel in side["panels"]])
+    clear_panel_text(st, rgb, panels)
+    # A second pass on the result alone clones paper over whatever the first left behind
+    clear_panel_text(rgb[None].copy(), rgb, dict(panels=[(panel, [0]) for panel in side["panels"]]))
+    for panel in side["panels"]:
+        fill_leftover_text(rgb, panel)
+    if suffix:
+        copy_empty_icons(rgb, "unit/command-villainy", [POWER_MID, HP_MID], cost=True)
+    else:  # the bar's bottom edge under the stamp is repeated from beside it
+        x0, y0, x1, y1 = LEADER_STAMP
+        rgb[y0:cut, x0:x1] = rgb[y0:cut, x0 - 70:x1 - 70]
+        alpha[cut:y1, x0:x1] = 0
+    out = np.dstack([rgb, alpha * 255]).round().astype(np.uint8)
+    path = OUT / "leader" / (key + suffix + ".png")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    Image.fromarray(out, "RGBA").save(path)
+    x0, y0, x1, y1 = side["panels"][0]
+    paper = np.median(rgb[y0:y1, x0:x1].reshape(-1, 3), 0)
+    print("wrote leader", key + suffix, "paper #%02x%02x%02x" % tuple(int(v) for v in paper))
+    if suffix:  # the same frame for a Space unit: the bar reads the same in every colour
+        if not space:
+            card, _ = LEADER_SPACE
+            space.append(load_upgrade(card, st[0, ..., :3], "leaders",
+                                      [(110, 48, 680, 62), (110, 100, 680, 114), (30, 905, 690, 944)]))
+        x0, y0, x1, y1 = LEADER_SPACE[1]
+        out[y0:y1, x0:x1, :3] = space[0][y0:y1, x0:x1].round().astype(np.uint8)
+        # The bar runs on a little behind the aspect icon, whose colour differs:
+        # each row's run of the Ground bar's cream takes the Space bar's last column
+        tip = out[y0:y1, x1:x1 + 40, :3]
+        cream = np.abs(tip.astype(np.float32) - (235, 225, 176)).max(-1) < 45
+        for y, run in enumerate(cream):
+            tip[y, :len(run) if run.all() else run.argmin()] = out[y0 + y, x1 - 2, :3]
+        Image.fromarray(out, "RGBA").save(OUT / "leader" / (key + suffix + "-space.png"))
+
+
+def extract_leaders():
+    space = []
+    for suffix, side in LEADER_SIDES.items():
+        outlines, cards = leader_outlines(side)
+        for key, st in cards.items():
+            write_leader(key, suffix, side, st, outlines[key.split("-")[1]], space)
+
+
+def extract_unaligned_leaders():
+    space = []
+    for suffix, side in LEADER_SIDES.items():
+        outlines, cards = leader_outlines(side)
+        ref = cards["cunning-heroism"][0, ..., :3]
+        for key, name in UNALIGNED_LEADERS.items():
+            rgb = load_upgrade(name + side["card"], ref, "leaders", LEADER_PROBES[suffix])
+            st = np.dstack([rgb, np.full(rgb.shape[:2], 255, np.float32)])[None]
+            # The outline's soft fringe was judged on the pairs' art: this card's own art would
+            # show through it as specks. Solid only, but for the sparkles under the frame
+            alpha = outlines["heroism"].copy()
+            frame = alpha[:side["cut"]]
+            frame[frame < 1] = 0
+            write_leader(key, suffix, side, st, alpha, space)
+
+
+
+# The pairs no card has been printed in, from the four that have: each card blends its first
+# colour on the left into its second on the right, through the same zones on every card.
+# In the order cards print them (see compose_frames.PAIRS): Cunning before Vigilance
+DERIVED_LEADERS = [("command", "aggression"), ("cunning", "vigilance")]
+COLOURS = ["vigilance", "command", "aggression", "cunning"]
+# The second aspect icon's hexagon is where Command and Aggression differ around here, on the
+# front; the first is one step above it, and on the unit side both sit further left
+LEADER_ICON = (870, 135, 980, 245)
+LEADER_ICON_STEP = 109
+LEADER_ICON_SHIFT = {"": (0, 0), "-unit": (-280, -4), "-unit-space": (-280, -4)}
+# Aggression's bars are hatched: no other colour is made from it
+HATCHED = {"aggression"}
+
+
+def box_blur(a, r):
+    for axis in (0, 1):
+        c = np.cumsum(np.pad(a, [(r + 1, r) if i == axis else (0, 0) for i in range(a.ndim)], "edge"), axis)
+        a = (np.take(c, range(2 * r + 1, c.shape[axis]), axis) - np.take(c, range(c.shape[axis] - 2 * r - 1), axis)) / (2 * r + 1)
+    return a
+
+
+def extract_derived_leaders():
+    from scipy.ndimage import binary_fill_holes, distance_transform_edt, label
+
+    def nearest(values, known):
+        """Each pixel takes the value of the nearest known one."""
+        _, (iy, ix) = distance_transform_edt(~known, return_indices=True)
+        return values[iy, ix]
+
+    def mapped(src, dst, fit, image, apply):
+        """image recoloured by the affine colour map that turns src into dst where fit is."""
+        m = np.linalg.lstsq(np.c_[src[fit], np.ones(fit.sum())], dst[fit], rcond=None)[0]
+        return np.c_[image[apply], np.ones(apply.sum())] @ m
+
+    def load_leader(key):
+        return np.array(Image.open(OUT / "leader" / (key + ".png")).convert("RGBA")).astype(np.float32)
+
+    # The second icon's hexagon, its glyph's holes filled
+    ix0, iy0, ix1, iy1 = LEADER_ICON
+    differ = np.abs(load_leader("vigilance-command") - load_leader("vigilance-aggression"))[..., :3].max(-1) > 60
+    parts, _ = label(differ[iy0:iy1, ix0:ix1])  # the stripes beside it differ too
+    sizes = np.bincount(parts.ravel())
+    sizes[0] = 0
+    hexagon = binary_fill_holes(parts == sizes.argmax())
+
+    pairs = [tuple(key.split("-")) for key in UNALIGNED_LEADERS]
+    for suffix in ["", "-unit", "-unit-space"]:
+        cards = {pair: np.array(Image.open(OUT / "leader" / ("-".join(pair) + suffix + ".png")).convert("RGBA"))
+                 .astype(np.float32) for pair in pairs}
+        rgb = {pair: im[..., :3] for pair, im in cards.items()}
+        alpha = cards[pairs[0]][..., 3]
+        mask = alpha > 0
+        vc, va, ak, ck = (rgb[pair] for pair in [("vigilance", "command"), ("vigilance", "aggression"),
+                                                 ("aggression", "cunning"), ("command", "cunning")])
+        # Aggression less Command, the same whatever the blend; projected on it, how much of the
+        # first colour each pixel shows
+        d = va - vc - ck + ak
+        n = (d * d).sum(-1)
+        w = ((ak - ck) * d).sum(-1) / np.maximum(n, 1)
+        # Bars, borders and icons, where the colours differ; less the paper's grain in specks
+        coloured = mask & (n > 30 ** 2)
+        parts, _ = label(coloured)
+        coloured &= np.bincount(parts.ravel())[parts] >= 1500
+        # ... and how surely, so that pixels near the line don't flicker between colour and paper
+        sure = np.clip((np.sqrt(n) - 20) / 20, 0, 1) * dilate(coloured)
+        sure = box_blur(sure, 1)[..., None]
+        conf = coloured.astype(np.float32)
+        near = box_blur(conf, 2)
+        w = np.clip(nearest(box_blur(np.clip(w, 0, 1) * conf, 2) / np.maximum(near, 1e-3), near > 0.05), 0, 1)
+        # Paper hardly differs pixel by pixel, but a whole column of it tells how far across the
+        # fade it stands
+        paper = mask & ~coloured & (alpha == 255)
+        num = np.where(paper, ((ak - ck) * d).sum(-1), 0).sum(0)
+        den = np.where(paper, n, 0).sum(0)
+        has = den > 0
+        column = np.interp(np.arange(len(den)), np.nonzero(has)[0], num[has] / den[has])
+        column = np.clip(box_blur(column[None], 20)[0], 0, 1)
+        w = sure[..., 0] * w + (1 - sure[..., 0]) * column[None, :]
+        # An icon is all one colour, its white glyph too
+        dx, dy = LEADER_ICON_SHIFT[suffix]
+        second = np.zeros(mask.shape, bool)
+        second[iy0 + dy:iy1 + dy, ix0 + dx:ix1 + dx] = hexagon
+        first = np.roll(second, -LEADER_ICON_STEP, 0)
+        w[first], w[second] = 1, 0
+
+        # Each colour as it shows on each side, where that side is pure: from the cards with it
+        # there, or else recoloured from another colour, as the other side shows the two. Paper's
+        # fade never quite reaches either end
+        zones = [(coloured & (w > 0.97)) | (paper & (w > 0.9)), (coloured & (w < 0.03)) | (paper & (w < 0.1))]
+        pure = [{}, {}]
+        for side in (0, 1):
+            for colour in COLOURS:
+                with_it = [rgb[p] for p in pairs if p[side] == colour]
+                if with_it:
+                    pure[side][colour] = np.mean(with_it, 0)
+        for side in (0, 1):
+            here, there = zones[side], zones[1 - side]
+            for colour in set(COLOURS) - set(pure[side]):
+                guesses = []
+                common = sorted(set(pure[side]) & set(pure[1 - side]))
+                for source in [c for c in common if c not in HATCHED] or common:
+                    src, dst = pure[1 - side][source], pure[1 - side][colour]
+                    guess = np.zeros_like(pure[side][source])
+                    guess[here & coloured] = mapped(src, dst, there & coloured, pure[side][source], here & coloured)
+                    # Paper, too even for a colour map: shifted by the same difference
+                    guess[here & paper] = pure[side][source][here & paper] + np.median((dst - src)[there & paper], 0)
+                    guesses.append(guess)
+                pure[side][colour] = np.mean(guesses, 0)
+
+        def delta(a, b, side):
+            """Colour a less colour b on one side: on colour from the nearest coloured pixel, on
+            paper the same all over."""
+            diff = pure[side][a] - pure[side][b]
+            zone = zones[side]
+            # Each scan's grain, smoothed out a little
+            weight = (zone & coloured).astype(np.float32)
+            spread = box_blur(weight, 1)
+            smooth = box_blur(diff * weight[..., None], 1) / np.maximum(spread, 1e-3)[..., None]
+            return sure * nearest(smooth, spread > 0.3) + (1 - sure) * np.median(diff[zone & paper], 0)
+
+        for x, y in DERIVED_LEADERS:
+            # Cards with their first colour turned to x and their second to y: on the left those
+            # already x there, on the right those already y, if any
+            def turned(cards):
+                return np.mean([rgb[p] + w[..., None] * delta(x, p[0], 0) + (1 - w[..., None]) * delta(y, p[1], 1)
+                                for p in cards], 0)
+            left = [p for p in pairs if p[0] == x] or [p for p in pairs if p[0] not in HATCHED]
+            right = [p for p in pairs if p[1] == y] or [p for p in pairs if p[1] not in HATCHED]
+            out = w[..., None] * turned(left) + (1 - w[..., None]) * turned(right)
+            # An icon is a glyph too, not just a colour: a colour no card shows in a slot takes
+            # its icon from the other slot
+            if not any(p[0] == x for p in pairs):
+                out[first] = np.roll(rgb[next(p for p in pairs if p[1] == x)], -LEADER_ICON_STEP, 0)[first]
+            if not any(p[1] == y for p in pairs):
+                out[second] = np.roll(rgb[next(p for p in pairs if p[0] == y)], LEADER_ICON_STEP, 0)[second]
+            key = x + "-" + y + suffix
+            Image.fromarray(np.dstack([out.clip(0, 255), alpha]).round().astype(np.uint8), "RGBA").save(
+                OUT / "leader" / (key + ".png"))
+            x0, y0, x1, y1 = LEADER_SIDES[suffix.replace("-space", "")]["panels"][0]
+            print("wrote leader", key, "paper #%02x%02x%02x" % tuple(int(v) for v in np.median(out[y0:y1, x0:x1].reshape(-1, 3), 0)))
 
 def extract_cost_icon():
     """Cut the inline "pay 1 less" cost icon out of the Credit token's game text."""
@@ -1557,11 +1809,12 @@ def unstreak_upgrades():
 
 if __name__ == "__main__":
     extras = {"icons/cost-1": extract_cost_icon, "icons/numbers": extract_numbers, "icons/unique": extract_unique_icon,
-              "icons/aspects": extract_aspects, "icons/signs": extract_signs, "base": extract_bases,
+              "icons/aspects": extract_aspects, "icons/signs": extract_signs, "base": extract_bases, "base/neutral": extract_neutral_base,
               "upgrade": extract_upgrades, "unit/derived-subtitles": extract_derived_subtitles,
               "fortification": extract_fortifications, "unit/token-text": extract_token_text_units,
               "fortification/derived": extract_derived_fortifications,
-              "leader": extract_leaders, "icons/exhaust": extract_exhaust_icon,
+              "leader": extract_leaders, "leader/unaligned": extract_unaligned_leaders,
+              "leader/derived": extract_derived_leaders, "icons/exhaust": extract_exhaust_icon,
               "icons/artist": extract_artist_icon, "icons/rarity": extract_rarity_icons,
               "icons/labels": extract_label_masks, "icons/foil": extract_foil_stamp, "upgrade/unstreak": unstreak_upgrades,
               "unit/cost-hexagons": mend_cost_hexagons, "unit/vigilance-icons": mend_vigilance_icons}

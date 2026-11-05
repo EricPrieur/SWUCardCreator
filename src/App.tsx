@@ -227,6 +227,7 @@ function CardFace(props: { card: Draft; back?: boolean }) {
       upgradePower={card.upgradePower}
       upgradeHp={card.upgradeHp}
       line={card}
+      legends={card.legends}
       art={art}
       look={card.look}
     />
@@ -3790,6 +3791,7 @@ function CardCreator(props: {
                       value={draft[kind]}
                       options={frame.type === 'Base' ? baseHp : kind !== 'cost' && frame.modifiers ? modifiers : numbers}
                       format={kind !== 'cost' && frame.modifiers ? formatModifier : undefined}
+                      digits={frame.type === 'Base' ? 2 : undefined}
                       onChange={(value) => onChange({ ...draft, [kind]: value })}
                     />
                   ),
@@ -3911,6 +3913,10 @@ function CardCreator(props: {
                 Foil
               </label>
             )}
+            <label className="toggle card-line-legends-toggle" title="A Legends card: the gold bar along the bottom of its frame">
+              <input type="checkbox" checked={draft.legends === true} onChange={(event) => onChange({ ...draft, legends: event.target.checked || undefined })} />
+              Legends
+            </label>
           </div>
         </div>
       </section>
@@ -4187,9 +4193,11 @@ function NumberPicker(props: {
   value?: number
   options: number[]
   format?: (value: number) => string
+  // A number can also be typed, up to this many digits
+  digits?: number
   onChange: (value?: number) => void
 }) {
-  const { label, value, options, format = String, onChange } = props
+  const { label, value, options, format = String, digits, onChange } = props
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -4217,16 +4225,34 @@ function NumberPicker(props: {
   return (
     <div className="picker" ref={ref}>
       <span>{label}</span>
-      <button
-        className="picker-button"
-        type="button"
-        aria-label={label}
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        onClick={() => setOpen(!open)}
-      >
-        {value === undefined ? '–' : format(value)}
-      </button>
+      {digits ? (
+        <input
+          className="picker-button"
+          inputMode="numeric"
+          maxLength={digits}
+          aria-label={label}
+          aria-haspopup="listbox"
+          aria-expanded={open}
+          placeholder="–"
+          value={value ?? ''}
+          onClick={() => setOpen(!open)}
+          onChange={(event) => {
+            const typed = event.target.value.replace(/\D/g, '').slice(0, digits)
+            onChange(typed === '' ? undefined : Number(typed))
+          }}
+        />
+      ) : (
+        <button
+          className="picker-button"
+          type="button"
+          aria-label={label}
+          aria-haspopup="listbox"
+          aria-expanded={open}
+          onClick={() => setOpen(!open)}
+        >
+          {value === undefined ? '–' : format(value)}
+        </button>
+      )}
       {open && (
         <div className="picker-options" role="listbox" aria-label={label}>
           <button type="button" role="option" aria-selected={value === undefined} onClick={() => choose()}>

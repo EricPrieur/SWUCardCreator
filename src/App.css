@@ -588,6 +588,16 @@
   cursor: pointer;
 }
 
+/* A picker a number can also be typed into */
+input.picker-button {
+  text-align: center;
+  cursor: text;
+}
+
+input.picker-button::placeholder {
+  color: var(--sand);
+}
+
 .picker-button:hover,
 .picker-button[aria-expanded='true'] {
   border-color: var(--spice);
@@ -1547,13 +1557,15 @@
 }
 
 /* The card line's fields in the editor, side by side */
-/* Two rows: artist, block and number; then set, language, rarity and the foil stamp */
+/* Three rows: artist, block and number; then set, language, rarity and the foil stamp;
+   then whether it is a Legends card */
 .card-line-fields {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) 2.6rem 4.4rem;
   grid-template-areas:
     'artist artist artist block number'
-    'set language rarity rarity foil';
+    'set language rarity rarity foil'
+    'legends legends legends legends legends';
   gap: 0.5rem 0.5rem;
 }
 
@@ -1571,7 +1583,8 @@
   font-size: 0.92rem;
 }
 
-.card-line-fields .card-line-foil-toggle {
+.card-line-fields .card-line-foil-toggle,
+.card-line-fields .card-line-legends-toggle {
   grid-area: foil;
   flex-direction: row;
   align-self: end;
@@ -1582,7 +1595,13 @@
   line-height: 1.1;
 }
 
-.card-line-fields .card-line-foil-toggle input {
+.card-line-fields .card-line-legends-toggle {
+  grid-area: legends;
+  padding-bottom: 0;
+}
+
+.card-line-fields .card-line-foil-toggle input,
+.card-line-fields .card-line-legends-toggle input {
   width: 1.05rem;
   padding: 0;
 }

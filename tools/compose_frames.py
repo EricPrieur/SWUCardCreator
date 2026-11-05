@@ -188,7 +188,8 @@ def compose_pilots():
 
 # ---- Leader pilots. The Leader side's Epic Action box is taller, to offer
 # deploying as an upgrade too; the Leader Unit side is laid out like a pilot.
-LEADER_KEYS = [c + "-" + a for c in COLOURS for a in ALLEGIANCES]
+# ... and the two-colour leaders of no allegiance
+LEADER_KEYS = [c + "-" + a for c in COLOURS for a in ALLEGIANCES] + [a + "-" + b for a, b in PAIRS]
 EPIC_COLUMNS = (471, 906)  # the Epic Action box, from its left outline to its right
 EPIC_HEADER = (488, 502)  # the gold band along its top
 EPIC_RAISE = 110  # how much higher the band is on a pilot leader
