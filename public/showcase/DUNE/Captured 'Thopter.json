@@ -1,0 +1,21 @@
+{
+  "hp": 4,
+  "id": "bde01fcd-e2e0-4483-94a4-28acd6dc1c3d",
+  "art": {
+    "x": 0,
+    "y": -3,
+    "src": "Captured 'Thopter (art).webp",
+    "zoom": 1
+  },
+  "cost": 3,
+  "name": "Captured 'Thopter",
+  "text": "[On Attack:] Deal 1 damage to a ground unit.",
+  "power": 2,
+  "trait": "Fremen, Vehicle",
+  "number": "145",
+  "rarity": "U",
+  "unique": false,
+  "frameId": "unit-cunning-heroism-space",
+  "setCode": "DUNE",
+  "language": "EN"
+}

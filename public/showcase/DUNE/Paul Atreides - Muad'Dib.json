@@ -20,7 +20,7 @@
   "text": "While you control an [{Arrakis}] base, each friendly [{Fremen}] unit gets [+1/+0] and gains [Ambush].\n[When Played:] Create 2 Fremen tokens.",
   "power": 8,
   "trait": "Atreides, Fremen",
-  "number": "146",
+  "number": "152",
   "rarity": "L",
   "unique": true,
   "frameId": "unit-cunning-heroism",

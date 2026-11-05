@@ -346,7 +346,7 @@ function exhaustUnit(state: GameState, unit: UnitState) {
   unit.exhausted = true
   const p = controllerOf(state, unit)
   for (const upgrade of unit.upgrades)
-    queue(state, p, nameOf(state, upgrade), scriptOf(state, upgrade).whenAttachedExhausted, {
+    queue(state, p, nameOf(state, upgrade), 'attached unit exhausted', scriptOf(state, upgrade).whenAttachedExhausted, {
       id: upgrade.id,
       controller: p,
       def: def(state, upgrade),
@@ -367,7 +367,9 @@ class Pause extends Error {
 }
 
 // A triggered ability waiting to resolve
-type Trigger = { player: PlayerId; label: string; run: () => void }
+// \`same\`: the ability and the card it is on, which tells one ability triggered twice (Chani's, once
+// for the card played and once for each token created) from two that need an order
+type Trigger = { player: PlayerId; label: string; run: () => void; same?: unknown[] }
 
 // The action being played: the answers it has, the next to hand out, the abilities triggered.
 // One action at a time, start to end in one go, so it can live outside the game state.
@@ -380,10 +382,11 @@ function ask(prompt: Prompt): string[] {
   throw new Pause(prompt)
 }
 
-// Outside an action (as the game is set up) nothing triggers
-function queue(state: GameState, player: PlayerId, source: string, ability: Ability | undefined, self: Self) {
+// Outside an action (as the game is set up) nothing triggers. Labelled with the card and its
+// trigger: a card with two abilities waiting (a leader and its unit, say) is told apart
+function queue(state: GameState, player: PlayerId, source: string, what: string, ability: Ability | undefined, self: Self) {
   if (!ability || !current) return
-  current.queue.push({ player, label: source, run: () => ability(new Game(state, player), self) })
+  current.queue.push({ player, label: `${source}: ${what}`, run: () => ability(new Game(state, player), self), same: [ability, self.id] })
 }
 
 // The abilities a card has where it is: a unit's, a leader's unit side's once deployed, a
@@ -421,13 +424,33 @@ type Hook =
   | 'whenCombatDamageBase'
   | 'regroupStart'
 
+// The trigger as the card words it, "[When you play a [{Bene Gesserit}] card:]" read as "when you
+// play a Bene Gesserit card"; a deployed leader's from its unit side
+function triggerText(card: CardDef, deployed: boolean) {
+  const text = (deployed && card.backText) || card.text
+  const found = /\[(When (?:you|a|an) [^:]*?):\]/.exec(text ?? '')
+  return found && found[1].replace(/\[\{([^}]*)\}\]/g, '$1').replace(/^When/, 'when')
+}
+const hookNames: Record<Hook, string> = {
+  whenYouPlay: 'when you play a card',
+  whenYouCreate: 'when you create a token',
+  whenSpiceDefeated: 'when a Spice token is defeated',
+  whenFriendlyDefeated: 'when a friendly unit is defeated',
+  whenFriendlyAttacks: 'when a friendly unit attacks',
+  whenEnemyAttacks: 'when an enemy unit attacks',
+  whenCombatDamageBase: 'when combat damage is dealt to a base',
+  regroupStart: 'start of the regroup phase',
+}
+
 // An event on a player's side, which the abilities there that wait for it resolve after
 function trigger(state: GameState, p: PlayerId, hook: Hook, extra: Partial<Self> = {}, except?: string) {
   for (const { self, abilities } of holders(state, p)) {
     if (self.id === except) continue
     const triggered = { ...self, ...extra }
     if (abilities.triggersIf?.[hook]?.(new Game(state, p), triggered) === false) continue
-    queue(state, p, self.def.name, abilities[hook], triggered)
+    const what = triggerText(self.def, !!findUnit(state, self.id)?.leader) ?? hookNames[hook]
+    const by = self.id === 'leader' ? ' (leader)' : ''
+    queue(state, p, self.def.name + by, what, abilities[hook], triggered)
   }
 }
 
@@ -443,7 +466,8 @@ function resolveTriggers(state: GameState) {
     const mine = ofActive.length ? ofActive : run.queue
     let next = mine[0]
     // The same ability more than once (one for each Fremen token created) needs no order
-    if (new Set(mine.map((t) => t.label)).size > 1) {
+    const same = (a: Trigger, b: Trigger) => a === b || (!!a.same && !!b.same && a.same.every((x, i) => x === b.same![i]))
+    if (mine.some((t) => !same(t, next))) {
       const [pick] = ask({
         player: next.player,
         kind: 'option',
@@ -511,7 +535,7 @@ function defeatUnit(state: GameState, unit: UnitState) {
   state.effects = state.effects.filter((e) => e.unit !== unit.id)
   // What an upgrade gives the unit it is on: "Attached unit gains: [When Defeated:] …"
   for (const upgrade of unit.upgrades)
-    queue(state, p, nameOf(state, upgrade), scriptOf(state, upgrade).attachedWhenDefeated, {
+    queue(state, p, nameOf(state, upgrade), 'When Defeated', scriptOf(state, upgrade).attachedWhenDefeated, {
       id: upgrade.id,
       controller: p,
       def: def(state, upgrade),
@@ -529,7 +553,7 @@ function defeatUnit(state: GameState, unit: UnitState) {
   log(state, `${nameOf(state, unit)} is defeated`, p)
   // A unit defeated in an attack knows it: "If this unit was defending, …"
   const inAttack = state.attack && (state.attack.attacker === unit.id || state.attack.target === unit.id) ? state.attack : undefined
-  queue(state, p, nameOf(state, unit), unitScript(state, unit).whenDefeated, {
+  queue(state, p, nameOf(state, unit), 'When Defeated', unitScript(state, unit).whenDefeated, {
     id: unit.id,
     controller: p,
     def: def(state, unit),
@@ -1078,19 +1102,19 @@ function playCard(state: GameState, p: PlayerId, id: string, attachTo?: string, 
     const unit: UnitState = { ...card, owner: p, arena: d.arena ?? 'ground', damage: 0, exhausted: true, upgrades: [], entered: state.phaseCount }
     player.units.push(unit)
     log(state, `${player.name} plays ${d.name}${using}`, p)
-    queue(state, p, d.name, scriptOf(state, card).whenPlayed, self)
+    queue(state, p, d.name, 'When Played', scriptOf(state, card).whenPlayed, self)
     if (options.awakened) queueWakeUp(state, p, unit.id)
     queueAmbush(state, p, unit)
   } else if (d.keywords.fortify) {
     // 7.5.21: onto its player's own base
     baseUpgrades(state, p).push({ ...card, owner: p })
     log(state, `${player.name} attaches ${d.name} to ${nameOf(state, player.base)}${using}`, p)
-    queue(state, p, d.name, scriptOf(state, card).whenPlayed, { ...self, other: baseId(p), attachedTo: baseId(p) })
+    queue(state, p, d.name, 'When Played', scriptOf(state, card).whenPlayed, { ...self, other: baseId(p), attachedTo: baseId(p) })
   } else if (d.type === 'upgrade') {
     const unit = findUnit(state, attachTo as string) as UnitState
     unit.upgrades.push({ ...card, owner: p })
     log(state, `${player.name} attaches ${d.name} to ${nameOf(state, unit)}${using}`, p)
-    queue(state, p, d.name, scriptOf(state, card).whenPlayed, { ...self, other: unit.id })
+    queue(state, p, d.name, 'When Played', scriptOf(state, card).whenPlayed, { ...self, other: unit.id })
   } else {
     // An event resolves its text, then goes to the discard pile
     log(state, `${player.name} plays ${d.name}${using}`, p)
@@ -1212,12 +1236,12 @@ function attack(state: GameState, p: PlayerId, attackerId: string, target: strin
   log(state, `${player.name} attacks ${defenderName} with ${nameOf(state, attacker)}`, p)
   exhaustUnit(state, attacker)
   const self: Self = { id: attackerId, controller: p, def: def(state, attacker), attack: { attacker: attackerId, target } }
-  queue(state, p, nameOf(state, attacker), unitScript(state, attacker).onAttack, self)
+  queue(state, p, nameOf(state, attacker), 'On Attack', unitScript(state, attacker).onAttack, self)
   trigger(state, p, 'whenFriendlyAttacks', { other: attackerId, attack: self.attack }, attackerId)
   trigger(state, other(p), 'whenEnemyAttacks', { other: attackerId, attack: self.attack })
   const defending = target === 'base' ? undefined : findUnit(state, target)
   if (defending)
-    queue(state, other(p), nameOf(state, defending), unitScript(state, defending).whenDefending, {
+    queue(state, other(p), nameOf(state, defending), 'when defending', unitScript(state, defending).whenDefending, {
       id: defending.id,
       controller: other(p),
       def: def(state, defending),
@@ -1259,7 +1283,7 @@ function attack(state: GameState, p: PlayerId, attackerId: string, target: strin
     // "When this unit completes an attack:"
     const after = findUnit(state, attackerId)
     if (after && state.winner === null) {
-      queue(state, p, nameOf(state, after), unitScript(state, after).afterAttack, { id: after.id, controller: p, def: def(state, after) })
+      queue(state, p, nameOf(state, after), 'after attacking', unitScript(state, after).afterAttack, { id: after.id, controller: p, def: def(state, after) })
       resolveTriggers(state)
     }
   }
@@ -1300,7 +1324,7 @@ function deploy(state: GameState, p: PlayerId) {
   }
   player.units.push(unit)
   log(state, `${player.name} deploys ${nameOf(state, player.leader)}`, p)
-  queue(state, p, nameOf(state, unit), scriptOf(state, unit, 'back').whenDeployed, {
+  queue(state, p, nameOf(state, unit), 'When Deployed', scriptOf(state, unit, 'back').whenDeployed, {
     id: unit.id,
     controller: p,
     def: def(state, unit),

@@ -1267,6 +1267,12 @@
   margin: 0 0 1rem;
   font-weight: 700;
 }
+/* A pick on the board: what to click, under the card that asks */
+.sim-choice p.sim-choice-hint {
+  margin: 0.8rem 0 0;
+  font-weight: 400;
+  opacity: 0.75;
+}
 .sim-choice-cards {
   display: flex;
   flex-wrap: wrap;

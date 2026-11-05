@@ -48,6 +48,15 @@ const defs: CardDef[] = [
   card('levenbrech', { ...scripted('Sardaukar Levenbrech'), cost: 3, power: 4, hp: 3, traits: ['Sardaukar'] }),
   card('shield', { ...scripted('Personal Shield'), type: 'upgrade', cost: 3, power: 1, hp: 1, arena: undefined }),
   card('feyd', { ...scripted('Feyd-Rautha Harkonnen'), cost: 5, power: 5, hp: 5 }),
+  card('jessica', leaderOf('Lady Jessica', 'Bene Gesserit', { power: 3, hp: 6 })),
+  card('jessicaUnit', {
+    ...scripted('Lady Jessica', 'Mother of the Kwisatz Haderach'),
+    cost: 5,
+    power: 3,
+    hp: 6,
+    traits: ['Bene Gesserit'],
+    keywords: { restore: 3, ambush: true },
+  }),
 ]
 
 const act = (state: GameState, p: PlayerId, action: Action) => applyAction(state, p, action)
@@ -183,4 +192,14 @@ test('Feyd-Rautha gives a Weakness token to the unit that attacks him', () => {
   assert.equal(state.players[1].units[0].damage, 4)
   assert.equal(state.players[0].units.length, 0)
   assert.deepEqual(state.players[0].discard.map((c) => c.def), ['big'])
+})
+
+test('two abilities of cards with one name are told apart by their trigger (Jessica, leader and unit)', () => {
+  let state = table({ leader0: 'jessica', hand0: ['jessicaUnit'], units1: ['trooper'] })
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  assert.equal(state.prompt!.text, 'Choose the ability to resolve first')
+  assert.deepEqual(
+    state.prompt!.options.map((o) => o.label),
+    ['Lady Jessica: When Played', 'Lady Jessica: Ambush', 'Lady Jessica (leader): when you play a Bene Gesserit card'],
+  )
 })

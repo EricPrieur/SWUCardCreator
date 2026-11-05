@@ -418,6 +418,17 @@ const dune: CardScript[] = [
     },
   },
   {
+    name: 'Shishakli',
+    subtitle: 'Sietch Raider',
+    text: 'Whenever you play a [{Trick}] event, ready this unit.',
+    front: {
+      triggersIf: { whenYouPlay: (g, self) => isTrickEvent(self.otherDef) && !!g.unit(self.id)?.exhausted },
+      whenYouPlay: (g, self) => {
+        if (isTrickEvent(self.otherDef) && g.unit(self.id)?.exhausted) g.ready(self.id)
+      },
+    },
+  },
+  {
     name: 'Sietch Sayyadina',
     text: '[Restore 1]\n[When Played:] Draw a card. Then, discard a card from your hand.',
     front: {
@@ -531,12 +542,12 @@ const dune: CardScript[] = [
   },
   {
     name: 'Spice Smuggler',
-    text: '[When Played:] Create a Spice token.\n[Smuggle [[3 Cunning]]]\n[When played using Smuggle:] Create a Spice token.',
+    text: '[When Played:] Create a Spice token.\n[Smuggle] [[3 Cunning]]\n[When played using Smuggle:] Create a Spice token.',
     front: { whenPlayed: (g, self) => g.createSpice(self.controller, self.smuggled ? 2 : 1) },
   },
   {
     name: "Smuggler's 'Thopter",
-    text: "[When Played:] Create a Spice token. If you control a [{Spacing Guild}] unit, draw a card.\n[Smuggle [[4 Cunning]]]\n[When played using Smuggle:] Create a Spice token.",
+    text: "[When Played:] Create a Spice token. If you control a [{Spacing Guild}] unit, draw a card.\n[Smuggle] [[4 Cunning]]\n[When played using Smuggle:] Create a Spice token.",
     front: {
       whenPlayed: (g, self) => {
         g.createSpice(self.controller)
@@ -547,12 +558,12 @@ const dune: CardScript[] = [
   },
   {
     name: 'Smuggled Spice',
-    text: 'Create a Spice token.\n[Smuggle [[2 Cunning]]]\n[When played using Smuggle:] Create another Spice token.',
+    text: 'Create a Spice token.\n[Smuggle] [[2 Cunning]]\n[When played using Smuggle:] Create another Spice token.',
     front: { play: (g, self) => g.createSpice(self.controller, self.smuggled ? 2 : 1) },
   },
   {
     name: "Tuek's Go-Between",
-    text: '[When Played:] You may play a [{Trick}] event from your discard pile. It costs [2] less.\n[Smuggle [[4 Cunning]]]',
+    text: '[When Played:] You may play a [{Trick}] event from your discard pile. It costs [2] less.\n[Smuggle] [[4 Cunning]]',
     front: {
       whenPlayed: (g, self) => {
         const p = self.controller
@@ -634,6 +645,69 @@ const dune: CardScript[] = [
       whenDefeated: (g, self) => {
         g.createToken(self.controller, 'Fremen')
       },
+    },
+  },
+  {
+    name: 'Fremen Sandwalker',
+    text: 'While you control an [{Arrakis}] base, this unit gains [Hidden].\n[On Attack:] You may exhaust an enemy ground unit that costs [#3] or less.',
+    front: {
+      onAttack: (g, self) => {
+        const targets = unitIds(g, (u) => g.controller(u) !== self.controller && u.arena === 'ground' && !u.exhausted && g.cost(u) <= 3)
+        const pick = g.chooseOne(self.controller, 'Fremen Sandwalker: you may exhaust an enemy ground unit that costs 3 or less', targets, {
+          optional: true,
+          ai: 'harm',
+          source: self.def.id,
+        })
+        if (pick) g.exhaust(pick)
+      },
+    },
+  },
+  {
+    name: "Captured 'Thopter",
+    text: '[On Attack:] Deal 1 damage to a ground unit.',
+    front: {
+      onAttack: (g, self) => {
+        const pick = g.chooseOne(self.controller, "Captured 'Thopter: deal 1 damage to a ground unit", unitIds(g, (u) => u.arena === 'ground'), {
+          ai: 'harm',
+          source: self.def.id,
+        })
+        if (pick) g.damage(pick, 1, self)
+      },
+    },
+  },
+  {
+    name: 'Sietch Smuggler Contact',
+    text: '[When Played:] If you control another [{Underworld}] unit, create a Spice token. If you control another [{Fremen}] unit, create a Fremen token.\n[Smuggle] [[5 Cunning Heroism]]',
+    front: {
+      whenPlayed: (g, self) => {
+        const other = (trait: string) => friendlyIds(g, self, (u) => u.id !== self.id && g.hasTrait(u, trait)).length > 0
+        if (other('Underworld')) g.createSpice(self.controller)
+        if (other('Fremen')) g.createToken(self.controller, 'Fremen')
+      },
+    },
+  },
+  {
+    name: 'Fedaykin Night Raiders',
+    text: "While you control an [{Arrakis}] base, this unit gains [Hidden].\n[When Played:] If you control another [{Fremen}] unit, return an enemy non-leader unit that costs [#3] or less to its owner's hand.",
+    front: {
+      whenPlayed: (g, self) => {
+        if (!friendlyIds(g, self, (u) => u.id !== self.id && g.hasTrait(u, 'Fremen')).length) return
+        const targets = unitIds(g, (u) => g.controller(u) !== self.controller && !u.leader && g.cost(u) <= 3)
+        const pick = g.chooseOne(self.controller, "Fedaykin Night Raiders: return an enemy non-leader unit that costs 3 or less to its owner's hand", targets, {
+          ai: 'harm',
+          source: self.def.id,
+        })
+        if (pick) g.returnToHand(pick)
+      },
+    },
+  },
+  {
+    name: 'Korba',
+    subtitle: 'Fedaykin Commander',
+    text: '[When Played/On Attack:] Give an Experience token to each friendly Fremen token.',
+    front: {
+      whenPlayed: (g, self) => korbaTokens(g, self),
+      onAttack: (g, self) => korbaTokens(g, self),
     },
   },
   {
@@ -1706,6 +1780,18 @@ const dune: CardScript[] = [
     },
   },
   {
+    name: "Smugglers' Raid",
+    text: 'Attack with a unit. It gets [+2/+0] for this attack.\n[Smuggle] [[3 Cunning]]\n[When played using Smuggle:] Create a Spice token.',
+    front: {
+      play: (g, self) => {
+        const p = self.controller
+        const pick = g.chooseOne(p, "Smugglers' Raid: attack with a unit", friendlyIds(g, self, (u) => g.canAttack(u.id)), { ai: 'help', source: self.def.id })
+        if (pick) g.attackWith(pick, { power: 2 })
+        if (self.smuggled) g.createSpice(p, 1)
+      },
+    },
+  },
+  {
     name: 'Shigawire Snare',
     text: "Exhaust up to 2 enemy units. You may defeat a friendly Spice token. If you do, choose one of those units. It can't ready this round (including during the regroup phase).",
     front: {
@@ -2243,7 +2329,7 @@ const dune: CardScript[] = [
   // --- Combat ---
   {
     name: 'Stunner Dart',
-    text: 'Exhaust a unit.\n[Smuggle [[1 Cunning]]]',
+    text: 'Exhaust a unit.\n[Smuggle] [[1 Cunning]]',
     front: {
       play: (g, self) => {
         const pick = g.chooseOne(self.controller, 'Stunner Dart: exhaust a unit', unitIds(g, (u) => !u.exhausted), { ai: 'harm', source: self.def.id })
@@ -2997,6 +3083,14 @@ function imperialSpy(g: Game, self: Self) {
     g.log(`${g.player(self.controller).name} puts the top card of ${g.player(foe).name}'s deck on the bottom`, self.controller)
   } else if (where === 2) g.mill(foe, top.id)
 }
+
+// "Give an Experience token to each friendly Fremen token." (Korba)
+function korbaTokens(g: Game, self: Self) {
+  for (const id of friendlyIds(g, self, (u) => !!g.def(u).token && g.def(u).name === 'Fremen')) g.giveToken(id, 'Experience')
+}
+
+// A Trick event played, readying Shishakli
+const isTrickEvent = (d?: CardDef) => d?.type === 'event' && d.traits.includes('Trick')
 
 // "Look at an opponent's hand and choose a card in it. This phase, they can't play cards with that
 // name. Draw a card." (The Voice, Lady Jessica)

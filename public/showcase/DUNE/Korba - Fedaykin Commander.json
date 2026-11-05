@@ -1,0 +1,22 @@
+{
+  "hp": 6,
+  "id": "bd021920-1e5f-45e8-a321-ade85c479397",
+  "art": {
+    "x": 0,
+    "y": 3,
+    "src": "Korba - Fedaykin Commander (art).webp",
+    "zoom": 1
+  },
+  "cost": 6,
+  "name": "Korba",
+  "text": "[When Played/On Attack:] Give an Experience token to each friendly Fremen token.",
+  "power": 5,
+  "trait": "Fremen, Fedaykin, Official",
+  "number": "150",
+  "rarity": "R",
+  "unique": true,
+  "frameId": "unit-cunning-heroism",
+  "setCode": "DUNE",
+  "language": "EN",
+  "subtitle": "Fedaykin Commander"
+}

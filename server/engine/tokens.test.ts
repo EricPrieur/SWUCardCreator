@@ -88,11 +88,18 @@ const defs: CardDef[] = [
   card('aramsham', { ...scriptedBy('Captain Aramsham', 'Sardaukar Hunter'), cost: 4, power: 4, hp: 5, unique: true, traits: ['Emperor', 'Sardaukar', 'Official'] }),
   card('ambusher', { cost: 3, power: 3, hp: 3, text: '[Ambush]' }),
   card('dart', { ...scripted('Stunner Dart'), type: 'event', cost: 1, arena: undefined, aspects: ['Aggression'], traits: ['Trick'] }),
+  card('raid', { ...scripted("Smugglers' Raid"), type: 'event', cost: 2, arena: undefined, aspects: ['Cunning'], traits: ['Trick'] }),
   card('goBetween', { ...scripted("Tuek's Go-Between"), cost: 3, power: 2, hp: 3, traits: ['Underworld'] }),
   card('trick2', { type: 'event', cost: 2, arena: undefined, traits: ['Trick'] }),
   card('jamis', { ...scripted('Jamis'), cost: 3, power: 3, hp: 4, unique: true, traits: ['Fremen'] }),
   card('knife', { type: 'upgrade', cost: 2, power: 1, hp: 0, arena: undefined, traits: ['Item', 'Weapon'] }),
   card('suit', { type: 'upgrade', cost: 1, power: 0, hp: 2, arena: undefined, traits: ['Item', 'Armor'] }),
+  card('sandwalker', { ...scripted('Fremen Sandwalker'), cost: 2, power: 2, hp: 3, traits: ['Fremen', 'Trooper'] }),
+  card('thopter', { ...scripted("Captured 'Thopter"), cost: 3, power: 2, hp: 4, arena: 'space', traits: ['Fremen', 'Vehicle'] }),
+  card('contact', { ...scripted('Sietch Smuggler Contact'), cost: 4, power: 3, hp: 4, traits: ['Fremen', 'Underworld'] }),
+  card('nightRaiders', { ...scripted('Fedaykin Night Raiders'), cost: 5, power: 4, hp: 5, traits: ['Fremen', 'Fedaykin', 'Trooper'] }),
+  card('shishakli', { ...scriptedBy('Shishakli', 'Sietch Raider'), cost: 1, power: 2, hp: 2, unique: true, traits: ['Fremen', 'Trooper'] }),
+  card('korba', { ...scripted('Korba'), cost: 6, power: 5, hp: 6, unique: true, traits: ['Fremen', 'Fedaykin', 'Official'] }),
 ]
 
 const act = (state: GameState, p: PlayerId, action: Action) => applyAction(state, p, action)
@@ -871,6 +878,33 @@ test('Stunner Dart: exhaust a unit, from the hand or using Smuggle', () => {
   assert.equal(state.players[1].units[0].exhausted, true)
 })
 
+test("Smugglers' Raid: an attack with +2/+0, and a Spice token when played using Smuggle", () => {
+  let state = table({ hand0: ['raid'], units0: ['trooper'] })
+  const spice = state.players[0].spice.length
+  state = settle(act(state, 0, { type: 'play', card: 'h0' }))
+  assert.equal(state.players[1].base.damage, 4, 'the Trooper attacks the base with 2 + 2')
+  assert.equal(state.players[0].spice.length, spice, 'no Spice from the hand')
+  // Smuggle 3, Cunning off-aspect: 3 + 2
+  state = table({ units0: ['trooper'] })
+  state.players[0].resources[0].card = { id: 'rr', def: 'raid' }
+  state = settle(act(state, 0, { type: 'play', card: 'rr', smuggle: true }))
+  assert.equal(state.players[1].base.damage, 4)
+  assert.equal(state.players[0].spice.length, spice + 1, 'a Spice token for the Smuggle')
+})
+
+test('Shishakli: ready again when you play a Trick event, after it resolves', () => {
+  let state = table({ hand0: ['raid', 'dart'], units0: ['shishakli'] })
+  state = settle(act(state, 0, { type: 'play', card: 'h0' }))
+  assert.equal(state.players[1].base.damage, 4, 'he attacks the base with 2 + 2')
+  assert.equal(state.players[0].units[0].exhausted, false, 'and is ready again')
+  // Each Trick, not once each round
+  state.players[0].units[0].exhausted = true
+  for (const r of state.players[0].resources) r.exhausted = false
+  state.active = 0
+  state = settle(act(state, 0, { type: 'play', card: 'h1' }))
+  assert.equal(state.players[0].units[0].exhausted, false, 'Stunner Dart is a Trick too')
+})
+
 test("Tuek's Go-Between: a Trick event from the discard pile, for 2 less", () => {
   let state = table({ hand0: ['goBetween'], units1: ['big'] })
   state.players[0].discard = [
@@ -889,3 +923,63 @@ test("Tuek's Go-Between: a Trick event from the discard pile, for 2 less", () =>
   assert.equal(state.players[1].units[0].exhausted, true)
 })
 
+
+// Enough ready resources to play anything off-aspect
+const rich = (state: GameState) => {
+  state.players[0].resources = Array.from({ length: 12 }, (_, i) => ({ card: { id: `rr${i}`, def: 'trooper' }, exhausted: false }))
+  return state
+}
+
+test('Fremen Sandwalker: on attack, may exhaust an enemy ground unit that costs 3 or less', () => {
+  let state = table({ units0: ['sandwalker'], units1: ['trooper', 'big'] })
+  state = act(state, 0, { type: 'attack', attacker: 'u00', target: 'base' })
+  assert.deepEqual(state.prompt?.options.filter((o) => o.id !== 'none').map((o) => o.id), ['u10'], 'not the 5-cost unit')
+  state = answer(state, 'u10')
+  assert.equal(state.players[1].units[0].exhausted, true)
+  assert.equal(state.players[1].base.damage, 2)
+})
+
+test("Captured 'Thopter: on attack, 1 damage to a ground unit", () => {
+  let state = table({ units0: ['thopter'], units1: ['trooper'] })
+  state.players[0].units[0].arena = 'space'
+  state = settle(act(state, 0, { type: 'attack', attacker: 'u00', target: 'base' }))
+  assert.equal(state.players[1].units[0].damage, 1)
+  assert.equal(state.players[1].base.damage, 2)
+})
+
+test('Sietch Smuggler Contact: Spice for another Underworld unit, a Fremen token for another Fremen unit', () => {
+  let state = rich(table({ hand0: ['contact'] }))
+  const spice = state.players[0].spice.length
+  state = settle(act(state, 0, { type: 'play', card: 'h0' }))
+  assert.equal(state.players[0].spice.length, spice, 'alone, nothing: it does not count itself')
+  assert.equal(state.players[0].units.length, 1)
+  state = rich(table({ hand0: ['contact'], units0: ['goBetween', 'fremen'] }))
+  state = settle(act(state, 0, { type: 'play', card: 'h0' }))
+  assert.equal(state.players[0].spice.length, spice + 1)
+  assert.equal(state.players[0].units.filter((u) => state.defs[u.def].token).length, 1, 'a Fremen token')
+})
+
+test('Fedaykin Night Raiders: with another Fremen unit, return an enemy unit that costs 3 or less to hand', () => {
+  let state = rich(table({ hand0: ['nightRaiders'], units1: ['trooper'] }))
+  state = settle(act(state, 0, { type: 'play', card: 'h0' }))
+  assert.equal(state.players[1].units.length, 1, 'no other Fremen unit, nothing returned')
+  state = rich(table({ hand0: ['nightRaiders'], units0: ['fremen'], units1: ['trooper', 'big'] }))
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  assert.deepEqual(state.prompt?.options.map((o) => o.id), ['u10'])
+  state = answer(state, 'u10')
+  assert.deepEqual(state.players[1].units.map((u) => u.id), ['u11'])
+  assert.ok(state.players[1].hand.some((c) => c.def === 'trooper'))
+})
+
+test('Korba: each friendly Fremen token gets an Experience token when he is played and when he attacks', () => {
+  let state = rich(table({ hand0: ['korba'], units0: ['token-fremen', 'fremen'], units1: [] }))
+  state = settle(act(state, 0, { type: 'play', card: 'h0' }))
+  const upgrades = (id: string) => state.players[0].units.find((u) => u.id === id)!.upgrades.length
+  assert.equal(upgrades('u00'), 1, 'the token')
+  assert.equal(upgrades('u01'), 0, 'not a Fremen unit that is not a token')
+  const korba = state.players[0].units.find((u) => u.def === 'korba')!
+  korba.exhausted = false
+  state.active = 0
+  state = settle(act(state, 0, { type: 'attack', attacker: korba.id, target: 'base' }))
+  assert.equal(upgrades('u00'), 2)
+})

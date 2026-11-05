@@ -1,0 +1,19 @@
+{
+  "id": "dcfbdc45-80f5-4c85-a2e3-443fd5743af6",
+  "art": {
+    "x": 0,
+    "y": 26,
+    "src": "Smugglers' Raid (art).webp",
+    "zoom": 1,
+    "rotate": 0
+  },
+  "cost": 2,
+  "name": "Smugglers' Raid",
+  "text": "Attack with a unit. It gets [+2/+0] for this attack.\n[Smuggle] [[3 Cunning]]\n[When played using Smuggle:] Create a Spice token.",
+  "trait": "Trick",
+  "number": "166",
+  "rarity": "C",
+  "frameId": "event-cunning",
+  "setCode": "DUNE",
+  "language": "EN"
+}

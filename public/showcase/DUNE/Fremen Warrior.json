@@ -16,7 +16,7 @@
     "frameOpacity": 1
   },
   "name": "Fremen Warrior",
-  "text": "While you control an [Arrakis] base, this unit gains [HIDDEN].",
+  "text": "While you control an [{Arrakis}] base, this unit gains [Hidden]",
   "power": 3,
   "trait": "Fremen, Trooper",
   "number": "139",

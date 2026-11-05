@@ -1,0 +1,21 @@
+{
+  "hp": 3,
+  "id": "a97c85ec-2d72-4f20-8c1c-25f152fc8b11",
+  "art": {
+    "x": 0,
+    "y": -6,
+    "src": "Fremen Sandwalker (art).webp",
+    "zoom": 1
+  },
+  "cost": 2,
+  "name": "Fremen Sandwalker",
+  "text": "While you control an [{Arrakis}] base, this unit gains [Hidden].\n[On Attack:] You may exhaust an enemy ground unit that costs [#3] or less.",
+  "power": 2,
+  "trait": "Fremen, Trooper",
+  "number": "142",
+  "rarity": "C",
+  "unique": false,
+  "frameId": "unit-cunning-heroism",
+  "setCode": "DUNE",
+  "language": "EN"
+}

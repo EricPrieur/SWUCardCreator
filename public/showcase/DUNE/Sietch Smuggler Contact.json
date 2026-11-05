@@ -1,0 +1,21 @@
+{
+  "hp": 4,
+  "id": "3a8b66f3-6fb7-479b-b28d-ef820edf9c8a",
+  "art": {
+    "x": 2,
+    "y": -19,
+    "src": "Sietch Smuggler Contact (art).webp",
+    "zoom": 1.24
+  },
+  "cost": 4,
+  "name": "Sietch Smuggler Contact",
+  "text": "[When Played:] If you control another [{Underworld}] unit, create a Spice token. If you control another [{Fremen}] unit, create a Fremen token.\n[Smuggle] [[5 Cunning Heroism]]",
+  "power": 3,
+  "trait": "Fremen, Underworld",
+  "number": "147",
+  "rarity": "U",
+  "unique": false,
+  "frameId": "unit-cunning-heroism",
+  "setCode": "DUNE",
+  "language": "EN"
+}

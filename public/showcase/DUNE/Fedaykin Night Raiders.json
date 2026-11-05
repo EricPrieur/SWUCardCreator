@@ -1,0 +1,22 @@
+{
+  "hp": 5,
+  "id": "dd02a6f8-dfd1-4a5b-b26f-ae2696a6f65d",
+  "art": {
+    "x": 0,
+    "y": -13,
+    "src": "Fedaykin Night Raiders (art).webp",
+    "zoom": 1,
+    "rotate": 0
+  },
+  "cost": 5,
+  "name": "Fedaykin Night Raiders",
+  "text": "While you control an [{Arrakis}] base, this unit gains [Hidden].\n[When Played:] If you control another [{Fremen}] unit, return an enemy non-leader unit that costs [#3] or less to its owner's hand.",
+  "power": 4,
+  "trait": "Fremen, Fedaykin, Trooper",
+  "number": "149",
+  "rarity": "U",
+  "unique": false,
+  "frameId": "unit-cunning-heroism",
+  "setCode": "DUNE",
+  "language": "EN"
+}

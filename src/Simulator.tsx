@@ -160,7 +160,8 @@ function DeckPicker(props: {
   const chosen = props.value.startsWith('deck:') ? decks.find((deck) => `deck:${deck.id}` === props.value) : undefined
   // A remembered deck that is gone is a random one
   const value = props.value.startsWith('deck:') && !chosen ? 'random-generated' : props.value
-  const groups = [FEATURED, ...deckSources.map(({ from }) => from)].map((from) => ({ from, decks: decks.filter((deck) => deck.from === from) }))
+  // Your own decks first, the ones that ship with the site last
+  const groups = [...deckSources.map(({ from }) => from), FEATURED].map((from) => ({ from, decks: decks.filter((deck) => deck.from === from) }))
   const about: Record<string, string> = {
     'random-generated': `A random leader and base, with 50 cards of the ${SET} set they can pay for.`,
     random: decks.length ? 'One of the decks in this list, picked at random.' : 'There are no decks yet: a random deck is made instead.',
@@ -702,6 +703,9 @@ function Table(props: {
   const harmful = !!asked && /discard/i.test(asked.text)
   // A question about a card off the board is asked beside it, apart from the board
   const apart = !!shown.length || !!asked?.card || !!menu
+  // Every question you're asked is in the window that moves, a pick on the board too (an Ambush's
+  // target): the board stays clickable, and the window says what for
+  const windowed = apart || !!asked
   // Who goes first and the mulligan are asked big, in the middle of the board
   const setup = !view.prompt && (view.phase === 'first' || view.phase === 'mulligan')
 
@@ -1232,15 +1236,15 @@ function Table(props: {
               ))}
           {!side.hand && <span className="sim-count hand">{side.handCount}</span>}
         </div>
-        {who === 'me' && !apart && !setup && (
+        {who === 'me' && !windowed && !setup && (
           <div className="sim-actions">
             {/* First, so at the bottom: the move the game goes on with is on top */}
             <button type="button" className="sim-button undo" disabled={!props.onUndo} title="Take back your last move (and the AI's since)" onClick={undo}>
               ↶ Undo
             </button>
             {numberList}
-            {buttons.map((b) => (
-              <button key={b.label} type="button" className={`sim-button ${b.kind ?? ''}`} disabled={b.disabled} onClick={b.onClick}>
+            {buttons.map((b, i) => (
+              <button key={i} type="button" className={`sim-button ${b.kind ?? ''}`} disabled={b.disabled} onClick={b.onClick}>
                 {b.label}
               </button>
             ))}
@@ -1588,7 +1592,7 @@ function Table(props: {
           <div className="sim-centre">
             {leaderCard(opp)}
             {baseCard(opp)}
-            <div className="sim-prompt">{prompt && !setup && <span>{apart ? 'Choose…' : promptText}</span>}</div>
+            <div className="sim-prompt">{prompt && !setup && <span>{windowed ? 'Choose…' : promptText}</span>}</div>
             {baseCard(me)}
             {leaderCard(me)}
           </div>
@@ -1715,7 +1719,7 @@ function Table(props: {
           </div>
         </div>
       )}
-      {apart && asked && choiceHidden === askedKey && (
+      {windowed && asked && choiceHidden === askedKey && (
         <button
           type="button"
           className="sim-button go sim-choice-reveal"
@@ -1725,7 +1729,7 @@ function Table(props: {
           Reveal
         </button>
       )}
-      {apart && asked && choiceHidden !== askedKey && (
+      {windowed && asked && choiceHidden !== askedKey && (
         <div
           className="sim-choice movable"
           style={{ transform: `translate(calc(-50% + ${choiceAt.x}px), calc(-50% + ${choiceAt.y}px))` }}
@@ -1735,6 +1739,10 @@ function Table(props: {
           <div className="sim-choice-cards">
             {asked.card && (
               <img src={img(imageOf(asked.card) ?? '')} alt={defOf(asked.card).name} onMouseEnter={look(imageOf(asked.card))} onMouseLeave={leave} />
+            )}
+            {/* A pick on the board: the card that asks, and what to click */}
+            {!apart && asker && (
+              <img src={img(imageOf(asker.id) ?? '')} alt={asker.name} onMouseEnter={look(imageOf(asker.id), asker.type === 'leader' || asker.type === 'base')} onMouseLeave={leave} />
             )}
             {shown.map((o) => {
               const image = o.def ? imageOf(o.def) : undefined
@@ -1752,13 +1760,19 @@ function Table(props: {
               )
             })}
           </div>
+          {!apart && asked.kind === 'pick' && (
+            <p className="sim-choice-hint">
+              {asked.max > 1 ? 'Click highlighted cards' : 'Click a highlighted card'}
+              {asked.options.some((o) => boardIds.has(o.id)) ? ' on the board' : ' in your hand'}.
+            </p>
+          )}
           <div className="sim-choice-buttons">
             <button type="button" className="sim-button sim-choice-hide" onClick={() => setChoiceHidden(askedKey)}>
               Hide
             </button>
             {numberList}
-            {buttons.map((b) => (
-              <button key={b.label} type="button" className={`sim-button ${b.kind ?? ''}`} disabled={b.disabled} onClick={b.onClick}>
+            {buttons.map((b, i) => (
+              <button key={i} type="button" className={`sim-button ${b.kind ?? ''}`} disabled={b.disabled} onClick={b.onClick}>
                 {b.label}
               </button>
             ))}
