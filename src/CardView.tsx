@@ -487,6 +487,91 @@ function frameParts(frame: Frame, look: Look) {
   return keep || solid.length ? [...parts, ...solid] : parts
 }
 
+// Where a unit's power and HP icons sit, and their outlines there, x and y by turns: what is
+// the same on every unit frame, the shadow under each with it, a pixel more where the frame is
+// clear around, and none of the trait bar or text box beside them
+const UNIT_STATS_Y = 638
+const POWER_OUTLINE = [
+  73, 577, 73, 578, 71, 578, 70, 580, 68, 580, 66, 582, 48, 582, 46, 584, 46, 587, 45, 587, 46, 589, 44, 590, 44,
+  592, 42, 594, 40, 594, 38, 596, 33, 596, 32, 598, 27, 598, 25, 600, 27, 615, 29, 616, 29, 661, 28, 661, 28, 665,
+  27, 665, 28, 676, 33, 677, 33, 678, 37, 678, 37, 679, 42, 680, 42, 681, 45, 681, 47, 686, 48, 686, 49, 691, 66,
+  691, 66, 692, 68, 692, 70, 694, 78, 694, 78, 693, 80, 693, 82, 691, 99, 691, 99, 688, 102, 685, 103, 681, 109, 680,
+  109, 679, 111, 679, 113, 677, 116, 677, 116, 676, 120, 676, 118, 662, 117, 662, 116, 627, 117, 627, 118, 622, 119,
+  622, 118, 619, 119, 619, 119, 614, 120, 614, 120, 610, 121, 610, 120, 608, 122, 606, 122, 600, 120, 598, 114, 597,
+  114, 595, 112, 593, 106, 593, 103, 590, 104, 587, 102, 586, 103, 583, 101, 581, 80, 581, 80, 580, 77, 580, 74, 577,
+]
+const HP_OUTLINE = [
+  648, 584, 648, 585, 628, 585, 628, 586, 617, 587, 616, 589, 609, 590, 609, 591, 599, 591, 593, 597, 593, 601, 594,
+  601, 593, 605, 594, 606, 593, 606, 593, 612, 590, 614, 590, 618, 591, 618, 591, 625, 592, 625, 592, 628, 594, 630,
+  594, 635, 595, 635, 595, 638, 596, 638, 595, 646, 594, 646, 594, 649, 592, 651, 592, 659, 593, 659, 593, 663, 594,
+  663, 595, 670, 596, 670, 596, 684, 598, 684, 600, 686, 611, 686, 613, 688, 616, 688, 616, 689, 618, 689, 620, 691,
+  624, 691, 624, 692, 654, 692, 656, 690, 659, 690, 660, 688, 663, 688, 664, 686, 677, 686, 677, 685, 679, 685, 682,
+  682, 683, 668, 684, 668, 685, 661, 686, 661, 686, 650, 685, 650, 685, 646, 684, 646, 684, 643, 683, 643, 683, 638,
+  684, 638, 684, 633, 686, 631, 686, 622, 687, 622, 687, 619, 689, 618, 688, 617, 689, 613, 687, 611, 683, 610, 683,
+  605, 684, 605, 683, 599, 684, 599, 684, 596, 680, 592, 677, 592, 677, 591, 665, 591, 664, 589, 662, 589, 660, 587,
+  651, 586, 649, 584,
+]
+
+// An upgrade's power and HP modifiers, where they sit and their outlines there, traced the same
+// way on the upgrade frames. They come from different scans, a pixel or two apart: each
+// outline is the widest, its border kept on all of them. Under them, the shadow goes into the
+// card's dark bottom edge, which fades with the frame
+const UPGRADE_POWER_Y = 890
+const UPGRADE_HP_Y = 888
+const UPGRADE_POWER_OUTLINE = [
+  72, 830, 72, 831, 67, 831, 67, 833, 64, 833, 63, 835, 48, 835, 48, 836, 47, 836, 47, 838, 46, 838, 46, 840, 45,
+  840, 43, 843, 39, 843, 38, 845, 34, 845, 33, 847, 28, 847, 28, 848, 26, 848, 26, 849, 25, 849, 25, 853, 26, 853,
+  25, 858, 28, 860, 28, 862, 29, 862, 29, 867, 30, 867, 30, 869, 29, 869, 29, 873, 30, 873, 30, 876, 29, 876, 29,
+  878, 30, 878, 30, 894, 29, 894, 29, 900, 30, 900, 30, 912, 29, 912, 29, 916, 28, 916, 28, 922, 27, 922, 28, 924,
+  27, 924, 27, 926, 28, 926, 28, 927, 31, 927, 31, 928, 34, 928, 34, 929, 36, 930, 36, 932, 37, 932, 37, 933, 43,
+  933, 43, 937, 44, 940, 48, 943, 56, 946, 80, 946, 100, 944, 108, 941, 111, 938, 111, 937, 111, 936, 109, 936, 106,
+  932, 113, 931, 113, 929, 116, 929, 117, 927, 120, 927, 120, 926, 122, 925, 122, 924, 121, 924, 121, 917, 120, 917,
+  120, 913, 119, 913, 119, 894, 120, 894, 120, 883, 119, 883, 119, 863, 120, 863, 120, 858, 121, 858, 121, 854, 122,
+  854, 122, 853, 121, 853, 121, 850, 116, 850, 116, 849, 111, 848, 111, 846, 106, 845, 109, 841, 103, 841, 103, 839,
+  101, 838, 101, 834, 86, 834, 86, 833, 80, 833, 78, 830,
+]
+const UPGRADE_HP_OUTLINE = [
+  597, 836, 597, 837, 602, 838, 603, 840, 605, 840, 605, 841, 607, 842, 607, 843, 597, 843, 597, 844, 596, 844, 596,
+  846, 595, 846, 595, 862, 594, 862, 594, 864, 593, 864, 593, 868, 592, 868, 592, 880, 593, 880, 593, 883, 592, 883,
+  592, 890, 591, 890, 591, 893, 592, 893, 592, 917, 593, 917, 593, 926, 594, 926, 594, 929, 595, 929, 595, 934, 596,
+  934, 596, 936, 597, 936, 598, 938, 600, 940, 612, 943, 632, 945, 650, 945, 662, 943, 672, 940, 681, 938, 683, 938,
+  682, 918, 684, 917, 684, 910, 685, 910, 685, 907, 686, 907, 686, 906, 685, 906, 686, 902, 685, 902, 685, 900, 684,
+  900, 684, 896, 683, 896, 684, 881, 685, 881, 685, 878, 686, 878, 686, 870, 685, 870, 685, 865, 684, 865, 684, 862,
+  683, 862, 683, 853, 681, 852, 681, 849, 683, 848, 683, 846, 682, 846, 682, 844, 681, 844, 679, 841, 677, 841, 677,
+  840, 661, 839, 660, 837, 653, 837, 653, 836,
+]
+
+// An event's column of aspect icons, for one, two or three icons. Around them the frame is
+// not clear but the white text panel and its colored tab, so they are cut to the icons
+// themselves: the first as on the unit frames, those under it as tools/compose_frames.py
+// prints them, from their alpha, only the pixels more icon than frame (the soft edge of
+// their shadow, blended into the panel, would show as a pale fringe). Under the last icon,
+// only its dark shadow, as dark on every event frame with that many icons: past it, the tab
+const EVENT_ASPECTS_OUTLINES = [
+  [
+    34, 117, 34, 187, 44, 187, 44, 188, 46, 188, 46, 189, 50, 189, 50, 190, 55, 190, 55, 191, 59, 191, 59, 192, 63,
+    192, 63, 193, 66, 193, 66, 194, 71, 194, 71, 195, 75, 195, 75, 194, 80, 194, 80, 193, 82, 193, 82, 192, 87, 192,
+    87, 191, 90, 191, 90, 190, 95, 190, 95, 189, 98, 189, 98, 188, 101, 188, 101, 187, 108, 187, 108, 117,
+  ],
+  [
+    34, 117, 34, 187, 40, 187, 40, 188, 44, 188, 44, 189, 43, 189, 43, 190, 39, 190, 39, 191, 37, 191, 37, 256, 38,
+    256, 38, 257, 39, 257, 39, 258, 44, 258, 44, 259, 46, 259, 46, 260, 52, 260, 52, 261, 56, 261, 56, 262, 60, 262,
+    60, 263, 64, 263, 64, 264, 67, 264, 67, 265, 71, 265, 71, 266, 72, 266, 72, 265, 78, 265, 78, 264, 81, 264, 81,
+    263, 84, 263, 84, 262, 88, 262, 88, 261, 93, 261, 93, 260, 95, 260, 95, 259, 98, 259, 98, 258, 103, 258, 103,
+    257, 108, 257, 108, 191, 106, 191, 106, 190, 102, 190, 102, 189, 100, 189, 100, 188, 103, 188, 103, 187, 108,
+    187, 108, 117,
+  ],
+  [
+    34, 117, 34, 187, 40, 187, 40, 188, 44, 188, 44, 189, 43, 189, 43, 190, 39, 190, 39, 191, 37, 191, 37, 256, 38,
+    256, 38, 258, 42, 258, 42, 259, 39, 259, 39, 260, 37, 260, 37, 325, 38, 325, 38, 326, 39, 326, 39, 327, 43, 327,
+    43, 328, 48, 328, 48, 329, 51, 329, 51, 330, 56, 330, 56, 331, 59, 331, 59, 332, 63, 332, 63, 333, 66, 333, 66,
+    334, 72, 334, 72, 335, 75, 335, 75, 334, 79, 334, 79, 333, 81, 333, 81, 332, 86, 332, 86, 331, 89, 331, 89, 330,
+    94, 330, 94, 329, 97, 329, 97, 328, 100, 328, 100, 327, 106, 327, 106, 326, 108, 326, 108, 260, 106, 260, 106,
+    259, 103, 259, 103, 258, 107, 258, 107, 257, 108, 257, 108, 191, 106, 191, 106, 190, 102, 190, 102, 189, 100,
+    189, 100, 188, 103, 188, 103, 187, 108, 187, 108, 117,
+  ],
+]
+
 // What stays solid while the frame fades, as clip-path shapes. Text boxes: the game
 // text box (on a pilot, the Piloting box with it), and the name and subtitle bars.
 // Icons: cost, aspects, power and HP, the upgrade's modifiers among them, each cut
@@ -548,46 +633,93 @@ function solidAreas(frame: Frame, text: boolean, icons: boolean): string[] {
   }
   if (icons) {
     // Each icon's outline around where its number is printed, as measured on the frames
-    if (frame.cost) {
+    // The cost icon on a card standing up is the same on every frame, wherever its number sits:
+    // a point on top, corners 12 px lower, and two lobes under it, its border all kept
+    if (frame.cost && frame.height > frame.width) {
+      areas.push(
+        polygon([
+          [27, 40],
+          [72.5, 27],
+          [117, 40],
+          [117, 117],
+          [100, 121],
+          [45, 121],
+          [27, 117],
+        ]),
+      )
+    } else if (frame.cost) {
       const { x, y } = frame.cost
       areas.push(hexagon(x - 43, y - 38, x + 42, y + 43))
     }
+    // The power and HP icons cut to their outlines as traced on the frames: a unit's (a pilot's
+    // 118 px higher), and an upgrade's modifiers (a pilot's too, where they print the same).
+    // Any other, to the shapes below
+    const traced = (spot: { y: number }, outlines: [number, number[]][]) => {
+      for (const [y, outline] of outlines) {
+        const dy = spot.y - y
+        if (dy !== 0 && !(y === UNIT_STATS_Y && dy === -118)) continue
+        const points: [number, number][] = []
+        for (let i = 0; i < outline.length; i += 2) points.push([outline[i], outline[i + 1] + dy])
+        areas.push(polygon(points))
+        return true
+      }
+      return false
+    }
+    const powerOutlines: [number, number[]][] = [
+      [UNIT_STATS_Y, POWER_OUTLINE],
+      [UPGRADE_POWER_Y, UPGRADE_POWER_OUTLINE],
+    ]
+    const hpOutlines: [number, number[]][] = [
+      [UNIT_STATS_Y, HP_OUTLINE],
+      [UPGRADE_HP_Y, UPGRADE_HP_OUTLINE],
+    ]
     for (const spot of [frame.power, frame.upgradePower]) {
-      if (spot) areas.push(gem(spot.x, spot.y))
+      if (spot && !traced(spot, powerOutlines)) areas.push(gem(spot.x, spot.y))
     }
     // Its left edge stops short of the notch in the gem, where the frame's border (its
     // aspect's color on a Heroism frame) shows through
     for (const spot of [frame.hp, frame.upgradeHp]) {
-      if (spot) areas.push(round(spot.x - 41, spot.y - 48, spot.x + 45, spot.y + 49))
+      if (spot && !traced(spot, hpOutlines)) areas.push(round(spot.x - 41, spot.y - 48, spot.x + 45, spot.y + 49))
     }
     // The aspect icons: under the cost on most cards, one under another; down the
     // right side on a leader
-    frame.aspects.forEach((_, index) => {
-      if (frame.type === 'Leader') {
+    if (frame.type === 'Leader') {
+      frame.aspects.forEach((_, index) => {
         const x0 = frame.width > frame.height ? 878 : 598
         areas.push(hexagon(x0, 28 + index * 111, x0 + 90, 126 + index * 111))
-      } else {
-        // Cut to the icon and the dark plinth under it, no wider: on an event the white
-        // text panel starts just right of it. A third icon sits 69 px under the second
-        // (tools/compose_frames.py), right on an event's tab: one step lower and a sliver
-        // of the tab shows under it
-        const o = index === 0 ? 0 : 72 + (index - 1) * 69
-        areas.push(
-          polygon([
-            [41, 119 + o],
-            [103, 119 + o],
-            [107, 123 + o],
-            [107, 184 + o],
-            [94, 188 + o],
-            [80, 192 + o],
-            [66, 192 + o],
-            [51, 188 + o],
-            [37, 184 + o],
-            [37, 123 + o],
-          ]),
-        )
-      }
-    })
+      })
+    } else if (frame.type === 'Event' && EVENT_ASPECTS_OUTLINES[frame.aspects.length - 1]) {
+      const outline = EVENT_ASPECTS_OUTLINES[frame.aspects.length - 1]
+      const points: [number, number][] = []
+      for (let i = 0; i < outline.length; i += 2) points.push([outline[i], outline[i + 1]])
+      areas.push(polygon(points))
+    } else if (frame.aspects.length) {
+      // The column of icons, cut as one: around them the frame is clear, but on an event,
+      // where the white text panel starts at x 108, and on an upgrade or fortification, whose
+      // icons' border reaches a pixel wider. At the bottom, the shadow the frame draws under
+      // the last icon, a point 10 px deep. A second icon sits 72 px under the first, a third
+      // 69 px under that (tools/compose_frames.py).
+      const o = frame.aspects.length === 1 ? 0 : 72 + (frame.aspects.length - 2) * 69
+      const right = frame.type === 'Event' ? 108 : 110
+      areas.push(
+        polygon([
+          [34, 117],
+          [right, 117],
+          [right, 186 + o],
+          [104, 188 + o],
+          [96, 190 + o],
+          [87, 192 + o],
+          [80, 194 + o],
+          [77, 196 + o],
+          [71, 196 + o],
+          [65, 194 + o],
+          [57, 192 + o],
+          [49, 190 + o],
+          [43, 188 + o],
+          [34, 186 + o],
+        ]),
+      )
+    }
   }
   return areas
 }

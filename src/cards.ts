@@ -114,6 +114,30 @@ export type Card = {
   hp?: number
   art?: Art
   look?: Look
+  // The Prescient version, a booster's full-art card: its own art or placing of the art,
+  // and its own look. Left out, it is the card's art with prescientLook (see prescientOf).
+  prescient?: Prescient
+}
+
+export type Prescient = { art?: Art; look?: Look }
+
+// The Prescient look: the frame see-through, its icons solid, the text on a half-filled panel
+export const prescientLook: Look = {
+  ...defaultLook,
+  frameOpacity: 0,
+  solidIcons: true,
+  panelFill: 0.5,
+  lightText: true,
+}
+
+// Leaders and bases have slots of their own in a booster, and tokens are not in one
+export const canBePrescient = (type: string) => type !== 'Leader' && type !== 'Base' && type !== 'Token'
+
+// A card as its Prescient version shows it. A card already full art, as legendaries
+// are, keeps its own look until it is given one.
+export function prescientOf<T extends { art?: Art; look?: Look; prescient?: Prescient }>(card: T): T {
+  const look = card.prescient?.look ?? (card.look?.frameOpacity === 0 ? card.look : prescientLook)
+  return { ...card, art: card.prescient?.art ?? card.art, look }
 }
 
 // Leader Unit sides were once cards of their own. Such a card becomes a leader
@@ -191,8 +215,13 @@ export function storeCards(cards: Card[]) {
   }
 }
 
-// A card in a deck: a saved card, by its id, and how many copies
-export type DeckEntry = { id: string; count: number }
+// A card's printings beside the plain one: a booster's Prescient card, a foil, or both at once
+export const cardVersions = ['prescient', 'foil', 'prescient-foil'] as const
+export type CardVersion = (typeof cardVersions)[number]
+
+// A card in a deck: a saved card, by its id, and how many copies; of those, how many are
+// each of its other printings. The rest are plain.
+export type DeckEntry = { id: string; count: number; versions?: Partial<Record<CardVersion, number>> }
 
 export type Deck = {
   id: string
@@ -207,11 +236,24 @@ export type Deck = {
   sideboard: DeckEntry[]
 }
 
-// Decks live in this browser too, beside the cards they are made of
-const DECKS_KEY = 'dune-unlimited.decks'
+// A Sealed pool: the cards opened, each by its id and how many, and how many of those came
+// Prescient or foil. Its decks are made of these alone. Its boosters: how many it has (6
+// unless more were added), how many are opened, and of which set.
+export type SealedPool = {
+  id: string
+  name: string
+  cards: DeckEntry[]
+  boosters?: number
+  opened?: number
+  set?: string
+}
 
-// The Showroom's decks are under DECKS_KEY; a Showcase's under a key of its own
-export function loadDecks(key = DECKS_KEY): Deck[] {
+// Decks live in this browser too, beside the cards they are made of
+export const DECKS_KEY = 'dune-unlimited.decks'
+
+// The Showroom's decks are under DECKS_KEY; a Showcase's under a key of its own. Sealed
+// pools, and each pool's decks, are kept the same way, under keys of their own
+export function loadDecks<T = Deck>(key = DECKS_KEY): T[] {
   try {
     const decks = JSON.parse(localStorage.getItem(key) ?? '[]')
     return Array.isArray(decks) ? decks : []
@@ -234,7 +276,7 @@ export function localDeckLists() {
   return lists.filter(({ decks }) => decks.length)
 }
 
-export function storeDecks(decks: Deck[], key = DECKS_KEY) {
+export function storeDecks<T = Deck>(decks: T[], key = DECKS_KEY) {
   try {
     localStorage.setItem(key, JSON.stringify(decks))
     return true

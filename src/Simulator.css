@@ -1777,3 +1777,36 @@
     text-align: center;
   }
 }
+
+/* A foil copy: a rainbow sheen passing over it, on the board, in hand, in a pile and enlarged */
+.sim-foil::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    120deg,
+    transparent 20%,
+    rgb(255 120 200 / 0.3) 35%,
+    rgb(120 220 255 / 0.3) 45%,
+    rgb(255 240 120 / 0.3) 55%,
+    transparent 70%
+  );
+  background-size: 250% 100%;
+  mix-blend-mode: color-dodge;
+  animation: sim-foil-sheen 3s linear infinite;
+  pointer-events: none;
+}
+
+.sim-choice-cards .sim-foil {
+  position: relative;
+}
+
+@keyframes sim-foil-sheen {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -150% 0;
+  }
+}

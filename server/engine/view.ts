@@ -1,6 +1,6 @@
 import { abilityLabel, handPrice, handRevealed, hpOf, isHidden, keywordsOf, legalActions, powerOf, seesTopCard, waitingFor } from './game.ts'
 import { scriptStatus } from './scripts.ts'
-import type { Action, CardDef, GameState, Inst, Keywords, LogEntry, Phase, PlayerId, Prompt, UnitState, Revealed } from './types.ts'
+import type { Action, CardDef, GameState, Inst, Keywords, LogEntry, Phase, PlayerId, Printing, Prompt, UnitState, Revealed } from './types.ts'
 
 // What one player is shown of the game: the open information, their own hand and resources,
 // and only the size of everything hidden (the opponent's hand and resources, both decks)
@@ -50,6 +50,8 @@ export type PlayerView = {
   abilities: { source: string; index: number; label: string }[]
   // The cards named anywhere in this view, and whether each one's text does anything yet
   defs: Record<string, CardDef & { script: ReturnType<typeof scriptStatus> }>
+  // How the cards seen in this view look, those not plain, by card id
+  printings: Record<string, Printing>
 }
 
 export function viewFor(state: GameState, you: PlayerId): PlayerView {
@@ -77,19 +79,39 @@ export function viewFor(state: GameState, you: PlayerId): PlayerView {
   const asked = prompt && prompt.player === you ? prompt : prompt && { player: prompt.player, text: prompt.text }
 
   const named = new Set<string>()
+  // The cards this view shows face up, by id
+  const seen = new Set<string>()
   if (asked && 'options' in asked) for (const option of asked.options) if (option.def) named.add(option.def)
-  if (asked && 'seen' in asked) for (const card of asked.seen ?? []) named.add(card.def)
+  if (asked && 'seen' in asked)
+    for (const card of asked.seen ?? []) {
+      named.add(card.def)
+      seen.add(card.id)
+    }
   if (asked && 'source' in asked && asked.source) named.add(asked.source)
   if (asked && 'card' in asked && asked.card) named.add(asked.card)
   for (const side of players) {
     named.add(side.leader.def)
     named.add(side.base.def)
-    for (const up of side.base.upgrades ?? []) named.add(up.def)
-    for (const c of [...(side.hand ?? []), ...side.discard, ...side.spice, ...(side.topCard ? [side.topCard] : [])]) named.add(c.def)
-    for (const r of side.resources) if (r.card) named.add(r.card.def)
+    for (const up of side.base.upgrades ?? []) {
+      named.add(up.def)
+      seen.add(up.id)
+    }
+    for (const c of [...(side.hand ?? []), ...side.discard, ...side.spice, ...(side.topCard ? [side.topCard] : [])]) {
+      named.add(c.def)
+      seen.add(c.id)
+    }
+    for (const r of side.resources)
+      if (r.card) {
+        named.add(r.card.def)
+        seen.add(r.card.id)
+      }
     for (const u of side.units) {
       named.add(u.def)
-      for (const up of u.upgrades) named.add(up.def)
+      seen.add(u.id)
+      for (const up of u.upgrades) {
+        named.add(up.def)
+        seen.add(up.id)
+      }
     }
   }
 
@@ -112,5 +134,6 @@ export function viewFor(state: GameState, you: PlayerId): PlayerView {
       a.type === 'ability' ? [{ source: a.source, index: a.index, label: abilityLabel(state, you, a.source, a.index) }] : [],
     ),
     defs: Object.fromEntries([...named].map((id) => [id, { ...state.defs[id], script: scriptStatus(state.defs[id]) }])),
+    printings: Object.fromEntries(Object.entries(state.printings ?? {}).filter(([id]) => seen.has(id))),
   }
 }

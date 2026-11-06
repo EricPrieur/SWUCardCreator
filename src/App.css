@@ -1066,10 +1066,10 @@ input.picker-button::placeholder {
   padding: 0.25rem 0.75rem;
 }
 
-/* The large copy of a small card, following the mouse */
+/* The large copy of a small card, following the mouse, over the booster opening too */
 .hover-preview {
   position: fixed;
-  z-index: 50;
+  z-index: 1001;
   pointer-events: none;
   filter: drop-shadow(0 18px 40px rgb(0 0 0 / 0.7));
 }
@@ -1829,6 +1829,465 @@ input.picker-button::placeholder {
 
 /* The Deck Builder: the deck's bar across the top, the cards to pick from on the
    left, the deck's list on the right, kept in view while the cards scroll */
+/* The Deck Builder's formats over it: Premier, Sealed */
+.deck-formats,
+.sealed {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  width: 100%;
+  max-width: 1400px;
+}
+
+/* Edit the pool or build its decks: tabs among the pool's fields */
+.sealed-modes {
+  border-bottom: 0;
+}
+
+.sealed-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.sealed-hint {
+  margin: 0;
+}
+
+.sealed-boosters {
+  font-variant-numeric: tabular-nums;
+}
+
+.pool-prescient {
+  color: #7fc0ff;
+}
+
+.prescient-note {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin: 0;
+}
+
+/* The deck image is a still: its foils caught mid-sheen */
+.deck-image .foil::after {
+  animation: none;
+  background-position: 30% 0;
+}
+
+.pool-foil {
+  color: #9fe3ff;
+}
+
+.pool-rarity {
+  min-width: 1.4rem;
+  font-size: 0.75rem;
+  opacity: 0.7;
+  text-align: center;
+}
+
+/* The boosters still to open, side by side, a little fanned */
+.booster-shelf {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem 2rem;
+}
+
+.booster-pile {
+  display: flex;
+  padding: 0.5rem 0 0.5rem 1.5rem;
+}
+
+.booster-pile .booster {
+  margin-left: -1.5rem;
+}
+
+.booster-pile .booster:nth-child(odd) {
+  rotate: -2deg;
+}
+
+.booster-pile .booster:nth-child(even) {
+  rotate: 2deg;
+}
+
+.booster-shelf-side {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.booster-shelf-side p {
+  margin: 0;
+}
+
+/* A booster: the card back in a wrapper crimped at both ends */
+.booster {
+  --crimp: polygon(
+    0 2.5%, 5% 0, 10% 2.5%, 15% 0, 20% 2.5%, 25% 0, 30% 2.5%, 35% 0, 40% 2.5%, 45% 0, 50% 2.5%, 55% 0, 60% 2.5%, 65% 0,
+    70% 2.5%, 75% 0, 80% 2.5%, 85% 0, 90% 2.5%, 95% 0, 100% 2.5%,
+    100% 97.5%, 95% 100%, 90% 97.5%, 85% 100%, 80% 97.5%, 75% 100%, 70% 97.5%, 65% 100%, 60% 97.5%, 55% 100%, 50% 97.5%,
+    45% 100%, 40% 97.5%, 35% 100%, 30% 97.5%, 25% 100%, 20% 97.5%, 15% 100%, 10% 97.5%, 5% 100%, 0 97.5%
+  );
+  position: relative;
+  flex: none;
+  width: 120px;
+  aspect-ratio: 5 / 8.4;
+  padding: 0;
+  border: 0;
+  background: #2a1608;
+  clip-path: var(--crimp);
+  filter: drop-shadow(0 6px 10px rgb(0 0 0 / 0.5));
+  cursor: pointer;
+  overflow: hidden;
+  transition: translate 0.2s, rotate 0.2s, scale 0.2s;
+}
+
+.booster:hover,
+.booster:focus-visible {
+  translate: 0 -10px;
+  rotate: 0deg;
+  scale: 1.04;
+  z-index: 1;
+}
+
+.booster-art {
+  position: absolute;
+  inset: 4% 0;
+  background-size: cover;
+  background-position: center;
+}
+
+/* The wrapper's foil: a sheen across it, and the crimped ends darker */
+.booster-sheen {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgb(0 0 0 / 0.55) 0 4%, transparent 4% 96%, rgb(0 0 0 / 0.55) 96%),
+    linear-gradient(115deg, transparent 20%, rgb(255 255 255 / 0.28) 38%, transparent 52%, rgb(255 255 255 / 0.12) 70%, transparent 80%);
+  background-size: 100% 100%, 250% 100%;
+  animation: booster-shine 5s ease-in-out infinite;
+}
+
+@keyframes booster-shine {
+  0%,
+  100% {
+    background-position: 0 0, 100% 0;
+  }
+  50% {
+    background-position: 0 0, 0 0;
+  }
+}
+
+.booster-band {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 12%;
+  padding: 0.25em 0;
+  background: linear-gradient(90deg, #6b3a12, #d79a3a, #6b3a12);
+  color: #1d0e03;
+  font-weight: 800;
+  font-size: 0.85rem;
+  letter-spacing: 0.2em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.booster-name {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 9%;
+  color: #f4d79a;
+  font-size: 0.7rem;
+  letter-spacing: 0.35em;
+  text-align: center;
+  text-transform: uppercase;
+  text-shadow: 0 1px 3px #000;
+}
+
+.booster-left {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 4%;
+  color: #f4d79a;
+  font-size: 0.75rem;
+  text-align: center;
+  text-shadow: 0 1px 3px #000;
+}
+
+.booster-big {
+  width: min(300px, 34vh, 60vw);
+  cursor: pointer;
+}
+
+.booster-big .booster-band {
+  font-size: 1.6rem;
+}
+
+.booster-big .booster-name {
+  bottom: 12%;
+  font-size: 1.1rem;
+}
+
+.booster-big .booster-left {
+  bottom: 6%;
+  font-size: 0.95rem;
+}
+
+.booster-big:hover {
+  translate: none;
+  scale: 1.02;
+}
+
+/* Opening one: over the whole page */
+.booster-stage {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 4.5rem 1rem 2rem;
+  background: rgb(8 5 2 / 0.82);
+  backdrop-filter: blur(6px);
+  overflow: auto;
+  animation: booster-fade 0.25s ease-out;
+}
+
+@keyframes booster-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+.booster-stage-bar {
+  position: fixed;
+  top: 1rem;
+  left: 50%;
+  translate: -50% 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  color: #f4d79a;
+}
+
+.booster-hint {
+  margin: 0;
+  color: rgb(244 215 154 / 0.7);
+  font-size: 0.9rem;
+}
+
+.booster-table {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: min(560px, 70vh);
+}
+
+.booster-table > * {
+  grid-area: 1 / 1;
+}
+
+.booster-table > .booster {
+  animation: booster-zoom 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+}
+
+@keyframes booster-zoom {
+  from {
+    scale: 0.3;
+    opacity: 0;
+  }
+}
+
+/* With a card out, the booster shrinks away behind it, whatever the mouse is over */
+.booster-table-card > .booster,
+.booster-table-card > .booster:hover {
+  scale: 0.6;
+  translate: 0;
+  opacity: 0;
+  pointer-events: none;
+  animation: none;
+  transition: scale 0.3s, opacity 0.3s;
+}
+
+/* A card of the pack: its back, turned over to its face */
+.pack-card {
+  --width: min(340px, 40vh, 80vw);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  width: var(--width);
+  perspective: 1400px;
+  animation: pack-rise 0.35s ease-out both;
+  animation-delay: var(--delay, 0ms);
+}
+
+.pack-landscape {
+  --width: min(480px, 40vh * 1.4, 90vw);
+}
+
+@keyframes pack-rise {
+  from {
+    translate: 0 40px;
+    scale: 0.8;
+    opacity: 0;
+  }
+}
+
+.pack-leaving {
+  animation: pack-to-pool 0.5s ease-in forwards;
+  pointer-events: none;
+}
+
+@keyframes pack-to-pool {
+  to {
+    translate: 40vw 45vh;
+    scale: 0.15;
+    rotate: 20deg;
+    opacity: 0;
+  }
+}
+
+.pack-flip {
+  position: relative;
+  width: 100%;
+  transform-style: preserve-3d;
+  transition: transform 0.6s cubic-bezier(0.3, 0.7, 0.3, 1);
+  transition-delay: var(--delay, 0ms);
+}
+
+.pack-flipped {
+  transform: rotateY(180deg);
+}
+
+.pack-front,
+.pack-back {
+  backface-visibility: hidden;
+  border-radius: 4.5% / 3.2%;
+  overflow: hidden;
+}
+
+/* The face sets the card's size; the back lies over it */
+.pack-front {
+  transform: rotateY(180deg);
+}
+
+.pack-back {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background-size: cover;
+  background-position: center;
+  box-shadow: 0 10px 30px rgb(0 0 0 / 0.6);
+}
+
+/* Leaders and bases lie on their side: their back is turned with them */
+.pack-landscape .pack-back {
+  inset: auto;
+  top: 50%;
+  left: 50%;
+  width: calc(100% / 1.3928);
+  height: calc(100% * 1.3928);
+  translate: -50% -50%;
+  rotate: 90deg;
+}
+
+.pack-front {
+  box-shadow: 0 10px 30px rgb(0 0 0 / 0.6);
+}
+
+.slot-rare .pack-front {
+  box-shadow: 0 0 24px 4px rgb(214 168 72 / 0.75), 0 10px 30px rgb(0 0 0 / 0.6);
+}
+
+.slot-legendary .pack-front {
+  box-shadow: 0 0 34px 8px rgb(255 140 40 / 0.85), 0 10px 30px rgb(0 0 0 / 0.6);
+}
+
+/* A foil: a rainbow sheen over its face, as it is opened and in the pool */
+.foil,
+.pack-foil .pack-front {
+  position: relative;
+}
+
+.foil::after,
+.pack-foil .pack-front::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    120deg,
+    transparent 20%,
+    rgb(255 120 200 / 0.3) 35%,
+    rgb(120 220 255 / 0.3) 45%,
+    rgb(255 240 120 / 0.3) 55%,
+    transparent 70%
+  );
+  background-size: 250% 100%;
+  mix-blend-mode: color-dodge;
+  animation: foil-sheen 3s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes foil-sheen {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -150% 0;
+  }
+}
+
+.pack-slot {
+  color: #f4d79a;
+  font-size: 0.8rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+/* Prescient: the blue of the spice, in the eyes */
+.slot-prescient .pack-front {
+  box-shadow: 0 0 28px 6px rgb(70 150 255 / 0.75), 0 10px 30px rgb(0 0 0 / 0.6);
+}
+
+.slot-prescient .pack-slot {
+  color: #7fc0ff;
+  font-weight: 700;
+}
+
+.slot-legendary .pack-slot {
+  color: #ff9a3c;
+  font-weight: 700;
+}
+
+/* Fast open: the whole pack at once */
+.pack-all {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1rem;
+  max-width: 1400px;
+}
+
+.pack-all .pack-card {
+  --width: min(170px, 28vw);
+}
+
+.pack-all .pack-landscape {
+  --width: min(240px, 40vw);
+}
+
 .decks {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 340px;
@@ -1935,6 +2394,90 @@ input.picker-button::placeholder {
 .deck-pool-actions {
   align-items: center;
   justify-content: center;
+}
+
+/* The printing a click adds: Prescient, foil or both, toggled under the count */
+.deck-pool-card {
+  position: relative;
+}
+
+.deck-printings {
+  position: absolute;
+  top: 3rem;
+  right: -0.4rem;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.deck-printing {
+  display: grid;
+  place-items: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  padding: 0;
+  border: 2px solid rgb(255 255 255 / 0.35);
+  border-radius: 50%;
+  background: rgb(20 12 6 / 0.85);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.6);
+  color: rgb(255 255 255 / 0.6);
+  font-size: 0.95rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.deck-printing:hover {
+  color: #fff;
+}
+
+.deck-printing.printing-prescient[aria-pressed='true'] {
+  border-color: #7fc0ff;
+  background: #1d4f86;
+  color: #fff;
+}
+
+.deck-printing.printing-foil[aria-pressed='true'] {
+  border-color: #f4d79a;
+  background: linear-gradient(135deg, #ff9ad5, #8fe3ff, #fff3a0);
+  color: #3a2410;
+}
+
+/* A deck row's copies by printing, after its name */
+/* Before the name, so a long name never hides them */
+.printing-marks {
+  display: inline-flex;
+  gap: 0.3rem;
+  margin-right: 0.4rem;
+  font-size: 0.75rem;
+}
+
+.printing-mark::before {
+  margin-right: 0.1rem;
+}
+
+.printing-prescient.printing-mark {
+  color: #7fc0ff;
+}
+
+.printing-prescient.printing-mark::before {
+  content: '◈';
+}
+
+.printing-foil.printing-mark {
+  color: #f4d79a;
+}
+
+.printing-foil.printing-mark::before {
+  content: '✦';
+}
+
+.printing-prescient-foil.printing-mark {
+  color: #b9a8ff;
+}
+
+.printing-prescient-foil.printing-mark::before {
+  content: '◈✦';
 }
 
 .deck-pool-count {

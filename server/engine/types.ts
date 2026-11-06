@@ -67,6 +67,10 @@ export type CardDef = {
 // One physical card in a game; def names its CardDef
 export type Inst = { id: string; def: string }
 
+// How a copy of a card looks, which changes nothing in the game: a booster's Prescient card
+// (full art), a foil, or both
+export type Printing = 'prescient' | 'foil' | 'prescient-foil'
+
 export type UnitState = Inst & {
   owner: PlayerId
   arena: Arena
@@ -208,6 +212,8 @@ export type GameState = {
   // While an ability waits for an answer
   prompt: Prompt | null
   pending: Pending | null
+  // The copies that are not plain, by card id; a game saved before them had none
+  printings?: Record<string, Printing>
 }
 
 export type Action =

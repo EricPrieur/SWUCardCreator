@@ -1,6 +1,6 @@
 import { api, API_URL, type Session } from './api'
 import { asset } from './asset'
-import { localDeckLists, readArtFile, type Art, type Card, type Deck } from './cards'
+import { DECKS_KEY, localDeckLists, readArtFile, type Art, type Card, type Deck } from './cards'
 
 // Cards on an account name their art as account:<SHA-256 of the image>. In the page the
 // art is a data: URL, as for cards kept in the browser; it is uploaded when a card is saved.
@@ -85,6 +85,8 @@ async function mapArt(card: Card, change: (art: Art) => Promise<Art>): Promise<C
     const art = card[key]
     if (art) next[key] = await change(art)
   }
+  // The Prescient version's own art
+  if (card.prescient?.art) next.prescient = { ...card.prescient, art: await change(card.prescient.art) }
   return next
 }
 
@@ -169,18 +171,23 @@ export const unpublishCard = (session: Session, id: string) =>
   api(`/api/cards/${encodeURIComponent(id)}/public`, { method: 'DELETE', token: session.token })
 
 // Which Deck Builder a list of decks belongs to on the account, from the key it is kept
-// under in the browser: the Showroom's, or a set's ("showcase:<folder>")
+// under in the browser: the Showroom's, or a set's ("showcase:<folder>"). The Showroom's
+// Sealed pools and their decks are its own ("showroom.sealed-pools", "showroom.sealed.<pool>")
 export const deckScope = (storageKey?: string) =>
-  storageKey ? storageKey.replace(/^dune-unlimited\.decks\./, 'showcase:') : 'showroom'
+  !storageKey || storageKey === DECKS_KEY
+    ? 'showroom'
+    : /^dune-unlimited\.decks\.sealed[.-]/.test(storageKey)
+      ? storageKey.replace(/^dune-unlimited\.decks\./, 'showroom.')
+      : storageKey.replace(/^dune-unlimited\.decks\./, 'showcase:')
 
 const deckPath = (scope: string, id?: string) =>
   `/api/decks/${encodeURIComponent(scope)}${id === undefined ? '' : `/${encodeURIComponent(id)}`}`
 
-export const loadAccountDecks = async (session: Session, scope: string) =>
-  (await api<{ decks: Deck[] }>(deckPath(scope), { token: session.token })).decks
+export const loadAccountDecks = async <T = Deck>(session: Session, scope: string) =>
+  (await api<{ decks: T[] }>(deckPath(scope), { token: session.token })).decks
 
 // Saves what changed between two lists of one Deck Builder's decks
-export async function syncAccountDecks(session: Session, scope: string, before: Deck[], after: Deck[]) {
+export async function syncAccountDecks<T extends { id: string } = Deck>(session: Session, scope: string, before: T[], after: T[]) {
   const was = new Map(before.map((deck) => [deck.id, deck]))
   const now = new Set(after.map((deck) => deck.id))
   for (const deck of after) {

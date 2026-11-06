@@ -2,15 +2,15 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { asset } from './asset'
 import { useAccount, type Session } from './api'
 import { Modal } from './account'
-import { loadAccountDecks } from './accountCards'
-import { loadDecks, type Deck } from './cards'
+import { deckScope, loadAccountDecks } from './accountCards'
+import { DECKS_KEY, loadDecks, type Card, type Deck, type SealedPool } from './cards'
 import { AI_VERSION, chooseAction, CURVE_TOP, deckPlan, type Weighed } from '../server/engine/ai.ts'
 import { cardDef, randomDeck, type SavedCard } from '../server/engine/cards.ts'
 import { createGame, sameAction } from '../server/engine/game.ts'
 import { recordAction, replay, startRecord, type GameRecord } from '../server/engine/record.ts'
 import { scriptStatus } from '../server/engine/scripts.ts'
 import { viewFor, type SideView } from '../server/engine/view.ts'
-import type { Action, Arena, CardDef, GameState, PlayerId } from '../server/engine/types.ts'
+import type { Action, Arena, CardDef, GameState, PlayerId, Printing } from '../server/engine/types.ts'
 import { gameLog, type SavedGame } from './gameLog'
 import { combatSounds } from './combatSounds'
 import './Simulator.css'
@@ -26,7 +26,10 @@ const AI: PlayerId = 1
 // How long the AI seems to think before each action, in milliseconds
 const AI_DELAY = 700
 
-const img = (image: string) => asset(`/showcase/${SET}/${image}.jpg`)
+// A card's image by its name in the Showcase; a Prescient card's, drawn here, is a URL already
+const img = (image: string) => (/^(blob|data):/.test(image) ? image : asset(`/showcase/${SET}/${image}.jpg`))
+const isPrescient = (printing?: Printing) => printing === 'prescient' || printing === 'prescient-foil'
+const isFoil = (printing?: Printing) => printing === 'foil' || printing === 'prescient-foil'
 // A banner's colour: its card's first aspect, Vigilance to Command before Heroism or Villainy
 const ASPECT_ORDER = ['Vigilance', 'Command', 'Aggression', 'Cunning', 'Heroism', 'Villainy']
 const aspectClass = (aspects: string[]) => {
@@ -39,7 +42,8 @@ const statShift = (now: number, printed = now) => (now > printed ? ' up' : now <
 // The set's cards, and each one's images: its front and a leader's unit side. A two-sided
 // base is two cards, its second side's id ending in BACK_SIDE, as the Deck Builder has it.
 // spiceArt: the Spice token's art, its pile of spice shown on the tokens on the board
-type SetCards = { defs: CardDef[]; images: Record<string, { image: string; back?: string }>; spiceArt?: string }
+// cards: each card as saved, its art found in the Showcase, to draw its Prescient version
+type SetCards = { defs: CardDef[]; images: Record<string, { image: string; back?: string }>; spiceArt?: string; cards: Record<string, Card> }
 const BACK_SIDE = '#back'
 
 export async function loadSet(): Promise<SetCards> {
@@ -52,12 +56,15 @@ export async function loadSet(): Promise<SetCards> {
       return { entry, card: saved.ok ? ((await saved.json()) as SavedCard) : undefined }
     }),
   )
-  const set: SetCards = { defs: [], images: {} }
+  const set: SetCards = { defs: [], images: {}, cards: {} }
   for (const { entry, card } of cards) {
     const d = card && cardDef(card)
     if (!d) continue
     set.defs.push(d)
     set.images[d.id] = { image: entry.image, back: entry.back }
+    const inSet = (art?: { src?: string }) => (art?.src ? { zoom: 1, x: 0, y: 0, ...art, src: asset(`/showcase/${SET}/${art.src}`) } : undefined)
+    const saved = card as unknown as Card
+    set.cards[d.id] = { ...saved, art: inSet(saved.art), prescient: saved.prescient && { ...saved.prescient, art: inSet(saved.prescient.art) } }
     if (card.frameId === 'spice-token' && card.art?.src) set.spiceArt = asset(`/showcase/${SET}/${card.art.src}`)
     const second = d.type === 'base' && card.backFrameId && cardDef({ ...card, id: card.id + BACK_SIDE, frameId: card.backFrameId })
     if (second && entry.back) {
@@ -77,6 +84,24 @@ const deckSources = [
   { from: `${SET} Showcase`, scope: `showcase:${SET}`, key: `dune-unlimited.decks.${SET}` },
 ]
 
+// The decks built from Sealed pools, the Deck Builder's and the Showcase's, each named with
+// its pool's; the newest first, the pools and their decks being kept in the order they were made
+const SEALED = 'Sealed Decks'
+const sealedSources = [DECKS_KEY, `${DECKS_KEY}.${SET}`]
+async function loadSealedDecks(account: Session | null): Promise<SavedDeck[]> {
+  const lists = await Promise.all(
+    sealedSources.map(async (prefix) => {
+      const load = <T,>(key: string) => (account ? loadAccountDecks<T>(account, deckScope(key)).catch(() => [] as T[]) : Promise.resolve(loadDecks<T>(key)))
+      const pools = await load<SealedPool>(`${prefix}.sealed-pools`)
+      const decks = await Promise.all(
+        pools.map(async (pool) => (await load<Deck>(`${prefix}.sealed.${pool.id}`)).map((deck) => ({ ...deck, name: `${deck.name} (${pool.name})`, from: SEALED }))),
+      )
+      return decks.flat()
+    }),
+  )
+  return lists.flat().reverse()
+}
+
 // Decks anyone may try, signed in or not, which ship with the site
 const FEATURED = 'Featured Decks'
 async function loadFeaturedDecks(): Promise<SavedDeck[]> {
@@ -89,6 +114,7 @@ async function loadFeaturedDecks(): Promise<SavedDeck[]> {
 async function loadSavedDecks(account: Session | null, set: SetCards): Promise<SavedDeck[]> {
   const lists = await Promise.all([
     loadFeaturedDecks(),
+    loadSealedDecks(account),
     ...deckSources.map(async ({ from, scope, key }) => {
       const decks = account ? await loadAccountDecks(account, scope).catch(() => [] as Deck[]) : loadDecks(key)
       return decks.map((deck) => ({ ...deck, from }))
@@ -104,10 +130,17 @@ async function loadSavedDecks(account: Session | null, set: SetCards): Promise<S
 // A deck as the engine takes it; cards that aren't in the set are left out
 function deckList(deck: Deck, set: SetCards) {
   const playable = new Set(set.defs.filter((d) => ['unit', 'upgrade', 'event'].includes(d.type)).map((d) => d.id))
+  const entries = deck.cards.filter((entry) => playable.has(entry.id))
+  // Each copy's printing, in the deck's order: its Prescient and foil copies, then the plain ones
+  const printings = entries.flatMap((entry) => {
+    const kinds = (['prescient', 'foil', 'prescient-foil'] as const).flatMap((kind) => Array(entry.versions?.[kind] ?? 0).fill(kind) as Printing[])
+    return [...kinds, ...Array(Math.max(0, entry.count - kinds.length)).fill(null)].slice(0, entry.count) as (Printing | null)[]
+  })
   return {
     leader: deck.leader as string,
     base: deck.base as string,
-    deck: deck.cards.filter((entry) => playable.has(entry.id)).flatMap((entry) => Array(entry.count).fill(entry.id) as string[]),
+    deck: entries.flatMap((entry) => Array(entry.count).fill(entry.id) as string[]),
+    ...(printings.some(Boolean) && { printings }),
   }
 }
 
@@ -160,8 +193,9 @@ function DeckPicker(props: {
   const chosen = props.value.startsWith('deck:') ? decks.find((deck) => `deck:${deck.id}` === props.value) : undefined
   // A remembered deck that is gone is a random one
   const value = props.value.startsWith('deck:') && !chosen ? 'random-generated' : props.value
-  // Your own decks first, the ones that ship with the site last
-  const groups = [...deckSources.map(({ from }) => from), FEATURED].map((from) => ({ from, decks: decks.filter((deck) => deck.from === from) }))
+  // Your own decks first, those built from Sealed pools after the Deck Builder's, the ones that
+  // ship with the site last
+  const groups = [deckSources[0].from, SEALED, ...deckSources.slice(1).map(({ from }) => from), FEATURED].map((from) => ({ from, decks: decks.filter((deck) => deck.from === from) }))
   const about: Record<string, string> = {
     'random-generated': `A random leader and base, with 50 cards of the ${SET} set they can pay for.`,
     random: decks.length ? 'One of the decks in this list, picked at random.' : 'There are no decks yet: a random deck is made instead.',
@@ -227,7 +261,8 @@ function replyTo(text: string) {
   return answers?.[Math.floor(Math.random() * answers.length)]
 }
 
-export function Simulator() {
+// drawCard: draws a card as an image, for the Prescient copies in a game; without it they show plain
+export function Simulator(props: { drawCard?: (card: Card) => Promise<string> }) {
   const account = useAccount()
   const [view, setView] = useState<'ai' | 'online'>('ai')
   const [set, setSet] = useState<SetCards | null>(null)
@@ -249,6 +284,29 @@ export function Simulator() {
   const kept = useRef<KeptGame | null>(null)
   const [waiting, setWaiting] = useState<KeptGame | null>(keptGame)
   const keep = () => keepGame(kept.current)
+  // The Prescient copies' images by card, drawn one at a time as a game needs them
+  const [prescient, setPrescient] = useState<Record<string, string>>({})
+  const drawing = useRef(new Set<string>())
+  useEffect(() => {
+    const decks = record.current?.decks
+    const { drawCard } = props
+    if (!set || !decks || !drawCard) return
+    const wanted = [...new Set(decks.flatMap((list) => list.deck.filter((_, i) => isPrescient(list.printings?.[i] ?? undefined))))]
+    const toDraw = wanted.filter((id) => set.cards[id] && !drawing.current.has(id))
+    if (!toDraw.length) return
+    for (const id of toDraw) drawing.current.add(id)
+    ;(async () => {
+      for (const id of toDraw) {
+        try {
+          const url = await drawCard(set.cards[id])
+          setPrescient((now) => ({ ...now, [id]: url }))
+        } catch {
+          // Shown plain, then
+          drawing.current.delete(id)
+        }
+      }
+    })()
+  }, [gameNumber, set])
 
   useEffect(() => {
     loadSet()
@@ -382,6 +440,7 @@ export function Simulator() {
           key={gameNumber}
           set={set}
           game={game}
+          prescient={prescient}
           onAct={act}
           onUndo={history.current.length ? undo : undefined}
           onNew={leave}
@@ -447,7 +506,7 @@ export function Simulator() {
   )
 }
 
-type Hover = { image: string; landscape: boolean; right: boolean } | null
+type Hover = { image: string; landscape: boolean; right: boolean; foil?: boolean } | null
 // What a click on the board means now: choosing a target for an attack, or a unit for an upgrade
 // How a card is played: using Smuggle, from the discard pile, for a Spice token instead of its cost
 type Way = { smuggle?: boolean; discard?: boolean; spice?: boolean }
@@ -536,6 +595,8 @@ function play(sound: string, volume: number, cut?: number) {
   }
 }
 const playDraw = () => play(drawSound, 0.35)
+// The Simulator's click, for the boosters too; off when its sound is
+export const playClick = () => play(clickSound, 0.5)
 
 // What clicking makes a sound: a button, or a card that can be played, used or picked
 const clickable = 'button, .playable, .can-act, .target'
@@ -563,6 +624,8 @@ function fly(image: string, from: DOMRect, to: DOMRect) {
 function Table(props: {
   set: SetCards
   game: GameState
+  // The Prescient copies' images, by card
+  prescient: Record<string, string>
   onAct: (game: GameState, p: PlayerId, action: Action, why?: Weighed[]) => void
   // Taking back your last move, when there is one
   onUndo?: () => void
@@ -798,13 +861,19 @@ function Table(props: {
     return () => clearTimeout(timer)
   }, [game])
 
-  const look = (image: string | undefined, landscape = false) => (event: React.MouseEvent) =>
-    image && setHover({ image, landscape, right: event.clientX < window.innerWidth / 2 })
+  const look = (image: string | undefined, landscape = false, foil = false) => (event: React.MouseEvent) =>
+    image && setHover({ image, landscape, right: event.clientX < window.innerWidth / 2, foil })
   const leave = () => setHover(null)
   const imageOf = (id: string, unitSide = false) => {
     const images = set.images[id]
     return unitSide ? (images?.back ?? images?.image) : images?.image
   }
+  // One copy of a card as it looks: Prescient in full art (once drawn), a foil with its sheen
+  const printingOf = (id: string) => view.printings?.[id]
+  const faceOf = (card: { id: string; def: string }) =>
+    (isPrescient(printingOf(card.id)) && props.prescient[card.def]) || imageOf(card.def)
+  const foil = (id: string) => isFoil(printingOf(id))
+  const lookAt = (card: { id: string; def: string }) => look(faceOf(card), false, foil(card.id))
 
   // What the phase asks of you, and the buttons that answer it (always at the bottom right)
   const pickCount = asked ? 0 : mine && view.phase === 'resource' ? Math.min(2, me.handCount) : mine && view.phase === 'regroup' ? 1 : 0
@@ -1054,13 +1123,13 @@ function Table(props: {
       keywords.raid && `Raid ${keywords.raid}`,
       keywords.restore && `Restore ${keywords.restore}`,
     ].filter(Boolean)
-    const image = imageOf(u.def, u.leader)
+    const image = u.leader ? imageOf(u.def, true) : faceOf(u)
     return (
       <div key={u.id} className={`sim-unit-slot${u.exhausted ? ' exhausted' : ''}`}>
         <button
           type="button"
-          className={classes.filter(Boolean).join(' ')}
-          onMouseEnter={look(image)}
+          className={[...classes, foil(u.id) && 'sim-foil'].filter(Boolean).join(' ')}
+          onMouseEnter={look(image, false, foil(u.id))}
           onMouseLeave={leave}
           onClick={() => clickUnit(u.id)}
         >
@@ -1129,7 +1198,7 @@ function Table(props: {
                 key={up.id}
                 className={defOf(up.def).token ? `token ${defOf(up.def).name.toLowerCase()}` : aspectClass(defOf(up.def).aspects).trim() || undefined}
                 style={{ zIndex: 9 - i }}
-                onMouseEnter={look(imageOf(up.def))}
+                onMouseEnter={lookAt(up)}
                 onMouseLeave={leave}
               >
                 {defOf(up.def).name}
@@ -1151,12 +1220,12 @@ function Table(props: {
     return (
       <div className={`sim-strip ${who}`}>
         <div
-          className={['sim-pile', top && 'open', playable && 'playable'].filter(Boolean).join(' ')}
+          className={['sim-pile', top && 'open', playable && 'playable', top && foil(top.id) && 'sim-foil'].filter(Boolean).join(' ')}
           title={playable ? 'Discard pile: a card in it can be played' : top ? 'Discard pile: click to see it' : 'Discard pile'}
           onClick={top ? () => setPileOpen(who === 'me' ? 'discard-me' : 'discard-opp') : undefined}
         >
           {top ? (
-            <img src={img(imageOf(top.def) ?? '')} alt={defOf(top.def).name} onMouseEnter={look(imageOf(top.def))} onMouseLeave={leave} />
+            <img src={img(faceOf(top) ?? '')} alt={defOf(top.def).name} onMouseEnter={lookAt(top)} onMouseLeave={leave} />
           ) : (
             <div className="sim-empty">Discard</div>
           )}
@@ -1165,10 +1234,10 @@ function Table(props: {
         <div className="sim-pile deck" title="Deck">
           {side.topCard ? (
             <img
-              src={img(imageOf(side.topCard.def) ?? '')}
+              src={img(faceOf(side.topCard) ?? '')}
               alt={defOf(side.topCard.def).name}
               title="The top card of your deck"
-              onMouseEnter={look(imageOf(side.topCard.def))}
+              onMouseEnter={lookAt(side.topCard)}
               onMouseLeave={leave}
             />
           ) : side.deckCount ? (
@@ -1190,7 +1259,7 @@ function Table(props: {
                 <div
                   key={i}
                   className={['sim-resource', r.exhausted && 'used', smuggle && 'playable'].filter(Boolean).join(' ')}
-                  onMouseEnter={r.card ? look(imageOf(r.card.def)) : undefined}
+                  onMouseEnter={r.card ? lookAt(r.card) : undefined}
                   onMouseLeave={leave}
                 >
                   <Back />
@@ -1209,7 +1278,7 @@ function Table(props: {
                   key={c.id}
                   type="button"
                   data-arriving={i >= side.hand!.length - arriving || undefined}
-                  data-image={imageOf(c.def)}
+                  data-image={faceOf(c)}
                   className={[
                     'sim-hand-card',
                     !pickCount && !mode && !asked && playsOf(c.id).length && 'playable',
@@ -1218,14 +1287,15 @@ function Table(props: {
                     picked.includes(c.id) && 'picked',
                     mode?.kind === 'attach' && mode.card === c.id && 'picked',
                     pickCount && 'pickable',
+                    foil(c.id) && 'sim-foil',
                   ]
                     .filter(Boolean)
                     .join(' ')}
-                  onMouseEnter={look(imageOf(c.def))}
+                  onMouseEnter={lookAt(c)}
                   onMouseLeave={leave}
                   onClick={() => clickHand(c.id)}
                 >
-                  <img src={img(imageOf(c.def) ?? '')} alt={defOf(c.def).name} />
+                  <img src={img(faceOf(c) ?? '')} alt={defOf(c.def).name} />
                   {priceBadge(c.id, defOf(c.def).cost)}
                 </button>
               ))
@@ -1294,7 +1364,7 @@ function Table(props: {
         {!!forts.length && (
           <div className="sim-fortifications">
             {forts.map((f) => (
-              <span key={f.id} className={`sim-fortification${aspectClass(defOf(f.def).aspects)}`} onMouseEnter={look(imageOf(f.def))} onMouseLeave={leave}>
+              <span key={f.id} className={`sim-fortification${aspectClass(defOf(f.def).aspects)}`} onMouseEnter={lookAt(f)} onMouseLeave={leave}>
                 {defOf(f.def).name}
               </span>
             ))}
@@ -1474,17 +1544,18 @@ function Table(props: {
 
   // The pile opened: copies of a card stacked as one, with how many in its corner. A resource
   // stacks with those as ready as it, and as playable using Smuggle.
-  type Stack = { key: string; def: string; count: number; used?: boolean; play?: () => void }
+  type Stack = { key: string; def: string; id: string; count: number; used?: boolean; play?: () => void }
   const stack = (cards: { def: string; id: string; used?: boolean; play?: boolean }[]) => {
     const stacks: Stack[] = []
     for (const card of cards) {
-      const key = `${card.def}|${!!card.used}|${!!card.play}`
+      const key = `${card.def}|${!!card.used}|${!!card.play}|${printingOf(card.id) ?? ''}`
       const found = stacks.find((s) => s.key === key)
       if (found) found.count++
       else
         stacks.push({
           key,
           def: card.def,
+          id: card.id,
           count: 1,
           used: card.used,
           play: card.play
@@ -1678,13 +1749,13 @@ function Table(props: {
               <button
                 key={stack.key}
                 type="button"
-                className={[stack.play && 'playable', stack.used && 'used'].filter(Boolean).join(' ') || undefined}
+                className={[stack.play && 'playable', stack.used && 'used', foil(stack.id) && 'sim-foil'].filter(Boolean).join(' ') || undefined}
                 title={stack.play ? (pileOpen === 'resources' ? 'Play it using Smuggle' : 'Play it from your discard pile') : stack.used ? 'Exhausted' : undefined}
-                onMouseEnter={look(imageOf(stack.def))}
+                onMouseEnter={lookAt(stack)}
                 onMouseLeave={leave}
                 onClick={stack.play}
               >
-                <img src={img(imageOf(stack.def) ?? '')} alt={defOf(stack.def).name} />
+                <img src={img(faceOf(stack) ?? '')} alt={defOf(stack.def).name} />
                 {stack.count > 1 && (
                   <span className="sim-copies">
                     <span>{stack.count}</span>
@@ -1745,13 +1816,16 @@ function Table(props: {
               <img src={img(imageOf(asker.id) ?? '')} alt={asker.name} onMouseEnter={look(imageOf(asker.id), asker.type === 'leader' || asker.type === 'base')} onMouseLeave={leave} />
             )}
             {shown.map((o) => {
-              const image = o.def ? imageOf(o.def) : undefined
+              const image = o.def ? faceOf({ id: o.id, def: o.def }) : undefined
               return (
                 <button
                   key={o.id}
                   type="button"
-                  className={[picked.includes(o.id) && 'picked', o.can && 'can-pick', o.can === false && 'cant-pick'].filter(Boolean).join(' ') || undefined}
-                  onMouseEnter={look(image)}
+                  className={
+                    [picked.includes(o.id) && 'picked', o.can && 'can-pick', o.can === false && 'cant-pick', foil(o.id) && 'sim-foil'].filter(Boolean).join(' ') ||
+                    undefined
+                  }
+                  onMouseEnter={look(image, false, foil(o.id))}
                   onMouseLeave={leave}
                   onClick={() => o.can !== false && pickAnswer(o.id)}
                 >
@@ -1780,7 +1854,7 @@ function Table(props: {
         </div>
       )}
       {hover && (
-        <div className={`sim-preview ${hover.right ? 'right' : 'left'}${hover.landscape ? ' landscape' : ''}`}>
+        <div className={`sim-preview ${hover.right ? 'right' : 'left'}${hover.landscape ? ' landscape' : ''}${hover.foil ? ' sim-foil' : ''}`}>
           <img src={img(hover.image)} alt="" />
         </div>
       )}

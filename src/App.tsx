@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode, type RefObject } from 'react'
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type CSSProperties, type ReactNode, type RefObject } from 'react'
 import { createPortal, flushSync } from 'react-dom'
 import artFiles from 'virtual:art-list'
 import { asset } from './asset'
@@ -6,7 +6,7 @@ import './App.css'
 import { CardView } from './CardView'
 import { AccountBar, Modal } from './account'
 import { leaveGuard, setLeaveGuard } from './leaveGuard'
-import { Simulator } from './Simulator'
+import { playClick, Simulator } from './Simulator'
 import {
   copyLocalDecks,
   deckScope,
@@ -31,6 +31,12 @@ import {
   loadDecks,
   localDeckLists,
   storeDecks,
+  DECKS_KEY,
+  canBePrescient,
+  cardVersions,
+  prescientOf,
+  type CardVersion,
+  type SealedPool,
   type CardLine,
   type Art,
   type Card,
@@ -149,6 +155,7 @@ function forFrame(card: Draft): Draft {
     delete kept.backArena
   }
   if (!front.epicBox) delete kept.epic
+  if (!canBePrescient(front.type) || front.token) delete kept.prescient
   if (!front.pilotBox && !back?.pilotBox) {
     delete kept.pilotText
     delete kept.pilotCost
@@ -468,15 +475,16 @@ function ImageButtons(props: {
 const PREVIEW_WIDTH = 345
 const PREVIEW_GAP = 20
 
-function HoverPreview(props: { enabled: boolean; preview: ReactNode; children: ReactNode }) {
-  const { enabled, preview, children } = props
+// width: the preview's, wider for a leader or base on its side
+function HoverPreview(props: { enabled: boolean; preview: ReactNode; children: ReactNode; width?: number }) {
+  const { enabled, preview, children, width = PREVIEW_WIDTH } = props
   const [at, setAt] = useState<{ left: number; top: number } | null>(null)
   const box = useRef<HTMLDivElement>(null)
   const place = (x: number, y: number) => {
-    const width = box.current?.offsetWidth ?? PREVIEW_WIDTH
-    const height = box.current?.offsetHeight ?? PREVIEW_WIDTH * 1.4
+    const boxWidth = box.current?.offsetWidth ?? width
+    const height = box.current?.offsetHeight ?? width * 1.4
     // Right of the pointer, or left of it near the window's right edge
-    const left = x + PREVIEW_GAP + width < window.innerWidth ? x + PREVIEW_GAP : x - PREVIEW_GAP - width
+    const left = x + PREVIEW_GAP + boxWidth < window.innerWidth ? x + PREVIEW_GAP : x - PREVIEW_GAP - boxWidth
     const top = Math.max(PREVIEW_GAP / 2, Math.min(y - height / 2, window.innerHeight - height - PREVIEW_GAP / 2))
     return { left: Math.max(PREVIEW_GAP / 2, left), top }
   }
@@ -490,7 +498,7 @@ function HoverPreview(props: { enabled: boolean; preview: ReactNode; children: R
       {enabled &&
         at &&
         createPortal(
-          <div className="hover-preview" ref={box} style={{ width: PREVIEW_WIDTH, ...at }}>
+          <div className="hover-preview" ref={box} style={{ width, ...at }}>
             {preview}
           </div>,
           document.body,
@@ -1259,7 +1267,7 @@ async function zipTarget(sets: string[]): Promise<ExportTarget> {
 
 // The names a card's art is exported under, beside its image: either kind a browser
 // may have written it as
-const artFileNames = (image: string) => ['webp', 'jpg'].map((extension) => `${image} (art).${extension}`)
+const artFileNames = (image: string, kind = 'art') => ['webp', 'jpg'].map((extension) => `${image} (${kind}).${extension}`)
 
 // A card ready to be imported anywhere: its art as files of their own, which the card
 // names, rather than in this browser's storage or this computer's art folder
@@ -1269,18 +1277,25 @@ async function portableCard(
   names: { image: string; back?: string },
 ): Promise<{ card: Card; files: { name: string; body: Blob }[] }> {
   const files: { name: string; body: Blob }[] = []
-  const separate = async (art: Art | undefined, back: boolean) => {
+  const separate = async (art: Art | undefined, back: boolean, kind?: string) => {
     if (!art?.src) return art
     // Shrunk the way uploaded art is, so a large original does not weigh on the export
     const original = await (await fetch(art.src.startsWith('data:') ? art.src : asset(art.src))).blob()
     // A missing file comes back as the app's page, which no picture can be made of
     if (!original.type.startsWith('image/')) throw new Error(`the art of ${card.name}, ${art.src}, was not found`)
     const body = await (await fetch(await readArtFile(new File([original], 'art')))).blob()
-    const name = artFileNames((back && names.back) || names.image)[body.type === 'image/webp' ? 0 : 1]
+    const name = artFileNames((back && names.back) || names.image, kind)[body.type === 'image/webp' ? 0 : 1]
     files.push({ name, body })
     return { ...art, src: name }
   }
-  return { card: { ...card, art: await separate(card.art, false), backArt: await separate(card.backArt, true) }, files }
+  const art = await separate(card.art, false)
+  // The Prescient version's art: the card's file again when it is the same picture
+  const ownArt = card.prescient?.art
+  const prescient = ownArt && {
+    ...card.prescient,
+    art: art && ownArt.src === card.art?.src ? { ...ownArt, src: art.src } : await separate(ownArt, false, 'prescient art'),
+  }
+  return { card: { ...card, art, backArt: await separate(card.backArt, true), ...(prescient && { prescient }) }, files }
 }
 
 // Cards in the files Export wrote: cards' .json and their art, or a .zip of them.
@@ -1323,7 +1338,8 @@ async function cardsInFiles(picked: File[]): Promise<Card[]> {
       return file && { ...placed, src: await readArtFile(new File([file], placed.src)) }
     }
     for (const card of (Array.isArray(value) ? value : [value]).filter(isCard)) {
-      cards.push({ ...card, art: await art(card.art), backArt: await art(card.backArt) })
+      const prescient = card.prescient?.art && { ...card.prescient, art: await art(card.prescient.art) }
+      cards.push({ ...card, art: await art(card.art), backArt: await art(card.backArt), ...(prescient && { prescient }) })
     }
   }
   return cards
@@ -1337,6 +1353,8 @@ function useCardDrawer() {
   // Once its pictures have loaded
   const draw = async (card: Card, back: boolean) => {
     flushSync(() => setDrawing({ card, back }))
+    // Asked from an effect, while React is still putting the page up, the stage only comes a frame later
+    if (!holder.current) await new Promise(requestAnimationFrame)
     const el = holder.current?.querySelector<HTMLElement>('.card')
     if (!el) throw new Error('Nothing to draw')
     await document.fonts.ready
@@ -1352,6 +1370,20 @@ function useCardDrawer() {
     </div>
   )
   return { draw, stage, done: () => setDrawing(null) }
+}
+
+// The Simulator's Prescient copies: each card drawn in full art, once, as an image. The stage
+// must be on the page.
+function usePrescientDrawer() {
+  const drawer = useCardDrawer()
+  const drawCard = async (card: Card) => {
+    try {
+      return URL.createObjectURL(await drawer.draw(prescientOf(card), false))
+    } finally {
+      drawer.done()
+    }
+  }
+  return { drawCard, stage: drawer.stage }
 }
 
 // Export: the cards shown, set by set. Each card side is drawn as a JPG and kept with
@@ -1421,6 +1453,7 @@ function CardFiles(props: { cards: Card[]; onImport: (cards: Card[]) => string }
         // The set's files now, which leaves out those of cards renamed since
         const files = cards.flatMap((card) => [
           ...[card.image, ...(card.back ? [card.back] : [])].flatMap((name) => [`${name}.jpg`, ...artFileNames(name)]),
+          ...artFileNames(card.image, 'prescient art'),
           `${card.image}.json`,
         ])
         await target.finish(set, [...files, 'showcase.json'])
@@ -1647,6 +1680,7 @@ function Showcase(props: { folder: string }) {
   // plays its cards: open to anyone here
   const [view, setView] = useRemembered<'cards' | 'decks' | 'play'>(`showcase.${props.folder}.view`, 'cards')
   const playable = props.folder === 'DUNE'
+  const prescient = usePrescientDrawer()
   useEffect(() => {
     if (list) document.title = list.title
   }, [list])
@@ -1674,7 +1708,8 @@ function Showcase(props: { folder: string }) {
     return (
       <>
         {views}
-        <Simulator />
+        <Simulator drawCard={prescient.drawCard} />
+        {prescient.stage}
       </>
     )
   }
@@ -1682,7 +1717,7 @@ function Showcase(props: { folder: string }) {
     return (
       <>
         {views}
-        <DeckBuilder
+        <DeckFormats
           cards={list.cards.flatMap((card) => deckCardOfShowcase(folder, card))}
           prefix={`showcase.${props.folder}.decks`}
           storageKey={`dune-unlimited.decks.${props.folder}`}
@@ -1942,6 +1977,8 @@ function CommunityItem(props: { card: PublicCard; preview: boolean; session: Ses
 const DECK_SIZE = 50
 const MAX_COPIES = 3
 const SIDEBOARD_SIZE = 10
+// A Sealed deck: at least 30 cards, as many copies as the pool has, the rest of the pool its sideboard
+const SEALED_DECK_SIZE = 30
 // Each aspect icon a card has that the leader and base don't cover costs this much more
 const ASPECT_PENALTY = 2
 
@@ -1971,8 +2008,12 @@ type DeckCard = {
   back?: boolean
   facts: Facts
   face: ReactNode
-  // The same card drawn lighter, for the deck image
-  forImage?: () => Promise<DeckCard>
+  // The card as a booster's Prescient card shows it, for the cards that can be one
+  prescientFace?: ReactNode
+  // Sealed: the pool's copies of it, and how many of each printing
+  pooled?: DeckEntry
+  // The same card drawn lighter, for the deck image; its Prescient face too when asked
+  forImage?: (prescient?: boolean) => Promise<DeckCard>
 }
 
 // How many copies a deck may have: 3, or what the card says ("A deck can have up to 15
@@ -2009,9 +2050,19 @@ function deckCardOf(card: Card): DeckCard[] {
     max: maxCopies(card.text),
     facts,
     face: <CardFace card={card} />,
+    prescientFace: canBePrescient(facts.type) ? <CardFace card={prescientOf(card)} /> : undefined,
   }
   const second = isTwoSidedBase(card) ? backFrameOf(card) : undefined
-  if (!second) return [{ ...deckCard, forImage: async () => ({ ...deckCard, face: <CardFace card={await withSmallArt(card)} /> }) }]
+  if (!second)
+    return [
+      {
+        ...deckCard,
+        forImage: async (prescient) => {
+          const small = await withSmallArt(card)
+          return { ...deckCard, face: <CardFace card={small} />, prescientFace: prescient ? <CardFace card={prescientOf(small)} /> : undefined }
+        },
+      },
+    ]
   const side = (back: boolean): DeckCard => {
     const icons = back ? second.aspects : frame.aspects
     const each: DeckCard = {
@@ -2061,19 +2112,61 @@ function deckCardOfShowcase(folder: string, card: ShowcaseCard): DeckCard[] {
     max: maxCopies(card.text ?? ''),
     facts: showcaseFacts(card),
     face: <img className="showcase-image" src={src} alt={label} loading="lazy" />,
+    prescientFace: canBePrescient(card.type) ? <ShowcasePrescient folder={folder} image={card.image} fallback={src} /> : undefined,
   }
   // The deck image is laid out out of sight, where a lazy image never loads: loaded first
   return [
     {
       ...deckCard,
-      forImage: async () => {
+      forImage: async (prescient) => {
         const image = new Image()
         image.src = src
         await image.decode().catch(() => undefined)
-        return { ...deckCard, face: <img className="showcase-image" src={src} alt={label} /> }
+        // The Prescient version drawn from the card's .json, its art loaded first
+        const full = prescient && canBePrescient(card.type) ? await loadShowcaseCard(folder, card.image) : null
+        const art = full && prescientOf(full).art
+        if (art) {
+          const picture = new Image()
+          picture.src = art.src
+          await picture.decode().catch(() => undefined)
+        }
+        return {
+          ...deckCard,
+          face: <img className="showcase-image" src={src} alt={label} />,
+          prescientFace: full ? <CardFace card={prescientOf(full)} /> : undefined,
+        }
       },
     },
   ]
+}
+
+// A Showcase card as its .json has it, its art found in the Showcase's folder
+async function loadShowcaseCard(folder: string, image: string): Promise<Card | null> {
+  const inFolder = (art?: Art) => art && { ...art, src: asset(`${folder}/${encodeURIComponent(art.src)}`) }
+  try {
+    const res = await fetch(asset(`${folder}/${encodeURIComponent(image)}.json`))
+    if (!res.ok) return null
+    const found: Card = await res.json()
+    const prescient = found.prescient && { ...found.prescient, art: inFolder(found.prescient.art) }
+    return { ...found, art: inFolder(found.art), prescient }
+  } catch {
+    return null
+  }
+}
+
+// A Showcase card's Prescient version: drawn from its .json, as the Showroom draws its cards.
+// Its image is shown until the .json has come.
+function ShowcasePrescient(props: { folder: string; image: string; fallback: string }) {
+  const { folder, image, fallback } = props
+  const [card, setCard] = useState<Card | null>(null)
+  useEffect(() => {
+    let live = true
+    loadShowcaseCard(folder, image).then((found) => live && setCard(found))
+    return () => {
+      live = false
+    }
+  }, [folder, image])
+  return card ? <CardFace card={prescientOf(card)} /> : <img className="showcase-image" src={fallback} alt="" />
 }
 
 const deckGroups = ['Ground units', 'Space units', 'Events', 'Upgrades'] as const
@@ -2095,15 +2188,61 @@ function missingAspects(card: DeckCard, covered: Aspect[]) {
 
 const copiesOf = (entries: DeckEntry[], id: string) => entries.find((entry) => entry.id === id)?.count ?? 0
 
-// The list with that card at that many copies, or without it at 0
-function withCopies(entries: DeckEntry[], id: string, count: number): DeckEntry[] {
-  if (count <= 0) return entries.filter((entry) => entry.id !== id)
-  return entries.some((entry) => entry.id === id)
-    ? entries.map((entry) => (entry.id === id ? { ...entry, count } : entry))
-    : [...entries, { id, count }]
+const deckCount = (entries: DeckEntry[]) => entries.reduce((sum, { count }) => sum + count, 0)
+
+// A copy's printing: plain, or one of the card's other versions
+type Printing = 'plain' | CardVersion
+// The order a copy is taken out in when none is asked for: plain ones first
+const printings: Printing[] = ['plain', ...cardVersions]
+const printingLabel: Record<Printing, string> = { plain: 'plain', prescient: 'Prescient', foil: 'foil', 'prescient-foil': 'Prescient foil' }
+
+// How many copies of a card are of that printing
+function printingCopies(entries: DeckEntry[], id: string, printing: Printing) {
+  const entry = entries.find((each) => each.id === id)
+  if (!entry) return 0
+  const versions = cardVersions.reduce((sum, version) => sum + (entry.versions?.[version] ?? 0), 0)
+  return printing === 'plain' ? entry.count - versions : (entry.versions?.[printing] ?? 0)
 }
 
-const deckCount = (entries: DeckEntry[]) => entries.reduce((sum, { count }) => sum + count, 0)
+// The list with one copy more or less of that printing
+function withPrinting(entries: DeckEntry[], id: string, printing: Printing, change: number): DeckEntry[] {
+  const entry = entries.find((each) => each.id === id) ?? { id, count: 0 }
+  const count = entry.count + change
+  if (count <= 0) return entries.filter((each) => each.id !== id)
+  const versions = { ...entry.versions }
+  if (printing !== 'plain') {
+    const left = (versions[printing] ?? 0) + change
+    if (left > 0) versions[printing] = left
+    else delete versions[printing]
+  }
+  const next: DeckEntry = { id, count, ...(Object.keys(versions).length > 0 && { versions }) }
+  return entries.some((each) => each.id === id) ? entries.map((each) => (each.id === id ? next : each)) : [...entries, next]
+}
+
+// The printing a copy is taken out as: the one asked for if there is one, else the first there is
+const printingToTake = (entries: DeckEntry[], id: string, wanted?: Printing) =>
+  wanted && printingCopies(entries, id, wanted) > 0 ? wanted : printings.find((each) => printingCopies(entries, id, each) > 0)
+
+// A card as a printing shows it: Prescient in full art, a foil with its sheen
+function printingFace(card: DeckCard, printing: Printing) {
+  const face = printing === 'prescient' || printing === 'prescient-foil' ? (card.prescientFace ?? card.face) : card.face
+  return printing === 'foil' || printing === 'prescient-foil' ? <div className="foil">{face}</div> : face
+}
+
+// The marks of a deck row: how many copies of each printing besides the plain ones
+function PrintingMarks(props: { entry?: DeckEntry }) {
+  const versions = cardVersions.filter((version) => (props.entry?.versions?.[version] ?? 0) > 0)
+  if (!versions.length) return null
+  return (
+    <span className="printing-marks" title={versions.map((version) => `${props.entry!.versions![version]} ${printingLabel[version]}`).join(', ')}>
+      {versions.map((version) => (
+        <span key={version} className={`printing-mark printing-${version}`}>
+          {props.entry!.versions![version]}
+        </span>
+      ))}
+    </span>
+  )
+}
 
 function downloadText(fileName: string, text: string) {
   const link = document.createElement('a')
@@ -2116,7 +2255,16 @@ function downloadText(fileName: string, text: string) {
 // A deck as a file: each card by its name, set and number as well as its id, so the
 // deck still finds its cards in another browser whose cards were imported, not copied
 // back: the second side of a two-sided base
-type DeckFileCard = { count: number; name: string; subtitle?: string; set?: string; number?: string; id: string; back?: boolean }
+type DeckFileCard = {
+  count: number
+  versions?: DeckEntry['versions']
+  name: string
+  subtitle?: string
+  set?: string
+  number?: string
+  id: string
+  back?: boolean
+}
 type DeckFile = {
   deck: string
   author?: string
@@ -2154,6 +2302,8 @@ function findDeckCard(cards: DeckCard[], wanted: Omit<DeckFileCard, 'count'>) {
 function DeckRow(props: {
   card: DeckCard
   count: number
+  // Its copies by printing, marked after its name
+  entry?: DeckEntry
   penalty: number
   onAdd: () => void
   onTake: () => void
@@ -2173,6 +2323,7 @@ function DeckRow(props: {
             onTake()
           }}
         >
+          <PrintingMarks entry={props.entry} />
           {card.label}
         </span>
       </HoverPreview>
@@ -2206,7 +2357,8 @@ function DeckChoice(props: { label: DeckStep; card?: DeckCard; active: boolean; 
 }
 
 // One card to pick from. A click adds a copy and a right click takes one out; a leader
-// or a base is chosen with a click.
+// or a base is chosen with a click. Its toggles, under the count, pick the printing a
+// click adds: Prescient, foil, or both.
 function DeckPoolCard(props: {
   card: DeckCard
   preview: boolean
@@ -2216,16 +2368,27 @@ function DeckPoolCard(props: {
   count: number
   max: number
   penalty: number
-  onAdd: () => void
-  onTake: () => void
-  // Adds a copy to the sideboard rather than the deck
-  onSideboard: () => void
+  onAdd: (printing: Printing) => void
+  onTake: (printing: Printing) => void
+  // Adds a copy to the sideboard rather than the deck; without it, no sideboard button
+  onSideboard?: (printing: Printing) => void
+  // The toggles there are, and whether a copy of a printing can still be added
+  toggles?: { prescient: boolean; foil: boolean }
+  room?: (printing: Printing) => boolean
+  // This one printing alone, without toggles: a Sealed pool's copies of it, count and max theirs
+  printing?: Printing
 }) {
-  const { card, preview, choice, chosen, count, max, penalty, onAdd, onTake, onSideboard } = props
-  const full = count >= max
+  const { card, preview, choice, chosen, count, max, penalty, onAdd, onTake, onSideboard, toggles, room } = props
+  const [prescient, setPrescient] = useState(false)
+  const [foil, setFoil] = useState(false)
+  const printing: Printing =
+    props.printing ??
+    (toggles?.prescient && prescient ? (toggles.foil && foil ? 'prescient-foil' : 'prescient') : toggles?.foil && foil ? 'foil' : 'plain')
+  const face = printingFace(card, printing)
+  const full = count >= max || (room !== undefined && !room(printing))
   return (
     <li className={`deck-pool-card${!choice && full ? ' deck-full' : ''}`}>
-      <HoverPreview enabled={preview} preview={card.face}>
+      <HoverPreview enabled={preview} preview={face}>
         <button
           className="deck-pool-image"
           type="button"
@@ -2234,34 +2397,76 @@ function DeckPoolCard(props: {
             choice
               ? `Choose as the ${choice.toLowerCase()}`
               : full
-                ? `${max} copies already. Right click to take one out.`
-                : 'Click to add a copy, right click to take one out'
+                ? props.printing
+                  ? `The pool's ${printingLabel[printing]} ${max === 1 ? 'copy is' : 'copies are'} in the deck. Right click to take one out.`
+                  : count >= max
+                  ? `${max} copies already. Right click to take one out.`
+                  : `No ${printingLabel[printing]} copy left to add. Right click to take one out.`
+                : `Click to add a${printing === 'plain' ? '' : ` ${printingLabel[printing]}`} copy, right click to take one out`
           }
-          onClick={() => (choice || !full) && onAdd()}
+          onClick={() => (choice || !full) && onAdd(printing)}
           onContextMenu={(event) => {
             event.preventDefault()
-            if (!choice && count > 0) onTake()
+            if (!choice && count > 0) onTake(printing)
           }}
         >
-          {card.face}
+          {face}
           {count > 0 && <span className="deck-badge">{count}</span>}
         </button>
       </HoverPreview>
+      {!choice && toggles && (toggles.prescient || toggles.foil) && (
+        <div className="deck-printings">
+          {toggles.prescient && (
+            <button
+              className="deck-printing printing-prescient"
+              type="button"
+              aria-pressed={prescient}
+              title={prescient ? 'Prescient: on' : 'Prescient: show and add the full-art version'}
+              onClick={() => setPrescient(!prescient)}
+            >
+              ◈
+            </button>
+          )}
+          {toggles.foil && (
+            <button
+              className="deck-printing printing-foil"
+              type="button"
+              aria-pressed={foil}
+              title={foil ? 'Foil: on' : 'Foil: show and add a foil copy'}
+              onClick={() => setFoil(!foil)}
+            >
+              ✦
+            </button>
+          )}
+        </div>
+      )}
       <div className="showroom-actions deck-pool-actions">
         {choice ? (
           chosen && <span className="filter-label">The deck's {choice.toLowerCase()}</span>
         ) : (
           <>
-            <button className="deck-button" type="button" disabled={count === 0} aria-label="Take a copy out" onClick={onTake}>
+            <button className="deck-button" type="button" disabled={count === 0} aria-label="Take a copy out" onClick={() => onTake(printing)}>
               −
             </button>
-            <span className="deck-pool-count">{count}</span>
-            <button className="deck-button" type="button" disabled={full} aria-label="Add a copy" onClick={onAdd}>
+            <span className="deck-pool-count" title={props.printing ? `${count} of the pool's ${max} ${printingLabel[printing]}` : undefined}>
+              {props.printing && printing !== 'plain' && <span className={`printing-mark printing-${printing}`} />}
+              {count}
+              {props.printing && `/${max}`}
+            </span>
+            <button className="deck-button" type="button" disabled={full} aria-label="Add a copy" onClick={() => onAdd(printing)}>
               +
             </button>
-            <button className="deck-button" type="button" disabled={full} title="Add a copy to the sideboard" onClick={onSideboard}>
-              SB
-            </button>
+            {onSideboard && (
+              <button
+                className="deck-button"
+                type="button"
+                disabled={full}
+                title="Add a copy to the sideboard"
+                onClick={() => onSideboard(printing)}
+              >
+                SB
+              </button>
+            )}
             {penalty > 0 && (
               <span className="deck-penalty" title="Costs more: an aspect the leader and base lack">
                 +{penalty}
@@ -2573,7 +2778,8 @@ function smallArt(src: string) {
 // The card with its art, both sides', drawn smaller
 async function withSmallArt(card: Card): Promise<Card> {
   const shrink = async (art?: Art) => art && { ...art, src: await smallArt(art.src) }
-  return { ...card, art: await shrink(card.art), backArt: await shrink(card.backArt) }
+  const prescient = card.prescient?.art && { ...card.prescient, art: await shrink(card.prescient.art) }
+  return { ...card, art: await shrink(card.art), backArt: await shrink(card.backArt), ...(prescient && { prescient }) }
 }
 
 // The background: the leader and base's colours, paler toward the middle
@@ -2764,9 +2970,13 @@ function DeckBuilder(props: {
   // Where the cards come from, for the messages: "Showroom", or "set" for a Showcase,
   // whose cards are all of one set and offer no choice of sets
   source?: 'Showroom' | 'set'
+  // Sealed: the cards are a pool's, each card's max what the pool has
+  sealed?: boolean
 }) {
-  const { cards, prefix = 'decks', storageKey, source = 'Showroom' } = props
-  const fixedSet = source === 'set'
+  const { cards, prefix = 'decks', storageKey, source = 'Showroom', sealed = false } = props
+  const fixedSet = source === 'set' || sealed
+  const deckSize = sealed ? SEALED_DECK_SIZE : DECK_SIZE
+  const sourceName = sealed ? 'pool' : source
   // Signed in, the decks are the account's; otherwise this browser's
   const account = useAccount()
   const scope = deckScope(storageKey)
@@ -2957,32 +3167,48 @@ function DeckBuilder(props: {
   const { bar, shown, grid, preview } = step ? choosing : picking
 
   const copies = (id: string) => copiesOf(deck.cards, id) + copiesOf(deck.sideboard, id)
-  const add = (card: DeckCard) => {
+  // Prescient and foil copies: in Sealed those the pool has; otherwise any, once signed in
+  const printingsOn = sealed || account !== null
+  const usedOf = (id: string, printing: Printing) => printingCopies(deck.cards, id, printing) + printingCopies(deck.sideboard, id, printing)
+  const ownedOf = (card: DeckCard, printing: Printing) => (card.pooled ? printingCopies([card.pooled], card.pooled.id, printing) : Infinity)
+  const room = (card: DeckCard) => (printing: Printing) => usedOf(card.id, printing) < ownedOf(card, printing)
+  // The toggles, outside Sealed: a Sealed pool's printings each have a tile of their own
+  const togglesOf = (card: DeckCard) => (printingsOn && !card.pooled ? { prescient: card.prescientFace !== undefined, foil: true } : undefined)
+  // Without a printing asked for, the first one with a copy left
+  const add = (card: DeckCard, printing = printings.find(room(card))) => {
     if (card.type === 'Leader' || card.type === 'Base') {
       changeDeck(card.type === 'Leader' ? { ...deck, leader: card.id } : { ...deck, base: card.id })
       setChanging(null)
-    } else if (copies(card.id) < card.max)
-      changeDeck({ ...deck, cards: withCopies(deck.cards, card.id, copiesOf(deck.cards, card.id) + 1) })
+    } else if (printing && copies(card.id) < card.max && room(card)(printing))
+      changeDeck({ ...deck, cards: withPrinting(deck.cards, card.id, printing, 1) })
   }
-  const addToSideboard = (card: DeckCard) => {
-    if (copies(card.id) < card.max)
-      changeDeck({ ...deck, sideboard: withCopies(deck.sideboard, card.id, copiesOf(deck.sideboard, card.id) + 1) })
+  const addToSideboard = (card: DeckCard, printing = printings.find(room(card))) => {
+    if (printing && copies(card.id) < card.max && room(card)(printing))
+      changeDeck({ ...deck, sideboard: withPrinting(deck.sideboard, card.id, printing, 1) })
   }
   // The Leader or Base button: choose another, or, pressed again, keep it and go back to the cards
   const pickChoice = (choice: DeckStep) =>
     setChanging(step === choice && (choice === 'Leader' ? leader : base) ? null : choice)
-  // From the deck first, then from the sideboard
-  const take = (card: DeckCard) => {
-    const main = copiesOf(deck.cards, card.id)
-    if (main > 0) changeDeck({ ...deck, cards: withCopies(deck.cards, card.id, main - 1) })
-    else changeDeck({ ...deck, sideboard: withCopies(deck.sideboard, card.id, copiesOf(deck.sideboard, card.id) - 1) })
+  // From the deck first, then from the sideboard: of the printing asked for if either has one
+  const take = (card: DeckCard, printing?: Printing) => {
+    if (printing && printingCopies(deck.cards, card.id, printing) === 0 && printingCopies(deck.sideboard, card.id, printing) > 0)
+      return takeFromSideboard(card, printing)
+    const fromMain = printingToTake(deck.cards, card.id, printing)
+    if (fromMain) return changeDeck({ ...deck, cards: withPrinting(deck.cards, card.id, fromMain, -1) })
+    takeFromSideboard(card, printing)
   }
-  // One copy from the deck to the sideboard, or back
+  const takeFromSideboard = (card: DeckCard, printing?: Printing) => {
+    const taken = printingToTake(deck.sideboard, card.id, printing)
+    if (taken) changeDeck({ ...deck, sideboard: withPrinting(deck.sideboard, card.id, taken, -1) })
+  }
+  // One copy from the deck to the sideboard, or back, as the printing it is
   const move = (card: DeckCard, toSideboard: boolean) => {
     const [from, to] = toSideboard ? [deck.cards, deck.sideboard] : [deck.sideboard, deck.cards]
+    const printing = printingToTake(from, card.id)
+    if (!printing) return
     const moved = {
-      from: withCopies(from, card.id, copiesOf(from, card.id) - 1),
-      to: withCopies(to, card.id, copiesOf(to, card.id) + 1),
+      from: withPrinting(from, card.id, printing, -1),
+      to: withPrinting(to, card.id, printing, 1),
     }
     changeDeck(
       toSideboard ? { ...deck, cards: moved.from, sideboard: moved.to } : { ...deck, cards: moved.to, sideboard: moved.from },
@@ -2990,9 +3216,9 @@ function DeckBuilder(props: {
   }
 
   const known = (entries: DeckEntry[]) =>
-    entries.flatMap(({ id, count }) => {
-      const card = byId.get(id)
-      return card ? [{ card, count }] : []
+    entries.flatMap((entry) => {
+      const card = byId.get(entry.id)
+      return card ? [{ card, count: entry.count, entry }] : []
     })
   const main = known(deck.cards)
   const sideboard = known(deck.sideboard)
@@ -3014,15 +3240,20 @@ function DeckBuilder(props: {
   const problems = [
     !leader && 'Choose a leader.',
     !base && 'Choose a base.',
-    mainCount < DECK_SIZE && `${DECK_SIZE - mainCount} more card${DECK_SIZE - mainCount === 1 ? '' : 's'} needed: a deck has at least ${DECK_SIZE}.`,
-    sideboardCount > SIDEBOARD_SIZE && `${sideboardCount - SIDEBOARD_SIZE} too many in the sideboard: it holds ${SIDEBOARD_SIZE}.`,
+    mainCount < deckSize && `${deckSize - mainCount} more card${deckSize - mainCount === 1 ? '' : 's'} needed: a deck has at least ${deckSize}.`,
+    !sealed && sideboardCount > SIDEBOARD_SIZE && `${sideboardCount - SIDEBOARD_SIZE} too many in the sideboard: it holds ${SIDEBOARD_SIZE}.`,
     ...[...new Set([...main, ...sideboard].map(({ card }) => card))]
       .filter((card) => copies(card.id) > card.max)
-      .map((card) => `${card.label}: more than ${card.max} copies.`),
+      .map((card) => (sealed ? `${card.label}: the pool has only ${card.max}.` : `${card.label}: more than ${card.max} copies.`)),
+    ...[...new Set([...main, ...sideboard].map(({ card }) => card))].flatMap((card) =>
+      cardVersions
+        .filter((version) => usedOf(card.id, version) > ownedOf(card, version))
+        .map((version) => `${card.label}: the pool has ${ownedOf(card, version) || 'no'} ${printingLabel[version]} cop${ownedOf(card, version) === 1 ? 'y' : 'ies'}.`),
+    ),
     ...[leader, base, ...main.map(({ card }) => card), ...sideboard.map(({ card }) => card)]
       .filter((card): card is DeckCard => card !== undefined && !inSets(card))
       .map((card) => `${card.label} is not in the deck's sets.`),
-    lost > 0 && `${lost} card${lost === 1 ? ' is' : 's are'} no longer in the ${source}.`,
+    lost > 0 && `${lost} card${lost === 1 ? ' is' : 's are'} no longer in the ${sourceName}.`,
   ].filter((problem): problem is string => Boolean(problem))
 
   const deckFile = (): DeckFile => ({
@@ -3031,8 +3262,8 @@ function DeckBuilder(props: {
     sets: deck.sets,
     leader: leader && fileCard(leader),
     base: base && fileCard(base),
-    cards: main.map(({ card, count }) => ({ count, ...fileCard(card) })),
-    sideboard: sideboard.map(({ card, count }) => ({ count, ...fileCard(card) })),
+    cards: main.map(({ card, count, entry }) => ({ count, versions: entry.versions, ...fileCard(card) })),
+    sideboard: sideboard.map(({ card, count, entry }) => ({ count, versions: entry.versions, ...fileCard(card) })),
   })
   const deckText = () =>
     [
@@ -3056,8 +3287,14 @@ function DeckBuilder(props: {
       const used = [leader, base, ...main.map(({ card }) => card), ...sideboard.map(({ card }) => card), ...tokens].filter(
         (card): card is DeckCard => card !== undefined,
       )
+      // Only the cards with a Prescient copy need that face drawn
+      const prescientIds = new Set(
+        [...deck.cards, ...deck.sideboard]
+          .filter((entry) => printingCopies([entry], entry.id, 'prescient') + printingCopies([entry], entry.id, 'prescient-foil') > 0)
+          .map((entry) => entry.id),
+      )
       const small = new Map(
-        (await Promise.all(used.map((card) => (card.forImage ? card.forImage() : card)))).map((card) => [card.id, card]),
+        (await Promise.all(used.map((card) => (card.forImage ? card.forImage(prescientIds.has(card.id)) : card)))).map((card) => [card.id, card]),
       )
       flushSync(() => setPictureCards(small))
       const node = pictureRef.current?.firstElementChild as HTMLElement | null
@@ -3093,6 +3330,17 @@ function DeckBuilder(props: {
         setPictureCards(null)
       })
   }
+  // The deck image's cards: each printing of a card a card of its own, with its own count
+  const byPrinting = (rows: typeof main, drawn: Map<string, DeckCard>) =>
+    rows.flatMap(({ card, entry }) =>
+      printings.flatMap((printing) => {
+        const count = printingCopies([entry], entry.id, printing)
+        if (!count) return []
+        const small = drawn.get(card.id) ?? card
+        const id = printing === 'plain' ? small.id : `${small.id}:${printing}`
+        return [{ card: { ...small, id, face: printingFace(small, printing) }, count }]
+      }),
+    )
   const closePicture = () => {
     if (picture) URL.revokeObjectURL(picture.url)
     setPicture(null)
@@ -3109,7 +3357,7 @@ function DeckBuilder(props: {
         list.flatMap((wanted) => {
           const card = findDeckCard(cards, wanted)
           if (!card) missing += wanted.count
-          return card ? [{ id: card.id, count: wanted.count }] : []
+          return card ? [{ id: card.id, count: wanted.count, ...(wanted.versions && { versions: wanted.versions }) }] : []
         })
       const found = (wanted?: Omit<DeckFileCard, 'count'>) => {
         const card = wanted && findDeckCard(cards, wanted)
@@ -3126,7 +3374,7 @@ function DeckBuilder(props: {
         cards: entries(data.cards),
         sideboard: entries(data.sideboard),
       })
-      setNote(missing ? `Imported. ${missing} card${missing === 1 ? ' was' : 's were'} not found in the ${source}.` : 'Imported.')
+      setNote(missing ? `Imported. ${missing} card${missing === 1 ? ' was' : 's were'} not found in the ${sourceName}.` : 'Imported.')
     } catch {
       setNote('That file is not a deck.')
     }
@@ -3143,8 +3391,8 @@ function DeckBuilder(props: {
               leader={leader && pictureCards.get(leader.id)}
               base={base && pictureCards.get(base.id)}
               covered={covered ?? [...(leader?.icons ?? []), ...(base?.icons ?? [])]}
-              cards={main.map(({ card, count }) => ({ card: pictureCards.get(card.id) ?? card, count }))}
-              sideboard={sideboard.map(({ card, count }) => ({ card: pictureCards.get(card.id) ?? card, count }))}
+              cards={byPrinting(main, pictureCards)}
+              sideboard={byPrinting(sideboard, pictureCards)}
               tokens={tokens.map((card) => pictureCards.get(card.id) ?? card)}
             />
           </div>,
@@ -3214,21 +3462,45 @@ function DeckBuilder(props: {
             <p className="empty-note">No card matches these filters.</p>
           ) : (
             <ul className={step ? `${grid} deck-landscape` : grid}>
-              {shown.map(({ item: card }) => (
-                <DeckPoolCard
-                  key={card.id}
-                  card={card}
-                  preview={preview}
-                  choice={step ?? undefined}
-                  chosen={card.id === deck.leader || card.id === deck.base}
-                  count={step ? 0 : copies(card.id)}
-                  max={card.max}
-                  penalty={step ? 0 : penaltyOf(card)}
-                  onAdd={() => add(card)}
-                  onTake={() => take(card)}
-                  onSideboard={() => addToSideboard(card)}
-                />
-              ))}
+              {shown.flatMap(({ item: card }) =>
+                // A Sealed pool's card: a tile for each of its printings the pool has
+                !step && card.pooled ? (
+                  printings
+                    .filter((printing) => ownedOf(card, printing) > 0)
+                    .map((printing) => (
+                      <DeckPoolCard
+                        key={`${card.id}:${printing}`}
+                        card={card}
+                        preview={preview}
+                        chosen={false}
+                        count={usedOf(card.id, printing)}
+                        max={ownedOf(card, printing)}
+                        penalty={penaltyOf(card)}
+                        onAdd={() => add(card, printing)}
+                        onTake={() => take(card, printing)}
+                        onSideboard={() => addToSideboard(card, printing)}
+                        room={room(card)}
+                        printing={printing}
+                      />
+                    ))
+                ) : (
+                  <DeckPoolCard
+                    key={card.id}
+                    card={card}
+                    preview={preview}
+                    choice={step ?? undefined}
+                    chosen={card.id === deck.leader || card.id === deck.base}
+                    count={step ? 0 : copies(card.id)}
+                    max={card.max}
+                    penalty={step ? 0 : penaltyOf(card)}
+                    onAdd={(printing) => add(card, printing)}
+                    onTake={(printing) => take(card, printing)}
+                    onSideboard={(printing) => addToSideboard(card, printing)}
+                    toggles={step ? undefined : togglesOf(card)}
+                    room={room(card)}
+                  />
+                ),
+              )}
             </ul>
           )}
         </div>
@@ -3325,13 +3597,13 @@ function DeckBuilder(props: {
           )}
 
           <p className="deck-totals">
-            <strong className={mainCount < DECK_SIZE ? 'deck-short' : undefined}>
-              {mainCount}/{DECK_SIZE}
+            <strong className={mainCount < deckSize ? 'deck-short' : undefined}>
+              {mainCount}/{deckSize}
             </strong>{' '}
-            cards · sideboard {sideboardCount}/{SIDEBOARD_SIZE}
+            cards · sideboard {sealed ? sideboardCount : `${sideboardCount}/${SIDEBOARD_SIZE}`}
           </p>
           {problems.length === 0 ? (
-            <p className="deck-legal">Ready to play: the deck follows the Premier rules.</p>
+            <p className="deck-legal">Ready to play: the deck follows the {sealed ? 'Sealed' : 'Premier'} rules.</p>
           ) : (
             <ul className="deck-problems">
               {problems.map((problem) => (
@@ -3374,11 +3646,12 @@ function DeckBuilder(props: {
                   {group} ({rows.reduce((sum, { count }) => sum + count, 0)})
                 </h3>
                 <ul className="deck-rows">
-                  {rows.map(({ card, count }) => (
+                  {rows.map(({ card, count, entry }) => (
                     <DeckRow
                       key={card.id}
                       card={card}
                       count={count}
+                      entry={entry}
                       penalty={penaltyOf(card)}
                       onAdd={() => add(card)}
                       onTake={() => take(card)}
@@ -3390,7 +3663,7 @@ function DeckBuilder(props: {
                         className="deck-button"
                         type="button"
                         aria-label="Add a copy"
-                        disabled={copies(card.id) >= card.max}
+                        disabled={copies(card.id) >= card.max || !printings.some(room(card))}
                         onClick={() => add(card)}
                       >
                         +
@@ -3408,21 +3681,17 @@ function DeckBuilder(props: {
             <div>
               <h3 className="deck-group">Sideboard ({sideboardCount})</h3>
               <ul className="deck-rows">
-                {[...sideboard].sort(byCost).map(({ card, count }) => (
+                {[...sideboard].sort(byCost).map(({ card, count, entry }) => (
                   <DeckRow
                     key={card.id}
                     card={card}
                     count={count}
+                    entry={entry}
                     penalty={penaltyOf(card)}
                     onAdd={() => addToSideboard(card)}
-                    onTake={() => changeDeck({ ...deck, sideboard: withCopies(deck.sideboard, card.id, count - 1) })}
+                    onTake={() => takeFromSideboard(card)}
                   >
-                    <button
-                      className="deck-button"
-                      type="button"
-                      aria-label="Take a copy out"
-                      onClick={() => changeDeck({ ...deck, sideboard: withCopies(deck.sideboard, card.id, count - 1) })}
-                    >
+                    <button className="deck-button" type="button" aria-label="Take a copy out" onClick={() => takeFromSideboard(card)}>
                       −
                     </button>
                     <button className="deck-button" type="button" title="Move a copy to the deck" onClick={() => move(card, false)}>
@@ -3454,6 +3723,563 @@ function DeckBuilder(props: {
     </section>
   )
 }
+
+// The Deck Builder's formats: Premier, from every card, and Sealed, from a pool of cards opened
+type DeckBuilderProps = Parameters<typeof DeckBuilder>[0]
+type DeckFormat = 'premier' | 'sealed'
+
+function DeckFormats(props: DeckBuilderProps) {
+  const { prefix = 'decks' } = props
+  const [format, setFormat] = useRemembered<DeckFormat>(`${prefix}.format`, 'premier')
+  return (
+    <div className="deck-formats">
+      <div className="deck-tabs deck-format-tabs" role="tablist" aria-label="Format">
+        {(['premier', 'sealed'] as const).map((value) => (
+          <button key={value} type="button" role="tab" aria-selected={format === value} onClick={() => setFormat(value)}>
+            {value === 'premier' ? 'Premier' : 'Sealed'}
+          </button>
+        ))}
+      </div>
+      {format === 'premier' ? <DeckBuilder {...props} /> : <SealedPools {...props} />}
+    </div>
+  )
+}
+
+// Sealed pools are kept beside the Deck Builder's decks, and each pool's decks under a key of their own
+const sealedKey = (storageKey: string | undefined, what: string) => `${storageKey ?? DECKS_KEY}.${what}`
+
+const poolGroups = ['Leaders', 'Bases', ...deckGroups] as const
+const poolGroup = (card: DeckCard) => (card.type === 'Leader' ? 'Leaders' : card.type === 'Base' ? 'Bases' : deckGroup(card))
+// Saved to the account this long after the last change
+const POOL_SAVE_DELAY = 600
+
+// A booster as Star Wars: Unlimited prints them, 16 cards: a leader, a base (a token on its back),
+// 8 commons, 3 uncommons, a Prescient card (a full-art card, most often a common), a rare or
+// legendary, and last a foil of any rarity. A legendary takes
+// the rare slot one pack in 6 (one in 8 in Star Wars: Unlimited); a rare leader or base one in 6
+// is a guess, there are no odds published for those. The Prescient card is a foil one pack in 6
+// (a legendary there always), and the foil Prescient one pack in 6.
+const BOOSTERS = 6
+const LEGENDARY_ODDS = 1 / 6
+const RARE_LEADER_ODDS = 1 / 6
+const PRESCIENT_FOIL_ODDS = 1 / 6
+type PackSlot = 'Leader' | 'Base' | 'Common' | 'Uncommon' | 'Prescient' | 'Rare' | 'Legendary' | 'Foil'
+type PackCard = { card: DeckCard; slot: PackSlot; printing: Printing }
+const boosterBack = asset('/sim/DuneCardBack01.jpg')
+
+const pickOne = <T,>(list: T[]): T | undefined => list[Math.floor(Math.random() * list.length)]
+// So many different ones while there are enough, then again from the start
+function pickSome<T>(list: T[], count: number) {
+  const bag: T[] = []
+  const picked: T[] = []
+  while (picked.length < count && list.length) {
+    if (!bag.length) bag.push(...list)
+    picked.push(bag.splice(Math.floor(Math.random() * bag.length), 1)[0])
+  }
+  return picked
+}
+
+function openBooster(cards: DeckCard[], set?: string): PackCard[] {
+  const offered = cards.filter(
+    (card) => !card.back && card.type !== 'Token' && (!set || card.set === set) && ['C', 'U', 'R', 'L'].includes(card.rarity),
+  )
+  const of = (type: 'Leader' | 'Base' | 'Other', rarity: string) =>
+    offered.filter(
+      (card) => (type === 'Other' ? card.type !== 'Leader' && card.type !== 'Base' : card.type === type) && card.rarity === rarity,
+    )
+  // The rarity wanted, or another when the set has none of it
+  const firstOf = (...lists: DeckCard[][]) => lists.find((list) => list.length) ?? []
+  const pack: PackCard[] = []
+  const add = (card: DeckCard | undefined, slot: PackSlot, printing: Printing = 'plain') => card && pack.push({ card, slot, printing })
+  for (const type of ['Leader', 'Base'] as const) {
+    const rare = Math.random() < RARE_LEADER_ODDS
+    add(pickOne(rare ? firstOf(of(type, 'R'), of(type, 'C')) : firstOf(of(type, 'C'), of(type, 'R'))), type)
+  }
+  // Of any rarity, as often as each is in a pack: 9 commons to 3 uncommons to 1 rare or legendary
+  const anyRarity = () => {
+    const roll = Math.random() * 13
+    return roll < 9 ? 'C' : roll < 12 ? 'U' : Math.random() < LEGENDARY_ODDS ? 'L' : 'R'
+  }
+  for (const card of pickSome(of('Other', 'C'), 8)) add(card, 'Common')
+  for (const card of pickSome(of('Other', 'U'), 3)) add(card, 'Uncommon')
+  const prescient = pickOne(firstOf(of('Other', anyRarity()), of('Other', 'C')))
+  // A legendary is full art already: as the Prescient card it comes as a foil too
+  add(prescient, 'Prescient', prescient?.rarity === 'L' || Math.random() < PRESCIENT_FOIL_ODDS ? 'prescient-foil' : 'prescient')
+  const legendary = Math.random() < LEGENDARY_ODDS && of('Other', 'L').length > 0
+  const rare = pickOne(legendary ? of('Other', 'L') : firstOf(of('Other', 'R'), of('Other', 'L')))
+  add(rare, rare?.rarity === 'L' ? 'Legendary' : 'Rare')
+  const foil = pickOne(firstOf(of('Other', anyRarity()), of('Other', 'C')))
+  add(foil, 'Foil', foil?.prescientFace && Math.random() < PRESCIENT_FOIL_ODDS ? 'prescient-foil' : 'foil')
+  return pack
+}
+
+// A booster: the card back in a foil wrapper crimped at both ends
+function Booster(props: { label: string; big?: boolean; left?: number; onOpen?: () => void; title?: string }) {
+  const { label, big, left, onOpen, title } = props
+  return (
+    <button
+      type="button"
+      className={`booster${big ? ' booster-big' : ''}`}
+      title={title}
+      onClick={(event) => {
+        event.stopPropagation()
+        onOpen?.()
+      }}
+    >
+      <span className="booster-art" style={{ backgroundImage: `url("${boosterBack}")` }} />
+      <span className="booster-sheen" />
+      <span className="booster-band">{label}</span>
+      <span className="booster-name">Booster</span>
+      {left !== undefined && <span className="booster-left">{left} cards left</span>}
+    </button>
+  )
+}
+
+
+// A card of the pack: its back, turned over to its face
+function PackCardView(props: { pack: PackCard; flipped: boolean; leaving?: boolean; delay?: number; onLeft?: () => void }) {
+  const { pack, flipped, leaving, delay = 0, onLeft } = props
+  const landscape = pack.card.type === 'Leader' || pack.card.type === 'Base'
+  return (
+    <div
+      className={`pack-card slot-${pack.slot.toLowerCase()}${pack.printing === 'foil' || pack.printing === 'prescient-foil' ? ' pack-foil' : ''}${landscape ? ' pack-landscape' : ''}${leaving ? ' pack-leaving' : ''}`}
+      style={{ '--delay': `${delay}ms` } as CSSProperties}
+      onAnimationEnd={(event) => event.animationName === 'pack-to-pool' && onLeft?.()}
+    >
+      <div className={`pack-flip${flipped ? ' pack-flipped' : ''}`}>
+        <div className="pack-back" style={{ backgroundImage: `url("${boosterBack}")` }} />
+        <div className="pack-front">{((pack.printing === 'prescient' || pack.printing === 'prescient-foil') && pack.card.prescientFace) || pack.card.face}</div>
+      </div>
+      <span className="pack-slot">{pack.slot}</span>
+    </div>
+  )
+}
+
+// Opening a booster, over the page: a click turns the next card over, the next puts it in the
+// pool. Its cards are in the pool already: closing early loses nothing.
+function BoosterOpening(props: { pack: PackCard[]; label: string; fast: boolean; onDone: () => void }) {
+  const { pack, label, fast, onDone } = props
+  const [index, setIndex] = useState(0)
+  const [phase, setPhase] = useState<'pack' | 'shown' | 'leaving' | 'all'>(fast ? 'all' : 'pack')
+  const [flipped, setFlipped] = useState(false)
+  // Turned over a frame after it is drawn, so the turn shows
+  useEffect(() => {
+    if (phase !== 'shown' && phase !== 'all') return
+    const frame = requestAnimationFrame(() => requestAnimationFrame(() => setFlipped(true)))
+    return () => cancelAnimationFrame(frame)
+  }, [phase, index])
+  const advance = () => {
+    if (phase === 'pack' || phase === 'shown') playClick()
+    if (phase === 'pack') {
+      setFlipped(false)
+      setPhase('shown')
+    } else if (phase === 'shown') setPhase('leaving')
+  }
+  const left = () => {
+    if (index + 1 >= pack.length) return onDone()
+    setIndex(index + 1)
+    setPhase('pack')
+  }
+  const revealAll = () => {
+    playClick()
+    setFlipped(false)
+    setPhase('all')
+  }
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onDone()
+      else if (event.key === ' ' || event.key === 'Enter' || event.key === 'ArrowRight') {
+        event.preventDefault()
+        if (phase === 'all') onDone()
+        else advance()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  })
+  const rest = pack.slice(index)
+  return createPortal(
+    <div className="booster-stage" role="dialog" aria-label={`Opening a ${label} booster`} onClick={phase === 'all' ? onDone : advance}>
+      <div className="booster-stage-bar" onClick={(event) => event.stopPropagation()}>
+        <span>
+          {label} booster · {phase === 'all' ? `${rest.length} cards` : `card ${index + 1} of ${pack.length}`}
+        </span>
+        {phase !== 'all' && (
+          <button className="button" type="button" onClick={revealAll}>
+            Reveal all
+          </button>
+        )}
+        <button className="button button-primary" type="button" onClick={onDone}>
+          {phase === 'all' ? 'Add to the pool' : 'Done'}
+        </button>
+      </div>
+      {phase === 'all' ? (
+        <div className="pack-all">
+          {rest.map((each, i) => (
+            <HoverPreview
+              key={i}
+              enabled
+              preview={printingFace(each.card, each.printing)}
+              width={each.card.type === 'Leader' || each.card.type === 'Base' ? PREVIEW_WIDTH * 1.4 : PREVIEW_WIDTH}
+            >
+              <PackCardView pack={each} flipped={flipped} delay={i * 90} />
+            </HoverPreview>
+          ))}
+        </div>
+      ) : (
+        <div className={`booster-table${phase === 'pack' ? '' : ' booster-table-card'}`}>
+          <Booster label={label} big left={pack.length - index} onOpen={advance} />
+          {phase !== 'pack' && (
+            <PackCardView key={index} pack={pack[index]} flipped={flipped} leaving={phase === 'leaving'} onLeft={left} />
+          )}
+        </div>
+      )}
+      <p className="booster-hint">
+        {phase === 'all' ? 'The whole pack, in the pool. Click to close.' : phase === 'pack' ? 'Click to turn over the next card.' : 'Click to put it in your pool.'}
+      </p>
+    </div>,
+    document.body,
+  )
+}
+
+// Sealed: pools of cards opened from boosters, six to a pool unless more are added, and decks
+// built from a pool alone. A pool is saved as it changes.
+function SealedPools(props: DeckBuilderProps) {
+  const { cards, prefix = 'decks', storageKey, source } = props
+  const account = useAccount()
+  const poolsKey = sealedKey(storageKey, 'sealed-pools')
+  const scope = deckScope(poolsKey)
+  const [pools, setPools] = useState<SealedPool[]>(() => (account ? [] : loadDecks<SealedPool>(poolsKey)))
+  const [poolState, setPoolState] = useState<'loading' | 'ready' | 'failed'>(account ? 'loading' : 'ready')
+  const [note, setNote] = useState<string | null>(null)
+  // On the account: what is saved there, the list still to send, and the sends, one after another
+  const savedPools = useRef(pools)
+  const pending = useRef<SealedPool[] | null>(null)
+  const timer = useRef(0)
+  const saving = useRef(Promise.resolve())
+  const flush = () => {
+    window.clearTimeout(timer.current)
+    const next = pending.current
+    if (!account || !next) return
+    pending.current = null
+    const before = savedPools.current
+    savedPools.current = next
+    saving.current = saving.current
+      .then(() => syncAccountDecks(account, scope, before, next))
+      .catch((err) => setNote(`Could not save to your account: ${(err as Error).message}`))
+  }
+  useEffect(() => {
+    if (!account) {
+      setPools(loadDecks<SealedPool>(poolsKey))
+      setPoolState('ready')
+      return
+    }
+    let live = true
+    setPoolState('loading')
+    loadAccountDecks<SealedPool>(account, scope)
+      .then((found) => {
+        if (!live) return
+        savedPools.current = found
+        setPools(found)
+        setPoolState('ready')
+      })
+      .catch(() => {
+        if (!live) return
+        setPoolState('failed')
+        setNote('Could not load the pools on your account. Reload the page to try again.')
+      })
+    return () => {
+      live = false
+      flush()
+    }
+  }, [account?.token, scope, poolsKey])
+
+  const [currentId, setCurrentId] = useRemembered(`${prefix}.sealed.pool`, '')
+  const [mode, setMode] = useRemembered<'decks' | 'pool'>(`${prefix}.sealed.mode`, 'pool')
+  const [fast, setFast] = useRemembered(`${prefix}.sealed.fast`, false)
+  const [deleting, setDeleting] = useState(false)
+  const [opening, setOpening] = useState<PackCard[] | null>(null)
+
+  // The sets a booster can be of; a Showcase's cards are all of one
+  const sets = [...new Set(cards.filter((card) => card.set !== NO_SET).map((card) => card.set))].sort()
+  const commonestSet = sets
+    .map((set) => ({ set, count: cards.filter((card) => card.set === set).length }))
+    .sort((a, b) => b.count - a.count)[0]?.set
+  // With no pool yet, a new one is open straight away; it is kept once it has something
+  const [firstPool] = useState<SealedPool>(() => ({ id: crypto.randomUUID(), name: 'Pool 1', cards: [] }))
+  const pool = pools.find(({ id }) => id === currentId) ?? pools[0] ?? firstPool
+  const kept = pools.some(({ id }) => id === pool.id)
+  const boosters = pool.boosters ?? BOOSTERS
+  const opened = pool.opened ?? 0
+  const poolSet = source === 'set' ? undefined : (pool.set ?? commonestSet)
+
+  const storePools = (next: SealedPool[]) => {
+    if (account && poolState !== 'ready') {
+      setNote('Your account’s pools are still loading. Try again in a moment.')
+      return false
+    }
+    setPools(next)
+    if (!account) {
+      if (!storeDecks(next, poolsKey)) setNote('Could not save: this browser has run out of storage.')
+      return true
+    }
+    pending.current = next
+    window.clearTimeout(timer.current)
+    timer.current = window.setTimeout(flush, POOL_SAVE_DELAY)
+    return true
+  }
+  const changePool = (next: SealedPool) => {
+    const done = storePools(kept ? pools.map((each) => (each.id === next.id ? next : each)) : [...pools, next])
+    if (done) setCurrentId(next.id)
+    return done
+  }
+  const newPool = () => {
+    const next = { id: crypto.randomUUID(), name: `Pool ${pools.length + 1}`, cards: [] }
+    if (!storePools([...pools, next])) return
+    setCurrentId(next.id)
+    setMode('pool')
+    setDeleting(false)
+  }
+  // A pool goes with its decks
+  const deletePool = () => {
+    if (!storePools(pools.filter(({ id }) => id !== pool.id))) return
+    setDeleting(false)
+    const decksKey = sealedKey(storageKey, `sealed.${pool.id}`)
+    const decksScope = deckScope(decksKey)
+    try {
+      localStorage.removeItem(`dune-unlimited.deck-drafts.${decksScope}`)
+      if (!account) localStorage.removeItem(decksKey)
+    } catch {
+      // Nothing kept, then
+    }
+    if (account)
+      loadAccountDecks(account, decksScope)
+        .then((found) => syncAccountDecks(account, decksScope, found, []))
+        .catch(() => setNote('The pool is deleted, but its decks could not be.'))
+  }
+  // A booster's cards go in the pool as it is opened; showing them is for the fun of it
+  const openNext = () => {
+    if (opened >= boosters) return
+    const pack = openBooster(cards, poolSet)
+    if (!pack.length) return setNote('There are no cards to open: no card has a rarity in this set.')
+    let entries = pool.cards
+    for (const each of pack) entries = withPrinting(entries, each.card.id, each.printing, 1)
+    if (changePool({ ...pool, set: poolSet, opened: opened + 1, cards: entries })) setOpening(pack)
+  }
+
+  // The pool, card by card
+  const byId = new Map(cards.map((card) => [card.id, card]))
+  const total = deckCount(pool.cards)
+  const inPool = pool.cards.flatMap(({ id, count }) => {
+    const card = byId.get(id)
+    return card ? [{ card, count }] : []
+  })
+  const poolFilters = useCardFilters(
+    `${prefix}.sealed.opened`,
+    inPool.map(({ card }) => ({ item: card, facts: card.facts })),
+    'Order saved',
+    'number',
+  )
+  // What a deck of the pool can use: the pool's cards, as many as it has, both sides of its
+  // two-sided bases, any common base (as at any Sealed event), and the tokens its cards name
+  const counts = new Map(pool.cards.map(({ id, count }) => [id, count]))
+  const pooled = new Map(pool.cards.map((entry) => [entry.id, entry]))
+  const foilCount = (id: string) => printingCopies(pool.cards, id, 'foil') + printingCopies(pool.cards, id, 'prescient-foil')
+  const prescientCount = (id: string) => printingCopies(pool.cards, id, 'prescient') + printingCopies(pool.cards, id, 'prescient-foil')
+  // A card the pool has a Prescient copy of shows as that one
+  const poolFace = (card: DeckCard) => (prescientCount(card.id) && card.prescientFace) || card.face
+  const kinds = (card: DeckCard) =>
+    cardVersions
+      .flatMap((version) => {
+        const count = printingCopies(pool.cards, card.id, version)
+        return count ? [`${count} ${printingLabel[version]}`] : []
+      })
+      .join(', ')
+  const poolCards = cards.flatMap((card) => {
+    const count = counts.get(card.id.replace(BACK_SIDE, ''))
+    if (count) return [{ ...card, max: count, pooled: pooled.get(card.id.replace(BACK_SIDE, '')) }]
+    return card.type === 'Token' || (card.type === 'Base' && card.rarity === 'C' && (!poolSet || card.set === poolSet)) ? [card] : []
+  })
+
+  const label = poolSet ?? cards.find((card) => card.set !== NO_SET)?.set ?? 'DUNE'
+  const poolChoices = (kept ? pools : [...pools, pool]).map(({ id, name }) => ({ value: id, label: name || 'Unnamed pool' }))
+  return (
+    <div className="sealed">
+      {opening && <BoosterOpening pack={opening} label={label} fast={fast} onDone={() => setOpening(null)} />}
+      <div className="deck-bar sealed-bar">
+        <ChoiceDropdown
+          label="Pool"
+          options={poolChoices}
+          selected={pool.id}
+          onChange={(id) => {
+            setCurrentId(id)
+            setDeleting(false)
+          }}
+        />
+        <input className="deck-name" aria-label="Pool name" value={pool.name} onChange={(event) => changePool({ ...pool, name: event.target.value })} />
+        {source !== 'set' && sets.length > 1 && (
+          <ChoiceDropdown
+            label="Set"
+            options={sets.map((set) => ({ value: set, label: set }))}
+            selected={poolSet ?? ''}
+            onChange={(set) => changePool({ ...pool, set })}
+          />
+        )}
+        <span className="filter-label sealed-boosters" title="Boosters opened">
+          {opened}/{boosters} boosters
+        </span>
+        <button className="button" type="button" title="One more booster for this pool" onClick={() => changePool({ ...pool, boosters: boosters + 1 })}>
+          + Booster
+        </button>
+        <div className="deck-tabs sealed-modes" role="tablist" aria-label="Pool or decks">
+          <button type="button" role="tab" aria-selected={mode === 'pool'} onClick={() => setMode('pool')}>
+            Pool
+          </button>
+          <button type="button" role="tab" aria-selected={mode === 'decks'} onClick={() => setMode('decks')}>
+            Build decks
+          </button>
+        </div>
+        <div className="deck-bar-buttons">
+          <button className="button" type="button" onClick={newPool}>
+            New pool
+          </button>
+          {deleting ? (
+            <span className="confirm">
+              Delete this pool and its decks?
+              <button className="button button-primary" type="button" onClick={deletePool}>
+                Yes
+              </button>
+              <button className="button" type="button" onClick={() => setDeleting(false)}>
+                No
+              </button>
+            </span>
+          ) : (
+            <button className="button" type="button" disabled={!kept} onClick={() => setDeleting(true)}>
+              Delete pool
+            </button>
+          )}
+        </div>
+        {note && <p className="saved-note">{note}</p>}
+      </div>
+
+      {mode === 'decks' ? (
+        total === 0 ? (
+          <div className="sealed-empty">
+            <p className="empty-note">This pool has no cards yet. Open its boosters, then build decks from them.</p>
+            <button className="button button-primary" type="button" onClick={() => setMode('pool')}>
+              Open boosters
+            </button>
+          </div>
+        ) : (
+          <DeckBuilder
+            key={pool.id}
+            cards={poolCards}
+            prefix={`${prefix}.sealed`}
+            storageKey={sealedKey(storageKey, `sealed.${pool.id}`)}
+            source={source}
+            sealed
+          />
+        )
+      ) : (
+        <>
+          <div className="booster-shelf">
+            {opened < boosters ? (
+              <div className="booster-pile">
+                {Array.from({ length: boosters - opened }, (_, i) => (
+                  <Booster
+                    key={i}
+                    label={label}
+                    onOpen={() => {
+                      playClick()
+                      openNext()
+                    }}
+                    title="Open this booster"
+                  />
+                ))}
+              </div>
+            ) : (
+              <p className="empty-note">Every booster is open. Build decks from the pool, or add a booster.</p>
+            )}
+            <div className="booster-shelf-side">
+              <p className="filter-label">
+                {opened < boosters ? 'Click a booster to open it.' : ''} {opened}/{boosters} opened · {total} card{total === 1 ? '' : 's'} in the pool
+              </p>
+              <label className="toggle deck-toggle" title="Show the whole pack at once">
+                <input type="checkbox" checked={fast} onChange={(event) => setFast(event.target.checked)} />
+                Fast open
+              </label>
+            </div>
+          </div>
+          {total > 0 && (
+            <section className="decks">
+              <div className="deck-main">
+                <div className="deck-pool">
+                  {poolFilters.bar}
+                  {poolFilters.shown.length === 0 ? (
+                    <p className="empty-note">No card matches these filters.</p>
+                  ) : (
+                    <ul className={poolFilters.grid}>
+                      {poolFilters.shown.map(({ item: card }) => (
+                        <li key={card.id} className="deck-pool-card">
+                          <HoverPreview
+                            enabled={poolFilters.preview}
+                            preview={foilCount(card.id) ? <div className="foil">{poolFace(card)}</div> : poolFace(card)}
+                          >
+                            <div className={`deck-pool-image${foilCount(card.id) ? ' foil' : ''}`} title={kinds(card) || undefined}>
+                              {poolFace(card)}
+                              {(counts.get(card.id) ?? 0) > 1 && <span className="deck-badge">{counts.get(card.id)}</span>}
+                            </div>
+                          </HoverPreview>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
+              <div className="deck-side">
+                <aside className="deck-panel">
+                  <p className="deck-totals">
+                    <strong>{total}</strong> card{total === 1 ? '' : 's'} in the pool
+                  </p>
+                  {poolGroups.map((group) => {
+                    const rows = inPool
+                      .filter(({ card }) => poolGroup(card) === group)
+                      .sort((a, b) => (a.card.cost ?? 0) - (b.card.cost ?? 0) || a.card.name.localeCompare(b.card.name))
+                    if (rows.length === 0) return null
+                    return (
+                      <div key={group}>
+                        <h3 className="deck-group">
+                          {group} ({rows.reduce((sum, { count }) => sum + count, 0)})
+                        </h3>
+                        <ul className="deck-rows">
+                          {rows.map(({ card, count }) => (
+                            <li key={card.id} className="deck-row">
+                              <span className="deck-row-count">{count}×</span>
+                              <HoverPreview enabled preview={poolFace(card)}>
+                                <span className="deck-row-name" title={kinds(card) || undefined}>
+                                  {prescientCount(card.id) > 0 && <span className="pool-prescient">◈ </span>}
+                                  {foilCount(card.id) > 0 && <span className="pool-foil">✦ </span>}
+                                  {card.label}
+                                </span>
+                              </HoverPreview>
+                              <span className="deck-row-cost">{card.cost ?? ''}</span>
+                              <span className="deck-row-buttons pool-rarity" title="Rarity">{card.rarity}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )
+                  })}
+                </aside>
+              </div>
+            </section>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+
 
 function FilterGroup<T extends string>(props: {
   label: string
@@ -3535,12 +4361,25 @@ function CardCreator(props: {
   // Which side of a leader is being edited
   const [back, setBack] = useState(false)
   const front = findFrame(draft.frameId)
-  const side = cardSide(draft, back)
+  // Whether the Prescient version is being edited: only its art and look are its own
+  const [prescientTab, setPrescientTab] = useState(false)
+  const prescientable = canBePrescient(front.type) && !front.token
+  const onPrescient = prescientTab && prescientable
+  const shownCard = onPrescient ? prescientOf(draft) : draft
+  const side = cardSide(shownCard, back)
   const { frame } = side
   const bothSides = backFrameOf(draft) ? [front, cardSide(draft, true).frame] : [front]
   // Each side of a leader has its own art. Changing it changes that side alone; a
   // side that has never been given art shows the other side's (see cardSide).
-  const setArt = (art?: Art) => onChange(side.isBack ? { ...draft, backArt: art } : { ...draft, art })
+  const setArt = (art?: Art) =>
+    onChange(
+      onPrescient
+        ? { ...draft, prescient: { ...draft.prescient, art } }
+        : side.isBack
+          ? { ...draft, backArt: art }
+          : { ...draft, art },
+    )
+  const setLook = (look: Look) => onChange(onPrescient ? { ...draft, prescient: { ...draft.prescient, look } } : { ...draft, look })
   // Name, subtitle and trait: typed on the Leader Unit side, they are kept for that
   // side only, and typed back to what the Leader side says, they follow it again.
   // A field that was empty on the other side when typing began is typed on both.
@@ -3612,23 +4451,45 @@ function CardCreator(props: {
     <div className="creator">
       <section className="editor">
         <div className="editor-fields editor-side">
+          {prescientable && (
+            <div className="side-toggle" title="A booster's Prescient card: this card in full art">
+              <button className="chip" type="button" aria-pressed={!onPrescient} onClick={() => setPrescientTab(false)}>
+                Card
+              </button>
+              <button className="chip" type="button" aria-pressed={onPrescient} onClick={() => setPrescientTab(true)}>
+                Prescient
+              </button>
+            </div>
+          )}
+          {onPrescient && (
+            <p className="empty-note prescient-note">
+              {draft.prescient
+                ? 'This card’s Prescient version has art or a look of its own. The rest is the card’s.'
+                : 'The card’s art with the Prescient look, until you change them here. The rest is the card’s.'}
+              {draft.prescient && (
+                <button className="button" type="button" onClick={() => onChange({ ...draft, prescient: undefined })}>
+                  Back to the card’s art
+                </button>
+              )}
+            </p>
+          )}
           <h2>Art</h2>
           <ArtControls art={side.art} onChange={setArt} />
           <h2>Frame &amp; text</h2>
-          <LookControls look={draft.look ?? defaultLook} onChange={(look) => onChange({ ...draft, look })} />
+          <LookControls look={shownCard.look ?? defaultLook} onChange={setLook} />
         </div>
 
         <div className="editor-preview-column">
           <div ref={preview}>
             <ArtDrag art={side.art} onChange={setArt}>
-              <CardFace card={draft} back={back} />
+              <CardFace card={shownCard} back={back} />
             </ArtDrag>
           </div>
           <div className="editor-actions preview-actions">
             <ImageButtons
               holder={preview}
               frame={frame}
-              fileName={cardFileName(draft, back)}
+              fileName={cardFileName(draft, back) + (onPrescient ? ' (Prescient)' : '')}
               format={format}
               onFormat={changeFormat}
               onNote={setImageNote}
@@ -4557,6 +5418,7 @@ function App() {
   const publishedNow = useRef<Published>({})
   publishedNow.current = published
   const drawer = useCardDrawer()
+  const prescient = usePrescientDrawer()
   // What the account is known to hold, and the saves waiting their turn
   const synced = useRef<Card[]>([])
   const saving = useRef<Promise<void>>(Promise.resolve())
@@ -4785,9 +5647,10 @@ function App() {
       )}
       {tab === 'community' && <Community session={account} />}
       {drawer.stage}
-      {tab === 'decks' && <DeckBuilder key={decksCopied} cards={cards.flatMap(deckCardOf)} />}
+      {prescient.stage}
+      {tab === 'decks' && <DeckFormats key={decksCopied} cards={cards.flatMap(deckCardOf)} />}
       {tab === 'projects' && <Projects />}
-      {tab === 'simulator' && canSimulate && <Simulator />}
+      {tab === 'simulator' && canSimulate && <Simulator drawCard={prescient.drawCard} />}
       {tab === 'creator' && (
         <CardCreator
           draft={draft}

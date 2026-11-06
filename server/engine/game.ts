@@ -9,6 +9,7 @@ import {
   type Keywords,
   type PlayerId,
   type PlayerState,
+  type Printing,
   type Prompt,
   type UnitState,
 } from './types.ts'
@@ -20,7 +21,8 @@ import { abilitiesOf, type Abilities, type Ability, type Grant, type Self } from
 const HAND_SIZE = 6
 const EMPTY_DECK_DAMAGE = 3
 
-export type DeckList = { name: string; leader: string; base: string; deck: string[] }
+// printings: how each card of deck looks, in the same order; null or left out, plain
+export type DeckList = { name: string; leader: string; base: string; deck: string[]; printings?: (Printing | null)[] }
 
 // A seeded random number generator (mulberry32) whose state lives in the game, so a game is
 // replayed exactly from its seed and its actions
@@ -89,6 +91,9 @@ export function createGame(options: { seed: number; decks: [DeckList, DeckList];
   options.decks.forEach((list, p) => {
     for (const id of [list.leader, list.base, ...list.deck]) if (!defs[id]) throw new Error(`Unknown card ${id}`)
     const deck = list.deck.map((id) => ({ id: `c${state.nextId++}`, def: id }))
+    list.printings?.forEach((printing, i) => {
+      if (printing && deck[i]) (state.printings ??= {})[deck[i].id] = printing
+    })
     shuffle(state, deck)
     state.players[p] = {
       name: list.name,
