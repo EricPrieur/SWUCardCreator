@@ -12,7 +12,7 @@
   "text": "While you control an [{Arrakis}] base, this unit gains [Hidden].\n[On Attack:] Look at the top card of your deck. You may discard it. If you do and it's a [{Fremen}] card, this unit gets [+2/+0] for this attack.",
   "power": 4,
   "trait": "Atreides, Fremen",
-  "number": "024",
+  "number": "026",
   "rarity": "R",
   "unique": true,
   "frameId": "unit-command-cunning-heroism",

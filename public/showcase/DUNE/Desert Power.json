@@ -10,7 +10,7 @@
   "name": "Desert Power",
   "text": "Create 3 Fremen tokens and ready them.",
   "trait": "Atreides, Fremen, Tactic",
-  "number": "029",
+  "number": "027",
   "rarity": "R",
   "frameId": "event-command-cunning-heroism",
   "setCode": "DUNE",

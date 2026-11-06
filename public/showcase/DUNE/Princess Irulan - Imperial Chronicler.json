@@ -12,7 +12,7 @@
   "text": "[Restore 1]\n[When Played:] You may put 3 [{Bene Gesserit}] cards from your discard pile on the bottom of your deck in any order. If you do, put the top card of your deck into play as a resource.",
   "power": 3,
   "trait": "Emperor, Bene Gesserit",
-  "number": "032",
+  "number": "023",
   "rarity": "R",
   "unique": true,
   "frameId": "unit-vigilance-command-villainy",

@@ -490,26 +490,64 @@
       "rarity": "R"
     },
     {
-      "id": "cfcaca80-9e13-460c-89d3-021a218ff5af",
-      "image": "Alia Atreides - Pre-born",
-      "name": "Alia Atreides",
-      "subtitle": "Pre-born",
+      "id": "a4911393-6df8-47d3-a366-b8a3de186499",
+      "image": "Princess Irulan - Imperial Chronicler",
+      "name": "Princess Irulan",
+      "subtitle": "Imperial Chronicler",
       "type": "Unit",
       "aspects": [
-        "Cunning",
         "Vigilance",
-        "Heroism"
+        "Command",
+        "Villainy"
       ],
-      "cost": 2,
+      "cost": 3,
       "traits": [
-        "Atreides",
-        "Fremen"
+        "Emperor",
+        "Bene Gesserit"
       ],
-      "text": "this unit gains each keyword printed on fremen and bene gesserit units in your discard pile.",
+      "text": "restore 1\nwhen played: you may put 3 bene gesserit cards from your discard pile on the bottom of your deck in any order. if you do, put the top card of your deck into play as a resource.",
       "set": "DUNE",
       "number": "023",
       "arena": "Ground",
-      "rarity": "L"
+      "rarity": "R"
+    },
+    {
+      "id": "ba3e5657-3bbe-45ef-907d-d553845d74a0",
+      "image": "Family Atomics",
+      "name": "Family Atomics",
+      "type": "Event",
+      "aspects": [
+        "Vigilance",
+        "Aggression"
+      ],
+      "cost": 2,
+      "traits": [
+        "Tactic"
+      ],
+      "text": "choose one:\n• defeat an upgrade. if it was a fortification, draw a card.\n• pay 3. if you do, defeat a non-leader unit and deal 3 damage to your base.",
+      "set": "DUNE",
+      "number": "024",
+      "rarity": "R"
+    },
+    {
+      "id": "68dd1bdd-9a71-4b58-9b5b-37adadae3cb6",
+      "image": "False Colors",
+      "name": "False Colors",
+      "type": "Event",
+      "aspects": [
+        "Command",
+        "Aggression",
+        "Villainy"
+      ],
+      "cost": 2,
+      "traits": [
+        "Sardaukar",
+        "Tactic"
+      ],
+      "text": "play a sardaukar unit from your hand. it costs #2 less, ignores its additional costs, and gains ambush and the harkonnen trait for this phase.",
+      "set": "DUNE",
+      "number": "025",
+      "rarity": "R"
     },
     {
       "id": "a724f31a-73d8-47f7-8c5a-6bc4eb8676a7",
@@ -529,89 +567,8 @@
       ],
       "text": "while you control an arrakis base, this unit gains hidden.\non attack: look at the top card of your deck. you may discard it. if you do and it's a fremen card, this unit gets +2/+0 for this attack.",
       "set": "DUNE",
-      "number": "024",
-      "arena": "Ground",
-      "rarity": "R"
-    },
-    {
-      "id": "30cd19e1-5537-479b-81e6-a40cdc099044",
-      "image": "Pardot Kynes - First Planetologist",
-      "name": "Pardot Kynes",
-      "subtitle": "First Planetologist",
-      "type": "Unit",
-      "aspects": [
-        "Cunning",
-        "Vigilance"
-      ],
-      "cost": 3,
-      "traits": [
-        "Fremen",
-        "Emperor"
-      ],
-      "text": "when played: create a spice token.\nwhen the regroup phase starts: if you control 3 or more spice tokens, heal 3 damage from your base.",
-      "set": "DUNE",
-      "number": "025",
-      "arena": "Ground",
-      "rarity": "R"
-    },
-    {
-      "id": "455a5bb1-a533-49c5-8a0e-aea9434c45df",
-      "image": "Liet Kynes - Imperial Planetologist",
-      "name": "Liet Kynes",
-      "subtitle": "Imperial Planetologist",
-      "type": "Unit",
-      "aspects": [
-        "Cunning",
-        "Vigilance"
-      ],
-      "cost": 4,
-      "traits": [
-        "Fremen",
-        "Emperor"
-      ],
-      "text": "when played/on attack: you may defeat a friendly spice token. if you do, heal 3 damage from your base.\nwhen defeated: create 2 spice tokens.",
-      "set": "DUNE",
       "number": "026",
       "arena": "Ground",
-      "rarity": "R"
-    },
-    {
-      "id": "a30de52b-5eea-4820-9878-d0a527224299",
-      "image": "Sietch Reverend Mother",
-      "name": "Sietch Reverend Mother",
-      "type": "Unit",
-      "aspects": [
-        "Cunning",
-        "Vigilance",
-        "Heroism"
-      ],
-      "cost": 5,
-      "traits": [
-        "Fremen",
-        "Bene Gesserit"
-      ],
-      "text": "when played: choose a fremen or bene gesserit unit in your discard pile other than a sietch reverend mother. use its when played ability as if it were this unit's.\nwhen defeated: return another fremen or bene gesserit unit from your discard pile to your hand.",
-      "set": "DUNE",
-      "number": "027",
-      "arena": "Ground",
-      "rarity": "R"
-    },
-    {
-      "id": "ba3e5657-3bbe-45ef-907d-d553845d74a0",
-      "image": "Family Atomics",
-      "name": "Family Atomics",
-      "type": "Event",
-      "aspects": [
-        "Vigilance",
-        "Aggression"
-      ],
-      "cost": 2,
-      "traits": [
-        "Tactic"
-      ],
-      "text": "choose one:\n• defeat an upgrade. if it was a fortification, draw a card.\n• pay 3. if you do, defeat a non-leader unit and deal 3 damage to your base.",
-      "set": "DUNE",
-      "number": "028",
       "rarity": "R"
     },
     {
@@ -632,7 +589,7 @@
       ],
       "text": "create 3 fremen tokens and ready them.",
       "set": "DUNE",
-      "number": "029",
+      "number": "027",
       "rarity": "R"
     },
     {
@@ -652,46 +609,89 @@
       ],
       "text": "defeat each unit and each spice token. if you control an arrakis base, create a fremen token for each friendly non-token fremen unit defeated this way.",
       "set": "DUNE",
-      "number": "030",
+      "number": "028",
       "rarity": "L"
     },
     {
-      "id": "68dd1bdd-9a71-4b58-9b5b-37adadae3cb6",
-      "image": "False Colors",
-      "name": "False Colors",
-      "type": "Event",
+      "id": "cfcaca80-9e13-460c-89d3-021a218ff5af",
+      "image": "Alia Atreides - Pre-born",
+      "name": "Alia Atreides",
+      "subtitle": "Pre-born",
+      "type": "Unit",
       "aspects": [
-        "Command",
-        "Aggression",
-        "Villainy"
+        "Cunning",
+        "Vigilance",
+        "Heroism"
       ],
       "cost": 2,
       "traits": [
-        "Sardaukar",
-        "Tactic"
+        "Atreides",
+        "Fremen"
       ],
-      "text": "play a sardaukar unit from your hand. it costs #2 less, ignores its additional costs, and gains ambush and the harkonnen trait for this phase.",
+      "text": "this unit gains each keyword printed on fremen and bene gesserit units in your discard pile.",
       "set": "DUNE",
-      "number": "031",
+      "number": "029",
+      "arena": "Ground",
+      "rarity": "L"
+    },
+    {
+      "id": "a30de52b-5eea-4820-9878-d0a527224299",
+      "image": "Sietch Reverend Mother",
+      "name": "Sietch Reverend Mother",
+      "type": "Unit",
+      "aspects": [
+        "Cunning",
+        "Vigilance",
+        "Heroism"
+      ],
+      "cost": 5,
+      "traits": [
+        "Fremen",
+        "Bene Gesserit"
+      ],
+      "text": "when played: choose a fremen or bene gesserit unit in your discard pile other than a sietch reverend mother. use its when played ability as if it were this unit's.\nwhen defeated: return another fremen or bene gesserit unit from your discard pile to your hand.",
+      "set": "DUNE",
+      "number": "030",
+      "arena": "Ground",
       "rarity": "R"
     },
     {
-      "id": "a4911393-6df8-47d3-a366-b8a3de186499",
-      "image": "Princess Irulan - Imperial Chronicler",
-      "name": "Princess Irulan",
-      "subtitle": "Imperial Chronicler",
+      "id": "30cd19e1-5537-479b-81e6-a40cdc099044",
+      "image": "Pardot Kynes - First Planetologist",
+      "name": "Pardot Kynes",
+      "subtitle": "First Planetologist",
       "type": "Unit",
       "aspects": [
-        "Vigilance",
-        "Command",
-        "Villainy"
+        "Cunning",
+        "Vigilance"
       ],
       "cost": 3,
       "traits": [
-        "Emperor",
-        "Bene Gesserit"
+        "Fremen",
+        "Emperor"
       ],
-      "text": "restore 1\nwhen played: you may put 3 bene gesserit cards from your discard pile on the bottom of your deck in any order. if you do, put the top card of your deck into play as a resource.",
+      "text": "when played: create a spice token.\nwhen the regroup phase starts: if you control 3 or more spice tokens, heal 3 damage from your base.",
+      "set": "DUNE",
+      "number": "031",
+      "arena": "Ground",
+      "rarity": "R"
+    },
+    {
+      "id": "455a5bb1-a533-49c5-8a0e-aea9434c45df",
+      "image": "Liet Kynes - Imperial Planetologist",
+      "name": "Liet Kynes",
+      "subtitle": "Imperial Planetologist",
+      "type": "Unit",
+      "aspects": [
+        "Cunning",
+        "Vigilance"
+      ],
+      "cost": 4,
+      "traits": [
+        "Fremen",
+        "Emperor"
+      ],
+      "text": "when played/on attack: you may defeat a friendly spice token. if you do, heal 3 damage from your base.\nwhen defeated: create 2 spice tokens.",
       "set": "DUNE",
       "number": "032",
       "arena": "Ground",

@@ -12,7 +12,7 @@
   "text": "[When Played/On Attack:] You may defeat a friendly Spice token. If you do, heal 3 damage from your base.\n[When Defeated:] Create 2 Spice tokens.",
   "power": 3,
   "trait": "Fremen, Emperor",
-  "number": "026",
+  "number": "032",
   "rarity": "R",
   "unique": true,
   "frameId": "unit-cunning-vigilance",
