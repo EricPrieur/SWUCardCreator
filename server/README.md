@@ -32,6 +32,15 @@ database with The Chrome Grid without touching its tables.
 | `PATCH /api/admin/cards/:userId/:cardId` | Admins: `{ hidden }`, takes a card off the Community tab or puts it back |
 | `POST /api/games` | `{ record, summary }`: a Simulator game as it starts, signed in or not → `{ id, key }`. 60 starts an hour per address; 900 KB at most. |
 | `PUT /api/games/:id` | `{ record, summary, key }`: the game saved again (each round, and as it ends or is left), until it is over |
+| `GET /api/games/recent` | The games of the last hour, newest first: for anyone, those public and open to spectators; for an admin (`all: true`), every one. An online game still played names its `room`. |
+| `GET /api/rooms` | Online games waiting for a second player, listed as public |
+| `POST /api/rooms` | `{ deck, deckName, public, spectators }`: opens an online game with a deck (as the engine takes it), signed in or not → `{ id, key }`. 30 an hour per address. |
+| `GET /api/rooms/:id` | One room: its host, deck and status |
+| `POST /api/rooms/:id/join` | `{ deck, deckName }`: joins it as the second player → `{ key, seat }`; the game starts |
+| `GET /api/rooms/:id/stream` | The game followed, as server-sent events: `room`, what this seat sees after each move (the seat's key in `X-Seat-Key`; none to watch, where the room lets spectators), and `chat` |
+| `POST /api/rooms/:id/act` | `{ key, action }`: a move, which the engine checks |
+| `POST /api/rooms/:id/chat` | `{ key, text }`: a line of chat for both players and those watching |
+| `POST /api/rooms/:id/leave` | `{ key }`: a room waiting closes; a game under way is conceded |
 | `GET /api/admin/game-stats` | Admins: games in the last hour, day and week, how they ended, how long they last, people's win rate against the AI and by AI version, games a day |
 | `GET /api/admin/games` | Admins: the latest games, without their records; `GET /api/admin/games/:id` one game with its record |
 | `GET /api/admin/deck-stats` | Admins: each leader and deck's games and wins, played by people and by the AI |
@@ -67,6 +76,8 @@ npm run dev       # the server with the database in .env, http://localhost:3001
    - `IMAGE_DIR`: `/data/images`, with a **volume** added to the service and mounted at `/data`
    - Discord sign-in, optional (see below): `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`,
      `DISCORD_REDIRECT_URI`
+   - `SET_URL`, optional: where online games read the DUNE cards, the site's
+     `showcase/DUNE/` (by default `https://ericprieur.github.io/SWUCardCreator/showcase/DUNE/`)
 3. Generate a public domain for the service, then register `prieur` right away, before
    sharing the address, so no one else takes the name.
 

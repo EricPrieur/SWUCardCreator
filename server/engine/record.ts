@@ -20,7 +20,8 @@ export type GameRecord = {
   at?: string
   note?: string
 }
-export type Seat = { kind: 'human' } | { kind: 'ai'; version?: string }
+// A person playing online is named by their account
+export type Seat = { kind: 'human'; name?: string } | { kind: 'ai'; version?: string }
 // A card played names its card too, which its id in the game alone doesn't
 export type Step = { p: PlayerId; action: Action; why?: Weighed[]; card?: string }
 

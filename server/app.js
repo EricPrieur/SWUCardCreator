@@ -5,6 +5,7 @@ import cardsRouter from './cards.js'
 import publicRouter from './public.js'
 import decksRouter from './decks.js'
 import gamesRouter from './games.js'
+import roomsRouter from './rooms.js'
 
 export function createApp() {
   const allowed = allowedOrigins()
@@ -17,7 +18,8 @@ export function createApp() {
     if (origin && allowed.has(origin)) {
       res.header('Access-Control-Allow-Origin', origin)
       res.header('Vary', 'Origin')
-      res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+      // X-Seat-Key: an online game's seat, on the stream that follows it
+      res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Seat-Key')
       res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE')
     }
     if (req.method === 'OPTIONS') return res.sendStatus(204)
@@ -33,6 +35,7 @@ export function createApp() {
   app.use('/api', cardsRouter)
   app.use('/api', decksRouter)
   app.use('/api', gamesRouter)
+  app.use('/api', roomsRouter)
 
   app.use('/api', (req, res) => res.status(404).json({ error: 'Not found' }))
   // A body that isn't JSON, or is too big

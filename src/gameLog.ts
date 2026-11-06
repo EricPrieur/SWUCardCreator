@@ -6,14 +6,17 @@ import type { GameState } from '../server/engine/types.ts'
 // starts, again each new round, and as it ends (or is left). The saves go one after another;
 // one that fails is let go, the next carrying the whole record anyway. Signed out, the game is
 // saved without an account. A game resumed after a reload goes on with the save it had (`resume`);
-// `onSaved` hears of a new one, to keep it with the game.
+// `onSaved` hears of a new one, to keep it with the game. `seen`: who may see it while it goes on,
+// told the server as it starts: listed for anyone (public) and open to watch (spectators).
 export type SavedGame = { id: number; key: string }
+export type GameSeen = { public?: boolean; spectators?: boolean }
 export function gameLog(
   session: Session | null,
   record: GameRecord,
   decks: [string, string],
   resume: SavedGame | null = null,
   onSaved?: (saved: SavedGame) => void,
+  seen: GameSeen = {},
 ) {
   let saved = resume
   let round = -1
@@ -25,7 +28,7 @@ export function gameLog(
       .then(async () => {
         const body = { record, summary }
         if (!saved) {
-          saved = await api<SavedGame>('/api/games', { method: 'POST', body, token: session?.token })
+          saved = await api<SavedGame>('/api/games', { method: 'POST', body: { ...body, ...seen }, token: session?.token })
           onSaved?.(saved)
         } else await api(`/api/games/${saved.id}`, { method: 'PUT', body: { ...body, key: saved.key } })
       })

@@ -1658,7 +1658,8 @@ function Showcase(props: { folder: string }) {
   const [list, setList] = useState<ShowcaseList | null>(null)
   const [missing, setMissing] = useState(false)
   useEffect(() => {
-    fetch(asset(`${folder}/showcase.json`))
+    // Asked again of the server each time: the browser keeps it for a while, so a new export would not show
+    fetch(asset(`${folder}/showcase.json`), { cache: 'no-cache' })
       .then((response) => (response.ok ? response.json() : Promise.reject(new Error(String(response.status)))))
       .then((data: ShowcaseList) => setList(data))
       .catch(() => setMissing(true))
@@ -1677,8 +1678,8 @@ function Showcase(props: { folder: string }) {
     'Showcase order',
   )
   // The set's cards, a Deck Builder that only uses them, and for DUNE, the game simulator, which
-  // plays its cards: open to anyone here
-  const [view, setView] = useRemembered<'cards' | 'decks' | 'play'>(`showcase.${props.folder}.view`, 'cards')
+  // plays its cards: open to anyone here. Last, the author's other games, as on the main site
+  const [view, setView] = useRemembered<'cards' | 'decks' | 'play' | 'projects'>(`showcase.${props.folder}.view`, 'cards')
   const playable = props.folder === 'DUNE'
   const prescient = usePrescientDrawer()
   useEffect(() => {
@@ -1689,7 +1690,7 @@ function Showcase(props: { folder: string }) {
   if (!list) return <p className="empty-note">Loading…</p>
   const views = (
     <nav className="tabs showcase-views">
-      {(playable ? (['cards', 'decks', 'play'] as const) : (['cards', 'decks'] as const)).map((value) => (
+      {(playable ? (['cards', 'decks', 'play', 'projects'] as const) : (['cards', 'decks', 'projects'] as const)).map((value) => (
         <a
           key={value}
           href={window.location.hash}
@@ -1699,7 +1700,7 @@ function Showcase(props: { folder: string }) {
             setView(value)
           }}
         >
-          {value === 'cards' ? 'Cards' : value === 'decks' ? 'Deck Builder' : 'Simulator'}
+          {value === 'cards' ? 'Cards' : value === 'decks' ? 'Deck Builder' : value === 'play' ? 'Simulator' : 'My Other Projects'}
         </a>
       ))}
     </nav>
@@ -1710,6 +1711,14 @@ function Showcase(props: { folder: string }) {
         {views}
         <Simulator drawCard={prescient.drawCard} />
         {prescient.stage}
+      </>
+    )
+  }
+  if (view === 'projects') {
+    return (
+      <>
+        {views}
+        <Projects />
       </>
     )
   }
@@ -2144,7 +2153,7 @@ function deckCardOfShowcase(folder: string, card: ShowcaseCard): DeckCard[] {
 async function loadShowcaseCard(folder: string, image: string): Promise<Card | null> {
   const inFolder = (art?: Art) => art && { ...art, src: asset(`${folder}/${encodeURIComponent(art.src)}`) }
   try {
-    const res = await fetch(asset(`${folder}/${encodeURIComponent(image)}.json`))
+    const res = await fetch(asset(`${folder}/${encodeURIComponent(image)}.json`), { cache: 'no-cache' })
     if (!res.ok) return null
     const found: Card = await res.json()
     const prescient = found.prescient && { ...found.prescient, art: inFolder(found.prescient.art) }

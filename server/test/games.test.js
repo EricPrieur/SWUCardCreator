@@ -123,3 +123,31 @@ test('a game is saved as it starts and as it ends, and counted in the stats', as
   const users = (await call('GET', '/admin/users', undefined, admin)).body.users
   assert.equal(users.find((u) => u.username === 'alice').gameCount, 1)
 })
+
+test('the games of the last hour: open to spectators for anyone, every one for an admin', async () => {
+  const { record, state, decks } = playGame(5, 1)
+  const summary = summarize(record, state, { decks })
+  const login = async (username) => (await call('POST', '/auth/login', { username, password: 'longenough' })).body.token
+  const admin = await login('prieur')
+  const alice = await login('alice')
+  const open = await call('POST', '/games', { record, summary, spectators: true }, alice)
+  const closed = await call('POST', '/games', { record, summary })
+  const unlisted = await call('POST', '/games', { record, summary, public: false, spectators: true })
+  // Over long ago: out of the list
+  const old = await call('POST', '/games', { record, summary, spectators: true })
+  await pool.query(`UPDATE dune.games SET started_at = NOW() - INTERVAL '3 hours', updated_at = NOW() - INTERVAL '3 hours' WHERE id = $1`, [old.body.id])
+
+  const seen = (await call('GET', '/games/recent')).body
+  assert.equal(seen.all, false)
+  assert.deepEqual(seen.games.map((g) => g.id), [open.body.id])
+  assert.equal(seen.games[0].username, 'alice')
+  assert.equal(seen.games[0].sides[1].deck, 'Jessica BG')
+  assert.equal(seen.games[0].sides[0].cards, undefined, 'without the cards')
+  assert.deepEqual((await call('GET', '/games/recent', undefined, alice)).body.games.map((g) => g.id), [open.body.id])
+
+  const everything = (await call('GET', '/games/recent', undefined, admin)).body
+  assert.equal(everything.all, true)
+  const ids = everything.games.map((g) => g.id)
+  assert.deepEqual(ids.slice(0, 3), [unlisted.body.id, closed.body.id, open.body.id], 'the newest first')
+  assert.ok(!ids.includes(old.body.id))
+})

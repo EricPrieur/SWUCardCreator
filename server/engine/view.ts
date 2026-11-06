@@ -54,9 +54,11 @@ export type PlayerView = {
   printings: Record<string, Printing>
 }
 
-export function viewFor(state: GameState, you: PlayerId): PlayerView {
+// watching: the game as a spectator sees it, from your seat but as neither player: no hand or
+// resources face up but those shown to everyone, nothing to answer and nothing to do
+export function viewFor(state: GameState, you: PlayerId, watching = false): PlayerView {
   const players = state.players.map((player, p) => {
-    const mine = p === you
+    const mine = !watching && p === you
     return {
       name: player.name,
       leader: { ...player.leader },
@@ -76,7 +78,7 @@ export function viewFor(state: GameState, you: PlayerId): PlayerView {
   }) as [SideView, SideView]
 
   const prompt = state.prompt
-  const asked = prompt && prompt.player === you ? prompt : prompt && { player: prompt.player, text: prompt.text }
+  const asked = prompt && !watching && prompt.player === you ? prompt : prompt && { player: prompt.player, text: prompt.text }
 
   const named = new Set<string>()
   // The cards this view shows face up, by id
@@ -115,7 +117,7 @@ export function viewFor(state: GameState, you: PlayerId): PlayerView {
     }
   }
 
-  const actions = legalActions(state, you)
+  const actions = watching ? [] : legalActions(state, you)
   return {
     you,
     round: state.round,

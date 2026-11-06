@@ -131,6 +131,10 @@ export async function initDB() {
     )
   `)
   await query(`CREATE INDEX IF NOT EXISTS games_started ON ${SCHEMA}.games (started_at)`)
+  // Who may see a game going on: is_public, listed for anyone (an online game; a game against
+  // the AI always is), spectators, open to watch. Unlisted or closed, admins still see it
+  await query(`ALTER TABLE ${SCHEMA}.games ADD COLUMN IF NOT EXISTS is_public BOOLEAN NOT NULL DEFAULT TRUE`)
+  await query(`ALTER TABLE ${SCHEMA}.games ADD COLUMN IF NOT EXISTS spectators BOOLEAN NOT NULL DEFAULT FALSE`)
 }
 
 // The bytes an account uses: its cards' data, its images and its decks

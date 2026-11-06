@@ -101,6 +101,7 @@ const fail = (res, what) => (err) => {
 
 // What is being played: how many games lately, how they ended, how long they last, how people
 // fare against the AI
+const AGAINST_AI = `mode = 'ai'`
 router.get('/game-stats', async (req, res) => {
   const where = gameFilter(req)
   try {
@@ -120,17 +121,17 @@ router.get('/game-stats', async (req, res) => {
         `SELECT AVG(rounds)::FLOAT AS rounds, AVG(EXTRACT(EPOCH FROM finished_at - started_at))::FLOAT AS seconds
          FROM ${SCHEMA}.games ${and(where, OVER)}`,
       ),
-      // A person against the AI: the side whose seat is human
+      // A person against the AI: the side whose seat is human (an online game has two people)
       query(
         `SELECT COUNT(*)::INT AS games,
            COUNT(*) FILTER (WHERE winner IS NOT NULL AND sides -> winner ->> 'seat' = 'human')::INT AS wins,
            COUNT(*) FILTER (WHERE draw)::INT AS draws
-         FROM ${SCHEMA}.games ${and(where, OVER)}`,
+         FROM ${SCHEMA}.games ${and(and(where, OVER), AGAINST_AI)}`,
       ),
       query(
         `SELECT COALESCE(ai_version, '?') AS version, COUNT(*)::INT AS games,
            COUNT(*) FILTER (WHERE winner IS NOT NULL AND sides -> winner ->> 'seat' = 'ai')::INT AS wins
-         FROM ${SCHEMA}.games ${and(where, OVER)} GROUP BY 1 ORDER BY 2 DESC`,
+         FROM ${SCHEMA}.games ${and(and(where, OVER), AGAINST_AI)} GROUP BY 1 ORDER BY 2 DESC`,
       ),
       query(
         `SELECT TO_CHAR(DATE_TRUNC('day', started_at), 'YYYY-MM-DD') AS day, COUNT(*)::INT AS games

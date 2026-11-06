@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto'
 import { Router } from 'express'
 import { query, SCHEMA } from './db.js'
 import { optionalUser } from './auth.js'
+import { roomOfGame } from './rooms.js'
 
 // The Simulator's games, saved as they are played: started, then saved again each round and
 // at the end, by the browser holding the key it got when it started
@@ -16,7 +17,8 @@ const starts = new Map()
 const STATUSES = new Set(['playing', 'finished', 'conceded', 'left'])
 const isDev = (req) => /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(req.headers.origin ?? '')
 
-// The game as the browser sends it, checked: { record, summary }
+// The game as the browser sends it, checked: { record, summary }, and as it starts, who may
+// see it: public (listed for anyone) and spectators (open to watch)
 function parse(body) {
   const { record, summary } = body ?? {}
   if (!record || typeof record !== 'object' || !Array.isArray(record.actions) || !Array.isArray(record.decks))
@@ -48,6 +50,8 @@ function parse(body) {
     names: JSON.stringify(summary.names && typeof summary.names === 'object' ? summary.names : {}),
     record: json,
     bytes: json.length,
+    isPublic: body.public !== false,
+    spectators: body.spectators === true,
   }
 }
 
@@ -61,10 +65,25 @@ router.post('/games', optionalUser, async (req, res) => {
   const key = randomBytes(16).toString('hex')
   try {
     const { rows } = await query(
-      `INSERT INTO ${SCHEMA}.games (user_id, key, status, winner, draw, rounds, ai_version, sides, names, record, bytes, is_dev, finished_at)
-       VALUES ($1, $2, $3::VARCHAR, $4, $5, $6, $7, $8, $9, $10, $11, $12, CASE WHEN $3::VARCHAR = 'playing' THEN NULL ELSE NOW() END)
+      `INSERT INTO ${SCHEMA}.games (user_id, key, status, winner, draw, rounds, ai_version, sides, names, record, bytes, is_dev, finished_at, is_public, spectators)
+       VALUES ($1, $2, $3::VARCHAR, $4, $5, $6, $7, $8, $9, $10, $11, $12, CASE WHEN $3::VARCHAR = 'playing' THEN NULL ELSE NOW() END, $13, $14)
        RETURNING id`,
-      [req.user?.id ?? null, key, game.status, game.winner, game.draw, game.rounds, game.aiVersion, game.sides, game.names, game.record, game.bytes, isDev(req)],
+      [
+        req.user?.id ?? null,
+        key,
+        game.status,
+        game.winner,
+        game.draw,
+        game.rounds,
+        game.aiVersion,
+        game.sides,
+        game.names,
+        game.record,
+        game.bytes,
+        isDev(req),
+        game.isPublic,
+        game.spectators,
+      ],
     )
     res.json({ id: rows[0].id, key })
   } catch (err) {
@@ -92,6 +111,40 @@ router.put('/games/:id', async (req, res) => {
     res.json({ ok: true })
   } catch (err) {
     console.error('Game save error:', err)
+    res.status(500).json({ error: 'Server error' })
+  }
+})
+
+// The games of the last hour, the newest first: those going on (saved in that hour) and those
+// over in it, an online game still played with its room, to watch it. Anyone sees the public ones open to spectators; an admin, every one, and `all`
+// says so. Games played on a developer's computer are only seen from one.
+const RECENT_GAMES = 100
+router.get('/games/recent', optionalUser, async (req, res) => {
+  try {
+    let all = false
+    if (req.user) {
+      const { rows } = await query(`SELECT is_admin FROM ${SCHEMA}.users WHERE id = $1`, [req.user.id])
+      all = !!rows[0]?.is_admin
+    }
+    const { rows } = await query(
+      `SELECT g.id, g.mode, g.status, g.winner, g.draw, g.rounds, g.sides, g.is_public, g.spectators,
+              g.started_at, g.updated_at, g.finished_at, u.username
+       FROM ${SCHEMA}.games g LEFT JOIN ${SCHEMA}.users u ON u.id = g.user_id
+       WHERE ((g.status = 'playing' AND g.updated_at > NOW() - INTERVAL '1 hour') OR g.finished_at > NOW() - INTERVAL '1 hour')
+         AND (NOT g.is_dev OR $1) AND ($2 OR (g.is_public AND g.spectators))
+       ORDER BY g.started_at DESC, g.id DESC
+       LIMIT ${RECENT_GAMES}`,
+      [isDev(req), all],
+    )
+    // Each side as the list shows it, without its cards
+    const games = rows.map(({ sides, ...game }) => ({
+      ...game,
+      sides: sides.map(({ name, deck, seat, leader, base }) => ({ name, deck, seat, leader, base })),
+      room: game.mode === 'online' ? roomOfGame(game.id) : null,
+    }))
+    res.json({ games, all })
+  } catch (err) {
+    console.error('Recent games error:', err)
     res.status(500).json({ error: 'Server error' })
   }
 })

@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { asset } from './asset'
-import { useAccount, type Session } from './api'
+import { api, useAccount, type Session } from './api'
 import { Modal } from './account'
 import { deckScope, loadAccountDecks } from './accountCards'
 import { DECKS_KEY, loadDecks, type Card, type Deck, type SealedPool } from './cards'
@@ -8,10 +8,25 @@ import { AI_VERSION, chooseAction, CURVE_TOP, deckPlan, type Weighed } from '../
 import { cardDef, randomDeck, type SavedCard } from '../server/engine/cards.ts'
 import { createGame, sameAction } from '../server/engine/game.ts'
 import { recordAction, replay, startRecord, type GameRecord } from '../server/engine/record.ts'
-import { scriptStatus } from '../server/engine/scripts.ts'
-import { viewFor, type SideView } from '../server/engine/view.ts'
+import { viewFor, type PlayerView, type SideView } from '../server/engine/view.ts'
 import type { Action, Arena, CardDef, GameState, PlayerId, Printing } from '../server/engine/types.ts'
 import { gameLog, type SavedGame } from './gameLog'
+import {
+  followRoom,
+  joinRoom,
+  keepSeat,
+  keptSeat,
+  leaveRoom,
+  listRooms,
+  openRoom,
+  roomInfo,
+  sendChat,
+  sendMove,
+  type ChatLine,
+  type OnlineSeat,
+  type RoomInfo,
+  type RoomSnapshot,
+} from './online'
 import { combatSounds } from './combatSounds'
 import './Simulator.css'
 
@@ -47,12 +62,13 @@ type SetCards = { defs: CardDef[]; images: Record<string, { image: string; back?
 const BACK_SIDE = '#back'
 
 export async function loadSet(): Promise<SetCards> {
-  const response = await fetch(asset(`/showcase/${SET}/showcase.json`))
+  // Asked again of the server each time, so a new export shows at once
+  const response = await fetch(asset(`/showcase/${SET}/showcase.json`), { cache: 'no-cache' })
   if (!response.ok) throw new Error(`The ${SET} set isn't exported`)
   const entries: { image: string; back?: string }[] = (await response.json()).cards
   const cards = await Promise.all(
     entries.map(async (entry) => {
-      const saved = await fetch(asset(`/showcase/${SET}/${entry.image}.json`))
+      const saved = await fetch(asset(`/showcase/${SET}/${entry.image}.json`), { cache: 'no-cache' })
       return { entry, card: saved.ok ? ((await saved.json()) as SavedCard) : undefined }
     }),
   )
@@ -105,7 +121,7 @@ async function loadSealedDecks(account: Session | null): Promise<SavedDeck[]> {
 // Decks anyone may try, signed in or not, which ship with the site
 const FEATURED = 'Featured Decks'
 async function loadFeaturedDecks(): Promise<SavedDeck[]> {
-  const response = await fetch(asset('/sim/featured-decks.json')).catch(() => undefined)
+  const response = await fetch(asset('/sim/featured-decks.json'), { cache: 'no-cache' }).catch(() => undefined)
   if (!response?.ok) return []
   const decks: Pick<Deck, 'id' | 'name' | 'leader' | 'base' | 'cards'>[] = await response.json()
   return decks.map((deck) => ({ ...deck, id: `featured-${deck.id}`, sets: [SET], sideboard: [], from: FEATURED }))
@@ -142,6 +158,17 @@ function deckList(deck: Deck, set: SetCards) {
     deck: entries.flatMap((entry) => Array(entry.count).fill(entry.id) as string[]),
     ...(printings.some(Boolean) && { printings }),
   }
+}
+
+// A deck chosen as the engine takes it, and the name it goes by: a saved deck, one of them at
+// random (not `not`, when there are others), or one made at random
+function resolveChoice(choice: Choice, set: SetCards, decks: SavedDeck[], not?: Deck) {
+  const pick = <T,>(list: T[]) => list[Math.floor(Math.random() * list.length)]
+  let deck: Deck | undefined
+  if (choice.startsWith('deck:')) deck = decks.find((d) => `deck:${d.id}` === choice)
+  else if (choice === 'random' && decks.length) deck = pick(decks)
+  else if (choice === 'different-random' && decks.length) deck = pick(decks.length > 1 ? decks.filter((d) => d !== not) : decks)
+  return { deck, list: deck ? deckList(deck, set) : randomDeck(set.defs), name: deck?.name ?? 'Random' }
 }
 
 // What each side plays: a deck made at random, one of the saved decks at random (for the AI, a
@@ -264,11 +291,26 @@ function replyTo(text: string) {
 // drawCard: draws a card as an image, for the Prescient copies in a game; without it they show plain
 export function Simulator(props: { drawCard?: (card: Card) => Promise<string> }) {
   const account = useAccount()
-  const [view, setView] = useState<'ai' | 'online'>('ai')
+  // The room a link invites to (?room=), and the seat held in a game online
+  const [invited, setInvited] = useState(() => new URLSearchParams(window.location.search).get('room'))
+  const [online, setOnline] = useState<OnlineSeat | null>(keptSeat)
+  const [view, setView] = useState<'ai' | 'online'>(invited ? 'online' : 'ai')
+  const takeSeat = (seat: OnlineSeat | null) => {
+    keepSeat(seat)
+    setOnline(seat)
+    if (seat && invited) {
+      setInvited(null)
+      const url = new URL(window.location.href)
+      url.searchParams.delete('room')
+      window.history.replaceState(null, '', url)
+    }
+  }
   const [set, setSet] = useState<SetCards | null>(null)
   const [failed, setFailed] = useState('')
   const [decks, setDecks] = useState<SavedDeck[]>([])
   const [choices, setChoices] = useState<[Choice, Choice]>(rememberedChoices)
+  // Others may watch your games against the AI: they are in the Online Game tab's In Progress
+  const [spectators, setSpectators] = useFlag(SPECTATORS_KEY, true)
   const [game, setGame] = useState<GameState | null>(null)
   // Each game its own table, which starts with nothing drawn yet
   const [gameNumber, setGameNumber] = useState(0)
@@ -329,18 +371,13 @@ export function Simulator(props: { drawCard?: (card: Card) => Promise<string> })
 
   const start = () => {
     if (!set) return
-    const pick = <T,>(list: T[]) => list[Math.floor(Math.random() * list.length)]
     let yours: Deck | undefined
     const deckNames: string[] = []
     const resolve = (choice: Choice, side: number) => {
-      let deck: Deck | undefined
-      if (choice.startsWith('deck:')) deck = decks.find((d) => `deck:${d.id}` === choice)
-      else if (choice === 'random' && decks.length) deck = pick(decks)
-      else if (choice === 'different-random' && decks.length)
-        deck = pick(decks.length > 1 ? decks.filter((d) => d !== yours) : decks)
+      const { deck, list, name } = resolveChoice(choice, set, decks, yours)
       if (side === YOU) yours = deck
-      deckNames[side] = deck?.name ?? 'Random'
-      return deck ? deckList(deck, set) : randomDeck(set.defs)
+      deckNames[side] = name
+      return list
     }
     const lists = choices.map(resolve)
     const names = lists.map((list) => set.defs.find((d) => d.id === list.leader)?.name ?? 'Player')
@@ -356,10 +393,17 @@ export function Simulator(props: { drawCard?: (card: Card) => Promise<string> })
     record.current = startRecord(seed, named, [{ kind: 'human' }, { kind: 'ai', version: AI_VERSION }])
     const game_: KeptGame = { record: record.current, deckNames: deckNames as [string, string], server: null }
     kept.current = game_
-    log.current = gameLog(account, record.current, game_.deckNames, null, (saved) => {
-      game_.server = saved
-      if (kept.current === game_ && gameNow.current?.phase !== 'over') keep()
-    })
+    log.current = gameLog(
+      account,
+      record.current,
+      game_.deckNames,
+      null,
+      (saved) => {
+        game_.server = saved
+        if (kept.current === game_ && gameNow.current?.phase !== 'over') keep()
+      },
+      { spectators },
+    )
     const next = createGame({ seed, defs: set.defs, decks: named })
     log.current.moved(next)
     keep()
@@ -433,6 +477,9 @@ export function Simulator(props: { drawCard?: (card: Card) => Promise<string> })
     if (rebuilt && rebuilt.state.phase !== 'over') gameLog(account, waiting.record, waiting.deckNames, waiting.server).left(rebuilt.state)
   }
 
+  if (online && set) {
+    return <OnlineGame key={online.room} seat={online} set={set} drawCard={props.drawCard} onDone={() => takeSeat(null)} />
+  }
   if (game && set) {
     return (
       <div className="sim">
@@ -441,7 +488,7 @@ export function Simulator(props: { drawCard?: (card: Card) => Promise<string> })
           set={set}
           game={game}
           prescient={prescient}
-          onAct={act}
+          onAct={(p, action, why) => act(game, p, action, why)}
           onUndo={history.current.length ? undo : undefined}
           onNew={leave}
           onAgain={start}
@@ -449,11 +496,6 @@ export function Simulator(props: { drawCard?: (card: Card) => Promise<string> })
       </div>
     )
   }
-
-  // The cards whose text the engine plays, of those with text: a card changed in the Creator
-  // since its script was written no longer counts
-  const written = set ? set.defs.filter((d) => !d.token && scriptStatus(d) !== 'blank').length : 0
-  const working = set ? set.defs.filter((d) => !d.token && scriptStatus(d) === 'scripted').length : 0
 
   return (
     <div className="sim-menu">
@@ -465,14 +507,12 @@ export function Simulator(props: { drawCard?: (card: Card) => Promise<string> })
           Online Game
         </button>
       </div>
-      {view === 'online' ? (
-        <div className="sim-menu-panel">
-          <p className="sim-wip">Work in progress: games against other players online are on the way.</p>
-        </div>
-      ) : failed || !set ? (
+      {failed || !set ? (
         <div className="sim-menu-panel">
           <p>{failed || `Loading the ${SET} cards…`}</p>
         </div>
+      ) : view === 'online' ? (
+        <OnlineLobby account={account} set={set} decks={decks} invited={invited} onSeat={takeSeat} />
       ) : (
         <div className="sim-menu-panel">
           {waiting && (
@@ -492,17 +532,500 @@ export function Simulator(props: { drawCard?: (card: Card) => Promise<string> })
             <DeckPicker title="Your Deck" side="me" value={choices[0]} decks={decks} set={set} onChange={(c) => choose(0, c)} />
             <DeckPicker title="AI Deck" side="opp" value={choices[1]} decks={decks} set={set} onChange={(c) => choose(1, c)} />
           </div>
-          <p className="sim-note">
-            {working < written
-              ? `Cards play with their cost, power, HP and keywords. The text of ${working} of ${written} cards works so far; on the others it doesn't do anything yet.`
-              : `Every card's text works, all ${written} of them.`}
-          </p>
+          <label className="sim-toggle" title="Others may watch this game: it is listed in the Online Game tab's In Progress">
+            <input type="checkbox" checked={spectators} onChange={(event) => setSpectators(event.target.checked)} />
+            Spectators
+          </label>
           <button type="button" className="sim-button go" onClick={start}>
             Start game
           </button>
         </div>
       )}
     </div>
+  )
+}
+
+// A line of the table's chat: yours or the other side's; named when it is neither's
+type TableChat = { who: 'me' | 'opp'; text: string; name?: string }
+// A game online as the table shows it: the game as the server shows your seat (or a spectator),
+// its last cards played, its chat, and a word on the other player when there is one to say
+type OnlineTable = {
+  view: PlayerView
+  seat: PlayerId
+  watching: boolean
+  last: [string | null, string | null]
+  chat: TableChat[]
+  say: (text: string) => void
+  notice?: string
+}
+
+// A game online, followed from the server: the room waiting for an opponent, with its link to
+// share, then the table. Leaving concedes a game under way; a spectator just goes.
+function OnlineGame(props: { seat: OnlineSeat; set: SetCards; drawCard?: (card: Card) => Promise<string>; onDone: () => void }) {
+  const { seat, set } = props
+  const [room, setRoom] = useState<RoomSnapshot | null>(null)
+  const [chat, setChat] = useState<ChatLine[]>([])
+  const [ended, setEnded] = useState<number | null>(null)
+  const [connected, setConnected] = useState(true)
+  const [error, setError] = useState('')
+  const [copied, setCopied] = useState(false)
+  useEffect(
+    () =>
+      followRoom(seat, {
+        room: (snapshot) => {
+          setRoom(snapshot)
+          setError('')
+        },
+        chat: (line) => setChat((now) => [...now, line]),
+        end: setEnded,
+        connected: setConnected,
+      }),
+    [seat.room, seat.key],
+  )
+  // The Prescient copies seen, drawn once each
+  const [prescient, setPrescient] = useState<Record<string, string>>({})
+  const drawing = useRef(new Set<string>())
+  useEffect(() => {
+    const view = room?.view
+    if (!view || !props.drawCard) return
+    const seen: { id: string; def: string }[] = []
+    const walk = (value: unknown) => {
+      if (Array.isArray(value)) value.forEach(walk)
+      else if (value && typeof value === 'object') {
+        const card = value as { id?: unknown; def?: unknown }
+        if (typeof card.id === 'string' && typeof card.def === 'string') seen.push(card as { id: string; def: string })
+        Object.values(value).forEach(walk)
+      }
+    }
+    walk(view.players)
+    const toDraw = [...new Set(seen.filter((c) => isPrescient(view.printings[c.id])).map((c) => c.def))].filter(
+      (def) => set.cards[def] && !drawing.current.has(def),
+    )
+    for (const def of toDraw) drawing.current.add(def)
+    ;(async () => {
+      for (const def of toDraw) {
+        try {
+          const url = await props.drawCard!(set.cards[def])
+          setPrescient((now) => ({ ...now, [def]: url }))
+        } catch {
+          drawing.current.delete(def)
+        }
+      }
+    })()
+  }, [room?.view])
+
+  const watching = !seat.key
+  const leave = async () => {
+    if (!watching && room && room.status !== 'over') await leaveRoom(seat).catch(() => undefined)
+    props.onDone()
+  }
+  const link = (() => {
+    const url = new URL(window.location.href)
+    url.searchParams.set('room', seat.room)
+    return url.toString()
+  })()
+  const copy = () => {
+    navigator.clipboard?.writeText(link).then(
+      () => setCopied(true),
+      () => setCopied(false),
+    )
+  }
+
+  if (ended !== null) {
+    return (
+      <div className="sim-menu">
+        <div className="sim-menu-panel sim-room">
+          <p>{ended === 403 ? 'This game is not open to spectators.' : 'This game is over, or was never opened.'}</p>
+          <button type="button" className="sim-button" onClick={props.onDone}>
+            Back to the menu
+          </button>
+        </div>
+      </div>
+    )
+  }
+  if (!room) {
+    return (
+      <div className="sim-menu">
+        <div className="sim-menu-panel sim-room">
+          <p>{connected ? 'Joining the game…' : 'The server can’t be reached. Trying again…'}</p>
+          <button type="button" className="sim-button" onClick={props.onDone}>
+            Back to the menu
+          </button>
+        </div>
+      </div>
+    )
+  }
+  if (!room.view) {
+    return (
+      <div className="sim-menu">
+        <div className="sim-menu-panel sim-room">
+          <h2>Waiting for an opponent…</h2>
+          <p className="sim-note">
+            {room.public ? 'Your game is listed in Public Games.' : 'Your game is not listed: only those you send its link to can join.'}{' '}
+            Send this link to invite someone:
+          </p>
+          <div className="sim-room-link">
+            <input readOnly value={link} onFocus={(event) => event.target.select()} />
+            <button type="button" className="sim-button" onClick={copy}>
+              {copied ? 'Copied' : 'Copy'}
+            </button>
+          </div>
+          <button type="button" className="sim-button" onClick={leave}>
+            Cancel the game
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  const me = room.seat ?? 0
+  const them = me === 0 ? 1 : 0
+  const other = room.players[them]
+  const notice = !connected
+    ? 'Your connection was lost. Trying again…'
+    : error || (other?.gone ? `${other.name} lost their connection. If they're not back within 5 minutes, they lose.` : undefined)
+  const online: OnlineTable = {
+    view: room.view,
+    seat: me,
+    watching,
+    last: room.last,
+    chat: chat.map((line) => ({ who: line.seat === me ? 'me' : 'opp', text: line.text, ...(watching && { name: line.name }) })),
+    say: (text) => {
+      if (!watching) sendChat(seat, text).catch((err: Error) => setError(err.message))
+    },
+    notice,
+  }
+  return (
+    <div className="sim">
+      <Table
+        set={set}
+        online={online}
+        prescient={prescient}
+        onAct={(_, action) => {
+          sendMove(seat, action).catch((err: Error) => setError(err.message))
+        }}
+        onNew={leave}
+      />
+    </div>
+  )
+}
+
+// A yes or no remembered in this browser
+const SPECTATORS_KEY = 'dune-unlimited.simulator.spectators'
+function useFlag(key: string, first: boolean) {
+  const [value, setValue] = useState(() => {
+    try {
+      const saved = localStorage.getItem(key)
+      return saved === null ? first : saved === 'true'
+    } catch {
+      return first
+    }
+  })
+  const change = (next: boolean) => {
+    setValue(next)
+    try {
+      localStorage.setItem(key, String(next))
+    } catch {
+      // Not remembered, then
+    }
+  }
+  return [value, change] as const
+}
+
+// A game of the last hour, as the server lists it
+type RecentGame = {
+  id: number
+  mode: string
+  status: 'playing' | 'finished' | 'conceded' | 'left'
+  winner: number | null
+  draw: boolean
+  rounds: number
+  sides: { name: string; deck: string; seat: 'human' | 'ai'; leader: string; base: string }[]
+  is_public: boolean
+  spectators: boolean
+  started_at: string
+  username: string | null
+  // An online game still played: its room, to watch it
+  room: string | null
+}
+// How often the list asks again, while it is shown
+const RECENT_EVERY = 20_000
+
+const ago = (date: string) => {
+  const minutes = Math.max(0, Math.round((Date.now() - new Date(date).getTime()) / 60_000))
+  return minutes < 1 ? 'just now' : minutes < 60 ? `${minutes} min ago` : `${Math.round(minutes / 60)} h ago`
+}
+
+const ONLINE_DECK_KEY = 'dune-unlimited.simulator.online-deck'
+
+// The Online Game tab, as on The Chrome Grid: a game to create on the left (online play is on the
+// way), and on the right the games to join (Public Games) and those of the last hour (In Progress),
+// the newest first. Anyone sees the games open to spectators; an admin, every one.
+function OnlineLobby(props: {
+  account: Session | null
+  set: SetCards
+  decks: SavedDeck[]
+  // The room a link invites to
+  invited: string | null
+  onSeat: (seat: OnlineSeat) => void
+}) {
+  const { account, set, decks } = props
+  const [deck, setDeck] = useState<Choice>(() => {
+    try {
+      return (localStorage.getItem(ONLINE_DECK_KEY) as Choice | null) ?? 'random-generated'
+    } catch {
+      return 'random-generated'
+    }
+  })
+  const chooseDeck = (choice: Choice) => {
+    setDeck(choice)
+    try {
+      localStorage.setItem(ONLINE_DECK_KEY, choice)
+    } catch {
+      // Not remembered, then
+    }
+  }
+  const [listed, setListed] = useFlag('dune-unlimited.simulator.online-public', true)
+  const [spectators, setSpectators] = useFlag(SPECTATORS_KEY, true)
+  const [tab, setTab] = useState<'public' | 'progress'>('public')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+
+  // The deck chosen, as the server takes it
+  const opening = () => {
+    const { list, name } = resolveChoice(deck, set, decks)
+    return { deck: list, deckName: name }
+  }
+  const run = async (what: () => Promise<OnlineSeat>) => {
+    setBusy(true)
+    setError('')
+    try {
+      props.onSeat(await what())
+    } catch (err) {
+      setError((err as Error).message)
+    }
+    setBusy(false)
+  }
+  const create = () =>
+    run(async () => {
+      const opened = await openRoom(account, { ...opening(), public: listed, spectators })
+      return { room: opened.id, key: opened.key }
+    })
+  const join = (room: string) => run(async () => ({ room, key: (await joinRoom(account, room, opening())).key }))
+
+  // The room a link invites to, as it stands
+  const [invite, setInvite] = useState<RoomInfo | null | 'gone'>(null)
+  useEffect(() => {
+    if (!props.invited) return
+    roomInfo(props.invited).then(setInvite, () => setInvite('gone'))
+  }, [props.invited])
+
+  // The rooms waiting for a player, asked again while shown
+  const [waiting, setWaiting] = useState<RoomInfo[] | null>(null)
+  useEffect(() => {
+    if (tab !== 'public') return
+    let live = true
+    const load = () =>
+      listRooms()
+        .then((found) => live && setWaiting(found))
+        .catch(() => live && setWaiting((now) => now ?? []))
+    load()
+    const timer = window.setInterval(load, ROOMS_EVERY)
+    return () => {
+      live = false
+      window.clearInterval(timer)
+    }
+  }, [tab])
+
+  const [recent, setRecent] = useState<{ games: RecentGame[]; all: boolean } | null>(null)
+  const [failed, setFailed] = useState(false)
+  useEffect(() => {
+    if (tab !== 'progress') return
+    let live = true
+    const load = () =>
+      api<{ games: RecentGame[]; all: boolean }>('/api/games/recent', { token: account?.token })
+        .then((found) => {
+          if (!live) return
+          setRecent(found)
+          setFailed(false)
+        })
+        .catch(() => live && setFailed(true))
+    load()
+    const timer = window.setInterval(load, RECENT_EVERY)
+    return () => {
+      live = false
+      window.clearInterval(timer)
+    }
+  }, [tab, account?.token])
+
+  const cardsOf = (ids: (string | undefined)[]) => (
+    <div className="sim-recent-cards">
+      {ids.map((id, at) =>
+        id && set.images[id] ? <img key={at} src={img(set.images[id].image)} alt={set.defs.find((d) => d.id === id)?.name ?? ''} /> : <span key={at} />,
+      )}
+    </div>
+  )
+
+  return (
+    <div className="sim-menu-panel sim-lobby">
+      {props.invited && invite && (
+        <div className="sim-resume sim-invite">
+          {invite === 'gone' || invite.status !== 'waiting' ? (
+            <p>The game you were invited to has already started or is over.</p>
+          ) : (
+            <>
+              <p>
+                {invite.host} invites you to a game, with {invite.deck}. Pick your deck, then join.
+              </p>
+              <button type="button" className="sim-button go" disabled={busy} onClick={() => join(invite.id)}>
+                Join {invite.host}'s game
+              </button>
+            </>
+          )}
+        </div>
+      )}
+      <div className="sim-lobby-create">
+        <DeckPicker title="Your Deck" side="me" value={deck} decks={decks} set={set} onChange={chooseDeck} />
+        <div className="sim-toggles">
+          <label
+            className="sim-toggle"
+            title="Public: your game is listed in Public Games for anyone to join. Otherwise only those you send its link to can."
+          >
+            <input type="checkbox" checked={listed} onChange={(event) => setListed(event.target.checked)} />
+            Public
+          </label>
+          <label className="sim-toggle" title="Others may watch this game: it is listed in In Progress">
+            <input type="checkbox" checked={spectators} onChange={(event) => setSpectators(event.target.checked)} />
+            Spectators
+          </label>
+        </div>
+        <button type="button" className="sim-button go" disabled={busy} onClick={create}>
+          Create Game
+        </button>
+        {error && <p className="sim-error">{error}</p>}
+        <p className="sim-note">{account ? 'You play as ' + account.user.username + '.' : 'Signed out, you play as Guest.'}</p>
+      </div>
+      <div className="sim-lobby-games">
+        <div className="sim-lobby-tabs" role="tablist">
+          <button type="button" role="tab" aria-selected={tab === 'public'} onClick={() => setTab('public')}>
+            Public Games
+          </button>
+          <button type="button" role="tab" aria-selected={tab === 'progress'} onClick={() => setTab('progress')}>
+            In Progress
+          </button>
+        </div>
+        {tab === 'public' ? (
+          !waiting ? (
+            <p className="sim-note">Loading…</p>
+          ) : waiting.length === 0 ? (
+            <p className="sim-note">No public game is waiting for a player. Create one!</p>
+          ) : (
+            <ul className="sim-recent">
+              {waiting.map((room) => (
+                <li key={room.id} className="sim-recent-game sim-room-item">
+                  <div className="sim-recent-head">
+                    <span className="sim-recent-status">{room.host}</span>
+                    <span className="sim-recent-when">{ago(new Date(room.createdAt).toISOString())}</span>
+                  </div>
+                  <div className="sim-room-row">
+                    <div className="sim-recent-side me">
+                      {cardsOf([room.leader, room.base])}
+                      <span>{room.deck}</span>
+                    </div>
+                    <button type="button" className="sim-button go" disabled={busy} onClick={() => join(room.id)}>
+                      Join
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )
+        ) : failed && !recent ? (
+          <p className="sim-note">Could not load the games. Trying again shortly…</p>
+        ) : !recent ? (
+          <p className="sim-note">Loading…</p>
+        ) : (
+          <>
+            <p className="sim-note">
+              {recent.all ? 'Every game of the last hour, as an admin sees them' : 'The games of the last hour open to spectators'}, the newest
+              first.
+            </p>
+            {recent.games.length === 0 ? (
+              <p className="sim-note">No game in the last hour.</p>
+            ) : (
+              <ul className="sim-recent">
+                {recent.games.map((game) => (
+                  <RecentGameItem
+                    key={game.id}
+                    game={game}
+                    set={set}
+                    admin={recent.all}
+                    onWatch={game.room && game.spectators ? () => props.onSeat({ room: game.room!, key: null }) : undefined}
+                  />
+                ))}
+              </ul>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+// How often the rooms waiting are asked again, while shown
+const ROOMS_EVERY = 5_000
+
+// One game of the list: how it stands, when it started, and each side's leader, base and deck;
+// an online game still played can be watched
+function RecentGameItem(props: { game: RecentGame; set: SetCards; admin: boolean; onWatch?: () => void }) {
+  const { game, set } = props
+  // Online, each side is named by its player
+  const who = (i: number) =>
+    game.mode === 'online' ? game.sides[i]?.name : game.sides[i]?.seat === 'ai' ? 'AI' : (game.username ?? 'A visitor')
+  const status =
+    game.status === 'playing'
+      ? `Live · round ${game.rounds}`
+      : game.draw
+        ? 'Draw'
+        : game.status === 'left'
+          ? `${who(0)} left`
+          : game.winner !== null
+            ? `${who(game.winner)} won${game.status === 'conceded' ? ' (conceded)' : ''}`
+            : 'Over'
+  return (
+    <li className={`sim-recent-game${game.status === 'playing' ? ' live' : ''}`}>
+      <div className="sim-recent-head">
+        <span className="sim-recent-status">{status}</span>
+        {game.mode === 'online' && <span className="sim-recent-flag">Online</span>}
+        {props.admin && !game.is_public && <span className="sim-recent-flag">Not public</span>}
+        {props.admin && !game.spectators && <span className="sim-recent-flag">No spectators</span>}
+        <span className="sim-recent-when">{ago(game.started_at)}</span>
+        {props.onWatch && (
+          <button type="button" className="sim-button sim-watch" onClick={props.onWatch}>
+            Watch
+          </button>
+        )}
+      </div>
+      <div className="sim-recent-sides">
+        {[0, 1].map((i) => {
+          const side = game.sides[i]
+          return (
+            <div key={i} className={`sim-recent-side ${i === 0 ? 'me' : 'opp'}`}>
+              <div className="sim-recent-cards">
+                {[side?.leader, side?.base].map((id, at) =>
+                  id && set.images[id] ? (
+                    <img key={at} src={img(set.images[id].image)} alt={set.defs.find((d) => d.id === id)?.name ?? ''} />
+                  ) : (
+                    <span key={at} />
+                  ),
+                )}
+              </div>
+              <strong>{who(i)}</strong>
+              <span>{side?.deck || side?.name}</span>
+            </div>
+          )
+        })}
+      </div>
+    </li>
   )
 }
 
@@ -623,16 +1146,23 @@ function fly(image: string, from: DOMRect, to: DOMRect) {
 
 function Table(props: {
   set: SetCards
-  game: GameState
+  // The game against the AI, in full; online, the game is the server's and only `online` shows it
+  game?: GameState
+  online?: OnlineTable
   // The Prescient copies' images, by card
   prescient: Record<string, string>
-  onAct: (game: GameState, p: PlayerId, action: Action, why?: Weighed[]) => void
+  onAct: (p: PlayerId, action: Action, why?: Weighed[]) => void
   // Taking back your last move, when there is one
   onUndo?: () => void
   onNew: () => void
-  onAgain: () => void
+  // Another game the same way, against the AI
+  onAgain?: () => void
 }) {
-  const { set, game } = props
+  const { set, game, online } = props
+  // Your seat, at the bottom; watching, the first player's
+  const ME: PlayerId = online?.seat ?? YOU
+  const THEM: PlayerId = ME === 0 ? 1 : 0
+  const watching = !!online?.watching
   const [mode, setMode] = useState<Mode>(null)
   const [picked, setPicked] = useState<string[]>([])
   const [hover, setHover] = useState<Hover>(null)
@@ -640,9 +1170,11 @@ function Table(props: {
   const [panel, setPanel] = useState<'chat' | 'log' | null>(null)
   // The last card each player played, which the engine doesn't keep
   const [last, setLast] = useState<[string | null, string | null]>([null, null])
-  const [chat, setChat] = useState<{ who: 'me' | 'opp'; text: string }[]>([])
+  const lastPlayed = online?.last ?? last
+  const [chat, setChat] = useState<TableChat[]>([])
   // What you say, and the AI's answer to the usual things players say
   const say = (text: string) => {
+    if (online) return online.say(text)
     setChat((now) => [...now, { who: 'me', text }])
     const reply = replyTo(text)
     if (reply) window.setTimeout(() => setChat((now) => [...now, { who: 'opp', text: reply }]), 800 + Math.random() * 1200)
@@ -726,20 +1258,25 @@ function Table(props: {
     return () => document.removeEventListener('click', click, true)
   }, [])
 
-  const view = useMemo(() => viewFor(game, YOU), [game])
+  const view = useMemo(() => online?.view ?? viewFor(game!, ME), [game, online?.view])
+  // Each card by its id: the set's, and the game's (its tokens too)
+  const setDefs = useMemo(() => Object.fromEntries(set.defs.map((d) => [d.id, d])), [set])
   // The names of the cards in this game, to find in the log: each name's card, one in a
   // player's deck before another of that name, and a pattern that finds them, longest first
   const cardNames = useMemo(() => {
+    // Online, the cards seen so far stand for those in the decks
     const decks = new Set(
-      game.players.flatMap((pl) => [pl.leader, pl.base, ...pl.deck, ...pl.hand, ...pl.discard, ...pl.units, ...pl.resources.map((r) => r.card)].map((c) => c.def)),
+      game
+        ? game.players.flatMap((pl) => [pl.leader, pl.base, ...pl.deck, ...pl.hand, ...pl.discard, ...pl.units, ...pl.resources.map((r) => r.card)].map((c) => c.def))
+        : Object.keys(view.defs),
     )
     const byName = new Map<string, string>()
-    for (const d of Object.values(game.defs)) if (!byName.has(d.name) || decks.has(d.id)) byName.set(d.name, d.id)
+    for (const d of Object.values({ ...setDefs, ...(game?.defs ?? view.defs) })) if (!byName.has(d.name) || decks.has(d.id)) byName.set(d.name, d.id)
     const names = [...byName.keys()].sort((a, b) => b.length - a.length).map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
     return { byName, pattern: new RegExp(`(?<![\\w'])(${names.join('|')})(?![\\w'])`) }
-  }, [game.defs, game.players])
-  const me = view.players[YOU]
-  const opp = view.players[AI]
+  }, [game?.defs, game?.players, online ? view.defs : null, setDefs])
+  const me = view.players[ME]
+  const opp = view.players[THEM]
 
   // A unit that goes Hidden vanishes in a puff
   const hiddenUnits = view.players.flatMap((side) => side.units.filter((u) => u.hidden).map((u) => u.id))
@@ -748,10 +1285,10 @@ function Table(props: {
     if (hiddenUnits.some((id) => !wasHidden.current.includes(id))) play(vanishSound, 0.6)
     wasHidden.current = hiddenUnits
   })
-  const defOf = (id: string) => game.defs[id]
-  const mine = view.waitingFor.includes(YOU)
+  const defOf = (id: string) => game?.defs[id] ?? view.defs[id] ?? setDefs[id]
+  const mine = !watching && view.waitingFor.includes(ME)
   // A question an ability asks you: what you may pick, on the board or among cards shown apart
-  const asked = view.prompt && 'options' in view.prompt && view.prompt.player === YOU ? view.prompt : null
+  const asked = view.prompt && 'options' in view.prompt && view.prompt.player === ME ? view.prompt : null
   const boardIds = new Set([...me.units, ...opp.units].map((u) => u.id).concat('base0', 'base1'))
   const askedOn = (id: string) => !!asked && asked.kind === 'pick' && asked.options.some((o) => o.id === id)
   // Cards in your hand are picked there, red for a discard
@@ -773,13 +1310,13 @@ function Table(props: {
   const setup = !view.prompt && (view.phase === 'first' || view.phase === 'mulligan')
 
   const act = (p: PlayerId, action: Action, why?: Weighed[]) => {
-    if (action.type === 'play') {
+    if (action.type === 'play' && game) {
       const card = game.players[p].hand.find((c) => c.id === action.card)
       if (card) setLast((now) => (p === 0 ? [card.def, now[1]] : [now[0], card.def]))
     }
-    props.onAct(game, p, action, why)
+    props.onAct(p, action, why)
     // What you had picked stays while the AI acts, as in the setup resources chosen at once
-    if (p === YOU) {
+    if (p === ME) {
       setMode(null)
       setPicked([])
       setMenu(null)
@@ -805,23 +1342,24 @@ function Table(props: {
       attachTo: unit,
     }
 
-  const coming = [me, opp].map((side, p) => Math.min(side.handCount, side.drawn - landed[p]))
+  // By seat, as the cards landed are
+  const coming = view.players.map((side, p) => Math.min(side.handCount, side.drawn - landed[p]))
   // Each card drawn and not yet landed flies in, in the order drawn. Measured before the page is
   // painted, the hidden cards already holding their places in the hand.
   useLayoutEffect(() => {
     const timers: number[] = []
     const flying: HTMLElement[] = []
-    const seats = [YOU, AI] as const
+    const seats = [ME, THEM] as const
     let delay = 0
     for (const p of seats) {
       const side = view.players[p]
-      const who = p === YOU ? 'me' : 'opp'
+      const who = p === ME ? 'me' : 'opp'
       const deck = document.querySelector(`.sim-strip.${who} .sim-pile.deck`)
       const slots = [...document.querySelectorAll<HTMLElement>(`.sim-strip.${who} [data-arriving]`)]
       const pending = side.drawn - landedNow.current[p]
       for (let i = 0; i < pending; i++) {
         const slot = slots[slots.length - pending + i]
-        const land = () => setLanded((now) => (p === YOU ? [now[0] + 1, now[1]] : [now[0], now[1] + 1]))
+        const land = () => setLanded((now) => (p === 0 ? [now[0] + 1, now[1]] : [now[0], now[1] + 1]))
         timers.push(
           window.setTimeout(() => {
             if (!deck || !slot) return land()
@@ -851,12 +1389,12 @@ function Table(props: {
 
   // The AI takes its turn after a moment
   useEffect(() => {
-    if (game.phase === 'over' || !view.waitingFor.includes(AI)) return
+    if (!game || online || game.phase === 'over' || !view.waitingFor.includes(THEM)) return
     const timer = setTimeout(() => {
       const why: Weighed[] = []
-      const action = chooseAction(game, AI, why)
+      const action = chooseAction(game!, THEM, why)
       // The moves it weighed best kept with the game, to see why it did what it did
-      if (action) act(AI, action, why.slice(0, 3))
+      if (action) act(THEM, action, why.slice(0, 3))
     }, AI_DELAY)
     return () => clearTimeout(timer)
   }, [game])
@@ -898,8 +1436,11 @@ function Table(props: {
   let buttons: { label: string; kind?: string; onClick?: () => void; disabled?: boolean }[] = []
   let numbers: { value: string; options: { id: string; label: string }[]; onChange: (id: string) => void } | null = null
   const askedKey = asked ? `${asked.source ?? ''}|${asked.text}|${asked.options.map((o) => o.id).join(',')}` : ''
-  const waitText = `${opp.name} is ${view.phase === 'action' ? 'choosing an action' : 'deciding'}…`
-  const answer = (picks: string[]) => act(YOU, { type: 'answer', picks })
+  // Watching, each player waited for is named
+  const waited = watching ? view.waitingFor.map((p) => view.players[p].name).join(' and ') : opp.name
+  const waitText =
+    online?.notice ?? `${waited} ${watching && view.waitingFor.length > 1 ? 'are' : 'is'} ${view.phase === 'action' ? 'choosing an action' : 'deciding'}…`
+  const answer = (picks: string[]) => act(ME, { type: 'answer', picks })
   const pickAnswer = (id: string) => {
     if (!asked) return
     if (asked.max === 1 && asked.min <= 1) return answer([id])
@@ -942,15 +1483,15 @@ function Table(props: {
     case 'first':
       prompt = mine ? 'You decide who goes first' : `${opp.name} decides who goes first…`
       buttons = [
-        { label: 'Go second', disabled: !mine, onClick: () => act(YOU, { type: 'first', goFirst: false }) },
-        { label: 'Go first', kind: 'go', disabled: !mine, onClick: () => act(YOU, { type: 'first', goFirst: true }) },
+        { label: 'Go second', disabled: !mine, onClick: () => act(ME, { type: 'first', goFirst: false }) },
+        { label: 'Go first', kind: 'go', disabled: !mine, onClick: () => act(ME, { type: 'first', goFirst: true }) },
       ]
       break
     case 'mulligan':
       prompt = mine ? 'Keep your starting hand?' : waitText
       buttons = [
-        { label: 'Mulligan', disabled: !mine, onClick: () => act(YOU, { type: 'mulligan', take: true }) },
-        { label: 'Keep', kind: 'go', disabled: !mine, onClick: () => act(YOU, { type: 'mulligan', take: false }) },
+        { label: 'Mulligan', disabled: !mine, onClick: () => act(ME, { type: 'mulligan', take: true }) },
+        { label: 'Keep', kind: 'go', disabled: !mine, onClick: () => act(ME, { type: 'mulligan', take: false }) },
       ]
       break
     case 'resource':
@@ -964,19 +1505,19 @@ function Table(props: {
           label: 'Done Choosing Resources',
           kind: 'go',
           disabled: !mine || picked.length !== pickCount,
-          onClick: () => act(YOU, { type: 'resource', cards: picked }),
+          onClick: () => act(ME, { type: 'resource', cards: picked }),
         },
       ]
       break
     case 'regroup':
       prompt = !mine ? waitText : picked.length ? `Regroup: resource ${pickedNames}?` : 'Regroup: choose a card to resource, or skip'
       buttons = [
-        { label: 'Skip', disabled: !mine, onClick: () => act(YOU, { type: 'resource', cards: [] }) },
+        { label: 'Skip', disabled: !mine, onClick: () => act(ME, { type: 'resource', cards: [] }) },
         {
           label: picked.length ? 'Resource It' : 'Resource',
           kind: 'go',
           disabled: !mine || picked.length !== 1,
-          onClick: () => act(YOU, { type: 'resource', cards: picked }),
+          onClick: () => act(ME, { type: 'resource', cards: picked }),
         },
       ]
       break
@@ -993,18 +1534,18 @@ function Table(props: {
       buttons = mode
         ? [{ label: 'Cancel', onClick: () => setMode(null) }]
         : [
-            { label: 'Pass', kind: 'pass', disabled: !mine, onClick: () => act(YOU, { type: 'pass' }) },
+            { label: 'Pass', kind: 'pass', disabled: !mine, onClick: () => act(ME, { type: 'pass' }) },
             {
               label: 'Claim Initiative',
               kind: 'claim',
               disabled: !can({ type: 'initiative' }),
-              onClick: () => act(YOU, { type: 'initiative' }),
+              onClick: () => act(ME, { type: 'initiative' }),
             },
           ]
       break
   }
   // A question the action may be taken back from
-  if (asked?.cancel) buttons = [{ label: 'Cancel', onClick: () => act(YOU, { type: 'cancel' }) }, ...buttons]
+  if (asked?.cancel) buttons = [{ label: 'Cancel', onClick: () => act(ME, { type: 'cancel' }) }, ...buttons]
   const numberList = numbers && (
     <select className="sim-number" value={numbers.value} onChange={(e) => numbers?.onChange(e.target.value)}>
       {numbers.options.map((o) => (
@@ -1019,7 +1560,7 @@ function Table(props: {
   // unit's attack. One is done at once; more are offered to choose from.
   const abilitiesOf = (source: string) =>
     !mode && !asked
-      ? view.abilities.filter((a) => a.source === source).map((a) => ({ label: a.label, run: () => act(YOU, { type: 'ability', source, index: a.index }) }))
+      ? view.abilities.filter((a) => a.source === source).map((a) => ({ label: a.label, run: () => act(ME, { type: 'ability', source, index: a.index }) }))
       : []
   const offer = (card: string, options: { label: string; run: () => void }[], landscape?: boolean) => {
     if (options.length === 1) options[0].run()
@@ -1027,7 +1568,7 @@ function Table(props: {
   }
   const leaderOptions = () => [
     ...abilitiesOf('leader'),
-    ...(!mode && !asked && can({ type: 'deploy' }) ? [{ label: 'Deploy Leader', run: () => act(YOU, { type: 'deploy' }) }] : []),
+    ...(!mode && !asked && can({ type: 'deploy' }) ? [{ label: 'Deploy Leader', run: () => act(ME, { type: 'deploy' }) }] : []),
   ]
   const unitOptions = (id: string) => [
     ...(!mode && !asked && attackActions.some((a) => a.type === 'attack' && a.attacker === id)
@@ -1047,7 +1588,7 @@ function Table(props: {
       const plays = playsOf(id).filter((a) => a.type === 'play' && sameWay(a, way))
       if (plays.some((a) => a.type === 'play' && a.attachTo))
         setMode({ kind: 'attach', card: id, ...(way.smuggle && { smuggle: true }), ...(way.discard && { discard: true }), ...(way.spice && { spice: true }) })
-      else act(YOU, plays[0])
+      else act(ME, plays[0])
     }
     const card = [...(me.hand ?? []), ...me.discard, ...me.resources.flatMap((r) => (r.card ? [r.card] : []))].find((c) => c.id === id)
     if (ways.length > 1 && card)
@@ -1074,7 +1615,7 @@ function Table(props: {
     if (asked) {
       if (askedOn(id)) pickAnswer(id)
     } else if (mode && isTarget(id)) {
-      act(YOU, mode.kind === 'attack' ? { type: 'attack', attacker: mode.attacker, target: id } : attachAction(mode, id))
+      act(ME, mode.kind === 'attack' ? { type: 'attack', attacker: mode.attacker, target: id } : attachAction(mode, id))
     } else if (mode?.kind === 'attack' && mode.attacker === id) {
       setMode(null)
     } else if (!mode) {
@@ -1084,8 +1625,8 @@ function Table(props: {
   }
   const clickBase = (id: string) => {
     if (asked) return askedOn(id) && pickAnswer(id)
-    if (id === 'base' && mode?.kind === 'attack' && isTarget('base')) act(YOU, { type: 'attack', attacker: mode.attacker, target: 'base' })
-    else if (mode?.kind === 'attach' && isTarget(id)) act(YOU, attachAction(mode, id))
+    if (id === 'base' && mode?.kind === 'attack' && isTarget('base')) act(ME, { type: 'attack', attacker: mode.attacker, target: 'base' })
+    else if (mode?.kind === 'attach' && isTarget(id)) act(ME, attachAction(mode, id))
   }
 
   const unitView = (side: SideView, arena: Arena) => (u: SideView['units'][number]) => {
@@ -1212,7 +1753,7 @@ function Table(props: {
 
   // One player's row of discard, deck, resources and hand; the opponent's is the same, mirrored
   const strip = (side: SideView, who: 'me' | 'opp') => {
-    const arriving = coming[who === 'me' ? YOU : AI]
+    const arriving = coming[who === 'me' ? ME : THEM]
     const top = side.discard[side.discard.length - 1]
     const ready = side.resources.filter((r) => !r.exhausted).length
     // A card in your discard pile you can play now (Crysknife, The Sleeper Has Awakened)
@@ -1306,12 +1847,14 @@ function Table(props: {
               ))}
           {!side.hand && <span className="sim-count hand">{side.handCount}</span>}
         </div>
-        {who === 'me' && !windowed && !setup && (
+        {who === 'me' && !watching && !windowed && !setup && (
           <div className="sim-actions">
             {/* First, so at the bottom: the move the game goes on with is on top */}
-            <button type="button" className="sim-button undo" disabled={!props.onUndo} title="Take back your last move (and the AI's since)" onClick={undo}>
-              ↶ Undo
-            </button>
+            {!online && (
+              <button type="button" className="sim-button undo" disabled={!props.onUndo} title="Take back your last move (and the AI's since)" onClick={undo}>
+                ↶ Undo
+              </button>
+            )}
             {numberList}
             {buttons.map((b, i) => (
               <button key={i} type="button" className={`sim-button ${b.kind ?? ''}`} disabled={b.disabled} onClick={b.onClick}>
@@ -1345,7 +1888,7 @@ function Table(props: {
   const baseCard = (side: SideView) => {
     const image = imageOf(side.base.def)
     const hp = defOf(side.base.def).hp
-    const id = side === me ? `base${YOU}` : `base${AI}`
+    const id = side === me ? `base${ME}` : `base${THEM}`
     // Your own base is a target for a Fortification being played
     const target = asked ? askedOn(id) : side === opp ? isTarget('base') : mode?.kind === 'attach' && isTarget(id)
     const forts = side.base.upgrades ?? []
@@ -1493,9 +2036,9 @@ function Table(props: {
   // The AI's deck analysis, made as the game starts: its cards by cost, and the resources it aims
   // for (its leader's cost, or its dearest card's)
   // (made once: the same game's turns share it)
-  const plan = deckPlan(game, AI)
-  const tallest = Math.max(1, ...plan.curve)
-  const deckAnalysis = (
+  const plan = game && !online ? deckPlan(game, THEM) : null
+  const tallest = Math.max(1, ...(plan?.curve ?? []))
+  const deckAnalysis = plan && (
     <section
       className="sim-plan"
       title={`${opp.name}'s deck: average cost ${plan.average.toFixed(1)}. Leader deploys at ${plan.leader}, dearest card ${plan.top}: it aims for ${plan.target} resources.`}
@@ -1527,7 +2070,7 @@ function Table(props: {
     const rest = named ? text.slice(name.length) : text
     return (
       <>
-        {named && <b className={player === YOU ? 'me' : 'opp'}>{name}</b>}
+        {named && <b className={player === ME ? 'me' : 'opp'}>{name}</b>}
         {rest.split(cardNames.pattern).map((part, i) => {
           const card = i % 2 ? cardNames.byName.get(part) : undefined
           if (!card) return part
@@ -1616,7 +2159,15 @@ function Table(props: {
   )
 
   const result =
-    view.winner === null ? '' : view.winner === 'draw' ? 'Draw' : view.winner === YOU ? 'Victory' : 'Defeat'
+    view.winner === null
+      ? ''
+      : view.winner === 'draw'
+        ? 'Draw'
+        : watching
+          ? `${view.players[view.winner].name} wins`
+          : view.winner === ME
+            ? 'Victory'
+            : 'Defeat'
 
   return (
     <>
@@ -1631,12 +2182,15 @@ function Table(props: {
       <aside className={`sim-chat${panel === 'chat' ? ' open' : ''}`}>
         <h2>Chat</h2>
         <div className="sim-messages">
-          {chat.map((m, i) => (
+          {(online?.chat ?? chat).map((m, i) => (
             <p key={i} className={m.who}>
-              <b>{m.who === 'me' ? 'You' : opp.name}:</b> {m.text}
+              <b>{m.name ?? (m.who === 'me' ? 'You' : opp.name)}:</b> {m.text}
             </p>
           ))}
         </div>
+        {watching ? (
+          <p className="sim-note">Watching: only the players can chat.</p>
+        ) : (
         <form
           onSubmit={(event) => {
             event.preventDefault()
@@ -1654,6 +2208,7 @@ function Table(props: {
             ))}
           </div>
         </form>
+        )}
       </aside>
 
       <div className="sim-board">
@@ -1683,16 +2238,16 @@ function Table(props: {
             </div>
           )}
           <div className="sim-last">
-            {lastCard(last[AI], opp.name)}
+            {lastCard(lastPlayed[THEM], opp.name)}
             {revealedCards(opp, opp.name)}
-            <div className={`sim-initiative-track ${view.initiative === YOU ? 'me' : 'opp'}`}>
+            <div className={`sim-initiative-track ${view.initiative === ME ? 'me' : 'opp'}`}>
               {/* No one holds it until the first player is chosen */}
               <span hidden={view.phase === 'first'} className={`sim-initiative${view.initiativeTaken ? ' taken' : ''}`} title={view.initiativeTaken ? 'Claimed this round' : undefined}>
                 Initiative
               </span>
             </div>
             {revealedCards(me, 'you')}
-            {lastCard(last[YOU], 'you')}
+            {lastCard(lastPlayed[ME], 'you')}
           </div>
         </div>
         {strip(me, 'me')}
@@ -1719,11 +2274,13 @@ function Table(props: {
           >
             <SoundIcon on={sound} />
           </button>
-          <button type="button" disabled={view.phase === 'over'} onClick={() => setAsking('concede')}>
-            Concede
-          </button>
+          {!watching && (
+            <button type="button" disabled={view.phase === 'over'} onClick={() => setAsking('concede')}>
+              Concede
+            </button>
+          )}
           {/* Once the game is over there is nothing to lose by leaving */}
-          <button type="button" onClick={() => (view.phase === 'over' ? props.onNew() : setAsking('leave'))}>
+          <button type="button" onClick={() => (view.phase === 'over' || watching ? props.onNew() : setAsking('leave'))}>
             Leave
           </button>
         </div>
@@ -1861,7 +2418,7 @@ function Table(props: {
       {asking && (
         <Modal title={asking === 'concede' ? 'Concede the game?' : 'Leave the game?'} onClose={() => setAsking(null)}>
           <p className="account-note">
-            {asking === 'concede'
+            {asking === 'concede' || online
               ? `${opp.name} wins this game.`
               : 'The game ends here and can’t be picked up again.'}
           </p>
@@ -1874,7 +2431,7 @@ function Table(props: {
               type="button"
               onClick={() => {
                 setAsking(null)
-                if (asking === 'concede') act(YOU, { type: 'concede' })
+                if (asking === 'concede') act(ME, { type: 'concede' })
                 else props.onNew()
               }}
             >
@@ -1892,9 +2449,11 @@ function Table(props: {
               <button type="button" className="sim-button" onClick={props.onNew}>
                 Back to the menu
               </button>
-              <button type="button" className="sim-button go" onClick={props.onAgain}>
-                Play again
-              </button>
+              {props.onAgain && (
+                <button type="button" className="sim-button go" onClick={props.onAgain}>
+                  Play again
+                </button>
+              )}
             </div>
           </div>
         </div>

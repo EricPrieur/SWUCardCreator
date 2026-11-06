@@ -291,6 +291,258 @@
   font-size: 2rem;
 }
 
+.sim-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem 1.2rem;
+}
+/* An on/off pill, as on The Chrome Grid: the checkbox hidden, the label lit in spice while on */
+.sim-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.4rem 0.95rem;
+  border: 1px solid rgba(232, 215, 181, 0.18);
+  border-radius: 6px;
+  color: rgba(232, 215, 181, 0.45);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  user-select: none;
+  transition:
+    color 0.12s ease,
+    border-color 0.12s ease,
+    box-shadow 0.12s ease,
+    background 0.12s ease;
+}
+.sim-toggle input {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+/* A light that is on with it */
+.sim-toggle::before {
+  content: '';
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: rgba(232, 215, 181, 0.2);
+  transition:
+    background 0.12s ease,
+    box-shadow 0.12s ease;
+}
+.sim-toggle:hover {
+  border-color: rgba(232, 215, 181, 0.4);
+  color: var(--sand-dim);
+}
+.sim-toggle:has(input:checked) {
+  border-color: var(--spice);
+  background: rgba(224, 138, 44, 0.1);
+  color: var(--spice);
+  box-shadow: 0 0 7px rgba(224, 138, 44, 0.35);
+}
+.sim-toggle:has(input:checked)::before {
+  background: var(--spice);
+  box-shadow: 0 0 6px var(--spice);
+}
+.sim-toggle:has(input:checked):hover {
+  box-shadow: 0 0 11px rgba(224, 138, 44, 0.55);
+}
+.sim-toggle:has(input:focus-visible) {
+  outline: 2px solid var(--spice);
+  outline-offset: 2px;
+}
+.sim-button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* The Online Game tab: a game to create on the left, the games listed on the right */
+.sim-lobby {
+  grid-template-columns: minmax(16rem, 20rem) minmax(0, 1fr);
+  align-items: start;
+  justify-items: stretch;
+}
+.sim-lobby-create {
+  display: grid;
+  justify-items: center;
+  gap: 0.9rem;
+}
+.sim-lobby-create .sim-picker {
+  width: 100%;
+  box-sizing: border-box;
+}
+.sim-lobby-create .sim-note {
+  text-align: center;
+  font-size: 0.9rem;
+}
+.sim-lobby-games {
+  display: grid;
+  align-content: start;
+  gap: 0.8rem;
+  min-width: 0;
+}
+.sim-lobby-tabs {
+  display: flex;
+  gap: 0.3rem;
+}
+.sim-lobby-tabs button {
+  padding: 0.35rem 0.9rem;
+  border: 1px solid rgba(232, 215, 181, 0.16);
+  border-radius: 999px;
+  background: none;
+  color: var(--sand-dim);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.sim-lobby-tabs button[aria-selected='true'] {
+  border-color: var(--spice);
+  color: var(--spice);
+}
+.sim-recent {
+  display: grid;
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.sim-recent-game {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid rgba(232, 215, 181, 0.16);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.3);
+}
+.sim-recent-game.live {
+  border-color: #b99a5b;
+}
+.sim-recent-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem 0.6rem;
+  font-size: 0.85rem;
+}
+.sim-recent-status {
+  font-weight: 700;
+  color: var(--sand);
+}
+.sim-recent-game.live .sim-recent-status {
+  color: var(--spice);
+}
+.sim-recent-flag {
+  padding: 0.05rem 0.45rem;
+  border: 1px solid rgba(232, 215, 181, 0.3);
+  border-radius: 999px;
+  color: var(--sand-dim);
+  font-size: 0.75rem;
+}
+.sim-recent-when {
+  margin-left: auto;
+  color: var(--sand-dim);
+}
+.sim-recent-sides {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.8rem;
+}
+.sim-recent-side {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+  padding-left: 0.5rem;
+  border-left: 3px solid var(--me);
+  font-size: 0.85rem;
+}
+.sim-recent-side.opp {
+  border-left-color: var(--opp);
+}
+.sim-recent-side span {
+  overflow: hidden;
+  color: var(--sand-dim);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sim-recent-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.3rem;
+  margin-bottom: 0.2rem;
+}
+.sim-recent-cards img,
+.sim-recent-cards span {
+  width: 100%;
+  aspect-ratio: 1000 / 718;
+  height: auto;
+  border-radius: 4px;
+}
+.sim-recent-cards span {
+  box-sizing: border-box;
+  border: 1px dashed rgba(232, 215, 181, 0.3);
+}
+.sim-invite {
+  grid-column: 1 / -1;
+  box-sizing: border-box;
+}
+.sim-error {
+  margin: 0;
+  color: #ff8a7a;
+  text-align: center;
+}
+.sim-room-row {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+.sim-room-row .sim-recent-side {
+  flex: 1;
+  max-width: 16rem;
+}
+.sim-room-row .sim-button {
+  margin-left: auto;
+}
+.sim-watch {
+  padding: 0.25rem 0.8rem;
+  font-size: 0.8rem;
+}
+@media (max-width: 720px) {
+  .sim-lobby {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* A game online waiting for an opponent, with its link to share */
+.sim-room {
+  text-align: center;
+}
+.sim-room h2 {
+  margin: 0;
+  color: var(--spice);
+}
+.sim-room-link {
+  display: flex;
+  gap: 0.5rem;
+  width: min(32rem, 100%);
+}
+.sim-room-link input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.5rem;
+  border: 1px solid rgba(232, 215, 181, 0.16);
+  border-radius: 6px;
+  background: #1c140e;
+  color: var(--sand);
+  font: inherit;
+}
+
 /* The board: opponent's strip, play area, your strip */
 .sim-board {
   display: grid;
@@ -391,10 +643,12 @@
   flex: 1;
   min-width: 0;
 }
-.sim-strip.opp .sim-hand {
+/* A hand unseen: the other player's, or both when watching */
+.sim-strip.opp .sim-hand,
+.sim-hand:has(> .sim-hand-back) {
   gap: 0.4vw;
 }
-.sim-strip.opp .sim-hand > .sim-hand-back {
+.sim-hand > .sim-hand-back {
   width: var(--sw);
   height: var(--sh);
 }
