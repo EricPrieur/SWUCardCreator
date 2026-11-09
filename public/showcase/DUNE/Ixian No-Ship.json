@@ -1,0 +1,22 @@
+{
+  "hp": 4,
+  "id": "fbddb7fe-ef50-4e29-955c-b85bdea26e99",
+  "cost": 4,
+  "name": "Ixian No-Ship",
+  "text": "[Hidden]\n[When Played/On Attack:] You may play a ground unit that costs [#3] or less from your hand. It gains [Ambush] for this phase.",
+  "power": 2,
+  "trait": "Ixian, Vehicle, Transport",
+  "number": "141",
+  "rarity": "R",
+  "unique": true,
+  "frameId": "unit-cunning-villainy-space",
+  "setCode": "DUNE",
+  "language": "EN",
+  "art": {
+    "src": "Ixian No-Ship (art).webp",
+    "zoom": 0.75,
+    "x": 0,
+    "y": -11,
+    "rotate": 0
+  }
+}

@@ -10,7 +10,7 @@
   "name": "Shigawire Snare",
   "text": "Exhaust up to 2 enemy units. You may defeat a friendly Spice token. If you do, choose one of those units. It can't ready this round (including during the regroup phase).",
   "trait": "Trick",
-  "number": "140",
+  "number": "144",
   "rarity": "U",
   "frameId": "event-cunning-villainy",
   "setCode": "DUNE",

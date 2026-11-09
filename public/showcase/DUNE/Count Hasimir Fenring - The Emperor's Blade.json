@@ -12,7 +12,7 @@
   "text": "[Ambush]\nWhile attacking, this unit deals combat damage before the defender.\nThis unit can't attack units named Paul Atreides.",
   "power": 4,
   "trait": "Emperor, Spy",
-  "number": "138",
+  "number": "142",
   "rarity": "R",
   "unique": true,
   "frameId": "unit-cunning-villainy",

@@ -1,0 +1,20 @@
+{
+  "hp": 3,
+  "id": "63aa7e05-c2d1-46f4-805a-883c475544e0",
+  "art": {
+    "x": 0,
+    "y": 0,
+    "src": "Fremen Rocket Squad (art).webp",
+    "zoom": 1
+  },
+  "cost": 3,
+  "name": "Fremen Rocket Squad",
+  "text": "While you control an [{Arrakis}] base, this unit gains [Hidden].\n[On Attack:] You may deal 2 damage to a space unit.",
+  "power": 3,
+  "trait": "Fremen, Trooper",
+  "number": "122",
+  "rarity": "C",
+  "frameId": "unit-aggression-heroism",
+  "setCode": "DUNE",
+  "language": "EN"
+}

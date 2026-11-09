@@ -21,9 +21,8 @@
   "name": "The Voice",
   "text": "Look at an opponent's hand and choose a card in it. This phase, they can't play cards with that name. Draw a card.",
   "trait": "Bene Gesserit",
-  "number": "173",
+  "number": "178",
   "rarity": "C",
-  "unique": true,
   "frameId": "event-villainy",
   "setCode": "DUNE",
   "language": "EN"

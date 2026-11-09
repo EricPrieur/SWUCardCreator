@@ -18,7 +18,7 @@
   "name": "The Butlerian Jihad",
   "text": "Defeat each [{Vehicle}] unit.",
   "trait": "Tactic",
-  "number": "057",
+  "number": "058",
   "rarity": "R",
   "frameId": "event-vigilance",
   "setCode": "DUNE",

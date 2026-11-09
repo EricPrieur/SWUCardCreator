@@ -1210,7 +1210,8 @@ function queuePlots(state: GameState, p: PlayerId) {
 }
 
 // What an attack may do differently, for an ability that makes one
-type AttackOptions = { power?: number; firstStrike?: boolean; overwhelm?: boolean }
+type AttackOptions = { power?: number; firstStrike?: boolean; overwhelm?: boolean; onAttack?: Ability }
+// onAttack: an On Attack ability the unit gains for this attack (Strafing Run)
 
 // 6.3: exhaust the attacker, resolve its On Attack abilities and those it triggers, then both
 // deal their damage at once
@@ -1242,6 +1243,7 @@ function attack(state: GameState, p: PlayerId, attackerId: string, target: strin
   exhaustUnit(state, attacker)
   const self: Self = { id: attackerId, controller: p, def: def(state, attacker), attack: { attacker: attackerId, target } }
   queue(state, p, nameOf(state, attacker), 'On Attack', unitScript(state, attacker).onAttack, self)
+  if (options.onAttack) queue(state, p, nameOf(state, attacker), 'On Attack', options.onAttack, self)
   trigger(state, p, 'whenFriendlyAttacks', { other: attackerId, attack: self.attack }, attackerId)
   trigger(state, other(p), 'whenEnemyAttacks', { other: attackerId, attack: self.attack })
   const defending = target === 'base' ? undefined : findUnit(state, target)

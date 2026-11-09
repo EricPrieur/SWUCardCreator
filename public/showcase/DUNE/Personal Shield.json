@@ -12,7 +12,7 @@
   "text": "Attach to a friendly unit.\n[When Played:] If you control an [{Arrakis}] base, defeat attached unit. Otherwise, give a Shield token to attached unit.\n[When the regroup phase starts:] If attached unit has no Shield token, give a Shield token to it.",
   "power": 1,
   "trait": "Item, Shield",
-  "number": "061",
+  "number": "062",
   "rarity": "U",
   "frameId": "upgrade-vigilance",
   "setCode": "DUNE",

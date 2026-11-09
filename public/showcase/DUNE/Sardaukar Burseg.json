@@ -12,7 +12,7 @@
   "text": "[Sentinel]\nAs an additional cost to play this unit, defeat a friendly Spice token.\nOther friendly [{Sardaukar}] units get [+1/+1].",
   "power": 4,
   "trait": "Emperor, Sardaukar, Official",
-  "number": "070",
+  "number": "071",
   "rarity": "R",
   "frameId": "unit-command-villainy",
   "setCode": "DUNE",

@@ -12,7 +12,7 @@
   "text": "[When Played:] Choose a card in your discard pile that shares a Trait with attached unit. Attached unit gains a [keyword] printed on that card.",
   "power": 1,
   "trait": "Bene Gesserit",
-  "number": "058",
+  "number": "059",
   "rarity": "C",
   "frameId": "upgrade-vigilance",
   "setCode": "DUNE",

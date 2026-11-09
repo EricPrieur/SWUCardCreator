@@ -102,6 +102,14 @@ const defs: CardDef[] = [
   card('fremenLeader', { type: 'leader', cost: 5, traits: ['Fremen'], unit: { power: 3, hp: 6, arena: 'ground', keywords: {} } }),
   card('jihad', { ...scripted("Muad'Dib's Jihad"), type: 'event', cost: 9, arena: undefined, aspects: ['Aggression', 'Cunning', 'Heroism'], traits: ['Fremen', 'Tactic'] }),
   card('butlerian', { ...scripted('The Butlerian Jihad'), type: 'event', cost: 7, arena: undefined, aspects: ['Vigilance'], traits: ['Tactic'] }),
+  card('strafing', { ...scripted('Strafing Run'), type: 'event', cost: 2, arena: undefined, aspects: ['Command'], traits: ['Tactic'] }),
+  card('shotDown', { ...scripted('Shot Down'), type: 'event', cost: 2, arena: undefined, aspects: ['Vigilance'], traits: ['Tactic'] }),
+  card('fighter', { cost: 2, power: 3, hp: 3, arena: 'space', traits: ['Vehicle', 'Fighter'] }),
+  card('frigate', { cost: 5, power: 4, hp: 5, arena: 'space', traits: ['Vehicle', 'Capital Ship'] }),
+  card('harvester', { cost: 4, power: 2, hp: 7, traits: ['Vehicle', 'Harvester'] }),
+  card('rocketSquad', { ...scripted('Fremen Rocket Squad'), cost: 3, power: 3, hp: 3, aspects: ['Aggression', 'Heroism'], traits: ['Fremen', 'Trooper'] }),
+  card('dustStorm', { ...scripted('Dust Storm'), type: 'event', cost: 3, arena: undefined, aspects: ['Cunning'], traits: ['Disaster'] }),
+  card('noShip', { ...scripted('Ixian No-Ship'), cost: 4, power: 2, hp: 4, arena: 'space', unique: true, traits: ['Ixian', 'Vehicle', 'Transport'] }),
   card('korba', { ...scripted('Korba'), cost: 6, power: 5, hp: 6, unique: true, traits: ['Fremen', 'Fedaykin', 'Official'] }),
 ]
 
@@ -1016,4 +1024,78 @@ test('Korba: each friendly Fremen token gets an Experience token when he is play
   state.active = 0
   state = settle(act(state, 0, { type: 'attack', attacker: korba.id, target: 'base' }))
   assert.equal(upgrades('u00'), 2)
+})
+
+test('Strafing Run: a Vehicle attacks and deals its power as damage to an enemy ground unit', () => {
+  let state = table({ hand0: ['strafing'], units0: ['trooper', 'fighter'], units1: ['big'] })
+  state.players[0].units[1].arena = 'space'
+  // Only the Vehicle may attack: no choice to make
+  state = settle(act(state, 0, { type: 'play', card: 'h0' }))
+  assert.equal(state.players[1].units[0].damage, 3, "the 'thopter's 3 power to the ground unit")
+  assert.equal(state.players[1].base.damage, 3, 'and its attack on the base')
+  assert.equal(state.players[0].units[1].exhausted, true)
+  assert.equal(state.players[0].units[0].exhausted, false, 'the Trooper stays ready')
+})
+
+test('Strafing Run: no Vehicle, no attack', () => {
+  let state = table({ hand0: ['strafing'], units0: ['trooper'], units1: ['big'] })
+  state = settle(act(state, 0, { type: 'play', card: 'h0' }))
+  assert.equal(state.players[1].base.damage, 0)
+  assert.equal(state.players[1].units[0].damage, 0)
+})
+
+test('Shot Down: defeats a space unit that is not a Capital Ship, never a ground Vehicle', () => {
+  let state = table({ hand0: ['shotDown'], units1: ['frigate', 'trooper', 'fighter'] })
+  state.players[1].units[0].arena = 'space'
+  state.players[1].units[2].arena = 'space'
+  state = settle(act(state, 0, { type: 'play', card: 'h0' }))
+  assert.deepEqual(state.players[1].units.map((u) => u.def), ['frigate', 'trooper'], 'only the fighter could be picked')
+  state = table({ hand0: ['shotDown'], units1: ['harvester'] })
+  state = settle(act(state, 0, { type: 'play', card: 'h0' }))
+  assert.equal(state.players[1].units.length, 1, 'a ground Vehicle is safe')
+})
+
+test('Fremen Rocket Squad: 2 damage to a space unit when it attacks, Hidden on Arrakis', () => {
+  let state = table({ units0: ['rocketSquad'], units1: ['fighter'] })
+  state.players[1].units[0].arena = 'space'
+  state = act(state, 0, { type: 'attack', attacker: 'u00', target: 'base' })
+  assert.equal(state.prompt?.player, 0, 'it may deal the damage')
+  state = answer(state, 'u10')
+  assert.equal(state.players[1].units[0].damage, 2)
+  assert.equal(state.players[1].base.damage, 3)
+  assert.equal(keywordsOf(state, state.players[0].units[0]).hidden, true, 'Hidden on an Arrakis base')
+})
+
+test('Dust Storm: a Weakness token to each space unit, and a second to enemy ones on Arrakis', () => {
+  // units0: a fighter (3/3); units1: a fighter, a frigate (4/5) and a ground trooper
+  let state = table({ hand0: ['dustStorm'], units0: ['fighter'], units1: ['fighter', 'frigate', 'big'] })
+  for (const u of [state.players[0].units[0], state.players[1].units[0], state.players[1].units[1]]) u.arena = 'space'
+  state = settle(act(state, 0, { type: 'play', card: 'h0' }))
+  const [mine] = state.players[0].units
+  assert.equal(powerOf(state, mine), 2, 'yours: one token')
+  assert.equal(hpOf(state, mine), 2)
+  const [fighter, frigate, big] = state.players[1].units
+  assert.equal(powerOf(state, fighter), 1, 'theirs: two tokens')
+  assert.equal(powerOf(state, frigate), 2, 'Capital Ships too')
+  assert.equal(powerOf(state, big), 5, 'not the ground')
+  // Off Arrakis: one token each
+  state = table({ base0: 'caladan', hand0: ['dustStorm'], units1: ['fighter'] })
+  state.players[1].units[0].arena = 'space'
+  state = settle(act(state, 0, { type: 'play', card: 'h0' }))
+  assert.equal(powerOf(state, state.players[1].units[0]), 2)
+})
+
+test('Ixian No-Ship: plays a ground unit costing 3 or less from the hand, paid for, with Ambush', () => {
+  let state = table({ hand0: ['noShip', 'trooper', 'big'], units1: ['guard'] })
+  const ready = () => state.players[0].resources.filter((r) => !r.exhausted).length
+  const before = ready()
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  // Only the Trooper may land: the 5-cost unit is too big
+  assert.deepEqual(state.prompt?.options.map((o) => o.id).filter((id) => id !== 'none'), ['h1'])
+  state = settle(state)
+  const trooper = state.players[0].units.find((u) => u.def === 'trooper')!
+  assert.ok(trooper, 'the Trooper is in play')
+  assert.equal(before - ready(), 4 + 1, 'the No-Ship and the Trooper both paid for')
+  assert.equal(trooper.exhausted, true, 'it attacked with Ambush')
+  assert.equal(state.players[1].units[0].damage, 2)
 })

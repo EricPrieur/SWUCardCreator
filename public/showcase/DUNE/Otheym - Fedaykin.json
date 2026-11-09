@@ -12,7 +12,7 @@
   "text": "[When Played:] If you control another unique [{Fremen}] unit, create a Fremen token and ready it.",
   "power": 3,
   "trait": "Fremen, Fedaykin",
-  "number": "119",
+  "number": "121",
   "rarity": "U",
   "unique": true,
   "frameId": "unit-aggression-heroism",

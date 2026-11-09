@@ -12,7 +12,7 @@
   "text": "[When Played:] You may play a [{Trick}] event from your discard pile. It costs [2] less.\n[Smuggle] [[4 Cunning]]",
   "power": 2,
   "trait": "Underworld",
-  "number": "163",
+  "number": "167",
   "rarity": "U",
   "frameId": "unit-cunning",
   "setCode": "DUNE",

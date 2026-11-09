@@ -12,7 +12,7 @@
   "text": "[Hidden]\n[Smuggle] [[6 Cunning]]\n[When Played:] Draw a card.\nWhenever an opponent defeats a Spice token, create a Spice token. Use this ability only once each round.",
   "power": 4,
   "trait": "Underworld",
-  "number": "166",
+  "number": "170",
   "rarity": "R",
   "unique": true,
   "frameId": "unit-cunning",

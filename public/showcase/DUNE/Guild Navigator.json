@@ -12,7 +12,7 @@
   "text": "[Sentinel]\n[When Played:] You may defeat a friendly Spice token. If you do, look at the top 5 cards of your deck. Draw 1 of them, discard any number of them and put the rest on the bottom of your deck in any order.",
   "power": 2,
   "trait": "Spacing Guild, Vehicle, Transport",
-  "number": "177",
+  "number": "182",
   "rarity": "C",
   "frameId": "unit-neutral-space",
   "setCode": "DUNE",

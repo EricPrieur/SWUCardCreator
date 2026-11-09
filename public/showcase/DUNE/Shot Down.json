@@ -1,0 +1,19 @@
+{
+  "id": "1383482a-3ea5-4c58-a753-4ffff715f5fa",
+  "art": {
+    "x": 0,
+    "y": 20,
+    "src": "Shot Down (art).webp",
+    "zoom": 1,
+    "rotate": 0
+  },
+  "cost": 2,
+  "name": "Shot Down",
+  "text": "Defeat a non-[{Capital Ship}] space unit.",
+  "trait": "Tactic",
+  "number": "054",
+  "rarity": "C",
+  "frameId": "event-vigilance",
+  "setCode": "DUNE",
+  "language": "EN"
+}

@@ -10,7 +10,7 @@
   "name": "Coriolis Storm",
   "text": "You may defeat a friendly Spice token. If you do, return a non-leader unit to its owner's hand. Otherwise, return a non-leader unit that costs [#6] or less to its owner's hand.",
   "trait": "Trick",
-  "number": "169",
+  "number": "173",
   "rarity": "C",
   "frameId": "event-cunning",
   "setCode": "DUNE",

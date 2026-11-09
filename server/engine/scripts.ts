@@ -663,6 +663,20 @@ const dune: CardScript[] = [
     },
   },
   {
+    name: 'Fremen Rocket Squad',
+    text: 'While you control an [{Arrakis}] base, this unit gains [Hidden].\n[On Attack:] You may deal 2 damage to a space unit.',
+    front: {
+      onAttack: (g, self) => {
+        const pick = g.chooseOne(self.controller, 'Fremen Rocket Squad: you may deal 2 damage to a space unit', unitIds(g, (u) => u.arena === 'space'), {
+          optional: true,
+          ai: 'harm',
+          source: self.def.id,
+        })
+        if (pick) g.damage(pick, 2, self)
+      },
+    },
+  },
+  {
     name: "Captured 'Thopter",
     text: '[On Attack:] Deal 1 damage to a ground unit.',
     front: {
@@ -1814,6 +1828,18 @@ const dune: CardScript[] = [
     },
   },
   {
+    name: 'Dust Storm',
+    text: 'Give a Weakness token to each space unit. Then, if you control an [{Arrakis}] base, give a Weakness token to each enemy space unit.',
+    front: {
+      play: (g, self) => {
+        const p = self.controller
+        for (const id of unitIds(g, (u) => u.arena === 'space')) if (g.unit(id)) g.giveToken(id, 'Weakness')
+        if (!g.controlsArrakis(p)) return
+        for (const id of unitIds(g, (u) => u.arena === 'space' && g.controller(u) !== p)) if (g.unit(id)) g.giveToken(id, 'Weakness')
+      },
+    },
+  },
+  {
     name: 'Tanzerouft',
     text: 'Give a Weakness token to an enemy unit. If you control a [{Fremen}] unit, give a Weakness token to an enemy unit.',
     front: {
@@ -1853,6 +1879,39 @@ const dune: CardScript[] = [
         for (const q of [0, 1] as PlayerId[]) for (const id of g.spiceIds(q)) g.defeatSpice(q, id, p)
         if (!g.controlsArrakis(p)) return
         for (const _ of fremen.filter((id) => !g.unit(id))) g.createToken(p, 'Fremen')
+      },
+    },
+  },
+  {
+    name: 'Strafing Run',
+    text: "Attack with a [{Vehicle}] unit. It gains: \"[On Attack:] Deal damage equal to this unit's power to an enemy ground unit.\" for this attack.",
+    front: {
+      play: (g, self) => {
+        const p = self.controller
+        const vehicles = friendlyIds(g, self, (u) => g.hasTrait(u, 'Vehicle') && g.canAttack(u.id))
+        const pick = g.chooseOne(p, 'Strafing Run: attack with a Vehicle unit', vehicles, { ai: 'help', source: self.def.id })
+        if (!pick) return
+        g.attackWith(pick, {
+          onAttack: (g, attacker) => {
+            const unit = g.unit(attacker.id)
+            if (!unit) return
+            const amount = g.power(unit)
+            const enemies = unitIds(g, (u) => g.controller(u) !== p && u.arena === 'ground')
+            const target = g.chooseOne(p, `Strafing Run: deal ${amount} damage to an enemy ground unit`, enemies, { ai: 'harm', source: self.def.id })
+            if (target && amount > 0) g.damage(target, amount, attacker)
+          },
+        })
+      },
+    },
+  },
+  {
+    name: 'Shot Down',
+    text: 'Defeat a non-[{Capital Ship}] space unit.',
+    front: {
+      play: (g, self) => {
+        const targets = unitIds(g, (u) => u.arena === 'space' && !g.hasTrait(u, 'Capital Ship'))
+        const pick = g.chooseOne(self.controller, 'Shot Down: defeat a non-Capital Ship space unit', targets, { ai: 'harm', source: self.def.id })
+        if (pick) g.defeat(pick, self)
       },
     },
   },
@@ -2245,6 +2304,14 @@ const dune: CardScript[] = [
     name: 'CHOAM Dividend',
     text: 'While playing this event, you may defeat a friendly Spice token. If you do, it costs [1] less.\nPut this event into play as a resource.',
     front: { spiceReduces: 1, toResources: true, play: () => {} },
+  },
+  {
+    name: 'Ixian No-Ship',
+    text: '[Hidden]\n[When Played/On Attack:] You may play a ground unit that costs [#3] or less from your hand. It gains [Ambush] for this phase.',
+    front: {
+      whenPlayed: (g, self) => noShipLanding(g, self),
+      onAttack: (g, self) => noShipLanding(g, self),
+    },
   },
   {
     name: 'Guild Heighliner',
@@ -3226,4 +3293,19 @@ export function abilitiesOf(card: CardDef, side: 'front' | 'back'): Abilities {
 }
 
 // For the scripts' own test: every script, by name
+// Ixian No-Ship: a ground unit costing 3 or less from the hand, paid for, landing with Ambush
+function noShipLanding(g: Game, self: Self) {
+  const p = self.controller
+  const ids = g.player(p).hand.map((c) => c.id).filter((id) => {
+    const d = g.def(g.card(id)!)
+    return d.type === 'unit' && d.arena === 'ground' && d.cost <= 3 && g.canPlay(p, id)
+  })
+  if (!ids.length) return
+  const pick = g.chooseOne(p, 'Ixian No-Ship: you may play a ground unit that costs 3 or less from your hand, with Ambush', ids, { optional: true, ai: 'best', source: self.def.id })
+  if (!pick) return
+  // Ambush before it enters play, so it may attack as it does
+  g.grant(pick, { ambush: true }, 'phase')
+  g.playCard(p, pick)
+}
+
 export const scripts = dune

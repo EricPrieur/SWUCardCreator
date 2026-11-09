@@ -12,7 +12,7 @@
   "text": "[When Played:] If you control another [{Underworld}] unit, create a Spice token. If you control another [{Fremen}] unit, create a Fremen token.\n[Smuggle] [[5 Cunning Heroism]]",
   "power": 3,
   "trait": "Fremen, Underworld",
-  "number": "149",
+  "number": "153",
   "rarity": "U",
   "unique": false,
   "frameId": "unit-cunning-heroism",

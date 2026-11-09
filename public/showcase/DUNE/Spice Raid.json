@@ -10,7 +10,7 @@
   "name": "Spice Raid",
   "text": "Deal 2 damage to a ground unit. If that unit is defeated this way, create a Spice token.",
   "trait": "Supply, Tactic",
-  "number": "132",
+  "number": "135",
   "rarity": "C",
   "frameId": "event-aggression",
   "setCode": "DUNE",

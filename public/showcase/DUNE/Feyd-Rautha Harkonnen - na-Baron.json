@@ -20,7 +20,7 @@
   "text": "[Sentinel]\n[When this unit attacks or is attacked:] Give a Weakness token to the other unit in the combat.",
   "power": 5,
   "trait": "Harkonnen, Official",
-  "number": "110",
+  "number": "112",
   "rarity": "L",
   "unique": true,
   "frameId": "unit-aggression-villainy",

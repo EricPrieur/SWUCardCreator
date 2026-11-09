@@ -12,7 +12,7 @@
   "text": "[When Played/On Attack:] You may play a ground [{Vehicle}] unit from your discard pile that was defeated this phase and costs [#5] or less for free.",
   "power": 2,
   "trait": "Vehicle,Transport",
-  "number": "094",
+  "number": "095",
   "rarity": "C",
   "frameId": "unit-command-space",
   "setCode": "DUNE",

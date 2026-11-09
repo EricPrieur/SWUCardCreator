@@ -1,0 +1,19 @@
+{
+  "id": "1ad7cad8-fed1-4611-a113-dcd4a9471224",
+  "art": {
+    "x": 0,
+    "y": 31,
+    "src": "Strafing Run (art).webp",
+    "zoom": 1,
+    "rotate": 0
+  },
+  "cost": 2,
+  "name": "Strafing Run",
+  "text": "Attack with a [{Vehicle}] unit. It gains: \"[On Attack:] Deal damage equal to this unit's power to an enemy ground unit.\" for this attack.",
+  "trait": "Tactic",
+  "number": "099",
+  "rarity": "C",
+  "frameId": "event-command",
+  "setCode": "DUNE",
+  "language": "EN"
+}

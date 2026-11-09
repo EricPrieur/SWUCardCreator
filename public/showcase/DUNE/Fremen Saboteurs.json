@@ -12,7 +12,7 @@
   "text": "[Saboteur]\n[When Played:] You may defeat an enemy Spice token or an upgrade on an enemy unit. If you do, deal 2 damage to a unit or base.\n",
   "power": 3,
   "trait": "Fremen, Trooper",
-  "number": "121",
+  "number": "124",
   "rarity": "U",
   "frameId": "unit-aggression-heroism",
   "setCode": "DUNE",
