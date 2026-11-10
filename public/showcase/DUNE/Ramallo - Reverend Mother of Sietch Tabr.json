@@ -13,7 +13,7 @@
   "text": "[When Played:] Heal 2 damage from a unit or base. You may defeat a friendly Spice token. If you do, heal 3 damage from it.\n[When Defeated:] Attach this card as an upgrade to a friendly non-[{Vehicle}] [{Fremen}] or [{Bene Gesserit}] unit.",
   "power": 1,
   "trait": "Fremen, Bene Gesserit",
-  "number": "042",
+  "number": "043",
   "rarity": "R",
   "unique": true,
   "frameId": "pilot-vigilance-heroism",

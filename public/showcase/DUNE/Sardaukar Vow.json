@@ -12,7 +12,7 @@
   "text": "Attach to a non-[{Vehicle}] unit.\nAttached unit gains [Sentinel].\n[When Played:] If attached unit is a [{Sardaukar}] unit, give a Shield token to it.",
   "power": 1,
   "trait": "Sardaukar",
-  "number": "075",
+  "number": "076",
   "rarity": "U",
   "frameId": "upgrade-command-villainy",
   "setCode": "DUNE",

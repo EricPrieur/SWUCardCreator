@@ -1,0 +1,21 @@
+{
+  "hp": 4,
+  "id": "c65ee770-0544-4a45-982b-842b6010a09e",
+  "cost": 3,
+  "name": "Planetologist's Survey Craft",
+  "text": "[On Attack:] Heal 2 damage from a friendly ground unit or your base.",
+  "power": 2,
+  "trait": "Emperor, Vehicle, Transport",
+  "number": "041",
+  "rarity": "C",
+  "frameId": "unit-vigilance-heroism-space",
+  "setCode": "DUNE",
+  "language": "EN",
+  "art": {
+    "src": "Planetologist's Survey Craft (art).webp",
+    "zoom": 0.8,
+    "x": 1,
+    "y": -9,
+    "rotate": -29
+  }
+}

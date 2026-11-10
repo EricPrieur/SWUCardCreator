@@ -12,7 +12,7 @@
   "text": "[Sentinel]\n[When Played:] If you control an [{Arrakis}] base, create a Fremen token.\nWhen a friendly [{Fremen}] unit is defeated: Heal 2 damage from a unit or base.",
   "power": 4,
   "trait": "Fremen, Official",
-  "number": "154",
+  "number": "158",
   "rarity": "R",
   "unique": true,
   "frameId": "unit-cunning-heroism",

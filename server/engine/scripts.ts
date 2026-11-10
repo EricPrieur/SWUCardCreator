@@ -2314,6 +2314,95 @@ const dune: CardScript[] = [
     },
   },
   {
+    name: 'CHOAM Spice Freighter',
+    text: '[Sentinel]\n[When Defeated:] Create 2 Spice tokens.',
+    front: {
+      whenDefeated: (g, self) => {
+        g.createSpice(self.controller, 2)
+      },
+    },
+  },
+  {
+    name: 'Frigate in Harkonnen Livery',
+    text: '[When Played:] Ready a friendly ground [{Trooper}] unit. It gets [+2/+0] for this phase.',
+    front: {
+      whenPlayed: (g, self) => {
+        const troopers = friendlyIds(g, self, (u) => u.arena === 'ground' && g.hasTrait(u, 'Trooper'))
+        // The AI readies an exhausted one first
+        const pick = g.chooseOne(self.controller, 'Frigate in Harkonnen Livery: ready a friendly ground Trooper unit, with +2/+0 for this phase', troopers, {
+          ai: troopers.find((id) => g.unit(id)?.exhausted) ?? 'help',
+          source: self.def.id,
+        })
+        if (!pick) return
+        g.ready(pick)
+        g.buff(pick, 2, 0, 'phase')
+      },
+    },
+  },
+  {
+    name: 'Atreides Frigate',
+    subtitle: 'Ducal Flagship',
+    text: '[When Played:] Give an Experience token to each of up to 3 friendly ground units.',
+    front: {
+      whenPlayed: (g, self) => {
+        const ground = friendlyIds(g, self, (u) => u.arena === 'ground')
+        const picks = g.choose(self.controller, 'Atreides Frigate: give an Experience token to each of up to 3 friendly ground units', ground, {
+          min: 0,
+          max: 3,
+          ai: 'help',
+          source: self.def.id,
+        })
+        for (const id of picks) g.giveToken(id, 'Experience')
+      },
+    },
+  },
+  {
+    name: 'Mercenary Strike Fighter',
+    text: '[When Played:] You may defeat a friendly Spice token. If you do, deal 2 damage to a unit.',
+    front: {
+      whenPlayed: (g, self) => {
+        const p = self.controller
+        const enemies = unitIds(g, (u) => g.controller(u) !== p)
+        // No question without a Spice token to defeat or a unit to damage
+        if (!g.spice(p) || !unitIds(g, () => true).length) return
+        const pay =
+          g.may(p, 'Mercenary Strike Fighter: defeat a Spice token to deal 2 damage to a unit?', { yes: 'Defeat a Spice token', no: 'Skip', ai: enemies.length > 0, source: self.def.id }) &&
+          g.defeatSpice(p)
+        if (!pay) return
+        const pick = g.chooseOne(p, 'Mercenary Strike Fighter: deal 2 damage to a unit', unitIds(g, () => true), { ai: 'harm', source: self.def.id })
+        if (pick) g.damage(pick, 2, self)
+      },
+    },
+  },
+  {
+    name: 'Commandeered Harkonnen Frigate',
+    text: '[When Played:] Deal 1 damage to an enemy ground unit for each friendly [{Fremen}] ground unit.',
+    front: {
+      whenPlayed: (g, self) => {
+        const p = self.controller
+        const times = friendlyIds(g, self, (u) => u.arena === 'ground' && g.hasTrait(u, 'Fremen')).length
+        for (let k = 0; k < times; k++) {
+          const enemies = unitIds(g, (u) => g.controller(u) !== p && u.arena === 'ground')
+          const pick = g.chooseOne(p, `Commandeered Harkonnen Frigate: deal 1 damage to an enemy ground unit (${times - k} left)`, enemies, { ai: 'harm', source: self.def.id })
+          if (!pick) break
+          g.damage(pick, 1, self)
+        }
+      },
+    },
+  },
+  {
+    name: "Planetologist's Survey Craft",
+    text: '[On Attack:] Heal 2 damage from a friendly ground unit or your base.',
+    front: {
+      onAttack: (g, self) => {
+        const p = self.controller
+        const targets = [...friendlyIds(g, self, (u) => u.arena === 'ground'), `base${p}`]
+        const pick = g.chooseOne(p, "Planetologist's Survey Craft: heal 2 damage from a friendly ground unit or your base", targets, { ai: 'help', source: self.def.id })
+        if (pick) g.heal(pick, 2, self)
+      },
+    },
+  },
+  {
     name: 'Guild Heighliner',
     text: '[Sentinel]\nAs you play this unit, you may defeat any number of friendly Spice tokens. It costs [1] less for each Spice token defeated this way.\n[When Played:] Search the top 8 cards of your deck for any number of ground units with a combined cost of [#8] or less and play them for free. They gain [Ambush] for this phase.',
     front: {

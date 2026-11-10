@@ -1,0 +1,20 @@
+{
+  "hp": 5,
+  "id": "1b7e7beb-b860-4fbf-836d-68341351e7f8",
+  "cost": 5,
+  "name": "Commandeered Harkonnen Frigate",
+  "text": "[When Played:] Deal 1 damage to an enemy ground unit for each friendly [{Fremen}] ground unit.",
+  "power": 4,
+  "trait": "Fremen, Vehicle, Capital Ship",
+  "number": "127",
+  "rarity": "U",
+  "frameId": "unit-aggression-heroism-space",
+  "setCode": "DUNE",
+  "language": "EN",
+  "art": {
+    "src": "Commandeered Harkonnen Frigate (art).webp",
+    "zoom": 1.1,
+    "x": 2,
+    "y": -19
+  }
+}

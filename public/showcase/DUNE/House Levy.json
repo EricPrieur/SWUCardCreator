@@ -10,7 +10,7 @@
   "name": "House Levy",
   "text": "Search the top 5 cards of your deck for a unit, reveal it and draw it. If it's a [{Trooper}] unit, you may also reveal and draw a [{Trooper}] unit from among the other cards.",
   "trait": "Tactic",
-  "number": "098",
+  "number": "100",
   "rarity": "C",
   "frameId": "event-command",
   "setCode": "DUNE",

@@ -11,7 +11,7 @@
   "name": "The Baron's Wrath",
   "text": "You may defeat any number of friendly Spice tokens and friendly [{Harkonnen}] units. Deal X damage divided as you choose among any number of units. X is the number of friendly [{Harkonnen}] units, plus 2 for each Spice token and unit defeated this way.",
   "trait": "Harkonnen, Tactic",
-  "number": "118",
+  "number": "120",
   "rarity": "R",
   "frameId": "event-aggression-villainy",
   "setCode": "DUNE",

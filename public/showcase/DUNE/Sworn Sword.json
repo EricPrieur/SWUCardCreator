@@ -12,7 +12,7 @@
   "text": "Attach to a non-[{Vehicle}] unit.\nAttached unit gains [Sentinel] and the [{Atreides}] trait.\n[When Played:] If attached unit has the [{Atreides}] trait printed on it, give an Experience token to it.",
   "power": 0,
   "trait": "Atreides",
-  "number": "091",
+  "number": "092",
   "rarity": "C",
   "frameId": "upgrade-command-heroism",
   "setCode": "DUNE",

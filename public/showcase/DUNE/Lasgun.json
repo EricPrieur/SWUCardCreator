@@ -12,7 +12,7 @@
   "text": "[When Played:] If attached unit is a [{Trooper}] unit, defeat another upgrade. If it was a Shield token, deal 3 damage to the unit it was attached to.",
   "power": 2,
   "trait": "Item, Weapon",
-  "number": "185",
+  "number": "191",
   "rarity": "U",
   "frameId": "upgrade-neutral",
   "setCode": "DUNE",

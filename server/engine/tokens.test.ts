@@ -110,6 +110,12 @@ const defs: CardDef[] = [
   card('rocketSquad', { ...scripted('Fremen Rocket Squad'), cost: 3, power: 3, hp: 3, aspects: ['Aggression', 'Heroism'], traits: ['Fremen', 'Trooper'] }),
   card('dustStorm', { ...scripted('Dust Storm'), type: 'event', cost: 3, arena: undefined, aspects: ['Cunning'], traits: ['Disaster'] }),
   card('noShip', { ...scripted('Ixian No-Ship'), cost: 4, power: 2, hp: 4, arena: 'space', unique: true, traits: ['Ixian', 'Vehicle', 'Transport'] }),
+  card('freighter', { ...scripted('CHOAM Spice Freighter'), cost: 6, power: 3, hp: 7, arena: 'space', traits: ['Vehicle', 'Transport'] }),
+  card('livery', { ...scripted('Frigate in Harkonnen Livery'), cost: 5, power: 4, hp: 5, arena: 'space', traits: ['Emperor', 'Harkonnen', 'Vehicle', 'Capital Ship'] }),
+  card('atreidesFrigate', { ...scriptedBy('Atreides Frigate', 'Ducal Flagship'), cost: 6, power: 4, hp: 6, arena: 'space', unique: true, traits: ['Atreides', 'Vehicle', 'Capital Ship'] }),
+  card('mercFighter', { ...scripted('Mercenary Strike Fighter'), cost: 3, power: 3, hp: 2, arena: 'space', traits: ['Underworld', 'Ginaz', 'Vehicle', 'Fighter'] }),
+  card('commandeered', { ...scripted('Commandeered Harkonnen Frigate'), cost: 5, power: 4, hp: 5, arena: 'space', traits: ['Fremen', 'Vehicle', 'Capital Ship'] }),
+  card('surveyCraft', { ...scripted("Planetologist's Survey Craft"), cost: 3, power: 2, hp: 4, arena: 'space', traits: ['Emperor', 'Vehicle', 'Transport'] }),
   card('korba', { ...scripted('Korba'), cost: 6, power: 5, hp: 6, unique: true, traits: ['Fremen', 'Fedaykin', 'Official'] }),
 ]
 
@@ -1098,4 +1104,74 @@ test('Ixian No-Ship: plays a ground unit costing 3 or less from the hand, paid f
   assert.equal(before - ready(), 4 + 1, 'the No-Ship and the Trooper both paid for')
   assert.equal(trooper.exhausted, true, 'it attacked with Ambush')
   assert.equal(state.players[1].units[0].damage, 2)
+})
+
+test('CHOAM Spice Freighter: 2 Spice tokens for its controller when it is defeated', () => {
+  let state = table({ hand0: ['shotDown'], units1: ['freighter'] })
+  state.players[1].units[0].arena = 'space'
+  const spice = state.players[1].spice.length
+  state = settle(act(state, 0, { type: 'play', card: 'h0' }))
+  assert.equal(state.players[1].units.length, 0)
+  assert.equal(state.players[1].spice.length, spice + 2, 'its owner gets the cargo')
+})
+
+test('Frigate in Harkonnen Livery: readies a friendly ground Trooper unit with +2/+0 for this phase', () => {
+  let state = table({ hand0: ['livery'], units0: ['soldier', 'big'] })
+  state.players[0].units[0].exhausted = true
+  state = settle(act(state, 0, { type: 'play', card: 'h0' }))
+  const soldier = state.players[0].units[0]
+  assert.equal(soldier.exhausted, false, 'the Trooper is ready again')
+  assert.equal(powerOf(state, soldier), 4, '2 + 2')
+  assert.equal(powerOf(state, state.players[0].units[1]), 5, 'not a Trooper: no change')
+})
+
+test('Atreides Frigate: an Experience token to each of up to 3 friendly ground units', () => {
+  let state = table({ hand0: ['atreidesFrigate'], units0: ['trooper', 'trooper', 'trooper', 'trooper', 'fighter'] })
+  state.players[0].units[4].arena = 'space'
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  const ids = state.players[0].units.slice(0, 3).map((u) => u.id)
+  state = answer(state, ...ids)
+  state = settle(state)
+  const tokens = state.players[0].units.map((u) => u.upgrades.length)
+  assert.deepEqual(tokens.slice(0, 5), [1, 1, 1, 0, 0], 'three ground units, not the fighter')
+})
+
+test('Mercenary Strike Fighter: a Spice token for 2 damage to a unit, in either arena', () => {
+  let state = table({ hand0: ['mercFighter'], units1: ['fighter'] })
+  state.players[1].units[0].arena = 'space'
+  const spice = state.players[0].spice.length
+  assert.ok(spice > 0, 'the Arrakis base gives a Spice token')
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  const yes = state.prompt!.options.find((o) => /Defeat a Spice token/.test(o.label ?? ''))!
+  state = answer(state, yes.id)
+  state = settle(answer(state, 'u10'))
+  assert.equal(state.players[0].spice.length, spice - 1)
+  assert.equal(state.players[1].units[0].damage, 2, 'a space unit too')
+  // No Spice token: no question, no damage
+  state = table({ base0: 'caladan', hand0: ['mercFighter'], units1: ['big'] })
+  state = settle(act(state, 0, { type: 'play', card: 'h0' }))
+  assert.equal(state.players[1].units[0].damage, 0)
+})
+
+test('Commandeered Harkonnen Frigate: 1 damage to an enemy ground unit for each friendly Fremen ground unit', () => {
+  let state = table({ hand0: ['commandeered'], units0: ['fremen', 'fremen', 'trooper', 'thopter'], units1: ['big', 'trooper'] })
+  state.players[0].units[3].arena = 'space'
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  state = answer(state, 'u10')
+  state = answer(state, 'u10')
+  state = settle(state)
+  assert.equal(state.players[1].units[0].damage, 2, "two Fremen on the ground: not the Trooper, not the Fremen 'thopter")
+  assert.equal(state.players[1].units[1].damage, 0)
+})
+
+test("Planetologist's Survey Craft: heals 2 from a friendly ground unit or your base when it attacks", () => {
+  let state = table({ units0: ['surveyCraft', 'big'] })
+  state.players[0].units[0].arena = 'space'
+  state.players[0].units[1].damage = 3
+  state.players[0].base.damage = 5
+  state = act(state, 0, { type: 'attack', attacker: 'u00', target: 'base' })
+  state = settle(answer(state, 'u01'))
+  assert.equal(state.players[0].units[1].damage, 1)
+  assert.equal(state.players[0].base.damage, 5)
+  assert.equal(state.players[1].base.damage, 2)
 })

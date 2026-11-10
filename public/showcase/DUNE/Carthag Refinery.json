@@ -11,7 +11,7 @@
   "name": "Carthag Refinery",
   "text": "[Fortify]\nWhile you control an [{Arrakis}] base, if you would create a Spice token, you may create 2 Spice tokens instead. If you do, deal 1 damage to attached base.\n[{Harvester}] units you play cost [1] less.",
   "trait": "Fortification, Harkonnen",
-  "number": "119",
+  "number": "121",
   "rarity": "R",
   "unique": true,
   "frameId": "fortification-aggression-villainy",

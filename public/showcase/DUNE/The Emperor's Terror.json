@@ -11,7 +11,7 @@
   "name": "The Emperor's Terror",
   "text": "Ready each friendly [{Sardaukar}] unit. They get [+2/+0] and [Overwhelm] for this phase.",
   "trait": "Emperor, Tactic",
-  "number": "074",
+  "number": "075",
   "rarity": "R",
   "frameId": "event-command-villainy",
   "setCode": "DUNE",

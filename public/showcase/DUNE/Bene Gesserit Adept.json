@@ -12,7 +12,7 @@
   "text": "[When Played:] You may defeat an upgrade attached to an exhausted unit.",
   "power": 2,
   "trait": "Bene Gesserit",
-  "number": "047",
+  "number": "048",
   "rarity": "C",
   "frameId": "unit-vigilance",
   "setCode": "DUNE",

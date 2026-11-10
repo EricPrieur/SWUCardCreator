@@ -11,7 +11,7 @@
   "name": "Smuggled Spice",
   "text": "Create a Spice token.\n[Smuggle] [[2 Cunning]]\n[When played using Smuggle:] Create another Spice token.",
   "trait": "Supply, Trick",
-  "number": "171",
+  "number": "175",
   "rarity": "C",
   "frameId": "event-cunning",
   "setCode": "DUNE",

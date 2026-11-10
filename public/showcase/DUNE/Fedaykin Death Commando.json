@@ -12,7 +12,7 @@
   "text": "[When Played:] Give an Experience token to this unit for each other friendly [{Fremen}] unit.\n[When Defeated:] Create a Fremen token.",
   "power": 2,
   "trait": "Fremen, Fedaykin, Trooper",
-  "number": "150",
+  "number": "154",
   "rarity": "U",
   "frameId": "unit-cunning-heroism",
   "setCode": "DUNE",

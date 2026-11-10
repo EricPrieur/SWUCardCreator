@@ -12,7 +12,7 @@
   "text": "[Hidden]\n[When Played/On Attack:] Look at the top card of an opponent's deck. You may put it on the bottom of their deck or discard it.",
   "power": 2,
   "trait": "Emperor, Spy",
-  "number": "092",
+  "number": "093",
   "rarity": "C",
   "frameId": "unit-command",
   "setCode": "DUNE",

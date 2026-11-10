@@ -10,7 +10,7 @@
   "name": "Spice Trance",
   "text": "Look at the top 3 cards of your deck. Discard any number of them and put the rest back in any order. Create 2 Spice tokens.",
   "trait": "Supply, Innate",
-  "number": "055",
+  "number": "056",
   "rarity": "C",
   "frameId": "event-vigilance",
   "setCode": "DUNE",

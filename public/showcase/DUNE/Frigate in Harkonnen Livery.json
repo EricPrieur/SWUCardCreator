@@ -1,0 +1,20 @@
+{
+  "hp": 5,
+  "id": "988a1faf-3782-4d20-b236-0bcb6103c9e1",
+  "cost": 5,
+  "name": "Frigate in Harkonnen Livery",
+  "text": "[When Played:] Ready a friendly ground [{Trooper}] unit. It gets [+2/+0] for this phase.",
+  "power": 4,
+  "trait": "Emperor, Harkonnen, Vehicle, Capital Ship",
+  "number": "182",
+  "rarity": "U",
+  "frameId": "unit-villainy-space",
+  "setCode": "DUNE",
+  "language": "EN",
+  "art": {
+    "src": "Frigate in Harkonnen Livery (art).webp",
+    "zoom": 1,
+    "x": 0,
+    "y": -22
+  }
+}
