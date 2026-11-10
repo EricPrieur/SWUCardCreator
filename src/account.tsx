@@ -398,7 +398,6 @@ function UsersTab(props: { session: Session; focus?: number }) {
               <tr>
                 <th>User</th>
                 <th>Admin</th>
-                <th title="May use the game simulator; admins always may">Tester</th>
                 <th title="May make cards public">Public?</th>
                 <th>Cards</th>
                 <th title="Games played in the Simulator">Games</th>
@@ -422,16 +421,6 @@ function UsersTab(props: { session: Session; focus?: number }) {
                       checked={user.isAdmin}
                       disabled={user.permanent}
                       onChange={(event) => change(user, { isAdmin: event.target.checked })}
-                    />
-                  </td>
-                  <td>
-                    <input
-                      type="checkbox"
-                      aria-label={`${user.username} is a tester`}
-                      title="May use the game simulator"
-                      checked={user.isAdmin || !!user.isTester}
-                      disabled={user.isAdmin}
-                      onChange={(event) => change(user, { isTester: event.target.checked })}
                     />
                   </td>
                   <td>

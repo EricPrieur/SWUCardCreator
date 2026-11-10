@@ -316,18 +316,6 @@ export async function requireAdmin(req, res, next) {
   }
 }
 
-// The game simulator, while it is built: testers and admins, read from the table like admin rights
-export async function requireTester(req, res, next) {
-  try {
-    const { rows } = await query(`SELECT is_admin, is_tester FROM ${SCHEMA}.users WHERE id = $1`, [req.user.id])
-    if (!rows[0]?.is_admin && !rows[0]?.is_tester) return res.status(403).json({ error: 'Tester access required' })
-    next()
-  } catch (err) {
-    console.error('Tester check error:', err)
-    res.status(500).json({ error: 'Server error' })
-  }
-}
-
 // The account signed in, as it is now, with the storage it uses
 // Stop signing in with Discord; only for an account that has a password to fall back on
 router.delete('/discord', verifyToken, async (req, res) => {

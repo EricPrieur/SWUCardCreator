@@ -63,8 +63,8 @@ const tabs = [
   { id: 'decks', label: 'Deck Builder' },
   // Everyone's public cards; only where the accounts server answers
   { id: 'community', label: 'Community' },
-  // The game simulator, for admins and testers while it is being built
-  { id: 'simulator', label: 'Simulator' },
+  // The DUNE set's own page (#DuneSWU), with its Deck Builder and the game simulator
+  { id: 'dune', label: 'Dune SWU' },
   { id: 'projects', label: 'My Other Projects' },
 ] as const
 
@@ -645,7 +645,8 @@ function tabFromHash(): TabId {
 
 // Showcases on the site that no menu links to: the address's name, and its folder in public/showcase
 // A published set is at #set/<SET>; some also have a name of their own
-const showcases: Record<string, string> = { DuneSWU: 'DUNE' }
+// (#simulator: the Simulator had its own tab before it moved to the DUNE page)
+const showcases: Record<string, string> = { DuneSWU: 'DUNE', simulator: 'DUNE' }
 // A slash at the end, or other capitals, still find it: #DuneSWU/, #duneswu, #set/dune
 const showcaseFromHash = () => {
   const asked = window.location.hash.slice(1).replace(/\/+$/, '')
@@ -1665,21 +1666,24 @@ function Showcase(props: { folder: string }) {
       .catch(() => setMissing(true))
   }, [folder])
   useEffect(() => {
-    // Kept out of search engines
+    // Kept out of search engines, but for DUNE, which has a tab of its own
+    if (props.folder === 'DUNE') return
     const robots = document.createElement('meta')
     robots.name = 'robots'
     robots.content = 'noindex'
     document.head.append(robots)
     return () => robots.remove()
-  }, [])
+  }, [props.folder])
   const { bar, shown, grid, preview } = useCardFilters(
     `showcase.${props.folder}`,
     (list?.cards ?? []).map((card) => ({ item: card, facts: showcaseFacts(card) })),
     'Showcase order',
   )
   // The set's cards, a Deck Builder that only uses them, and for DUNE, the game simulator, which
-  // plays its cards: open to anyone here. Last, the author's other games, as on the main site
-  const [view, setView] = useRemembered<'cards' | 'decks' | 'play' | 'projects'>(`showcase.${props.folder}.view`, 'cards')
+  // plays its cards: open to anyone here. The author's other games are in the site's tabs above.
+  const [stored, setView] = useRemembered<'cards' | 'decks' | 'play' | 'projects'>(`showcase.${props.folder}.view`, 'cards')
+  // My Other Projects was a view here before the site's tabs were on this page
+  const view = stored === 'projects' ? 'cards' : stored
   const playable = props.folder === 'DUNE'
   const prescient = usePrescientDrawer()
   useEffect(() => {
@@ -1690,7 +1694,7 @@ function Showcase(props: { folder: string }) {
   if (!list) return <p className="empty-note">Loading…</p>
   const views = (
     <nav className="tabs showcase-views">
-      {(playable ? (['cards', 'decks', 'play', 'projects'] as const) : (['cards', 'decks', 'projects'] as const)).map((value) => (
+      {(playable ? (['cards', 'decks', 'play'] as const) : (['cards', 'decks'] as const)).map((value) => (
         <a
           key={value}
           href={window.location.hash}
@@ -1700,7 +1704,7 @@ function Showcase(props: { folder: string }) {
             setView(value)
           }}
         >
-          {value === 'cards' ? 'Cards' : value === 'decks' ? 'Deck Builder' : value === 'play' ? 'Simulator' : 'My Other Projects'}
+          {value === 'cards' ? 'Cards' : value === 'decks' ? 'Deck Builder' : 'Simulator'}
         </a>
       ))}
     </nav>
@@ -1711,14 +1715,6 @@ function Showcase(props: { folder: string }) {
         {views}
         <Simulator drawCard={prescient.drawCard} />
         {prescient.stage}
-      </>
-    )
-  }
-  if (view === 'projects') {
-    return (
-      <>
-        {views}
-        <Projects />
       </>
     )
   }
@@ -5417,7 +5413,6 @@ function App() {
   const account = useAccount()
   const online = useServerOnline()
   const communityNew = useCommunityNew(account, online, tab === 'community')
-  const canSimulate = !!account && (account.user.isAdmin || !!account.user.isTester)
   const [accountCards, setAccountCards] = useState<'loading' | 'ready' | 'failed'>('loading')
   const [syncError, setSyncError] = useState<string | null>(null)
   const [syncing, setSyncing] = useState(0)
@@ -5603,12 +5598,35 @@ function App() {
     />
   )
 
+  // The site's tabs, on the DUNE page too, so the way back is there
+  const mainTabs = (
+    <nav className="tabs">
+      {tabs
+        .filter(({ id }) => id !== 'community' || online)
+        .map(({ id, label }) => (
+        <a
+          key={id}
+          href={id === 'dune' ? '#DuneSWU' : `#${id}`}
+          aria-current={(id === 'dune' ? showcase === 'DUNE' : !showcase && tab === id) ? 'page' : undefined}
+        >
+          {label}
+          {id === 'community' && communityNew > 0 && (
+            <span className="tab-count" title={`${communityNew} new card${communityNew === 1 ? '' : 's'} since you last looked`}>
+              {communityNew > 99 ? '99+' : communityNew}
+            </span>
+          )}
+        </a>
+      ))}
+    </nav>
+  )
+
   if (showcase) {
     return (
       <main className="page">
         <header className="page-header">
           {accountBar}
           <h1>{showcase === 'DUNE' ? 'Dune SWU' : showcase}</h1>
+          {mainTabs}
         </header>
         <Showcase folder={showcase} />
         {leaveModal}
@@ -5621,20 +5639,7 @@ function App() {
       <header className="page-header">
         {accountBar}
         <h1>SWU Card Creator</h1>
-        <nav className="tabs">
-          {tabs
-            .filter(({ id }) => (id !== 'community' || online) && (id !== 'simulator' || canSimulate))
-            .map(({ id, label }) => (
-            <a key={id} href={`#${id}`} aria-current={tab === id ? 'page' : undefined}>
-              {label}
-              {id === 'community' && communityNew > 0 && (
-                <span className="tab-count" title={`${communityNew} new card${communityNew === 1 ? '' : 's'} since you last looked`}>
-                  {communityNew > 99 ? '99+' : communityNew}
-                </span>
-              )}
-            </a>
-          ))}
-        </nav>
+        {mainTabs}
       </header>
 
       {account && (accountCards === 'loading' || syncing > 0 || syncError) && (
@@ -5659,7 +5664,6 @@ function App() {
       {prescient.stage}
       {tab === 'decks' && <DeckFormats key={decksCopied} cards={cards.flatMap(deckCardOf)} />}
       {tab === 'projects' && <Projects />}
-      {tab === 'simulator' && canSimulate && <Simulator drawCard={prescient.drawCard} />}
       {tab === 'creator' && (
         <CardCreator
           draft={draft}
