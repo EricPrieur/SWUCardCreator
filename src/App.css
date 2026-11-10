@@ -1027,13 +1027,28 @@ input.picker-button::placeholder {
   gap: 2.5rem 2rem;
 }
 
+/* A smaller size's card stops short of the next size up's narrowest, centred in its cell:
+   with as many columns as large and a smaller gap, medium would otherwise come out bigger */
+.card-size-m,
+.card-size-s {
+  justify-items: center;
+}
+
+.card-size-m > li,
+.card-size-s > li {
+  width: 100%;
+  max-width: var(--card-max);
+}
+
 .card-size-m {
   --card-min: 175px;
+  --card-max: 240px;
   gap: 2rem 1.5rem;
 }
 
 .card-size-s {
   --card-min: 130px;
+  --card-max: 170px;
   gap: 1.5rem 1rem;
 }
 
@@ -2733,10 +2748,12 @@ input.picker-button::placeholder {
 
 .card-size-m.deck-landscape {
   --card-min: 240px;
+  --card-max: 280px;
 }
 
 .card-size-s.deck-landscape {
   --card-min: 180px;
+  --card-max: 230px;
 }
 
 /* The deck list's tabs: Cards, Draw, Math */
