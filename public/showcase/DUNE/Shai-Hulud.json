@@ -20,7 +20,7 @@
   "text": "[Overwhelm]\n[When Played:] If you control an [{Arrakis}] base, return each non-leader [{Fremen}] unit to its owner's hand. Then defeat each other ground unit that isn't a [{Fremen}] unit.\n[When this unit completes an attack:] Return it to the bottom of its owner's deck.",
   "power": 10,
   "trait": "Creature",
-  "number": "189",
+  "number": "190",
   "rarity": "L",
   "frameId": "unit-neutral",
   "setCode": "DUNE",

@@ -1,20 +1,20 @@
 {
   "hp": 7,
   "id": "09027c23-6bd7-4410-85d2-b5a331ebc75e",
+  "art": {
+    "x": 0,
+    "y": -10,
+    "src": "CHOAM Spice Freighter (art).webp",
+    "zoom": 1
+  },
   "cost": 6,
   "name": "CHOAM Spice Freighter",
   "text": "[Sentinel]\n[When Defeated:] Create 2 Spice tokens.",
   "power": 3,
   "trait": "Vehicle, Transport",
-  "number": "098",
+  "number": "099",
   "rarity": "U",
   "frameId": "unit-command-space",
   "setCode": "DUNE",
-  "language": "EN",
-  "art": {
-    "src": "CHOAM Spice Freighter (art).webp",
-    "zoom": 1,
-    "x": 0,
-    "y": -10
-  }
+  "language": "EN"
 }

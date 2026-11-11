@@ -13,7 +13,7 @@
   "text": "[Hidden]\n[When Played/On Attack:] You may play a ground unit that costs [#3] or less from your hand. It gains [Ambush] for this phase.",
   "power": 2,
   "trait": "Ixian, Vehicle, Transport",
-  "number": "145",
+  "number": "146",
   "rarity": "R",
   "unique": true,
   "frameId": "unit-cunning-villainy-space",

@@ -10,7 +10,7 @@
   "name": "Crossfire",
   "text": "Attack with a [{Trooper}] unit. It gains [Saboteur] and gets [+1/+0] for this attack. Then, you may attack with another [{Trooper}] unit. It gains [Saboteur] and gets [+1/+0] for this attack.",
   "trait": "Tactic",
-  "number": "140",
+  "number": "141",
   "rarity": "U",
   "frameId": "event-aggression",
   "setCode": "DUNE",

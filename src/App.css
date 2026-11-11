@@ -1278,6 +1278,12 @@ input.picker-button::placeholder {
     0 16px 40px rgb(0 0 0 / 0.6);
 }
 
+/* A card drawn from its .json in place of its image (the Print run view) */
+.showcase-drawn {
+  display: block;
+  width: 100%;
+}
+
 .empty-note {
   color: var(--sand-dim);
 }
@@ -1533,6 +1539,12 @@ input.picker-button::placeholder {
 .card-line-artist img {
   height: 1.15em;
   width: auto;
+}
+
+/* A Sealed print run's code in place of the artist: which pack, which card of it */
+.card-line-code {
+  font-weight: 700;
+  letter-spacing: 0.08em;
 }
 
 /* The block: a letter in a small box, a little left of the middle of the line */
@@ -3350,4 +3362,194 @@ input.picker-button::placeholder {
 .admin-log {
   padding-left: 1rem;
   color: var(--sand-dim);
+}
+
+/* A Showcase's print files: what came of the last one, beside its button */
+.print-status {
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+/* The Sealed event window: wide enough for a pack on a line or two, each player's packs on a tab */
+.account-modal-wide:has(.event-preview) {
+  width: min(76rem, calc(100vw - 2rem));
+}
+
+.event-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.event-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1.25rem;
+}
+
+.event-players {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.event-pack h3 {
+  margin: 0 0 0.5rem;
+  font-size: 0.85rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.event-pack ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.event-pack ul {
+  gap: 0.4rem;
+}
+
+.event-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  width: 60px;
+  font-size: 0.6rem;
+}
+
+.event-card > span {
+  opacity: 0.8;
+}
+
+/* The code the card carries in place of the artist */
+.event-card > .event-code {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 0.85em;
+  opacity: 0.6;
+}
+
+.event-card > img {
+  position: relative;
+  width: 100%;
+  height: 84px;
+  object-fit: contain;
+  border-radius: 4px;
+  transform-origin: top center;
+  transition: transform 0.15s;
+}
+
+/* A wild card, drawn in full art from its card, at the size of the others */
+.event-face {
+  position: relative;
+  width: 100%;
+  border-radius: 4px;
+  transform-origin: top center;
+  transition: transform 0.15s;
+}
+
+/* Under the mouse, big enough to read; the first and last cards grow inward */
+.event-card:hover > img,
+.event-card:hover .event-face {
+  z-index: 2;
+  transform: scale(3.2);
+}
+
+.event-card:first-child > img,
+.event-card:first-child .event-face {
+  transform-origin: top left;
+}
+
+.event-card:last-child > img,
+.event-card:last-child .event-face {
+  transform-origin: top right;
+}
+
+.event-landscape {
+  width: 117px;
+}
+
+/* The image itself, or the Prescient face as a whole: not the image inside it too */
+.event-landscape:hover > img,
+.event-landscape:hover .event-face {
+  transform: scale(2.4);
+}
+
+/* The pack's best card and the wild one stand out */
+.event-legendary > img {
+  outline: 2px solid #e8b04a;
+}
+
+.event-rare > img {
+  outline: 2px solid #c9c9d6;
+}
+
+.event-wild > img,
+.event-wild .event-face {
+  outline: 2px dashed rgb(232 215 181 / 0.6);
+}
+
+/* A part of the card moved from where its frame has it (see CardView's layout) */
+.card-part {
+  position: absolute;
+  inset: 0;
+}
+
+/* Over the preview while its boxes are being moved: what can be grabbed */
+.box-drag {
+  position: relative;
+  touch-action: none;
+  user-select: none;
+}
+
+.box-drag img {
+  -webkit-user-drag: none;
+}
+
+.box-handle {
+  position: absolute;
+  cursor: move;
+  border: 1px dashed rgb(255 255 255 / 0.55);
+  border-radius: 3px;
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.35);
+}
+
+.box-handle:hover,
+.box-handle.dragging {
+  border-style: solid;
+  border-color: var(--accent, #f3d27a);
+  background: rgb(243 210 122 / 0.12);
+}
+
+.box-handle span {
+  position: absolute;
+  top: -1.5em;
+  left: 0;
+  padding: 0 0.4em;
+  font-size: 11px;
+  line-height: 1.4;
+  white-space: nowrap;
+  color: #17141a;
+  background: #f3d27a;
+  border-radius: 3px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.box-handle:hover span,
+.box-handle.dragging span {
+  opacity: 1;
+}
+
+/* The print-safe line over the preview while boxes are moved */
+.box-safe {
+  position: absolute;
+  pointer-events: none;
+  border: 1px dashed rgb(255 120 100 / 0.8);
+  border-radius: 2px;
 }

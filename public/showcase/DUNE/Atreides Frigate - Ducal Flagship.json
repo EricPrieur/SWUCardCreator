@@ -1,22 +1,22 @@
 {
   "hp": 6,
   "id": "91c5abf6-6826-4c94-8e07-c2cd9105c9df",
+  "art": {
+    "x": 0,
+    "y": 0,
+    "src": "Atreides Frigate - Ducal Flagship (art).webp",
+    "zoom": 1
+  },
   "cost": 6,
   "name": "Atreides Frigate",
   "text": "[When Played:] Give an Experience token to each of up to 3 friendly ground units.",
   "power": 4,
   "trait": "Atreides, Vehicle, Capital Ship",
-  "number": "184",
+  "number": "185",
   "rarity": "R",
   "unique": true,
   "frameId": "unit-heroism-space",
   "setCode": "DUNE",
   "language": "EN",
-  "subtitle": "Ducal Flagship",
-  "art": {
-    "src": "Atreides Frigate - Ducal Flagship (art).webp",
-    "zoom": 1,
-    "x": 0,
-    "y": 0
-  }
+  "subtitle": "Ducal Flagship"
 }

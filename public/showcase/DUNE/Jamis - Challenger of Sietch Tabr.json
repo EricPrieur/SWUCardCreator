@@ -12,7 +12,7 @@
   "text": "[When Played:] You may play a [{Weapon}] upgrade from your hand or discard pile for free, attached to this unit.\n[When Defeated:] For each upgrade that was attached to this unit, you may play it from your discard pile for free, attached to another friendly [{Fremen}] unit.",
   "power": 3,
   "trait": "Fremen",
-  "number": "125",
+  "number": "126",
   "rarity": "R",
   "unique": true,
   "frameId": "unit-aggression-heroism",

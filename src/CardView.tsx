@@ -1,7 +1,7 @@
 import { memo, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { asset } from './asset'
-import { cardLineKeys, defaultLook, type Art, type CardLine, type Look } from './cards'
-import { aspects, epicText, isUnique, type Frame, type Spot, type TextBox } from './frames'
+import { cardLineKeys, defaultLook, type Art, type BoxPart, type CardLine, type Layout, type Look } from './cards'
+import { aspects, epicText, isUnique, type Box, type Frame, type Spot, type TextBox } from './frames'
 
 // One line of card text, placed on the frame and squeezed to fit its box.
 function CardText(props: { frame: Frame; box: TextBox; className: string; text: string; unique?: boolean }) {
@@ -440,9 +440,14 @@ function fadeLevels(look: Look) {
 function labelMask(frame: Frame) {
   const arena = frame.arena === 'Space' ? 'space' : 'ground'
   const name =
-    frame.token || frame.type === 'Base' || frame.type === 'Token'
+    frame.type === 'Token'
       ? undefined
-      : frame.type === 'Leader'
+      : frame.token
+        ? // TOKEN UNIT; on a token without a text box, the bar is 2 px lower
+          `token-unit-${frame.textBox ? '' : 'solo-'}${arena}`
+        : frame.type === 'Base'
+        ? 'base'
+        : frame.type === 'Leader'
         ? frame.width > frame.height
           ? 'leader'
           : `leader-unit-${arena}`
@@ -475,15 +480,18 @@ function frameParts(frame: Frame, look: Look) {
     ]
       .map(([px, py]) => `${pct(px, frame.width)} ${pct(py, frame.height)}`)
       .join(', ')})`
-  const parts: { clip?: string; mask?: string; opacity: number }[] = [
+  const parts: { clip?: string; mask?: string; src?: string; opacity: number; part?: BoxPart }[] = [
     { clip: shape(0, 0, frame.width, split), opacity: top },
     { clip: shape(0, split, frame.width, frame.height - split), opacity: bottom },
   ]
   // Kept solid, drawn again over the faded frame
-  const solid: typeof parts = areas.map((clip) => ({ clip, opacity: 1 }))
+  const solid: typeof parts = areas.map(({ clip, part }) => ({ clip, part, opacity: 1 }))
   // The words along the top, UNIT and GROUND and so on, cut out letter by letter
   const label = look.solidIcons ? labelMask(frame) : undefined
-  if (label && (top < 1 || bottom < 1)) solid.push({ mask: label, opacity: 1 })
+  if (label && (top < 1 || bottom < 1)) solid.push({ mask: label, opacity: 1, part: 'label' })
+  // A base's HP icon: on the frame, the name bar covers its right edge, so it is drawn from its
+  // own image, that edge finished (tools/extract_frames.py)
+  if (look.solidIcons && frame.type === 'Base' && top < 1) solid.push({ src: '/icons/base-hp.png', opacity: 1, part: 'hp' })
   return keep || solid.length ? [...parts, ...solid] : parts
 }
 
@@ -577,8 +585,11 @@ const EVENT_ASPECTS_OUTLINES = [
 // Icons: cost, aspects, power and HP, the upgrade's modifiers among them, each cut
 // to the icon's own outline, measured on the frames. (The words in the bar along the
 // top go with the icons too: see labelMask.)
-function solidAreas(frame: Frame, text: boolean, icons: boolean): string[] {
-  const areas: string[] = []
+function solidAreas(frame: Frame, text: boolean, icons: boolean): { clip: string; part: BoxPart }[] {
+  const areas: { clip: string; part: BoxPart }[] = []
+  // Which part of the card the outlines added next belong to, to move with it
+  let part: BoxPart = 'text'
+  const add = (clip: string) => areas.push({ clip, part })
   const px = (x: number) => `${(x / frame.width) * 100}%`
   const py = (y: number) => `${(y / frame.height) * 100}%`
   const polygon = (points: [number, number][]) => `polygon(${points.map(([x, y]) => `${px(x)} ${py(y)}`).join(', ')})`
@@ -619,24 +630,48 @@ function solidAreas(frame: Frame, text: boolean, icons: boolean): string[] {
 
   const box = frame.textBox
   if (text) {
+    part = 'text'
     if (frame.pilotBox) {
-      areas.push(rect({ ...frame.pilotBox, y: frame.pilotBox.y - 18, h: frame.pilotBox.h + 18 }))
+      add(rect({ ...frame.pilotBox, y: frame.pilotBox.y - 18, h: frame.pilotBox.h + 18 }))
     } else if (box) {
       const middle = { x: box.x + box.w / 2, y: box.y + box.h / 2 }
       const panel = frame.panels.find(
         (p) => p.x <= middle.x && middle.x <= p.x + p.w && p.y <= middle.y && middle.y <= p.y + p.h,
       )
-      areas.push(panel ? rect(panel, 6) : rect(box, 12))
+      add(panel ? rect(panel, 6) : rect(box, 12))
     }
-    for (const name of [frame.nameBox, frame.nameBox2]) if (name) areas.push(rect(name, 9))
-    if (frame.subtitle) areas.push(rect(frame.subtitle.box, 8))
+    part = 'name'
+    for (const name of [frame.nameBox, frame.nameBox2]) if (name) add(rect(name, 9))
+    if (frame.subtitle) add(rect(frame.subtitle.box, 8))
   }
   if (icons) {
     // Each icon's outline around where its number is printed, as measured on the frames
     // The cost icon on a card standing up is the same on every frame, wherever its number sits:
-    // a point on top, corners 12 px lower, and two lobes under it, its border all kept
-    if (frame.cost && frame.height > frame.width) {
-      areas.push(
+    // a point on top, corners 12 px lower, and two lobes under it, its border all kept. With no
+    // aspect icon under it, it is a whole hexagon, with a point at the bottom too (on a token
+    // without a text box, all of it 2 px lower and to the right)
+    part = 'cost'
+    // A leader's are down its right side, so its cost icon is whole too
+    if (frame.cost && frame.height > frame.width && (!frame.aspects.length || frame.type === 'Leader')) {
+      const dx = frame.cost.x - 72.5
+      const dy = frame.cost.y - 73.5
+      add(
+        polygon(
+          [
+            [27, 39],
+            // Right of the point, the name bar's top line runs on over it: cut along the icon's
+            // own outline, just under that line
+            [70, 28],
+            [76, 29.6],
+            [117, 40],
+            [117, 116],
+            [72.5, 129],
+            [27, 116],
+          ].map(([x, y]) => [x + dx, y + dy]),
+        ),
+      )
+    } else if (frame.cost && frame.height > frame.width) {
+      add(
         polygon([
           [27, 40],
           [72.5, 27],
@@ -649,18 +684,19 @@ function solidAreas(frame: Frame, text: boolean, icons: boolean): string[] {
       )
     } else if (frame.cost) {
       const { x, y } = frame.cost
-      areas.push(hexagon(x - 43, y - 38, x + 42, y + 43))
+      add(hexagon(x - 43, y - 38, x + 42, y + 43))
     }
     // The power and HP icons cut to their outlines as traced on the frames: a unit's (a pilot's
-    // 118 px higher), and an upgrade's modifiers (a pilot's too, where they print the same).
+    // 118 px higher, a token unit's lower, the icons the same), and an upgrade's modifiers (a
+    // pilot's too, where they print the same).
     // Any other, to the shapes below
     const traced = (spot: { y: number }, outlines: [number, number[]][]) => {
       for (const [y, outline] of outlines) {
         const dy = spot.y - y
-        if (dy !== 0 && !(y === UNIT_STATS_Y && dy === -118)) continue
+        if (dy !== 0 && !(y === UNIT_STATS_Y && (dy === -118 || frame.token))) continue
         const points: [number, number][] = []
         for (let i = 0; i < outline.length; i += 2) points.push([outline[i], outline[i + 1] + dy])
-        areas.push(polygon(points))
+        add(polygon(points))
         return true
       }
       return false
@@ -673,26 +709,71 @@ function solidAreas(frame: Frame, text: boolean, icons: boolean): string[] {
       [UNIT_STATS_Y, HP_OUTLINE],
       [UPGRADE_HP_Y, UPGRADE_HP_OUTLINE],
     ]
+    part = 'power'
     for (const spot of [frame.power, frame.upgradePower]) {
-      if (spot && !traced(spot, powerOutlines)) areas.push(gem(spot.x, spot.y))
+      if (spot && !traced(spot, powerOutlines)) add(gem(spot.x, spot.y))
     }
     // Its left edge stops short of the notch in the gem, where the frame's border (its
     // aspect's color on a Heroism frame) shows through
-    for (const spot of [frame.hp, frame.upgradeHp]) {
-      if (spot && !traced(spot, hpOutlines)) areas.push(round(spot.x - 41, spot.y - 48, spot.x + 45, spot.y + 49))
+    // A base's HP icon is drawn whole, from an image of its own (see frameParts)
+    part = 'hp'
+    if (frame.type !== 'Base') {
+      for (const spot of [frame.hp, frame.upgradeHp]) {
+        if (spot && !traced(spot, hpOutlines)) add(round(spot.x - 41, spot.y - 48, spot.x + 45, spot.y + 49))
+      }
     }
     // The aspect icons: under the cost on most cards, one under another; down the
     // right side on a leader
+    part = 'aspects'
     if (frame.type === 'Leader') {
+      // Shaped as the cost icon is: a low point on top, just under the name bar's line, its
+      // corners 9 px lower, as traced on the frames; one under another, 110 px apart
       frame.aspects.forEach((_, index) => {
-        const x0 = frame.width > frame.height ? 878 : 598
-        areas.push(hexagon(x0, 28 + index * 111, x0 + 90, 126 + index * 111))
+        const dy = index * 110
+        // Its bottom: the outline's shadow, deepest a little left of the middle, the frame's
+        // subtitle bar showing under it at the left
+        const outline: [number, number][] =
+          frame.width > frame.height
+            ? [
+                [880, 40],
+                [923, 31],
+                [968, 40],
+                [968, 127],
+                [936, 127],
+                [923, 131],
+                [880, 120],
+              ]
+            : [
+                [600, 39],
+                [644, 31],
+                [688, 40],
+                [688, 127],
+                [662, 127],
+                [644, 132],
+                [600, 121],
+              ]
+        add(polygon(outline.map(([x, y]) => [x, y + dy])))
       })
     } else if (frame.type === 'Event' && EVENT_ASPECTS_OUTLINES[frame.aspects.length - 1]) {
       const outline = EVENT_ASPECTS_OUTLINES[frame.aspects.length - 1]
       const points: [number, number][] = []
       for (let i = 0; i < outline.length; i += 2) points.push([outline[i], outline[i + 1]])
-      areas.push(polygon(points))
+      add(polygon(points))
+    } else if (frame.type === 'Base' && frame.aspects.length) {
+      // A base's one icon, top right beside the name bar: a hexagon with a point at top and
+      // bottom, its upper left edge sloping away from the bar
+      add(
+        polygon([
+          [879, 40],
+          [922, 27],
+          [969, 40],
+          [971, 121],
+          [950, 128],
+          [924, 136],
+          [898, 128],
+          [878, 121],
+        ]),
+      )
     } else if (frame.aspects.length) {
       // The column of icons, cut as one: around them the frame is clear, but on an event,
       // where the white text panel starts at x 108, and on an upgrade or fortification, whose
@@ -701,7 +782,7 @@ function solidAreas(frame: Frame, text: boolean, icons: boolean): string[] {
       // 69 px under that (tools/compose_frames.py).
       const o = frame.aspects.length === 1 ? 0 : 72 + (frame.aspects.length - 2) * 69
       const right = frame.type === 'Event' ? 108 : 110
-      areas.push(
+      add(
         polygon([
           [34, 117],
           [right, 117],
@@ -722,6 +803,95 @@ function solidAreas(frame: Frame, text: boolean, icons: boolean): string[] {
     }
   }
   return areas
+}
+
+// The text panels, each with the part it backs, to move with it: the one holding a box's middle.
+// A leader's game text and Epic Action box share one panel, cut between them so each can go its
+// own way.
+export function panelParts(frame: Frame): { box: Box; part?: BoxPart }[] {
+  const holds = (panel: Box, box?: Box) =>
+    box !== undefined &&
+    panel.x <= box.x + box.w / 2 &&
+    box.x + box.w / 2 <= panel.x + panel.w &&
+    panel.y <= box.y + box.h / 2 &&
+    box.y + box.h / 2 <= panel.y + panel.h
+  const owners: [Box | undefined, BoxPart][] = [
+    [frame.pilotBox ?? frame.textBox, 'text'],
+    [frame.traitBox, 'trait'],
+    [frame.nameBox, 'name'],
+    [frame.nameBox2, 'name'],
+    [frame.subtitle?.box, 'name'],
+  ]
+  return frame.panels.flatMap((panel): { box: Box; part?: BoxPart }[] => {
+    const text = frame.textBox
+    const epic = frame.epicBox
+    if (text && epic && holds(panel, text) && holds(panel, epic)) {
+      const cut = Math.round((text.y + text.h + epic.y) / 2)
+      return [
+        { box: { ...panel, h: cut - panel.y }, part: 'text' },
+        { box: { ...panel, y: cut, h: panel.y + panel.h - cut }, part: 'epic' },
+      ]
+    }
+    return [{ box: panel, part: owners.find(([box]) => holds(panel, box))?.[1] }]
+  })
+}
+
+// Where each part a card has sits on its frame, in the frame's pixels: what to grab to move it
+export function partBoxes(frame: Frame): { part: BoxPart; box: Box }[] {
+  const boxes: { part: BoxPart; box: Box }[] = []
+  const around = (part: BoxPart, ...list: (Box | undefined)[]) => {
+    const all = list.filter((box): box is Box => box !== undefined)
+    if (!all.length) return
+    const x = Math.min(...all.map((box) => box.x))
+    const y = Math.min(...all.map((box) => box.y))
+    const w = Math.max(...all.map((box) => box.x + box.w)) - x
+    const h = Math.max(...all.map((box) => box.y + box.h)) - y
+    boxes.push({ part, box: { x, y, w, h } })
+  }
+  const panels = panelParts(frame)
+  const backing = (part: BoxPart) => panels.filter((panel) => panel.part === part).map(({ box }) => box)
+  const icon = (spot: Spot | undefined, r: number) => spot && { x: spot.x - r, y: spot.y - r, w: r * 2, h: r * 2 }
+  const landscape = frame.width > frame.height
+  around('text', frame.pilotBox ?? frame.textBox, ...backing('text'))
+  const stats = frame.stats && { x: frame.stats.x - 60, y: frame.stats.y - frame.stats.h / 2, w: 60, h: frame.stats.h }
+  around('epic', frame.epicBox, stats, ...backing('epic'))
+  around('trait', frame.traitBox, ...backing('trait'))
+  around('name', frame.nameBox, frame.nameBox2, frame.subtitle?.box, ...backing('name'))
+  // The words along the top bar: roughly where they print
+  if (frame.type !== 'Token') around('label', landscape ? { x: 40, y: 22, w: 380, h: 34 } : { x: 120, y: 22, w: 480, h: 34 })
+  around('cost', icon(frame.cost, 45))
+  if (frame.aspects.length) {
+    const n = frame.aspects.length
+    around(
+      'aspects',
+      frame.type === 'Leader'
+        ? { x: landscape ? 880 : 600, y: 31, w: 88, h: 101 + (n - 1) * 110 }
+        : frame.type === 'Base'
+          ? { x: 878, y: 27, w: 93, h: 109 }
+          : { x: 34, y: 117, w: 76, h: 79 + (n === 1 ? 0 : 72 + (n - 2) * 69) },
+    )
+  }
+  around('power', icon(frame.power, 48), icon(frame.upgradePower, 40))
+  around('hp', icon(frame.hp, frame.type === 'Base' ? 60 : 48), icon(frame.upgradeHp, 40))
+  return boxes
+}
+
+// A moved part: shifted by its offset, in the card's own width so it holds at any size
+function shiftOf(frame: Frame, layout: Layout | undefined, part: BoxPart | undefined): CSSProperties | undefined {
+  const at = part && layout?.[part]
+  if (!at || (!at.x && !at.y)) return undefined
+  return { transform: `translate(${(at.x / frame.width) * 100}cqw, ${(at.y / frame.width) * 100}cqw)` }
+}
+
+// What a moved part prints, drawn in a layer of the card's size that is shifted as a whole
+function Shifted(props: { shift?: CSSProperties; children: ReactNode }) {
+  return props.shift ? (
+    <div className="card-part" style={props.shift}>
+      {props.children}
+    </div>
+  ) : (
+    props.children
+  )
 }
 
 // The gold bar of a Legends card, cut from real ones by tools/extract_legends.py: along the
@@ -770,7 +940,9 @@ function CardLine(props: { frame: Frame; line: CardLine }) {
       {/* The holographic stamp of rare and legendary cards, in the middle of the line */}
       {foil && <img className="card-line-foil" src={asset('/icons/foil.png')} alt="" />}
       <span className="card-line-artist">
-        {value('artist') && (
+        {line.code?.trim() ? (
+          <span className="card-line-code">{line.code.trim()}</span>
+        ) : value('artist') && (
           <>
             <img src={asset('/icons/artist.png')} alt="Artist" />
             {value('artist')}
@@ -922,11 +1094,14 @@ export const CardView = memo(function CardView(props: {
   legends?: boolean
   art?: Art
   look?: Look
+  // Parts moved from where the frame has them, as a Prescient leader may be laid out
+  layout?: Layout
   // Draw the small copy of the frame: for the frame picker, which shows them all at once
   thumb?: boolean
 }) {
   const { frame, name, trait, text, art } = props
   const look = props.look ?? defaultLook
+  const shift = (part?: BoxPart) => (props.thumb ? undefined : shiftOf(frame, props.layout, part))
   const unique = isUnique(frame, props.unique)
   const parts = props.thumb ? undefined : frameParts(frame, look)
   const backed = look.panelFill > 0 || look.panelBlur > 0
@@ -952,11 +1127,15 @@ export const CardView = memo(function CardView(props: {
       <div className="card card-art-placeholder" style={{ ...cardStyle, width: frame.width / 2 }}>
         {art && <CardArt frame={frame} art={art} />}
         {backed &&
-          [...frame.panels, ...(unique && frame.subtitle && props.subtitle ? [subtitlePanel(frame.subtitle.box)] : [])].map((panel, index) => (
+          [
+            ...panelParts(frame),
+            ...(unique && frame.subtitle && props.subtitle ? [{ box: subtitlePanel(frame.subtitle.box), part: 'name' as const }] : []),
+          ].map(({ box: panel, part }, index) => (
             <div
               className="card-panel"
               key={index}
               style={{
+                ...shift(part),
                 left: `${(panel.x / frame.width) * 100}%`,
                 top: `${(panel.y / frame.height) * 100}%`,
                 width: `${(panel.w / frame.width) * 100}%`,
@@ -976,23 +1155,24 @@ export const CardView = memo(function CardView(props: {
           width={frame.width}
           height={frame.height}
         />
-        {parts?.map(({ clip, mask, opacity }, index) => (
+        {parts?.map(({ clip, mask, src, opacity, part }, index) => (
           <img
             className="card-overlay"
             key={index}
             style={{
+              ...shift(part),
               opacity,
               clipPath: clip,
               ...(mask && { maskImage: `url("${mask}")`, maskSize: '100% 100%', WebkitMaskImage: `url("${mask}")`, WebkitMaskSize: '100% 100%' }),
             }}
-            src={asset(frame.src)}
+            src={asset(src ?? frame.src)}
             alt=""
           />
         ))}
         {unique && frame.subtitle?.src && (
           <img
             className="card-overlay"
-            style={{ opacity: look.solidText ? 1 : fadeLevels(look).top }}
+            style={{ ...shift('name'), opacity: look.solidText ? 1 : fadeLevels(look).top }}
             src={asset(frame.subtitle.src)}
             alt=""
           />
@@ -1001,10 +1181,16 @@ export const CardView = memo(function CardView(props: {
           <img className="card-overlay" src={asset(`/templates/legends/${legendsBar(frame)}.png`)} alt="Legends" />
         )}
         {unique && frame.subtitle && props.subtitle && (
-          <CardText frame={frame} box={frame.subtitle.box} className="card-subtitle" text={props.subtitle} />
+          <Shifted shift={shift('name')}>
+            <CardText frame={frame} box={frame.subtitle.box} className="card-subtitle" text={props.subtitle} />
+          </Shifted>
         )}
-        {frame.label && <CardText frame={frame} box={frame.label.box} className="card-label" text={frame.label.text} />}
-        {props.line && !props.thumb && cardLineKeys.some((key) => props.line?.[key]?.trim()) && (
+        {frame.label && (
+          <Shifted shift={shift('label')}>
+            <CardText frame={frame} box={frame.label.box} className="card-label" text={frame.label.text} />
+          </Shifted>
+        )}
+        {props.line && !props.thumb && (props.line.code?.trim() || cardLineKeys.some((key) => props.line?.[key]?.trim())) && (
           <CardLine frame={frame} line={props.line} />
         )}
         {numberKinds.map((kind) => {
@@ -1012,33 +1198,50 @@ export const CardView = memo(function CardView(props: {
           const value = props[kind]
           if (!spot || value === undefined) return null
           const signed = kind !== 'cost' && frame.modifiers === true
-          return <CardNumber key={kind} frame={frame} kind={kind} spot={spot} value={value} signed={signed} />
+          return (
+            <Shifted key={kind} shift={shift(kind)}>
+              <CardNumber frame={frame} kind={kind} spot={spot} value={value} signed={signed} />
+            </Shifted>
+          )
         })}
         {/* What a pilot gives the unit it is attached to, printed as changes: +2, -1 */}
         {frame.upgradePower && props.upgradePower !== undefined && (
-          <CardNumber frame={frame} kind="power" spot={frame.upgradePower} value={props.upgradePower} signed />
+          <Shifted shift={shift('power')}>
+            <CardNumber frame={frame} kind="power" spot={frame.upgradePower} value={props.upgradePower} signed />
+          </Shifted>
         )}
         {frame.upgradeHp && props.upgradeHp !== undefined && (
-          <CardNumber frame={frame} kind="hp" spot={frame.upgradeHp} value={props.upgradeHp} signed />
+          <Shifted shift={shift('hp')}>
+            <CardNumber frame={frame} kind="hp" spot={frame.upgradeHp} value={props.upgradeHp} signed />
+          </Shifted>
         )}
-        {name && (
-          <CardText
-            frame={frame}
-            box={frame.nameBox}
-            className="card-name"
-            text={name}
-            unique={unique}
-          />
+        <Shifted shift={shift('name')}>
+          {name && (
+            <CardText
+              frame={frame}
+              box={frame.nameBox}
+              className="card-name"
+              text={name}
+              unique={unique}
+            />
+          )}
+          {name && frame.nameBox2 && (
+            <CardText frame={frame} box={frame.nameBox2} className="card-name" text={name} unique={unique} />
+          )}
+        </Shifted>
+        {trait && (
+          <Shifted shift={shift('trait')}>
+            <CardText frame={frame} box={frame.traitBox} className="card-trait" text={formatTraits(trait)} />
+          </Shifted>
         )}
-        {name && frame.nameBox2 && (
-          <CardText frame={frame} box={frame.nameBox2} className="card-name" text={name} unique={unique} />
-        )}
-        {trait && <CardText frame={frame} box={frame.traitBox} className="card-trait" text={formatTraits(trait)} />}
-        {frame.pilotBox && !props.thumb ? (
-          <PilotArea frame={frame} text={text ?? ''} pilotText={props.pilotText ?? ''} />
-        ) : (
-          text && frame.textBox && <CardParagraph frame={frame} box={frame.textBox} text={text} />
-        )}
+        <Shifted shift={shift('text')}>
+          {frame.pilotBox && !props.thumb ? (
+            <PilotArea frame={frame} text={text ?? ''} pilotText={props.pilotText ?? ''} />
+          ) : (
+            text && frame.textBox && <CardParagraph frame={frame} box={frame.textBox} text={text} />
+          )}
+        </Shifted>
+        <Shifted shift={shift('epic')}>
         {frame.epicBox && !props.thumb && (
           <CardParagraph
             frame={frame}
@@ -1059,6 +1262,7 @@ export const CardView = memo(function CardView(props: {
             upgradeHp={frame.deploysAsUpgrade ? props.upgradeHp : undefined}
           />
         )}
+        </Shifted>
       </div>
     </CardScale>
   )

@@ -1,0 +1,20 @@
+{
+  "hp": 1,
+  "id": "a01f7cf4-6bef-4618-bb73-660324da35d6",
+  "art": {
+    "x": 0,
+    "y": 5,
+    "src": "Weapons Courier (art).webp",
+    "zoom": 1
+  },
+  "cost": 1,
+  "name": "Weapons Courier",
+  "text": "[When Played:] Give an Experience token to a friendly ground unit.",
+  "power": 1,
+  "trait": "Vehicle, Transport",
+  "number": "093",
+  "rarity": "C",
+  "frameId": "unit-command-space",
+  "setCode": "DUNE",
+  "language": "EN"
+}

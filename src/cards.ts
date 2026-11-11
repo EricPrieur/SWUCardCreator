@@ -51,6 +51,9 @@ export type CardLine = {
   number?: string
   // Rare and legendary cards carry a holographic stamp on the line; false leaves it off
   foil?: boolean
+  // A Sealed print run's code, printed in place of the artist: "A07-12" is run A, pack 07,
+  // the pack's 12th card. Set only while drawing a print run, never saved with the card.
+  code?: string
 }
 export const cardLineKeys = ['artist', 'block', 'setCode', 'language', 'rarity', 'number'] as const
 
@@ -114,12 +117,26 @@ export type Card = {
   hp?: number
   art?: Art
   look?: Look
+  // Where the boxes were moved to on each side, from where the frame has them: the Prescient
+  // version's, put here by prescientOf to draw it. Never saved on the card itself.
+  layout?: Layout
+  backLayout?: Layout
   // The Prescient version, a booster's full-art card: its own art or placing of the art,
   // and its own look. Left out, it is the card's art with prescientLook (see prescientOf).
   prescient?: Prescient
 }
 
-export type Prescient = { art?: Art; look?: Look }
+// backArt: a leader's Leader Unit side, as art is its Leader side. Both sides share the look.
+// layout and backLayout: each side's boxes, moved to suit the art, as a Showcase leader has them.
+export type Prescient = { art?: Art; backArt?: Art; look?: Look; layout?: Layout; backLayout?: Layout }
+
+// The parts of a card that can be moved about over full art, each with what it carries: the
+// words in the top bar, the name with its subtitle, the traits, the game text, a leader's Epic
+// Action box with its power and HP, and the icons
+export const boxParts = ['label', 'name', 'trait', 'text', 'epic', 'cost', 'aspects', 'power', 'hp'] as const
+export type BoxPart = (typeof boxParts)[number]
+// How far each part is moved, in the frame's pixels
+export type Layout = Partial<Record<BoxPart, { x: number; y: number }>>
 
 // The Prescient look: the frame see-through, its icons solid, the text on a half-filled panel
 export const prescientLook: Look = {
@@ -130,14 +147,30 @@ export const prescientLook: Look = {
   lightText: true,
 }
 
-// Leaders and bases have slots of their own in a booster, and tokens are not in one
-export const canBePrescient = (type: string) => type !== 'Leader' && type !== 'Base' && type !== 'Token'
+// Any card may have a Prescient version. A leader is Prescient one pack in 6, and a base, with
+// the token on its back; leaders, bases and tokens are never a booster's wild card (see sealedEvent.ts).
+export const canBePrescient = (_type: string) => true
+
+// A base's or a token's Prescient look: no panel behind its text, a base being mostly a view of
+// a place, and a token's text short
+export const prescientBaseLook: Look = { ...prescientLook, panelFill: 0 }
 
 // A card as its Prescient version shows it. A card already full art, as legendaries
 // are, keeps its own look until it is given one.
-export function prescientOf<T extends { art?: Art; look?: Look; prescient?: Prescient }>(card: T): T {
-  const look = card.prescient?.look ?? (card.look?.frameOpacity === 0 ? card.look : prescientLook)
-  return { ...card, art: card.prescient?.art ?? card.art, look }
+export function prescientOf<
+  T extends { frameId?: string; art?: Art; backArt?: Art; look?: Look; layout?: Layout; backLayout?: Layout; prescient?: Prescient },
+>(card: T): T {
+  const frame = frames.find((each) => each.id === card.frameId)
+  const base = frame?.type === 'Base' || frame?.type === 'Token' || frame?.token === true
+  const look = card.prescient?.look ?? (card.look?.frameOpacity === 0 ? card.look : base ? prescientBaseLook : prescientLook)
+  return {
+    ...card,
+    art: card.prescient?.art ?? card.art,
+    backArt: card.prescient?.backArt ?? card.backArt,
+    look,
+    layout: card.prescient?.layout,
+    backLayout: card.prescient?.backLayout,
+  }
 }
 
 // Leader Unit sides were once cards of their own. Such a card becomes a leader

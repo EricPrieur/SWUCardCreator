@@ -85,8 +85,15 @@ async function mapArt(card: Card, change: (art: Art) => Promise<Art>): Promise<C
     const art = card[key]
     if (art) next[key] = await change(art)
   }
-  // The Prescient version's own art
-  if (card.prescient?.art) next.prescient = { ...card.prescient, art: await change(card.prescient.art) }
+  // The Prescient version's own art, each side's
+  if (card.prescient) {
+    const prescient = { ...card.prescient }
+    for (const key of ART_KEYS) {
+      const art = card.prescient[key]
+      if (art) prescient[key] = await change(art)
+    }
+    next.prescient = prescient
+  }
   return next
 }
 

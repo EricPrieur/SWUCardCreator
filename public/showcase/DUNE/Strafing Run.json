@@ -11,7 +11,7 @@
   "name": "Strafing Run",
   "text": "Attack with a [{Vehicle}] unit. It gains: \"[On Attack:] Deal damage equal to this unit's power to an enemy ground unit.\" for this attack.",
   "trait": "Tactic",
-  "number": "101",
+  "number": "102",
   "rarity": "C",
   "frameId": "event-command",
   "setCode": "DUNE",

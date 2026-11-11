@@ -3,9 +3,10 @@ import { createPortal, flushSync } from 'react-dom'
 import artFiles from 'virtual:art-list'
 import { asset } from './asset'
 import './App.css'
-import { CardView } from './CardView'
+import { CardView, partBoxes } from './CardView'
 import { AccountBar, Modal } from './account'
 import { leaveGuard, setLeaveGuard } from './leaveGuard'
+import { EVENT_PACK_SIZE, EVENT_PACKS, planSealedEvent, seededRandom, type EventPlan } from './sealedEvent'
 import { playClick, Simulator } from './Simulator'
 import {
   copyLocalDecks,
@@ -43,6 +44,8 @@ import {
   type Deck,
   type DeckEntry,
   type Draft,
+  type BoxPart,
+  type Layout,
   type Look,
 } from './cards'
 import {
@@ -155,7 +158,7 @@ function forFrame(card: Draft): Draft {
     delete kept.backArena
   }
   if (!front.epicBox) delete kept.epic
-  if (!canBePrescient(front.type) || front.token) delete kept.prescient
+  if (!canBePrescient(front.type)) delete kept.prescient
   if (!front.pilotBox && !back?.pilotBox) {
     delete kept.pilotText
     delete kept.pilotCost
@@ -237,6 +240,7 @@ function CardFace(props: { card: Draft; back?: boolean }) {
       legends={card.legends}
       art={art}
       look={card.look}
+      layout={props.back ? card.backLayout : card.layout}
     />
   )
 }
@@ -913,6 +917,8 @@ function useCardFilters<T>(
   startSort: SortKey = 'saved',
   // The card an item is a side of, so the count names each card once
   cardOf?: (item: T) => string,
+  // Put at the end of the bar, after the count: a Showcase's print button
+  extra?: ReactNode,
 ) {
   const [query, setQuery] = useRemembered(`${name}.search`, '')
   const [types, setTypes] = useRemembered<FrameFilter[]>(`${name}.types`, [])
@@ -1122,6 +1128,7 @@ function useCardFilters<T>(
           </button>
         )}
       </div>
+      {extra && <div className="filter-group">{extra}</div>}
     </div>
   )
   // The class for the grid of cards, which sets their size
@@ -1226,6 +1233,8 @@ type SavePicker = (options: {
   types: { description: string; accept: Record<string, string[]> }[]
 }) => Promise<FileSystemFileHandle>
 const showSaveFilePicker = (window as Window & { showSaveFilePicker?: SavePicker }).showSaveFilePicker
+type DirectoryPicker = (options?: { id?: string; mode?: 'read' | 'readwrite' }) => Promise<FileSystemDirectoryHandle>
+const showDirectoryPicker = (window as Window & { showDirectoryPicker?: DirectoryPicker }).showDirectoryPicker
 
 // On the site: one .zip, a folder per set in it. Where the browser can (Chrome and Edge
 // on a computer) it is saved where the person picks, under a name they may change;
@@ -1263,6 +1272,102 @@ async function zipTarget(sets: string[]): Promise<ExportTarget> {
       URL.revokeObjectURL(link.href)
       return suggestedName
     },
+  }
+}
+
+// Where a print job's files go, each written as soon as it is made so a big job never has to be
+// held whole. Where the browser can, a folder the person picks, with one for the job made in it;
+// elsewhere a .zip downloaded at the end. Asked for at once, straight after the click.
+type PrintSink = {
+  // Whether a file is already there from a run that was cut off, so it is not drawn again
+  has: (path: string) => Promise<boolean>
+  put: (path: string, data: Uint8Array) => Promise<void>
+  finish: () => Promise<string>
+  partial: boolean // What is written stays when the job is stopped
+  where: string
+}
+async function printSink(name: string): Promise<PrintSink | null> {
+  // For a scripted test on the dev server: each file to public/showcase/PRINTRUN, its path flattened
+  if (import.meta.env.DEV && (window as unknown as { __printToDisk?: boolean }).__printToDisk) {
+    let count = 0
+    const flatOf = (path: string) => path.replace(/\//g, '~') + (path.endsWith('.jpg') ? '' : '.json')
+    return {
+      // A missing file comes back as the page itself
+      has: async (path) => {
+        const res = await fetch(`/showcase/PRINTRUN/${encodeURIComponent(flatOf(path))}`, { method: 'HEAD', cache: 'no-store' })
+        return res.ok && (res.headers.get('content-type') ?? '').startsWith('image/') && Number(res.headers.get('content-length')) > 0
+      },
+      put: async (path, data) => {
+        const flat = flatOf(path)
+        const res = await fetch(`/__publish/PRINTRUN/${encodeURIComponent(flat)}`, { method: 'PUT', body: data as Uint8Array<ArrayBuffer> })
+        if (!res.ok) throw new Error(`${path}: ${res.status}`)
+        count++
+      },
+      finish: async () => `Written: ${count} files to public/showcase/PRINTRUN`,
+      partial: true,
+      where: 'public/showcase/PRINTRUN',
+    }
+  }
+  if (showDirectoryPicker) {
+    let parent: FileSystemDirectoryHandle
+    try {
+      parent = await showDirectoryPicker({ id: 'print', mode: 'readwrite' })
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') return null
+      throw err
+    }
+    const root = await parent.getDirectoryHandle(name, { create: true })
+    const folders = new Map<string, Promise<FileSystemDirectoryHandle>>([['', Promise.resolve(root)]])
+    const folderOf = (path: string): Promise<FileSystemDirectoryHandle> => {
+      if (!folders.has(path)) {
+        const cut = path.lastIndexOf('/')
+        folders.set(path, folderOf(path.slice(0, Math.max(cut, 0))).then((up) => up.getDirectoryHandle(path.slice(cut + 1), { create: true })))
+      }
+      return folders.get(path)!
+    }
+    let count = 0
+    const where = `${parent.name}/${name}`
+    return {
+      // A file is only there once it was written whole: a writable is kept apart until closed
+      has: async (path) => {
+        const cut = path.lastIndexOf('/')
+        try {
+          const folder = await folderOf(cut < 0 ? '' : path.slice(0, cut))
+          return (await (await folder.getFileHandle(path.slice(cut + 1))).getFile()).size > 0
+        } catch {
+          return false
+        }
+      },
+      put: async (path, data) => {
+        const cut = path.lastIndexOf('/')
+        const folder = await folderOf(cut < 0 ? '' : path.slice(0, cut))
+        const writable = await (await folder.getFileHandle(path.slice(cut + 1), { create: true })).createWritable()
+        await writable.write(data as Uint8Array<ArrayBuffer>)
+        await writable.close()
+        count++
+      },
+      finish: async () => `Saved ${count} files in ${where}`,
+      partial: true,
+      where,
+    }
+  }
+  const files: Record<string, [Uint8Array, { level: 0 | 6 }]> = {}
+  return {
+    has: async () => false,
+    put: async (path, data) => {
+      files[path] = [data, { level: path.endsWith('.jpg') ? 0 : 6 }]
+    },
+    finish: async () => {
+      const { zipSync } = await import('fflate')
+      const link = document.createElement('a')
+      link.href = URL.createObjectURL(new Blob([zipSync(files) as Uint8Array<ArrayBuffer>], { type: 'application/zip' }))
+      link.download = `${name}.zip`
+      link.click()
+      URL.revokeObjectURL(link.href)
+      return `Downloaded ${name}.zip`
+    },
+    partial: false,
+    where: '',
   }
 }
 
@@ -1347,12 +1452,13 @@ async function cardsInFiles(picked: File[]): Promise<Card[]> {
 }
 
 // Draws a card side as a JPG at the frame's own size, off the page: what Export writes
-// and what a public card shows. The stage must be on the page while drawing.
+// and what a public card shows (or, asked, in another format and size: the print files).
+// The stage must be on the page while drawing.
 function useCardDrawer() {
   const [drawing, setDrawing] = useState<{ card: Card; back: boolean } | null>(null)
   const holder = useRef<HTMLDivElement>(null)
   // Once its pictures have loaded
-  const draw = async (card: Card, back: boolean) => {
+  const draw = async (card: Card, back: boolean, format: ImageFormat = 'jpg', scale = 1) => {
     flushSync(() => setDrawing({ card, back }))
     // Asked from an effect, while React is still putting the page up, the stage only comes a frame later
     if (!holder.current) await new Promise(requestAnimationFrame)
@@ -1363,7 +1469,7 @@ function useCardDrawer() {
       [...el.querySelectorAll('img')].map((img) => (img.complete ? null : new Promise((done) => img.addEventListener('load', done, { once: true })))),
     )
     await new Promise((done) => setTimeout(done, 150)) // the art's size is worked out once it has loaded
-    return cardImage(el, cardSide(card, back).frame, 'jpg', 1)
+    return cardImage(el, cardSide(card, back).frame, format, scale)
   }
   const stage = drawing && (
     <div className="publish-stage" ref={holder}>
@@ -1618,12 +1724,32 @@ function showcaseFacts(card: ShowcaseCard): Facts {
   }
 }
 
-// One card of a Showcase: its image, and Flip for a leader's other side
-function ShowcaseItem(props: { folder: string; card: ShowcaseCard; preview: boolean }) {
-  const { folder, card, preview } = props
+// One card of a Showcase: its image, and Flip for a leader's other side. code: shown with a
+// print run's code in place of the artist, drawn from its .json, as a Sealed event prints it.
+function ShowcaseItem(props: { folder: string; card: ShowcaseCard; preview: boolean; code?: string }) {
+  const { folder, card, preview, code } = props
   const [back, setBack] = useState(false)
   const file = back && card.back ? card.back : card.image
   const src = asset(`${folder}/${encodeURIComponent(file)}.jpg`)
+  if (code && !back) {
+    const drawn = <ShowcaseDrawn folder={folder} image={card.image} fallback={src} code={code} />
+    return (
+      <li>
+        <HoverPreview enabled={preview} preview={drawn}>
+          <div className="showcase-drawn" title={`${card.name}: printed with the code ${code}`}>
+            {drawn}
+          </div>
+        </HoverPreview>
+        {card.back && (
+          <div className="showroom-actions">
+            <button className="button" type="button" onClick={() => setBack(true)}>
+              Flip
+            </button>
+          </div>
+        )}
+      </li>
+    )
+  }
   return (
     <li>
       <HoverPreview enabled={preview} preview={<img className="showcase-image" src={src} alt="" />}>
@@ -1653,6 +1779,495 @@ function ShowcaseItem(props: { folder: string; card: ShowcaseCard; preview: bool
 }
 
 // A set of cards shown as images, at an address only those given it know:
+// Print files: every card of a Showcase, for a print service such as MakePlayingCards, in a .zip.
+// Each side is drawn from its card's .json at twice the frame's size, then made 822 x 1122 with
+// the mirrored bleed (see printImage); a card on its side is turned upright, as the card is cut.
+// A card with a second side (a leader, a two-sided base) has its own back; a common base has a
+// token on its back, so the tokens aren't printed alone; every other card shares the card back.
+const PRINT_BACK = asset('/sim/DuneCardBack01.jpg')
+const PRINT_QUALITY = 0.95
+
+const loadImage = (src: string) =>
+  new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new Image()
+    image.onload = () => resolve(image)
+    image.onerror = () => reject(new Error(`${src} could not be loaded`))
+    image.src = src
+  })
+
+const canvasBlob = (canvas: HTMLCanvasElement) =>
+  new Promise<Blob>((resolve, reject) =>
+    canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error('The card could not be drawn'))), 'image/jpeg', PRINT_QUALITY),
+  )
+
+// Upright, as a JPG: a leader or base comes out of printImage on its side
+async function uprightJpg(blob: Blob) {
+  const url = URL.createObjectURL(blob)
+  const image = await loadImage(url).finally(() => URL.revokeObjectURL(url))
+  const turn = image.width > image.height
+  const canvas = document.createElement('canvas')
+  canvas.width = turn ? image.height : image.width
+  canvas.height = turn ? image.width : image.height
+  const ctx = canvas.getContext('2d')!
+  if (turn) {
+    ctx.translate(canvas.width, 0)
+    ctx.rotate(Math.PI / 2)
+  }
+  ctx.drawImage(image, 0, 0)
+  return canvasBlob(canvas)
+}
+
+// The shared card back, covering the card (cropped, not stretched), with the bleed around it
+async function printBack() {
+  const image = await loadImage(PRINT_BACK)
+  const card = document.createElement('canvas')
+  card.width = PRINT.width
+  card.height = PRINT.height
+  const scale = Math.max(PRINT.width / image.width, PRINT.height / image.height)
+  const [w, h] = [image.width * scale, image.height * scale]
+  const ctx = card.getContext('2d')!
+  ctx.imageSmoothingQuality = 'high'
+  ctx.drawImage(image, (PRINT.width - w) / 2, (PRINT.height - h) / 2, w, h)
+  return canvasBlob(printImage(card, false))
+}
+
+// Which token goes on the back of a common base: Sietch Tabr's is the Fremen token, the others' Spice
+function tokensBehindBases(cards: ShowcaseCard[]) {
+  const tokens = cards.filter((card) => card.type === 'Token')
+  const behind = new Map<ShowcaseCard, ShowcaseCard>()
+  if (tokens.length === 0) return behind
+  const named = (name: string) => tokens.find((token) => token.name === name)
+  for (const base of cards.filter((card) => card.type === 'Base' && !card.back))
+    behind.set(base, (base.name === 'Sietch Tabr' && named('Fremen')) || named('Spice') || tokens[0])
+  return behind
+}
+
+// What a print .zip holds: every card to print, one file each, in the order they are printed
+// (for a Sealed event, pack after pack), and text files beside. tag: put before the card's name,
+// "P1-2" for player 1's pack 2. prescient: drawn as its full-art Prescient version. code: printed
+// in place of the artist (see printCode).
+type PrintCard = { entry: ShowcaseCard; prescient?: boolean; tag?: string; code?: string }
+
+// A Sealed print run's code on each card, to put the packs back together and reprint one:
+// "A07-12" is run A, pack 07 of the event, its 12th card. The next event is run B.
+const printCode = (run: string, pack: number, card: number) =>
+  `${run}${String(pack).padStart(2, '0')}-${String(card).padStart(2, '0')}`
+const PRINT_RUNS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')
+type PrintJob = {
+  name: string
+  cards: PrintCard[]
+  // Cards in a deck at most (MakePlayingCards' biggest holds 612); more go into a second deck
+  deckSize: number
+  // Spare two-sided tokens filling each deck's free slots up to the size it is priced at
+  // (see PRINT_DECK_SIZES), at most `max` in all
+  spares?: { front: ShowcaseCard; back: ShowcaseCard; max: number }
+  notes: (decks: number[], spares: number) => Record<string, string>
+}
+
+// The deck sizes MakePlayingCards prices Custom Game Cards at: a deck costs what the next size up
+// from its count does, so the slots left to that size are free
+const PRINT_DECK_SIZES = [18, 36, 55, 72, 90, 108, 126, 144, 162, 180, 198, 216, 234, 396, 504, 612]
+// Spare Fremen / Spice tokens a Sealed event's decks are filled with, at most
+const PRINT_SPARE_TOKENS = 20
+
+const EVENT_MAX_PLAYERS = 8
+// MakePlayingCards' biggest deck
+const PRINT_DECK_MAX = 612
+
+function PrintFiles(props: { folder: string; cards: ShowcaseCard[] }) {
+  const { folder, cards } = props
+  const { draw, stage, done: doneDrawing } = useCardDrawer()
+  const [status, setStatus] = useState<string | null>(null)
+  const [progress, setProgress] = useState<{ at: number; of: number; name: string } | null>(null)
+  const [asking, setAsking] = useState(false)
+  const [players, setPlayers] = useRemembered(`showcase.${folder}.event-players`, '8')
+  const [printRun, setPrintRun] = useRemembered(`showcase.${folder}.event-run`, 'A')
+  const runLetter = PRINT_RUNS.includes(printRun) ? printRun : 'A'
+  // Each run's deal: run, players and this number seed it, so a run deals the same packs every
+  // time it is opened; Deal again moves the run on to its next deal
+  const [deals, setDeals] = useRemembered<Record<string, number>>(`showcase.${folder}.event-deals`, {})
+  // Shown counting from 1
+  const dealNumber = (deals[runLetter] ?? 0) + 1
+  // The deal shown in the Sealed event window, and whose packs; Make the files prints this one
+  const [plan, setPlan] = useState<EventPlan<ShowcaseCard> | null>(null)
+  const [viewed, setViewed] = useState(1)
+  // Pressed again while drawing: it stops after the card being drawn, and nothing is saved
+  const stopping = useRef(false)
+  const set = folder.split('/').pop() ?? 'Cards'
+  const sorted = [...cards].sort((a, b) => (a.number ?? '').localeCompare(b.number ?? '', undefined, { numeric: true }))
+  const behind = tokensBehindBases(sorted)
+  // Tokens all on the backs of bases aren't printed again alone
+  const printable = behind.size > 0 ? sorted.filter((card) => card.type !== 'Token') : sorted
+  // Spare tokens for a Sealed event: Fremen on one side, Spice on the other
+  const tokenNamed = (name: string) => sorted.find((card) => card.type === 'Token' && card.name === name)
+  const spareFront = tokenNamed('Fremen')
+  const spareBack = tokenNamed('Spice')
+  const spareTokens = spareFront && spareBack ? { front: spareFront, back: spareBack } : undefined
+  const tokenNote = [...new Set(behind.values())]
+    .map((token) => `${token.name} behind ${[...behind].filter(([, t]) => t === token).map(([base]) => base.name).join(', ')}`)
+    .join('; ')
+  const label = (entry: ShowcaseCard) => [entry.name, entry.subtitle].filter(Boolean).join(', ')
+  const layoutNote = (count: number, deckCounts: number[], spares = 0) => {
+    const decks = deckCounts.length
+    return [
+    'Each image is 822 x 1122 pixels at 300 dpi: a poker-size card (2.5 x 3.5 inches; fits 63 x 88 mm) with a 1/8 inch',
+    'mirrored bleed on each side. Corners are square: the printer rounds them when it cuts.',
+    '',
+    `One file per card to print, ${count} in all, numbered in the order they are printed: fronts/ and backs/ hold the same`,
+    `names, each back for the front of the same name: a leader's unit side, a two-sided base's second side${tokenNote ? `, a common base's token (${tokenNote})` : ''},`,
+    'or else the card back.',
+    ...(decks > 1
+      ? ['', `${decks} decks: more cards than one MakePlayingCards deck holds (${PRINT_DECK_MAX}). Each deck has its own folder; order each one apart.`]
+      : []),
+    ...(spares
+      ? [
+          `${spares} spare two-sided tokens fill the decks' free slots (a deck costs what the next size up from its count does):`,
+          `${deckCounts.join(' + ')} cards, ordered as decks of ${deckCounts.map((n) => PRINT_DECK_SIZES.find((size) => size >= n) ?? n).join(' + ')}.`,
+        ]
+      : []),
+    '',
+    'On MakePlayingCards: Custom Game Cards (63 x 88 mm), the deck size the next one up from the card count, Different images',
+    'for the fronts: Upload images, select all of fronts/ (Ctrl+A, sorted by name), then "Help me autofill images". Then the',
+    'same for the backs with backs/. The autofill fills the cards in the order the images were uploaded, so upload them sorted',
+    'by name, all at once or in batches in order, and each card gets its own back. Placing 360 images takes it a few minutes.',
+    '',
+  ]
+  }
+
+  const setJob = (): PrintJob => ({
+    name: `${set} print files.zip`,
+    cards: printable.map((entry) => ({ entry })),
+    deckSize: PRINT_DECK_MAX,
+    notes: (decks) => ({ 'README.txt': [`${set}: ${printable.length} cards, one of each, in set order.`, ...layoutNote(printable.length, decks)].join('\n') }),
+  })
+
+  const eventJob = (count: number, run: string, deal: number, { packs, copies, prescient }: EventPlan<ShowcaseCard>): PrintJob => {
+    const total = packs.length * EVENT_PACK_SIZE
+    const different = copies.size + prescient.size
+    const packsText = [
+      `${set} Sealed event, print run ${run}, deal ${deal}: ${count} player${count === 1 ? '' : 's'}, ${EVENT_PACKS} packs each, ${EVENT_PACK_SIZE} cards a pack.`,
+      'The cards are printed in this order: each pack is the next 15 cards off the deck. On each line: the file number, the',
+      `code printed on the card in place of the artist (${printCode(run, 7, 12)}: run ${run}, pack 07, its 12th card), and the set number.`,
+      '',
+      ...packs.flatMap((pack, p) => [
+        `Pack ${run}${String(p + 1).padStart(2, '0')}: player ${pack.player}, pack ${pack.pack}`,
+        ...pack.cards.map(
+          ({ card, slot, prescient }, c) =>
+            `  [ ] ${String(p * EVENT_PACK_SIZE + c + 1).padStart(4, '0')}  ${printCode(run, p + 1, c + 1)}  ${card.number ?? '---'} ${label(card)} (${slot === 'Wild' ? `Wild ${card.rarity ?? ''}, prescient` : prescient ? `${slot}, prescient` : slot})`,
+        ),
+        '',
+      ]),
+    ].join('\n')
+    const csv = (value: string) => (/[",\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value)
+    const runRows = [
+      ...[...copies.entries()].map(([entry, n]) => ({ entry, n, printing: 'normal' })),
+      ...[...prescient.entries()].map(([entry, n]) => ({ entry, n, printing: 'prescient' })),
+    ].sort((a, b) => (a.entry.number ?? '').localeCompare(b.entry.number ?? '', undefined, { numeric: true }))
+    const runCsv = [
+      'number,name,type,rarity,printing,copies',
+      ...runRows.map(({ entry, n, printing }) => [entry.number ?? '', label(entry), entry.type, entry.rarity ?? '', printing, String(n)].map(csv).join(',')),
+    ].join('\n')
+    return {
+      name: `${set} Sealed event ${run} deal ${deal} ${count} player${count === 1 ? '' : 's'}.zip`,
+      cards: packs.flatMap((pack, p) =>
+        pack.cards.map(({ card, prescient }, c) => {
+          const code = printCode(run, p + 1, c + 1)
+          return { entry: card, prescient: !!prescient, tag: `${code} P${pack.player}-${pack.pack}`, code }
+        }),
+      ),
+      // A deck ends with a whole pack
+      deckSize: Math.floor(PRINT_DECK_MAX / EVENT_PACK_SIZE) * EVENT_PACK_SIZE,
+      spares: spareTokens && { ...spareTokens, max: PRINT_SPARE_TOKENS },
+      notes: (decks, spares) => ({
+        'packs.txt': packsText,
+        'print run.csv': runCsv + '\n',
+        'README.txt': [
+          `${set} Sealed event for ${count} player${count === 1 ? '' : 's'}: ${packs.length} packs of ${EVENT_PACK_SIZE}, ${total} cards, ${different} different.`,
+          'A pack: a leader and a base (each rare one pack in 6), 8 commons, 3 uncommons, a rare or legendary, and a wild card',
+          '(any rarity, as often as each is in a pack, printed as its full-art Prescient version). One leader in 6 is Prescient too,',
+          'both sides, and one base in 6, with its token Prescient on the back. No pack has the same card twice.',
+          'The cards go pack after pack, so the printed deck comes in packs: "P1-2" in a file name is player 1, pack 2.',
+          `Each card carries its code where the artist goes: ${printCode(run, 7, 12)} is print run ${run}, pack 07, its 12th card. Sort a`,
+          'mixed pile by code to put the packs back together; to reprint a pack, print its 15 files again.',
+          'packs.txt lists each pack, print run.csv how many of each card.',
+          `These are print run ${run}, deal ${deal}. The Sealed event window deals the same packs again for run ${run}, deal ${deal} and`,
+          `${count} player${count === 1 ? '' : 's'}, as long as the set's cards have not changed since; packs.txt is the record either way.`,
+          '',
+          ...layoutNote(total + spares, decks, spares),
+        ].join('\n'),
+      }),
+    }
+  }
+
+  const run = async (job: () => PrintJob) => {
+    if (progress) {
+      stopping.current = true
+      return
+    }
+    setAsking(false)
+    // Planned before the folder is asked for, which must come straight after the click
+    const plan = job()
+    const sink = await printSink(plan.name.replace(/\.zip$/, ''))
+    if (!sink) return // Cancelled
+    stopping.current = false
+    setStatus(null)
+    let written = 0
+    let resumed = 0
+    try {
+      const loaded = new Map<string, Card>()
+      const cardOf = async (entry: ShowcaseCard) => {
+        const found = loaded.get(entry.image) ?? (await loadShowcaseCard(folder, entry.image))
+        if (!found) throw new Error(`${entry.image}.json could not be loaded`)
+        loaded.set(entry.image, found)
+        return found
+      }
+      const drawn = async (card: Card, back: boolean) => new Uint8Array(await (await uprightJpg(await draw(card, back, 'print', 2))).arrayBuffer())
+      // The cards deck by deck, then each deck's free slots up to the size it is priced at filled
+      // with spare tokens, as many as the job allows
+      type Slot = { card?: PrintCard; label: string }
+      const decks: Slot[][] = []
+      for (const [index, card] of plan.cards.entries()) {
+        if (index % plan.deckSize === 0) decks.push([])
+        const label = `${card.tag ? `${card.tag} ` : ''}${card.entry.number ?? '000'} ${card.entry.image}${card.prescient ? ' (prescient)' : ''}`
+        decks[decks.length - 1].push({ card, label })
+      }
+      let spares = 0
+      if (plan.spares) {
+        const room = decks.map((deck) => (PRINT_DECK_SIZES.find((size) => size >= deck.length) ?? deck.length) - deck.length)
+        const total = Math.min(plan.spares.max, room.reduce((sum, n) => sum + n, 0))
+        const label = `TOKEN ${plan.spares.front.name} - ${plan.spares.back.name}`
+        for (const [d, free] of room.entries()) for (let i = 0; i < free && spares < total; i++, spares++) decks[d].push({ label })
+      }
+      // Each card is written as soon as it is drawn, so only a few are ever held: the backs, which
+      // are few and shared, and a front drawn for several cards (one with a print run's code is its own)
+      const fronts = new Map<string, Uint8Array>()
+      const backs = new Map<string, Uint8Array>()
+      const cardBack = new Uint8Array(await (await printBack()).arrayBuffer())
+      const spareSide = async (which: 'front' | 'back') => {
+        const key = `spare|${which}`
+        if (!backs.has(key)) backs.set(key, await drawn(await cardOf(plan.spares![which]), false))
+        return backs.get(key)!
+      }
+      const sidesOf = async (card: PrintCard) => {
+        const { entry, prescient, code } = card
+        const full = await cardOf(entry)
+        // A wild card: its Prescient version, with the shared card back. A Prescient base: its token
+        // on the back is Prescient too. A Prescient leader: both its sides
+        const face = prescient && canBePrescient(entry.type) ? prescientOf(full) : full
+        const frontKey = `${entry.image}${prescient ? '|prescient' : ''}`
+        const front = code ? await drawn({ ...face, code }, false) : (fronts.get(frontKey) ?? (await drawn(face, false)))
+        if (!code && plan.cards.filter((each) => each.entry === entry && !!each.prescient === !!prescient).length > 1) fronts.set(frontKey, front)
+        const token = behind.get(entry)
+        if (prescient && !token && !entry.back) return { front, back: cardBack }
+        const backKey = `${entry.image}${prescient ? '|prescient' : ''}`
+        if (!backs.has(backKey)) {
+          const tokenCard = token && (await cardOf(token))
+          backs.set(
+            backKey,
+            tokenCard ? await drawn(prescient ? prescientOf(tokenCard) : tokenCard, false) : entry.back ? await drawn(face, true) : cardBack,
+          )
+        }
+        return { front, back: backs.get(backKey)! }
+      }
+      const total = decks.reduce((sum, deck) => sum + deck.length, 0)
+      // One file per card, numbered in order, the same name in fronts/ and backs/; a deck to a folder
+      for (const [d, deck] of decks.entries())
+        for (const [index, slot] of deck.entries()) {
+          if (stopping.current) {
+            setStatus(sink.partial ? `Stopped: ${written} of ${total} cards written to ${sink.where}` : 'Stopped: nothing saved')
+            return
+          }
+          setProgress({ at: written + 1, of: total, name: slot.card?.entry.name ?? 'Spare token' })
+          const name = `${String(index + 1).padStart(4, '0')} ${slot.label}.jpg`.replace(/[\\/:*?"<>|]/g, '-')
+          const dir = decks.length > 1 ? `deck ${d + 1}/` : ''
+          // Picking up a run that was cut off: a card written whole is not drawn again
+          if ((await sink.has(`${dir}fronts/${name}`)) && (await sink.has(`${dir}backs/${name}`))) {
+            written++
+            resumed++
+            continue
+          }
+          const sides = slot.card ? await sidesOf(slot.card) : { front: await spareSide('front'), back: await spareSide('back') }
+          await sink.put(`${dir}fronts/${name}`, sides.front)
+          await sink.put(`${dir}backs/${name}`, sides.back)
+          written++
+        }
+      for (const [name, text] of Object.entries(plan.notes(decks.map((deck) => deck.length), spares)))
+        await sink.put(name, new TextEncoder().encode(text))
+      const saved = await sink.finish()
+      setStatus(resumed ? `${saved} (${resumed} cards were already there)` : saved)
+    } catch (err) {
+      setStatus(`Not made: ${err instanceof Error ? err.message : String(err)}`)
+    } finally {
+      doneDrawing()
+      setProgress(null)
+    }
+  }
+
+  const count = Math.min(EVENT_MAX_PLAYERS, Math.max(1, Number(players) || 8))
+  const eventCards = count * EVENT_PACKS * EVENT_PACK_SIZE
+  const dealFor = (players: number, run = runLetter, deal = deals[run] ?? 0) => {
+    setPlan(planSealedEvent(printable, players, seededRandom(`${folder}|${run}|${players}|${deal}`)))
+    setViewed((was) => Math.min(was, players))
+  }
+  const dealAgain = () => {
+    const deal = (deals[runLetter] ?? 0) + 1
+    setDeals({ ...deals, [runLetter]: deal })
+    dealFor(count, runLetter, deal)
+  }
+  const openEvent = () => {
+    dealFor(count)
+    setAsking(true)
+  }
+  return (
+    <>
+      {progress ? (
+        <button className="chip" type="button" aria-pressed title={`Drawing ${progress.name}. Press to stop: nothing is saved`} onClick={() => run(setJob)}>
+          Stop printing ({progress.at}/{progress.of})
+        </button>
+      ) : (
+        <>
+          <button
+            className="chip"
+            type="button"
+            title="Every card once at 822 x 1122 px with a mirrored bleed, upright, fronts and backs, in one .zip for MakePlayingCards and similar services"
+            onClick={() => run(setJob)}
+          >
+            Print files
+          </button>
+          <button
+            className="chip"
+            type="button"
+            title="The packs of a Sealed event for up to 8 players, and the cards to print for them"
+            onClick={openEvent}
+          >
+            Sealed event
+          </button>
+        </>
+      )}
+      {status && !progress && <span className="filter-label print-status">{status}</span>}
+      {asking && plan && (
+        <Modal title="Sealed event" wide onClose={() => setAsking(false)}>
+          <div className="event-preview">
+            <p className="account-note">
+              Each player opens {EVENT_PACKS} packs of {EVENT_PACK_SIZE}: a leader, a base, 8 commons, 3 uncommons, a rare or legendary and a
+              wild card in full art (Prescient). Make the files prints the deal shown here: one file per card, pack after pack, so the printed
+              deck comes in packs, and a list of what goes in each pack.
+            </p>
+            <div className="event-bar">
+              <label className="event-players">
+                Players{' '}
+                <select
+                  value={String(count)}
+                  onChange={(event) => {
+                    setPlayers(event.target.value)
+                    dealFor(Number(event.target.value))
+                  }}
+                >
+                  {Array.from({ length: EVENT_MAX_PLAYERS }, (_, i) => String(i + 1)).map((value) => (
+                    <option key={value} value={value}>
+                      {value}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label
+                className="event-players"
+                title={`The letter starting each card's code, printed in place of the artist: ${printCode(runLetter, 7, 12)} is pack 07, its 12th card. Take the next letter for the next event.`}
+              >
+                Print run{' '}
+                <select
+                  value={runLetter}
+                  onChange={(event) => {
+                    setPrintRun(event.target.value)
+                    dealFor(count, event.target.value)
+                  }}
+                >
+                  {PRINT_RUNS.map((letter) => (
+                    <option key={letter} value={letter}>
+                      {letter}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <span className="account-note">
+                Run {runLetter}, deal {dealNumber}: {plan.packs.length} packs, {eventCards} cards to print, {plan.copies.size + plan.prescient.size} different
+                {eventCards > PRINT_DECK_MAX ? ` (two MakePlayingCards decks: one holds ${PRINT_DECK_MAX})` : ''}
+              </span>
+              <button
+                className="chip"
+                type="button"
+                title={`Run ${runLetter} deals the same packs each time; this moves it on to new ones`}
+                onClick={dealAgain}
+              >
+                Deal again
+              </button>
+            </div>
+            <div className="deck-tabs" role="tablist" aria-label="Player">
+              {Array.from({ length: count }, (_, i) => i + 1).map((player) => (
+                <button key={player} type="button" role="tab" aria-selected={viewed === player} onClick={() => setViewed(player)}>
+                  Player {player}
+                </button>
+              ))}
+            </div>
+            {(() => {
+              const mine = plan.packs.filter((pack) => pack.player === viewed)
+              const names = mine.flatMap((pack) => pack.cards.map(({ card }) => card.name))
+              const repeats = names.length - new Set(names).size
+              const tops = mine.flatMap((pack) => pack.cards.filter(({ card }) => card.rarity === 'L' || card.rarity === 'R'))
+              return (
+                <>
+                  <p className="account-note">
+                    {tops.filter(({ card }) => card.rarity === 'L').length} legendary, {tops.filter(({ card }) => card.rarity === 'R').length} rare
+                    {repeats ? `, ${repeats} card${repeats === 1 ? '' : 's'} twice in the pool` : ', no card twice in the pool'}.
+                  </p>
+                  {mine.map((pack) => {
+                    const number = plan.packs.indexOf(pack) + 1
+                    return (
+                    <section className="event-pack" key={pack.pack}>
+                      <h3>
+                        Pack {pack.pack} <span className="account-note">({runLetter}{String(number).padStart(2, '0')})</span>
+                      </h3>
+                      <ul>
+                        {pack.cards.map(({ card, slot, prescient }, index) => (
+                          <li
+                            key={index}
+                            className={`event-card event-${slot.toLowerCase()}${prescient ? ' event-wild' : ''}${card.type === 'Leader' || card.type === 'Base' ? ' event-landscape' : ''}`}
+                            title={`${[card.name, card.subtitle].filter(Boolean).join(', ')} (${slot}${slot === 'Wild' ? `, ${card.rarity}` : ''}${prescient ? ', Prescient' : ''})`}
+                          >
+                            {prescient && canBePrescient(card.type) ? (
+                              <div className="event-face">
+                                <ShowcasePrescient folder={folder} image={card.image} fallback={asset(`${folder}/${encodeURIComponent(card.image)}.jpg`)} />
+                              </div>
+                            ) : (
+                              <img src={asset(`${folder}/${encodeURIComponent(card.image)}.jpg`)} alt={card.name} loading="lazy" />
+                            )}
+                            <span>{slot === 'Wild' ? `Wild ${card.rarity ?? ''}, Prescient` : prescient ? `${slot}, Prescient` : slot}</span>
+                            <span className="event-code">{printCode(runLetter, number, index + 1)}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </section>
+                    )
+                  })}
+                </>
+              )
+            })()}
+            <div className="leave-buttons">
+              <button className="button" type="button" onClick={() => setAsking(false)}>
+                Cancel
+              </button>
+              <button className="button button-primary" type="button" onClick={() => run(() => eventJob(count, runLetter, dealNumber, plan))}>
+                Make the files
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+      {stage}
+    </>
+  )
+}
+
 // #showcase/<folder>, the folder being public/showcase/<folder> with showcase.json in it
 function Showcase(props: { folder: string }) {
   const folder = `/showcase/${props.folder}`
@@ -1674,10 +2289,28 @@ function Showcase(props: { folder: string }) {
     document.head.append(robots)
     return () => robots.remove()
   }, [props.folder])
+  // The cards shown with an example print run's codes, as a Sealed event prints them
+  const [printRunView, setPrintRunView] = useState(false)
   const { bar, shown, grid, preview } = useCardFilters(
     `showcase.${props.folder}`,
     (list?.cards ?? []).map((card) => ({ item: card, facts: showcaseFacts(card) })),
     'Showcase order',
+    undefined,
+    undefined,
+    list && (
+      <>
+        <PrintFiles folder={folder} cards={list.cards} />
+        <button
+          className="chip"
+          type="button"
+          aria-pressed={printRunView}
+          title="Show the cards as a Sealed event prints them: a code in place of the artist, A07-12 for run A, pack 07, its 12th card (here the cards shown, 15 to a pack)"
+          onClick={() => setPrintRunView(!printRunView)}
+        >
+          Print run
+        </button>
+      </>
+    ),
   )
   // The set's cards, a Deck Builder that only uses them, and for DUNE, the game simulator, which
   // plays its cards: open to anyone here. The author's other games are in the site's tabs above.
@@ -1739,8 +2372,14 @@ function Showcase(props: { folder: string }) {
         <p className="empty-note">No card matches these filters.</p>
       ) : (
         <ul className={grid}>
-          {shown.map(({ item: card }) => (
-            <ShowcaseItem key={card.image} folder={folder} card={card} preview={preview} />
+          {shown.map(({ item: card }, index) => (
+            <ShowcaseItem
+              key={card.image}
+              folder={folder}
+              card={card}
+              preview={preview}
+              code={printRunView ? printCode('A', Math.floor(index / EVENT_PACK_SIZE) + 1, (index % EVENT_PACK_SIZE) + 1) : undefined}
+            />
           ))}
         </ul>
       )}
@@ -2153,7 +2792,7 @@ async function loadShowcaseCard(folder: string, image: string): Promise<Card | n
     if (!res.ok) return null
     const found: Card = await res.json()
     const prescient = found.prescient && { ...found.prescient, art: inFolder(found.prescient.art) }
-    return { ...found, art: inFolder(found.art), prescient }
+    return { ...found, art: inFolder(found.art), backArt: inFolder(found.backArt), prescient }
   } catch {
     return null
   }
@@ -2162,7 +2801,13 @@ async function loadShowcaseCard(folder: string, image: string): Promise<Card | n
 // A Showcase card's Prescient version: drawn from its .json, as the Showroom draws its cards.
 // Its image is shown until the .json has come.
 function ShowcasePrescient(props: { folder: string; image: string; fallback: string }) {
-  const { folder, image, fallback } = props
+  return <ShowcaseDrawn {...props} prescient />
+}
+
+// A Showcase card drawn from its .json rather than shown as its image: in full art (prescient),
+// or with a print run's code in place of the artist. Its image is shown until the .json has come.
+function ShowcaseDrawn(props: { folder: string; image: string; fallback: string; prescient?: boolean; code?: string }) {
+  const { folder, image, fallback, prescient, code } = props
   const [card, setCard] = useState<Card | null>(null)
   useEffect(() => {
     let live = true
@@ -2171,7 +2816,9 @@ function ShowcasePrescient(props: { folder: string; image: string; fallback: str
       live = false
     }
   }, [folder, image])
-  return card ? <CardFace card={prescientOf(card)} /> : <img className="showcase-image" src={fallback} alt="" />
+  if (!card) return <img className="showcase-image" src={fallback} alt="" />
+  const face = prescient ? prescientOf(card) : card
+  return <CardFace card={code ? { ...face, code } : face} />
 }
 
 const deckGroups = ['Ground units', 'Space units', 'Events', 'Upgrades'] as const
@@ -3763,11 +4410,13 @@ const POOL_SAVE_DELAY = 600
 // legendary, and last a foil of any rarity. A legendary takes
 // the rare slot one pack in 6 (one in 8 in Star Wars: Unlimited); a rare leader or base one in 6
 // is a guess, there are no odds published for those. The Prescient card is a foil one pack in 6
-// (a legendary there always), and the foil Prescient one pack in 6.
+// (a legendary there always), and the foil Prescient one pack in 6. The leader and the base are each
+// Prescient one pack in 6, as Showcase leaders are Star Wars: Unlimited's full-art leaders.
 const BOOSTERS = 6
 const LEGENDARY_ODDS = 1 / 6
 const RARE_LEADER_ODDS = 1 / 6
 const PRESCIENT_FOIL_ODDS = 1 / 6
+const PRESCIENT_SIDE_ODDS = 1 / 6
 type PackSlot = 'Leader' | 'Base' | 'Common' | 'Uncommon' | 'Prescient' | 'Rare' | 'Legendary' | 'Foil'
 type PackCard = { card: DeckCard; slot: PackSlot; printing: Printing }
 const boosterBack = asset('/sim/DuneCardBack01.jpg')
@@ -3798,7 +4447,9 @@ function openBooster(cards: DeckCard[], set?: string): PackCard[] {
   const add = (card: DeckCard | undefined, slot: PackSlot, printing: Printing = 'plain') => card && pack.push({ card, slot, printing })
   for (const type of ['Leader', 'Base'] as const) {
     const rare = Math.random() < RARE_LEADER_ODDS
-    add(pickOne(rare ? firstOf(of(type, 'R'), of(type, 'C')) : firstOf(of(type, 'C'), of(type, 'R'))), type)
+    const card = pickOne(rare ? firstOf(of(type, 'R'), of(type, 'C')) : firstOf(of(type, 'C'), of(type, 'R')))
+    // A leader or a base is Prescient one pack in 6
+    add(card, type, card?.prescientFace && Math.random() < PRESCIENT_SIDE_ODDS ? 'prescient' : 'plain')
   }
   // Of any rarity, as often as each is in a pack: 9 commons to 3 uncommons to 1 rare or legendary
   const anyRarity = () => {
@@ -3845,17 +4496,20 @@ function Booster(props: { label: string; big?: boolean; left?: number; onOpen?: 
 function PackCardView(props: { pack: PackCard; flipped: boolean; leaving?: boolean; delay?: number; onLeft?: () => void }) {
   const { pack, flipped, leaving, delay = 0, onLeft } = props
   const landscape = pack.card.type === 'Leader' || pack.card.type === 'Base'
+  const prescient = (pack.printing === 'prescient' || pack.printing === 'prescient-foil') && pack.card.prescientFace !== undefined
+  // A leader, a base or the foil that came Prescient glows as the Prescient card does, and says so
+  const glows = prescient && pack.slot !== 'Prescient'
   return (
     <div
-      className={`pack-card slot-${pack.slot.toLowerCase()}${pack.printing === 'foil' || pack.printing === 'prescient-foil' ? ' pack-foil' : ''}${landscape ? ' pack-landscape' : ''}${leaving ? ' pack-leaving' : ''}`}
+      className={`pack-card slot-${pack.slot.toLowerCase()}${glows ? ' slot-prescient' : ''}${pack.printing === 'foil' || pack.printing === 'prescient-foil' ? ' pack-foil' : ''}${landscape ? ' pack-landscape' : ''}${leaving ? ' pack-leaving' : ''}`}
       style={{ '--delay': `${delay}ms` } as CSSProperties}
       onAnimationEnd={(event) => event.animationName === 'pack-to-pool' && onLeft?.()}
     >
       <div className={`pack-flip${flipped ? ' pack-flipped' : ''}`}>
         <div className="pack-back" style={{ backgroundImage: `url("${boosterBack}")` }} />
-        <div className="pack-front">{((pack.printing === 'prescient' || pack.printing === 'prescient-foil') && pack.card.prescientFace) || pack.card.face}</div>
+        <div className="pack-front">{(prescient && pack.card.prescientFace) || pack.card.face}</div>
       </div>
-      <span className="pack-slot">{pack.slot}</span>
+      <span className="pack-slot">{glows ? `Prescient ${pack.slot}` : pack.slot}</span>
     </div>
   )
 }
@@ -4368,7 +5022,7 @@ function CardCreator(props: {
   const front = findFrame(draft.frameId)
   // Whether the Prescient version is being edited: only its art and look are its own
   const [prescientTab, setPrescientTab] = useState(false)
-  const prescientable = canBePrescient(front.type) && !front.token
+  const prescientable = canBePrescient(front.type)
   const onPrescient = prescientTab && prescientable
   const shownCard = onPrescient ? prescientOf(draft) : draft
   const side = cardSide(shownCard, back)
@@ -4379,12 +5033,24 @@ function CardCreator(props: {
   const setArt = (art?: Art) =>
     onChange(
       onPrescient
-        ? { ...draft, prescient: { ...draft.prescient, art } }
+        ? { ...draft, prescient: { ...draft.prescient, [side.isBack ? 'backArt' : 'art']: art } }
         : side.isBack
           ? { ...draft, backArt: art }
           : { ...draft, art },
     )
   const setLook = (look: Look) => onChange(onPrescient ? { ...draft, prescient: { ...draft.prescient, look } } : { ...draft, look })
+  // On the Prescient tab, the boxes can be moved about over the art in place of the art itself,
+  // each side's on its own
+  const [movingBoxes, setMovingBoxes] = useState(false)
+  const moveBoxes = onPrescient && movingBoxes
+  const layoutKey = side.isBack ? 'backLayout' : 'layout'
+  const layout = draft.prescient?.[layoutKey]
+  const setLayout = (next?: Layout) => {
+    const moved = next && Object.fromEntries(Object.entries(next).filter(([, at]) => at && (at.x || at.y)))
+    const prescient = { ...draft.prescient, [layoutKey]: moved && Object.keys(moved).length ? moved : undefined }
+    // Nothing of its own left, the Prescient version is the card's again
+    onChange({ ...draft, prescient: Object.values(prescient).some((value) => value !== undefined) ? prescient : undefined })
+  }
   // Name, subtitle and trait: typed on the Leader Unit side, they are kept for that
   // side only, and typed back to what the Leader side says, they follow it again.
   // A field that was empty on the other side when typing began is typed on both.
@@ -4469,7 +5135,7 @@ function CardCreator(props: {
           {onPrescient && (
             <p className="empty-note prescient-note">
               {draft.prescient
-                ? 'This card’s Prescient version has art or a look of its own. The rest is the card’s.'
+                ? 'This card’s Prescient version has art, a look or a layout of its own. The rest is the card’s.'
                 : 'The card’s art with the Prescient look, until you change them here. The rest is the card’s.'}
               {draft.prescient && (
                 <button className="button" type="button" onClick={() => onChange({ ...draft, prescient: undefined })}>
@@ -4477,6 +5143,30 @@ function CardCreator(props: {
                 </button>
               )}
             </p>
+          )}
+          {onPrescient && (
+            <div className="move-boxes">
+              <button
+                className="chip"
+                type="button"
+                aria-pressed={movingBoxes}
+                title="Hold the art where it is and drag the name, text, icons and other boxes over it instead"
+                onClick={() => setMovingBoxes(!movingBoxes)}
+              >
+                Move boxes
+              </button>
+              {layout && (
+                <button className="button" type="button" onClick={() => setLayout(undefined)}>
+                  Put the boxes back
+                </button>
+              )}
+              {moveBoxes && (
+                <p className="empty-note">
+                  Drag a box on the card to move it; double-click it to put it back. The art stays where it is
+                  {backFrameOf(draft) ? ', and each side has its own layout' : ''}.
+                </p>
+              )}
+            </div>
           )}
           <h2>Art</h2>
           <ArtControls art={side.art} onChange={setArt} />
@@ -4486,9 +5176,15 @@ function CardCreator(props: {
 
         <div className="editor-preview-column">
           <div ref={preview}>
-            <ArtDrag art={side.art} onChange={setArt}>
-              <CardFace card={shownCard} back={back} />
-            </ArtDrag>
+            {moveBoxes ? (
+              <BoxDrag frame={frame} layout={layout} onChange={setLayout}>
+                <CardFace card={shownCard} back={back} />
+              </BoxDrag>
+            ) : (
+              <ArtDrag art={side.art} onChange={setArt}>
+                <CardFace card={shownCard} back={back} />
+              </ArtDrag>
+            )}
           </div>
           <div className="editor-actions preview-actions">
             <ImageButtons
@@ -4910,6 +5606,92 @@ function ArtDrag(props: { art?: Art; onChange: (art: Art) => void; children: Rea
       onPointerCancel={() => (start.current = null)}
     >
       {children}
+    </div>
+  )
+}
+
+// The card being edited, its boxes moved instead of its art: each part the card has is
+// outlined over it, to drag where the art wants it. Double-clicking one puts it back.
+const partNames: Record<BoxPart, string> = {
+  label: 'Top bar words',
+  name: 'Name',
+  trait: 'Traits',
+  text: 'Game text',
+  epic: 'Epic Action',
+  cost: 'Cost',
+  aspects: 'Aspects',
+  power: 'Power',
+  hp: 'HP',
+}
+
+// How close to the card's edge, in the frame's pixels, its own frames print anything: where the
+// card line along the bottom starts
+const SAFE_MARGIN = 30
+
+function BoxDrag(props: { frame: Frame; layout?: Layout; onChange: (layout: Layout) => void; children: React.ReactNode }) {
+  const { frame, layout = {}, onChange, children } = props
+  const ref = useRef<HTMLDivElement>(null)
+  const start = useRef<{ part: BoxPart; x: number; y: number; at: { x: number; y: number } }>(null)
+  const [dragging, setDragging] = useState<BoxPart | null>(null)
+  // The biggest underneath, so a small box over a big one can still be grabbed
+  const parts = partBoxes(frame).sort((a, b) => b.box.w * b.box.h - a.box.w * a.box.h)
+  const pct = (value: number, of: number) => `${(value / of) * 100}%`
+  return (
+    <div ref={ref} className="editor-preview box-drag">
+      {children}
+      {/* Keep what the card says inside this line: past it, a print's trim may cut into it */}
+      <div
+        className="box-safe"
+        style={{
+          left: pct(SAFE_MARGIN, frame.width),
+          right: pct(SAFE_MARGIN, frame.width),
+          top: pct(SAFE_MARGIN, frame.height),
+          bottom: pct(SAFE_MARGIN, frame.height),
+        }}
+      />
+      {parts.map(({ part, box }) => {
+        const at = layout[part] ?? { x: 0, y: 0 }
+        return (
+          <div
+            key={part}
+            className={`box-handle${dragging === part ? ' dragging' : ''}`}
+            style={{
+              left: pct(box.x + at.x, frame.width),
+              top: pct(box.y + at.y, frame.height),
+              width: pct(box.w, frame.width),
+              height: pct(box.h, frame.height),
+            }}
+            onPointerDown={(event) => {
+              event.currentTarget.setPointerCapture(event.pointerId)
+              start.current = { part, x: event.clientX, y: event.clientY, at }
+              setDragging(part)
+            }}
+            onPointerMove={(event) => {
+              const from = start.current
+              const card = ref.current?.getBoundingClientRect()
+              if (!from || !card) return
+              onChange({
+                ...layout,
+                [from.part]: {
+                  x: clamp(Math.round(from.at.x + ((event.clientX - from.x) / card.width) * frame.width), -frame.width, frame.width),
+                  y: clamp(Math.round(from.at.y + ((event.clientY - from.y) / card.height) * frame.height), -frame.height, frame.height),
+                },
+              })
+            }}
+            onPointerUp={() => {
+              start.current = null
+              setDragging(null)
+            }}
+            onPointerCancel={() => {
+              start.current = null
+              setDragging(null)
+            }}
+            onDoubleClick={() => onChange({ ...layout, [part]: undefined })}
+          >
+            <span>{partNames[part]}</span>
+          </div>
+        )
+      })}
     </div>
   )
 }

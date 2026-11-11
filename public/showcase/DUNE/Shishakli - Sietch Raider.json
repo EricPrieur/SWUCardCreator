@@ -12,7 +12,7 @@
   "text": "Whenever you play a [{Trick}] event, ready this unit.",
   "power": 2,
   "trait": "Fremen, Trooper",
-  "number": "150",
+  "number": "151",
   "rarity": "U",
   "unique": true,
   "frameId": "unit-cunning-heroism",

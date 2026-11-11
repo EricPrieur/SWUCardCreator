@@ -12,7 +12,7 @@
   "text": "[Sentinel]\n[When Played/On Attack:] If an opponent controls a Spice token, they defeat it. If they do, create a Spice token and give an Experience token to this unit.",
   "power": 4,
   "trait": "Emperor, Official",
-  "number": "099",
+  "number": "100",
   "rarity": "U",
   "frameId": "unit-command",
   "setCode": "DUNE",

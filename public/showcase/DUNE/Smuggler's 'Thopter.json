@@ -12,7 +12,7 @@
   "text": "[When Played:] Create a Spice token. If you control a [{Spacing Guild}] unit, draw a card.\n[Smuggle] [[4 Cunning]]\n[When played using Smuggle:] Create a Spice token.",
   "power": 3,
   "trait": "Underworld, Vehicle, Fighter",
-  "number": "168",
+  "number": "169",
   "rarity": "C",
   "frameId": "unit-cunning-space",
   "setCode": "DUNE",

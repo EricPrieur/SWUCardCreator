@@ -26,5 +26,53 @@
   "language": "EN",
   "subtitle": "Padishah Emperor",
   "backTrait": "Emperor, Corrino, Official",
+  "prescient": {
+    "art": {
+      "x": 13,
+      "y": 35,
+      "src": "Shaddam IV - Padishah Emperor (art).webp",
+      "zoom": 0.9
+    },
+    "look": {
+      "textGlow": 0,
+      "lightText": true,
+      "panelBlur": 0,
+      "panelFill": 0,
+      "solidIcons": true,
+      "frameOpacity": 0
+    },
+    "layout": {
+      "epic": {
+        "x": -440,
+        "y": 5
+      },
+      "name": {
+        "x": 0,
+        "y": -29
+      },
+      "text": {
+        "x": -439,
+        "y": -173
+      },
+      "trait": {
+        "x": 5,
+        "y": 34
+      }
+    },
+    "backLayout": {
+      "name": {
+        "x": 0,
+        "y": -8
+      },
+      "text": {
+        "x": 0,
+        "y": 43
+      },
+      "trait": {
+        "x": -2,
+        "y": 89
+      }
+    }
+  },
   "backSubtitle": "Emperor of the Known Universe"
 }

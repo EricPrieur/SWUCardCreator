@@ -12,7 +12,7 @@
   "text": "[When Played/On Attack:] If you control an [{Arrakis}] base, create a Spice token, then you may deal 2 damage to a friendly unit. If you do, create another Spice token.",
   "power": 4,
   "trait": "Harkonnen, Vehicle, Harvester",
-  "number": "115",
+  "number": "116",
   "rarity": "U",
   "frameId": "unit-aggression-villainy",
   "setCode": "DUNE",

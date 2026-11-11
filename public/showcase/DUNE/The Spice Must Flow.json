@@ -10,7 +10,7 @@
   "name": "The Spice Must Flow",
   "text": "Create 4 Spice tokens. Each opponent creates a Spice token.",
   "trait": "Supply",
-  "number": "102",
+  "number": "103",
   "rarity": "C",
   "frameId": "event-command",
   "setCode": "DUNE",

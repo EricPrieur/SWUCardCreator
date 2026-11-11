@@ -1,21 +1,21 @@
 {
   "hp": 2,
   "id": "b7d92601-b4fb-4795-ad55-d4c537ccad17",
+  "art": {
+    "x": 1,
+    "y": -8,
+    "src": "Mercenary Strike Fighter (art).webp",
+    "zoom": 1,
+    "rotate": -9
+  },
   "cost": 3,
   "name": "Mercenary Strike Fighter",
   "text": "[When Played:] You may defeat a friendly Spice token. If you do, deal 2 damage to a unit.",
   "power": 3,
   "trait": "Underworld, Ginaz, Vehicle, Fighter",
-  "number": "133",
+  "number": "134",
   "rarity": "C",
   "frameId": "unit-aggression-space",
   "setCode": "DUNE",
-  "language": "EN",
-  "art": {
-    "src": "Mercenary Strike Fighter (art).webp",
-    "zoom": 1,
-    "x": 1,
-    "y": -8,
-    "rotate": -9
-  }
+  "language": "EN"
 }

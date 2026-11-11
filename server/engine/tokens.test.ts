@@ -115,6 +115,7 @@ const defs: CardDef[] = [
   card('atreidesFrigate', { ...scriptedBy('Atreides Frigate', 'Ducal Flagship'), cost: 6, power: 4, hp: 6, arena: 'space', unique: true, traits: ['Atreides', 'Vehicle', 'Capital Ship'] }),
   card('mercFighter', { ...scripted('Mercenary Strike Fighter'), cost: 3, power: 3, hp: 2, arena: 'space', traits: ['Underworld', 'Ginaz', 'Vehicle', 'Fighter'] }),
   card('commandeered', { ...scripted('Commandeered Harkonnen Frigate'), cost: 5, power: 4, hp: 5, arena: 'space', traits: ['Fremen', 'Vehicle', 'Capital Ship'] }),
+  card('courier', { ...scripted('Weapons Courier'), cost: 1, power: 1, hp: 1, arena: 'space', traits: ['Vehicle', 'Transport'] }),
   card('surveyCraft', { ...scripted("Planetologist's Survey Craft"), cost: 3, power: 2, hp: 4, arena: 'space', traits: ['Emperor', 'Vehicle', 'Transport'] }),
   card('korba', { ...scripted('Korba'), cost: 6, power: 5, hp: 6, unique: true, traits: ['Fremen', 'Fedaykin', 'Official'] }),
 ]
@@ -1174,4 +1175,16 @@ test("Planetologist's Survey Craft: heals 2 from a friendly ground unit or your 
   assert.equal(state.players[0].units[1].damage, 1)
   assert.equal(state.players[0].base.damage, 5)
   assert.equal(state.players[1].base.damage, 2)
+})
+
+test('Weapons Courier: an Experience token to a friendly ground unit, not a space unit', () => {
+  let state = table({ hand0: ['courier'], units0: ['trooper', 'fighter'] })
+  state.players[0].units[1].arena = 'space'
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  state = settle(answer(state, 'u00'))
+  assert.deepEqual(state.players[0].units.slice(0, 2).map((u) => u.upgrades.length), [1, 0])
+  // No friendly ground unit: nothing to give it to
+  state = settle(act(table({ hand0: ['courier'] }), 0, { type: 'play', card: 'h0' }))
+  assert.equal(state.prompt, null)
+  assert.equal(state.players[0].units.length, 1, 'only the Courier')
 })

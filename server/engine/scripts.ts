@@ -2340,6 +2340,17 @@ const dune: CardScript[] = [
     },
   },
   {
+    name: 'Weapons Courier',
+    text: '[When Played:] Give an Experience token to a friendly ground unit.',
+    front: {
+      whenPlayed: (g, self) => {
+        const ground = friendlyIds(g, self, (u) => u.arena === 'ground')
+        const pick = g.chooseOne(self.controller, 'Weapons Courier: give an Experience token to a friendly ground unit', ground, { ai: 'help', source: self.def.id })
+        if (pick) g.giveToken(pick, 'Experience')
+      },
+    },
+  },
+  {
     name: 'Atreides Frigate',
     subtitle: 'Ducal Flagship',
     text: '[When Played:] Give an Experience token to each of up to 3 friendly ground units.',

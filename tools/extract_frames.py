@@ -1715,8 +1715,43 @@ LABELS = {
     "leader-unit-ground": ("leader/command-heroism-unit", (115, 315), (395, 590, "dark")),
     "leader-unit-space": ("leader/command-heroism-unit-space", (115, 315), (395, 590, "light")),
     "leader": ("leader/command-heroism", (105, 330), None),
+    "base": ("base/command", (185, 265), None),
+    # Token units: TOKEN UNIT is dark on its grey bar. With a text box, and without one (2 px lower)
+    "token-unit-ground": ("unit/token-text-neutral", (150, 375, "dark"), (385, 632, "dark")),
+    "token-unit-space": ("unit/token-text-neutral-space", (150, 375, "dark"), (395, 632, "light")),
+    "token-unit-solo-ground": ("unit/token", (150, 375, "dark"), (385, 632, "dark")),
+    "token-unit-solo-space": ("unit/token-space", (150, 375, "dark"), (395, 632, "light")),
 }
 LABEL_ROWS = (31, 52)
+
+
+# A base's HP icon, traced on the base frames, clockwise from the top
+BASE_HP_OUTLINE = [(56, 21), (94, 21), (100, 23), (116, 25), (118, 28), (118, 59), (122, 61), (122, 98), (120, 104),
+                   (120, 116), (117, 119), (104, 121), (96, 125), (55, 125), (48, 121), (36, 119), (31, 117), (31, 104),
+                   (28, 96), (28, 82), (30, 76), (31, 72), (29, 62), (28, 50), (31, 44), (31, 27), (36, 25), (51, 23)]
+
+
+def extract_base_hp():
+    """A base's HP icon on its own, for a Prescient base, where the frame around it is gone. On the
+    frame the name bar covers its right edge from the top corner down: that edge is finished here,
+    the corner from the top left one, mirrored across, and below it from the bottom right, flipped."""
+    f = np.array(Image.open(OUT / "base" / "neutral.png").convert("RGBA"))
+    h, w = f.shape[:2]
+    mask = Image.new("L", (w, h), 0)
+    ImageDraw.Draw(mask).polygon(BASE_HP_OUTLINE, fill=255)
+    out = f.copy()
+    out[..., 3] = np.minimum(f[..., 3], np.array(mask))
+    for y in range(20, 62):
+        for x in range(108, 130):
+            if y < 36:
+                if x >= 113:
+                    out[y, x] = f[y, 150 - x]
+            else:
+                out[y, x] = f[146 - y, x]
+    out[out[..., 3] == 0] = 0  # nothing kept where nothing shows: a small file
+    path = ROOT / "public" / "icons" / "base-hp.png"
+    Image.fromarray(out, "RGBA").save(path, optimize=True)
+    print("wrote", path)
 
 
 def extract_label_masks():
@@ -1724,8 +1759,9 @@ def extract_label_masks():
         f = np.array(Image.open(OUT / (frame + ".png")).convert("RGB")).astype(np.float32)
         y0, y1 = LABEL_ROWS
         words = np.zeros(f.shape[:2], bool)
-        x0, x1 = left
-        words[y0:y1, x0:x1] = f[y0:y1, x0:x1].min(-1) > 185
+        x0, x1, *tone = left  # light, unless it says dark
+        band = f[y0:y1, x0:x1]
+        words[y0:y1, x0:x1] = band.mean(-1) < 140 if tone == ["dark"] else band.min(-1) > 185
         if right:
             x0, x1, tone = right
             band = f[y0:y1, x0:x1]
@@ -1816,7 +1852,7 @@ if __name__ == "__main__":
               "leader": extract_leaders, "leader/unaligned": extract_unaligned_leaders,
               "leader/derived": extract_derived_leaders, "icons/exhaust": extract_exhaust_icon,
               "icons/artist": extract_artist_icon, "icons/rarity": extract_rarity_icons,
-              "icons/labels": extract_label_masks, "icons/foil": extract_foil_stamp, "upgrade/unstreak": unstreak_upgrades,
+              "icons/labels": extract_label_masks, "icons/base-hp": extract_base_hp, "icons/foil": extract_foil_stamp, "upgrade/unstreak": unstreak_upgrades,
               "unit/cost-hexagons": mend_cost_hexagons, "unit/vigilance-icons": mend_vigilance_icons}
     for subtitle in SUBTITLES:
         extras[subtitle] = lambda subtitle=subtitle: extract_subtitle(subtitle)

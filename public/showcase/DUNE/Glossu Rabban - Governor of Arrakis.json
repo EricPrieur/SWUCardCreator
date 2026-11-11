@@ -27,5 +27,53 @@
   "backText": "[Overwhelm]\nWhen another friendly unit attacks: You may deal 1 damage to it. If you do, it gets [+1/+0] for this attack, or [+2/+0] instead if it's a [{Harkonnen}] unit.",
   "language": "EN",
   "subtitle": "Governor of Arrakis",
-  "backTrait": "Harkonnen, Official"
+  "backTrait": "Harkonnen, Official",
+  "prescient": {
+    "art": {
+      "x": 0,
+      "y": 34,
+      "src": "Glossu Rabban - Governor of Arrakis (art).webp",
+      "zoom": 1
+    },
+    "look": {
+      "textGlow": 0,
+      "lightText": true,
+      "panelBlur": 0,
+      "panelFill": 0,
+      "solidIcons": true,
+      "frameOpacity": 0
+    },
+    "layout": {
+      "epic": {
+        "x": 61,
+        "y": 42
+      },
+      "name": {
+        "x": 100,
+        "y": -32
+      },
+      "text": {
+        "x": 103,
+        "y": 95
+      },
+      "trait": {
+        "x": -3,
+        "y": 29
+      }
+    },
+    "backLayout": {
+      "name": {
+        "x": 0,
+        "y": -8
+      },
+      "text": {
+        "x": 0,
+        "y": 42
+      },
+      "trait": {
+        "x": -4,
+        "y": 89
+      }
+    }
+  }
 }

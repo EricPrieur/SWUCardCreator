@@ -27,5 +27,49 @@
   "backText": "[Sentinel]\n[On Attack:] Choose an enemy non-leader unit. Its controller may discard a card from their hand. If they don't, defeat it.",
   "language": "EN",
   "subtitle": "Pain or Death",
-  "backTrait": "Bene Gesserit, Emperor"
+  "backTrait": "Bene Gesserit, Emperor",
+  "prescient": {
+    "art": {
+      "x": 8,
+      "y": 31,
+      "src": "Reverend Mother Mohiam - Pain or Death (art).webp",
+      "zoom": 0.76
+    },
+    "look": {
+      "textGlow": 0,
+      "lightText": true,
+      "panelBlur": 0,
+      "panelFill": 0,
+      "solidIcons": true,
+      "frameOpacity": 0
+    },
+    "layout": {
+      "epic": {
+        "x": 65,
+        "y": 40
+      },
+      "name": {
+        "x": 0,
+        "y": -37
+      },
+      "text": {
+        "x": -440,
+        "y": -171
+      },
+      "trait": {
+        "x": -42,
+        "y": -347
+      }
+    },
+    "backLayout": {
+      "text": {
+        "x": -4,
+        "y": 49
+      },
+      "trait": {
+        "x": -4,
+        "y": 100
+      }
+    }
+  }
 }
