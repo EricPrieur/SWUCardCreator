@@ -20,7 +20,7 @@
   "text": "[When Played:] Create 2 Spice tokens.\n[When Played/On Attack:] You may defeat any number of friendly Spice tokens. For each one, choose one (you may choose the same option more than once):\n• Deal 3 damage to an enemy unit.\n• Deal 1 damage to an enemy base.\n• Give 2 Experience tokens to a friendly unit with no upgrades.",
   "power": 6,
   "trait": "Emperor, Corrino, Official",
-  "number": "074",
+  "number": "080",
   "rarity": "L",
   "unique": true,
   "frameId": "unit-command-villainy",

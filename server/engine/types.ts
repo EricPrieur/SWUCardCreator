@@ -15,6 +15,8 @@ export type Keywords = {
   grit?: boolean
   saboteur?: boolean
   ambush?: boolean
+  // Shielded (7.5.12): a Shield token as it enters play
+  shielded?: boolean
   hidden?: boolean
   plot?: boolean
   // Fortify (7.5.21): an upgrade that attaches to your base, not a unit

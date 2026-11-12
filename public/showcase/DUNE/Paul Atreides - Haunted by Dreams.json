@@ -23,7 +23,7 @@
   },
   "frameId": "leader-command-heroism",
   "setCode": "DUNE",
-  "backText": "[Raid 1]\n[On Attack:] Look at the top 3 cards of your deck. Discard 1 of them and put the others back in any order. If the discarded card has an [On Attack] ability, use it as if it were this unit's.",
+  "backText": "[Raid 1]\n[On Attack:] You may put a card from your discard pile on the bottom of your deck. If it has an [On Attack] ability, use it as if it were this unit's.",
   "language": "EN",
   "subtitle": "Haunted by Dreams",
   "prescient": {

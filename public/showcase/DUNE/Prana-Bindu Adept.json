@@ -12,7 +12,7 @@
   "text": "[Sentinel]\nWhen this unit is attacked: Discard the top card of your deck. If it's a [{Bene Gesserit}] card, the attacking unit gets [-2/-0] for this attack.",
   "power": 3,
   "trait": "Bene Gesserit",
-  "number": "052",
+  "number": "057",
   "rarity": "C",
   "frameId": "unit-vigilance",
   "setCode": "DUNE",

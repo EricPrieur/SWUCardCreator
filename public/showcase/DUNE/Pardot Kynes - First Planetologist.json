@@ -12,7 +12,7 @@
   "text": "[When Played:] Create a Spice token.\n[When the regroup phase starts:] If you control 3 or more Spice tokens, heal 3 damage from your base.",
   "power": 1,
   "trait": "Fremen, Emperor",
-  "number": "031",
+  "number": "032",
   "rarity": "R",
   "unique": true,
   "frameId": "unit-cunning-vigilance",

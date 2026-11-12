@@ -12,7 +12,7 @@
   "text": "[When Played:] Give an Experience token to a friendly ground unit.",
   "power": 1,
   "trait": "Vehicle, Transport",
-  "number": "093",
+  "number": "099",
   "rarity": "C",
   "frameId": "unit-command-space",
   "setCode": "DUNE",

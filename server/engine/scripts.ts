@@ -74,6 +74,11 @@ export type Abilities = {
   whenCombatDamageBase?: Ability
   // "When this unit completes an attack:"
   afterAttack?: Ability
+  // "When a Shield token on this unit is defeated:", by damage it prevented or otherwise
+  whenShieldDefeated?: Ability
+  // "If damage would be dealt to another friendly [Emperor] unit, you may defeat a Shield token
+  // on this unit. If you do, prevent that damage.": whether it may for that unit
+  sharesShield?: (g: Game, self: Self, unit: UnitState) => boolean
   // An upgrade's: when the unit it is on becomes exhausted; when that unit is defeated
   whenAttachedExhausted?: Ability
   attachedWhenDefeated?: Ability
@@ -185,7 +190,7 @@ function drawTwoPutOne(g: Game, self: Self) {
   g.draw(self.controller, 2)
   const hand = g.player(self.controller).hand.map((c) => c.id)
   const card = g.chooseOne(self.controller, `${self.def.name}: choose a card from your hand to put away`, hand, {
-    ai: 'cheap',
+    ai: 'discard',
     source: self.def.id,
   })
   if (!card) return
@@ -318,19 +323,28 @@ const dune: CardScript[] = [
   {
     name: 'Paul Atreides',
     subtitle: 'Heir to House Atreides',
-    text: '[On Attack:] Discard the top card of your deck. If its cost is equal to the defender\'s cost, deal 1 damage to the defender or to a base.',
+    // Changed 2026-11-12 (was: discard the top card; ping if it costs the same as the defender)
+    text: '[On Attack:] Choose an enemy unit. Reveal the top card of your deck. If it has the same cost as that unit, deal 1 damage to that unit or to a base.',
     front: {
       onAttack: (g, self) => {
-        const [top] = g.top(self.controller, 1)
-        if (!top) return
-        g.mill(self.controller, top.id)
-        const target = self.attack!.target
-        const defender = target === 'base' ? undefined : g.unit(target)
-        if (!defender || g.def(top).cost !== g.cost(defender)) return
-        const pick = g.chooseOne(self.controller, 'Paul Atreides: deal 1 damage to the defender or to a base', [defender.id, ...bases()], {
-          ai: 'harm',
+        const p = self.controller
+        const [top] = g.top(p, 1)
+        const enemies = unitIds(g, (u) => g.controller(u) === enemy(g, self))
+        if (!top || !enemies.length) return
+        // The AI picks the unit that matches only when it may look at its top card (Paul's
+        // leader side); otherwise the dearest enemy unit
+        const leader = g.player(p).leader
+        const sees = !leader.deployed && abilitiesOf(g.def(leader), 'front').seesTopCard
+        const match = sees && enemies.find((id) => g.cost(g.unit(id)!) === g.def(top).cost)
+        const dearest = [...enemies].sort((a, b) => g.cost(g.unit(b)!) - g.cost(g.unit(a)!))[0]
+        const chosen = g.chooseOne(p, 'Paul Atreides: choose an enemy unit, then the top card of your deck is revealed', enemies, {
+          ai: match || dearest,
           source: self.def.id,
         })
+        if (!chosen) return
+        g.reveal(p, [top.id], self)
+        if (g.def(top).cost !== g.cost(g.unit(chosen)!)) return
+        const pick = g.chooseOne(p, 'Paul Atreides: deal 1 damage to that unit or to a base', [chosen, ...bases()], { ai: 'harm', source: self.def.id })
         if (pick) g.damage(pick, 1, self)
       },
     },
@@ -806,6 +820,112 @@ const dune: CardScript[] = [
       },
     },
   },
+  // --- Irulan's Emperor units and shield cards ---
+  {
+    name: 'Kaitain Cadet',
+    text: 'While this unit has a Shield token, it gets [+2/+0].',
+    front: {
+      gives: (g, self, unit) => (unit.id === self.id && g.tokens(self.id, 'Shield') ? { power: 2 } : undefined),
+    },
+  },
+  {
+    name: 'Kaitain Shield Bearer',
+    text: '[When Played:] Give a Shield token to a friendly [{Emperor}] unit.',
+    front: {
+      whenPlayed: (g, self) => {
+        const emperor = friendlyIds(g, self, (u) => g.hasTrait(u, 'Emperor'))
+        // The AI shields an Emperor unit without one, the dearest first, else this one
+        const bare = g
+          .units((u) => emperor.includes(u.id) && !g.tokens(u.id, 'Shield'))
+          .sort((a, b) => g.cost(b) - g.cost(a))[0]
+        const pick = g.chooseOne(self.controller, 'Kaitain Shield Bearer: give a Shield token to a friendly Emperor unit', emperor, {
+          ai: bare?.id ?? self.id,
+          source: self.def.id,
+        })
+        if (pick) g.giveToken(pick, 'Shield')
+      },
+    },
+  },
+  {
+    name: 'Imperial Bladesman',
+    text: '[When a Shield token on this unit is defeated:] Deal 2 damage to an enemy ground unit.',
+    front: {
+      whenShieldDefeated: (g, self) => {
+        const targets = unitIds(g, (u) => g.controller(u) === enemy(g, self) && u.arena === 'ground')
+        const pick = g.chooseOne(self.controller, 'Imperial Bladesman: deal 2 damage to an enemy ground unit', targets, { ai: 'harm', source: self.def.id })
+        if (pick) g.damage(pick, 2, self)
+      },
+    },
+  },
+  {
+    name: 'Captain of the Palace Guard',
+    text: '[Sentinel]\n[Shielded]\n[When Played:] You may defeat Shield tokens on friendly units. For each Shield token defeated this way, deal 2 damage to an enemy ground unit.',
+    front: {
+      whenPlayed: (g, self) => {
+        const shields = () => g.upgrades().filter((u) => u.controller === self.controller && u.unit && g.def(u).token && g.def(u).name === 'Shield')
+        const enemies = () => unitIds(g, (u) => g.controller(u) === enemy(g, self) && u.arena === 'ground')
+        // One at a time, as many as there are. The AI spends its own Shield first, and no more than 2
+        for (let i = 0; enemies().length && shields().length; i++) {
+          const list = shields()
+          const own = list.find((u) => u.unit!.id === self.id) ?? list[0]
+          const pick = g.chooseOne(self.controller, `Captain of the Palace Guard: you may defeat a Shield token on a friendly unit to deal 2 damage to an enemy ground unit`, list.map((u) => u.id), {
+            optional: true,
+            ai: (i < 2 && own?.id) || 'none',
+            source: self.def.id,
+          })
+          if (!pick) return
+          g.defeatUpgrade(pick)
+          const target = g.chooseOne(self.controller, 'Captain of the Palace Guard: deal 2 damage to an enemy ground unit', enemies(), { ai: 'harm', source: self.def.id })
+          if (target) g.damage(target, 2, self)
+        }
+      },
+    },
+  },
+  {
+    name: 'Imperial Escort Shuttle',
+    text: '[Shielded]\nIf damage would be dealt to another friendly [{Emperor}] unit, you may defeat a Shield token on this unit. If you do, prevent that damage.',
+    front: {
+      sharesShield: (g, self, unit) => unit.id !== self.id && g.hasTrait(unit, 'Emperor'),
+    },
+  },
+  {
+    name: 'Wensicia Corrino',
+    subtitle: 'Schemer of the Throne',
+    text: '[When Played:] Deal damage to an enemy unit equal to the number of upgrades on friendly units.',
+    front: {
+      whenPlayed: (g, self) => {
+        const count = g.upgrades().filter((u) => u.controller === self.controller && u.unit).length
+        if (!count) return
+        const targets = unitIds(g, (u) => g.controller(u) === enemy(g, self))
+        const pick = g.chooseOne(self.controller, `Wensicia Corrino: deal ${count} damage to an enemy unit`, targets, { ai: 'harm', source: self.def.id })
+        if (pick) g.damage(pick, count, self)
+      },
+    },
+  },
+  {
+    name: 'Holtzman Barrier',
+    text: "Give a Shield token to a friendly unit. If you don't control an [{Arrakis}] base, give a Shield token to another friendly unit.",
+    front: {
+      play: (g, self) => {
+        const first = g.chooseOne(self.controller, 'Holtzman Barrier: give a Shield token to a friendly unit', friendlyIds(g, self), { ai: 'help', source: self.def.id })
+        if (!first) return
+        g.giveToken(first, 'Shield')
+        if (g.controlsArrakis(self.controller)) return
+        const others = friendlyIds(g, self, (u) => u.id !== first)
+        const second = g.chooseOne(self.controller, 'Holtzman Barrier: give a Shield token to another friendly unit', others, { ai: 'help', source: self.def.id })
+        if (second) g.giveToken(second, 'Shield')
+      },
+    },
+  },
+  {
+    name: 'Ginaz Training',
+    text: 'Attach to a friendly unit.\n[When Played:] Give a Shield token to attached unit.',
+    front: {
+      whenPlayed: (g, self) => {
+        if (self.other && g.unit(self.other)) g.giveToken(self.other, 'Shield')
+      },
+    },
+  },
   {
     name: 'Harkonnen Spice Hoarder',
     text: "[When Played/On Attack:] If you don't control an [{Arrakis}] base, create a Spice token.",
@@ -846,6 +966,21 @@ const dune: CardScript[] = [
       onAttack: (g, self) => {
         const defender = self.attack?.target === 'base' ? undefined : g.unit(self.attack!.target)
         if (defender?.damage && !defender.leader) g.defeat(defender.id, self)
+      },
+    },
+  },
+  {
+    name: 'Sardaukar Caid',
+    text: 'As an additional cost to play this unit, defeat a friendly Spice token.\n[When Played:] You may defeat a unit that costs [#3] or less.',
+    front: {
+      whenPlayed: (g, self) => {
+        const targets = unitIds(g, (u) => g.cost(u) <= 3)
+        const pick = g.chooseOne(self.controller, 'Sardaukar Caid: you may defeat a unit that costs 3 or less', targets, {
+          optional: true,
+          ai: 'harm',
+          source: self.def.id,
+        })
+        if (pick) g.defeat(pick, self)
       },
     },
   },
@@ -1623,17 +1758,27 @@ const dune: CardScript[] = [
   {
     name: 'Princess Irulan',
     subtitle: 'Daughter of the Emperor',
-    text: '[When you play an [{Emperor}] unit:] You may exhaust this leader. If you do, give a Shield token to that unit.',
+    // Was "When you play an Emperor unit: you may exhaust this leader to give it a Shield token"
+    // (74% against the Featured Decks in AI games; this one 61%, 2026-11-12). Paying 1 as an
+    // action gives an opponent the chance to defeat the unit before it is shielded.
+    text: '[Action [[1, Arrow]]:] Give a Shield token to a friendly [{Emperor}] unit.',
     backText: '[When Deployed:] Give a Shield token to a friendly [{Emperor}] unit.\nFriendly [{Emperor}] units with a Shield get [+1/+0].',
     front: {
-      triggersIf: { whenYouPlay: (g, self) => self.otherDef?.type === 'unit' && self.otherDef.traits.includes('Emperor') && g.leaderReady(self.controller) },
-      whenYouPlay: (g, self) => {
-        const p = self.controller
-        if (self.otherDef?.type !== 'unit' || !self.otherDef.traits.includes('Emperor') || !self.other || !g.unit(self.other) || !g.leaderReady(p)) return
-        if (!g.may(p, `Princess Irulan: exhaust this leader to give ${self.otherDef.name} a Shield token?`, { yes: 'Exhaust', no: 'Skip', source: self.def.id })) return
-        g.exhaustLeader(p)
-        g.giveToken(self.other, 'Shield')
-      },
+      actions: [
+        {
+          label: 'give a Shield token to a friendly Emperor unit',
+          resources: 1,
+          exhaust: true,
+          can: (g, self) => friendlyIds(g, self, (u) => g.hasTrait(u, 'Emperor')).length > 0,
+          run: (g, self) => {
+            const ids = friendlyIds(g, self, (u) => g.hasTrait(u, 'Emperor'))
+            // The AI shields an Emperor unit without a Shield token, the dearest first
+            const bare = g.units((u) => ids.includes(u.id) && !g.tokens(u.id, 'Shield')).sort((a, b) => g.cost(b) - g.cost(a))[0]
+            const pick = g.chooseOne(self.controller, 'Princess Irulan: give a Shield token to a friendly Emperor unit', ids, { ai: bare?.id ?? ids[0], source: self.def.id })
+            if (pick) g.giveToken(pick, 'Shield')
+          },
+        },
+      ],
     },
     back: {
       whenDeployed: (g, self) => {
@@ -2223,7 +2368,7 @@ const dune: CardScript[] = [
   },
   {
     name: 'Sardaukar Legion',
-    text: 'As an additional cost to play this unit, defeat a friendly Spice token.\n[When Played:] Search the top 10 cards of your deck for any number of [{Sardaukar}] units and reveal them. You may defeat up to 2 friendly Spice tokens. Play any number of the revealed units with a combined cost of [#3] or less for each Spice token defeated this way, for free, ignoring their additional costs.',
+    text: 'As an additional cost to play this unit, defeat a friendly Spice token.\n[When Played:] Search the top 10 cards of your deck for any number of [{Sardaukar}] units and reveal them. You may defeat up to 2 friendly Spice tokens. Play any number of the revealed units with a combined cost of [#4] or less for each Spice token defeated this way, for free, ignoring their additional costs.',
     front: {
       whenPlayed: (g, self) => {
         const p = self.controller
@@ -2231,11 +2376,13 @@ const dune: CardScript[] = [
         const revealed = top.filter((c) => g.def(c).type === 'unit' && g.hasTrait(c, 'Sardaukar'))
         if (revealed.length) g.reveal(p, revealed.map((c) => c.id), self)
         else g.log('Sardaukar Legion finds no Sardaukar unit', p)
+        // The cost each Spice token buys, as the card says it
+        const per = Number(self.def.text?.match(/combined cost of \[#(\d+)\]/)?.[1] ?? 3)
         if (revealed.length && g.spice(p)) {
-          const counts = Array.from({ length: Math.min(2, g.spice(p)) + 1 }, (_, n) => `${n} (up to ${3 * n} cost)`)
+          const counts = Array.from({ length: Math.min(2, g.spice(p)) + 1 }, (_, n) => `${n} (up to ${per * n} cost)`)
           const spent = g.option(p, 'Sardaukar Legion: defeat how many Spice tokens?', counts, { ai: counts.length - 1, source: self.def.id })
           for (let i = 0; i < spent; i++) g.defeatSpice(p)
-          let budget = 3 * spent
+          let budget = per * spent
           for (;;) {
             const ids = revealed
               .filter((c) => g.def(c).cost <= budget && g.canPlay(p, c.id, { free: true, ignoreAdditional: true }))
@@ -2926,7 +3073,7 @@ const dune: CardScript[] = [
     subtitle: 'Haunted by Dreams',
     text: 'You may look at the top card of your deck at any time.\n[Action [Arrow]:] Discard the top card of your deck. Then, attack with a unit. If it has the same cost as the discarded card, it gets [+2/+0] for this attack.',
     backText:
-      '[Raid 1]\n[On Attack:] Look at the top 3 cards of your deck. Discard 1 of them and put the others back in any order. If the discarded card has an [On Attack] ability, use it as if it were this unit\'s.',
+      "[Raid 1]\n[On Attack:] You may put a card from your discard pile on the bottom of your deck. If it has an [On Attack] ability, use it as if it were this unit's.",
     front: {
       seesTopCard: true,
       actions: [
@@ -2952,25 +3099,24 @@ const dune: CardScript[] = [
       ],
     },
     back: {
+      // Changed 2026-11-12 (was: look at the top 3 cards, discard 1, use its On Attack): the
+      // card his leader side's Action discards can come back to lend its ability
       onAttack: (g, self) => {
         const p = self.controller
-        const top = g.top(p, 3)
-        if (!top.length) return
-        const withAttack = top.find((c) => abilitiesOf(g.def(c), 'front').onAttack)
-        const pick = g.chooseOne(p, 'Paul Atreides: discard 1 of the top 3 cards of your deck', top.map((c) => c.id), {
-          ai: withAttack?.id ?? 'cheap',
+        const discard = g.player(p).discard.map((c) => c.id)
+        // The AI takes back the dearest card with an On Attack ability, or none
+        const withAttack = g
+          .player(p)
+          .discard.filter((c) => abilitiesOf(g.def(c), 'front').onAttack)
+          .sort((a, b) => g.def(b).cost - g.def(a).cost)[0]
+        const pick = g.chooseOne(p, 'Paul Atreides: you may put a card from your discard pile on the bottom of your deck', discard, {
+          optional: true,
+          ai: withAttack?.id ?? 'none',
           source: self.def.id,
         })
         if (!pick) return
         const card = g.card(pick)!
-        g.mill(p, pick)
-        // The others back on top, in the order chosen
-        const rest = top.filter((c) => c.id !== pick)
-        if (rest.length === 2) {
-          const first = g.option(p, 'Paul Atreides: which card goes on top?', rest.map((c) => g.def(c).name), { source: self.def.id })
-          g.toTop(p, rest[1 - first].id)
-          g.toTop(p, rest[first].id)
-        }
+        g.discardToBottom(p, pick)
         const onAttack = abilitiesOf(g.def(card), 'front').onAttack
         if (onAttack) {
           g.log(`Paul Atreides uses ${g.def(card).name}'s On Attack ability`, p)

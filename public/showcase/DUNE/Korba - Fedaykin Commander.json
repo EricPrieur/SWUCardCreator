@@ -12,7 +12,7 @@
   "text": "[When Played/On Attack:] Give an Experience token to each friendly Fremen token.",
   "power": 5,
   "trait": "Fremen, Fedaykin, Official",
-  "number": "161",
+  "number": "167",
   "rarity": "R",
   "unique": true,
   "frameId": "unit-cunning-heroism",

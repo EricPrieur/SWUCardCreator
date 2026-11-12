@@ -13,7 +13,7 @@
   "text": "[On Attack:] Heal 2 damage from a friendly ground unit or your base.",
   "power": 2,
   "trait": "Emperor, Vehicle, Transport",
-  "number": "041",
+  "number": "045",
   "rarity": "C",
   "frameId": "unit-vigilance-heroism-space",
   "setCode": "DUNE",

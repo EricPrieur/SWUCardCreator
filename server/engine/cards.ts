@@ -55,6 +55,7 @@ function addKeyword(keywords: Keywords, word: string) {
     case 'grit':
     case 'saboteur':
     case 'ambush':
+    case 'shielded':
     case 'hidden':
     case 'plot':
     case 'fortify':

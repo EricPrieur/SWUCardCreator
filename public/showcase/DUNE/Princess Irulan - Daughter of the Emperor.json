@@ -9,7 +9,7 @@
   },
   "cost": 5,
   "name": "Princess Irulan",
-  "text": "[When you play an [{Emperor}] unit:] You may exhaust this leader. If you do, give a Shield token to that unit.",
+  "text": "[Action [[1, Arrow]]:] Give a Shield token to a friendly [{Emperor}] unit.",
   "block": "",
   "power": 2,
   "trait": "Emperor, Corrino, Bene Gesserit",

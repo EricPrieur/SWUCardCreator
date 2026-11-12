@@ -12,7 +12,7 @@
   "text": "[On Attack:] Defeat all upgrades on the defending unit.",
   "power": 3,
   "trait": "Atreides, Trooper",
-  "number": "084",
+  "number": "090",
   "rarity": "U",
   "frameId": "unit-command-heroism",
   "setCode": "DUNE",

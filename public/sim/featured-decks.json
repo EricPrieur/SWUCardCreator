@@ -334,5 +334,285 @@
         "count": 3
       }
     ]
+  },
+  {
+    "id": "b57e2bac-19d6-4446-be31-2feb50463c4c",
+    "name": "Irulan Command",
+    "leader": "14f1e472-1d10-42d2-8975-608ab68bf118",
+    "base": "cbfe10ae-229b-44d3-a9a6-b39100d4b8f3#back",
+    "cards": [
+      {
+        "id": "36f390a2-21ac-4b6d-9ba0-9b267caf9a77",
+        "count": 3
+      },
+      {
+        "id": "0b6f8679-86c5-4f73-8559-6e25dced16b3",
+        "count": 3
+      },
+      {
+        "id": "a01f7cf4-6bef-4618-bb73-660324da35d6",
+        "count": 3
+      },
+      {
+        "id": "7e3fc552-6c87-4d05-913f-17f5ab9f2f47",
+        "count": 2
+      },
+      {
+        "id": "e3b76695-9cc3-4451-881b-f147c81b33f7",
+        "count": 3
+      },
+      {
+        "id": "5340e3f4-3941-402c-ae35-7cc97cd0ec57",
+        "count": 2
+      },
+      {
+        "id": "60353644-d070-42b3-b22d-ba4e441f39fb",
+        "count": 3
+      },
+      {
+        "id": "3cc327fb-d62f-446a-9158-32b63493fcc9",
+        "count": 3
+      },
+      {
+        "id": "b0e64845-c74c-42c0-9bcd-c587ed3e33e4",
+        "count": 3
+      },
+      {
+        "id": "9dd7f562-fbca-4c4b-9ee5-e4127996a0b0",
+        "count": 3
+      },
+      {
+        "id": "289c0ad6-7185-44c0-904c-b721af6ee10e",
+        "count": 3
+      },
+      {
+        "id": "7772ea47-94ea-4bc4-a319-f5a23e50fcff",
+        "count": 3
+      },
+      {
+        "id": "87577ef3-b817-4ae7-8b97-3c6d88659254",
+        "count": 2
+      },
+      {
+        "id": "847a25ed-c373-4578-9838-032fe050fe32",
+        "count": 2
+      },
+      {
+        "id": "ee78ea02-432a-47a7-95a7-5bc49ef61f81",
+        "count": 3
+      },
+      {
+        "id": "a5c93f7f-de1c-48d4-b0d8-b350c63e036e",
+        "count": 2
+      },
+      {
+        "id": "4c695697-e0e3-4903-a8d9-fdfcfacf0245",
+        "count": 2
+      },
+      {
+        "id": "4427b72d-eb11-4d7a-8e86-0fa567b45887",
+        "count": 1
+      },
+      {
+        "id": "6c24f2ff-cdc5-4d40-b66b-503e523b5ad1",
+        "count": 2
+      },
+      {
+        "id": "50ddfd6c-0845-40ee-9aaa-31fa2f085950",
+        "count": 2
+      }
+    ]
+  },
+  {
+    "id": "35990ca6-a47f-40cc-a4f3-c111b9e950ca",
+    "name": "Mohiam BG Green",
+    "leader": "ee642423-bbd2-4021-ba64-b40144982363",
+    "base": "003c87be-36d7-4aae-813f-c949e1c29ae1",
+    "cards": [
+      {
+        "id": "60353644-d070-42b3-b22d-ba4e441f39fb",
+        "count": 3
+      },
+      {
+        "id": "bad799dd-a5f5-4d51-a7a6-928bca64ea46",
+        "count": 3
+      },
+      {
+        "id": "34f61fb8-aa97-4191-a378-82d405e530db",
+        "count": 1
+      },
+      {
+        "id": "a4911393-6df8-47d3-a366-b8a3de186499",
+        "count": 3
+      },
+      {
+        "id": "830e1b82-0d4f-47e1-b717-e5743c3ca815",
+        "count": 3
+      },
+      {
+        "id": "f4f2b2ec-4914-4a47-bd86-9c4da3697744",
+        "count": 1
+      },
+      {
+        "id": "3355841f-28ac-4046-a421-abc2b8b8cfb9",
+        "count": 1
+      },
+      {
+        "id": "76df7610-5ba8-4520-be7a-25d2320fef14",
+        "count": 1
+      },
+      {
+        "id": "83aa12f2-2533-43de-8416-029bcbf1f53d",
+        "count": 2
+      },
+      {
+        "id": "5340e3f4-3941-402c-ae35-7cc97cd0ec57",
+        "count": 3
+      },
+      {
+        "id": "eea02b47-ea14-405e-b123-33bccfd3c546",
+        "count": 2
+      },
+      {
+        "id": "3cc327fb-d62f-446a-9158-32b63493fcc9",
+        "count": 2
+      },
+      {
+        "id": "f7e4c8c9-97d7-4912-aad4-44aad461cd29",
+        "count": 2
+      },
+      {
+        "id": "a11b3db0-22ce-4c86-8a19-e7eb86ac884a",
+        "count": 2
+      },
+      {
+        "id": "95717e4a-5015-40f5-8133-026ecc95dc44",
+        "count": 3
+      },
+      {
+        "id": "97c40df3-3fac-4466-8783-7b3a26918f95",
+        "count": 2
+      },
+      {
+        "id": "87577ef3-b817-4ae7-8b97-3c6d88659254",
+        "count": 2
+      },
+      {
+        "id": "ee78ea02-432a-47a7-95a7-5bc49ef61f81",
+        "count": 2
+      },
+      {
+        "id": "4c695697-e0e3-4903-a8d9-fdfcfacf0245",
+        "count": 2
+      },
+      {
+        "id": "a5c93f7f-de1c-48d4-b0d8-b350c63e036e",
+        "count": 2
+      },
+      {
+        "id": "3f411417-15b6-42be-a7a1-e099e654be5e",
+        "count": 2
+      },
+      {
+        "id": "4a4aba7b-326d-4fdd-a304-565bb32e0652",
+        "count": 1
+      },
+      {
+        "id": "50ddfd6c-0845-40ee-9aaa-31fa2f085950",
+        "count": 2
+      },
+      {
+        "id": "85d7f7a4-81b3-4725-8132-ffe4d34b5c7b",
+        "count": 3
+      }
+    ]
+  },
+  {
+    "id": "7057fb95-86d0-4376-aa1b-fc65fcda307e",
+    "name": "Paul Red Aggro",
+    "leader": "8b5de66c-706d-404e-a66a-956fa1697c88",
+    "base": "57e8ef64-ebff-4e73-92ea-9ea72f6624d8",
+    "cards": [
+      {
+        "id": "a01f7cf4-6bef-4618-bb73-660324da35d6",
+        "count": 3
+      },
+      {
+        "id": "ae107fcd-e27d-49b8-95b8-d9d010086222",
+        "count": 3
+      },
+      {
+        "id": "f57c0523-7889-45f4-9a85-83c9dbdd8173",
+        "count": 3
+      },
+      {
+        "id": "2e62adc0-fa78-44fe-8ad8-24eb7397db11",
+        "count": 2
+      },
+      {
+        "id": "680f6509-d960-4bc8-8143-5a83e10962e6",
+        "count": 2
+      },
+      {
+        "id": "921fc6fb-b12b-421d-942a-6ff09e6dd189",
+        "count": 3
+      },
+      {
+        "id": "df991edb-41a1-485e-b3ed-a9553a96f4f3",
+        "count": 2
+      },
+      {
+        "id": "bee6cf10-abef-4eec-9398-c9f79a5ebf7d",
+        "count": 2
+      },
+      {
+        "id": "a94e0500-7d5e-4848-b52a-c62bb03104cd",
+        "count": 3
+      },
+      {
+        "id": "21a01460-8651-41fb-bfb6-d8c836a92162",
+        "count": 3
+      },
+      {
+        "id": "0b72ff5a-bc19-4218-bbfb-c71830007a2c",
+        "count": 3
+      },
+      {
+        "id": "b7d92601-b4fb-4795-ad55-d4c537ccad17",
+        "count": 2
+      },
+      {
+        "id": "545c197a-a169-40f8-a066-7bc6a0e02752",
+        "count": 3
+      },
+      {
+        "id": "d9cd0927-2c13-4cfd-b6d5-6f247e8ef56b",
+        "count": 3
+      },
+      {
+        "id": "650c2968-1ee1-476e-b340-a4d1c8167720",
+        "count": 3
+      },
+      {
+        "id": "13264028-8ef9-4e01-ae64-58dda1d403f2",
+        "count": 3
+      },
+      {
+        "id": "26bb822f-2e58-4918-856a-ff80b4fcef7e",
+        "count": 1
+      },
+      {
+        "id": "647a0827-a307-443d-b941-7e52eed5ed39",
+        "count": 2
+      },
+      {
+        "id": "91c5abf6-6826-4c94-8e07-c2cd9105c9df",
+        "count": 2
+      },
+      {
+        "id": "0fb74fff-fdc6-474a-805a-76ecd8b6b316",
+        "count": 2
+      }
+    ]
   }
 ]

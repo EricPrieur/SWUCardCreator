@@ -1,0 +1,22 @@
+{
+  "hp": 4,
+  "id": "7772ea47-94ea-4bc4-a319-f5a23e50fcff",
+  "art": {
+    "x": -1,
+    "y": 6,
+    "src": "Wensicia Corrino - Schemer of the Throne (art).webp",
+    "zoom": 1
+  },
+  "cost": 4,
+  "name": "Wensicia Corrino",
+  "text": "[When Played:] Deal damage to an enemy unit equal to the number of upgrades on friendly units.",
+  "power": 4,
+  "trait": "Emperor, Corrino, Official",
+  "number": "191",
+  "rarity": "R",
+  "unique": true,
+  "frameId": "unit-villainy",
+  "setCode": "DUNE",
+  "language": "EN",
+  "subtitle": "Schemer of the Throne"
+}

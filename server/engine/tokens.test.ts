@@ -48,6 +48,7 @@ const defs: CardDef[] = [
   card('desertPower', { ...scripted('Desert Power'), type: 'event', cost: 4, arena: undefined }),
   card('runner', { ...scripted('Spice Runner'), cost: 1, power: 2, hp: 1 }),
   card('executioner', { ...scripted('Sardaukar Executioner'), cost: 4, power: 5, hp: 4, traits: ['Sardaukar', 'Trooper'] }),
+  card('caid', { ...scripted('Sardaukar Caid'), cost: 4, power: 5, hp: 4, traits: ['Sardaukar', 'Trooper'] }),
   card('burseg', { ...scripted('Sardaukar Burseg'), cost: 5, power: 4, hp: 7, traits: ['Sardaukar', 'Official'] }),
   card('falseColors', { ...scripted('False Colors'), type: 'event', cost: 2, arena: undefined, traits: ['Sardaukar', 'Tactic'] }),
   card('terror', { ...scripted("The Emperor's Terror"), type: 'event', cost: 6, arena: undefined, traits: ['Emperor', 'Tactic'] }),
@@ -87,6 +88,19 @@ const defs: CardDef[] = [
   card('chaniUnit', { cost: 3, power: 3, hp: 5, unique: true, traits: ['Fremen'] }),
   card('aramsham', { ...scriptedBy('Captain Aramsham', 'Sardaukar Hunter'), cost: 4, power: 4, hp: 5, unique: true, traits: ['Emperor', 'Sardaukar', 'Official'] }),
   card('ambusher', { cost: 3, power: 3, hp: 3, text: '[Ambush]' }),
+  card('shielded', { cost: 3, power: 3, hp: 3, text: '[Sentinel]\n[Shielded]' }),
+  card('irulanLeader', { ...scriptedBy('Princess Irulan', 'Daughter of the Emperor'), type: 'leader', cost: 5, traits: ['Emperor'], unit: { power: 2, hp: 6, arena: 'ground', keywords: {} } }),
+  card('paulLeader', { ...scriptedBy('Paul Atreides', 'Haunted by Dreams'), type: 'leader', cost: 4, traits: ['Atreides'], unit: { power: 2, hp: 5, arena: 'ground', keywords: { raid: 1 } } }),
+  card('heirPinger', { ...scriptedBy('Paul Atreides', 'Heir to House Atreides'), cost: 2, power: 3, hp: 3, unique: true, traits: ['Atreides'] }),
+  card('emperorGuard', { cost: 2, power: 2, hp: 3, traits: ['Emperor', 'Trooper'] }),
+  card('cadet', { ...scripted('Kaitain Cadet'), cost: 1, power: 1, hp: 2, traits: ['Emperor', 'Trooper'] }),
+  card('bearer', { ...scripted('Kaitain Shield Bearer'), cost: 2, power: 2, hp: 2, traits: ['Emperor', 'Trooper'] }),
+  card('bladesman', { ...scripted('Imperial Bladesman'), cost: 3, power: 3, hp: 4, traits: ['Emperor', 'Trooper'] }),
+  card('captain', { ...scripted('Captain of the Palace Guard'), cost: 5, power: 4, hp: 5, traits: ['Emperor', 'Trooper'] }),
+  card('escort', { ...scripted('Imperial Escort Shuttle'), cost: 3, power: 2, hp: 4, arena: 'space', traits: ['Emperor', 'Vehicle', 'Transport'] }),
+  card('wensicia', { ...scriptedBy('Wensicia Corrino', 'Schemer of the Throne'), cost: 4, power: 4, hp: 4, unique: true, traits: ['Emperor', 'Corrino', 'Official'] }),
+  card('barrier', { ...scripted('Holtzman Barrier'), type: 'event', cost: 1, arena: undefined, aspects: ['Vigilance'], traits: ['Tactic'] }),
+  card('ginaz', { ...scripted('Ginaz Training'), type: 'upgrade', cost: 2, power: 1, hp: 1, arena: undefined, aspects: ['Vigilance', 'Command'], traits: ['Learned'] }),
   card('dart', { ...scripted('Stunner Dart'), type: 'event', cost: 1, arena: undefined, aspects: ['Aggression'], traits: ['Trick'] }),
   card('raid', { ...scripted("Smugglers' Raid"), type: 'event', cost: 2, arena: undefined, aspects: ['Cunning'], traits: ['Trick'] }),
   card('goBetween', { ...scripted("Tuek's Go-Between"), cost: 3, power: 2, hp: 3, traits: ['Underworld'] }),
@@ -397,22 +411,35 @@ test("Shaddam IV's Action: a Sardaukar unit with no Spice token costs only its c
   assert.equal(state.players[0].resources.filter((r) => !r.exhausted).length, 0)
 })
 
-test('Sardaukar Legion: up to 2 Spice tokens, each for 3 cost of revealed Sardaukar units played free', () => {
+test('Sardaukar Legion: up to 2 Spice tokens, each for 4 cost of revealed Sardaukar units played free', () => {
   let state = table({ hand0: ['legion'], deck0: ['burseg', 'executioner', 'trooper', 'bashar'] })
   state.players[0].resources = Array.from({ length: 7 }, (_, i) => ({ card: { id: `r${i}`, def: 'trooper' }, exhausted: false }))
   const token = state.players[0].spice[0]
   state.players[0].spice = [0, 1, 2, 3].map((i) => ({ ...token, id: `spice${i}` }))
   state = act(state, 0, { type: 'play', card: 'h0' })
   // One spent on its additional cost: 3 left, at most 2 of them for the units
-  assert.deepEqual(state.prompt!.options.map((o) => o.label), ['0 (up to 0 cost)', '1 (up to 3 cost)', '2 (up to 6 cost)'])
+  assert.deepEqual(state.prompt!.options.map((o) => o.label), ['0 (up to 0 cost)', '1 (up to 4 cost)', '2 (up to 8 cost)'])
   state = answer(state, '2')
   state = answer(state, 'd0')
   assert.equal(state.players[0].spice.length, 1)
-  // 1 cost left: neither the Executioner nor the Bashar, the cards searched only shown
-  assert.deepEqual(state.prompt!.options, [])
+  // 3 cost left: the Bashar still, not the Executioner
+  assert.deepEqual(state.prompt!.options.map((o) => o.id), ['d3'])
   state = answer(state)
   assert.equal(state.prompt, null)
   assert.deepEqual(state.players[0].units.map((u) => u.def).sort(), ['burseg', 'legion'])
+})
+
+test('Sardaukar Caid: a Spice token, then may defeat a unit that costs 3 or less', () => {
+  let state = table({ hand0: ['caid'], units1: ['bashar', 'executioner'] })
+  state.players[0].resources = Array.from({ length: 4 }, (_, i) => ({ card: { id: `r${i}`, def: 'trooper' }, exhausted: false }))
+  const spice = state.players[0].spice.length
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  assert.equal(state.players[0].spice.length, spice - 1, 'its additional cost')
+  // The Bashar (3), not the Executioner (4)
+  const bashar = state.players[1].units.find((u) => u.def === 'bashar')!.id
+  assert.deepEqual(state.prompt!.options.map((o) => o.id), [bashar])
+  state = answer(state, bashar)
+  assert.deepEqual(state.players[1].units.map((u) => u.def), ['executioner'])
 })
 
 test('Sardaukar Troop Carrier: the next Trooper unit played this phase costs 1 less, and each discount waiting adds up', () => {
@@ -568,6 +595,14 @@ test('Kaitain Honor Guard: a Sentinel, shielded off Arrakis only', () => {
     assert.deepEqual(shields(state, 0), [shielded], base)
     assert.equal(state.defs.honorGuard.keywords.sentinel, true)
   }
+})
+
+test('Shielded: a Shield token as the unit is played', () => {
+  assert.equal(readText('[Shielded]').keywords.shielded, true)
+  let state = table({ hand0: ['shielded'] })
+  state = settle(act(state, 0, { type: 'play', card: 'h0' }))
+  assert.deepEqual(shields(state, 0), [1])
+  assert.equal(keywordsOf(state, state.players[0].units[0]).sentinel, true)
 })
 
 test('Ginaz Shield Duelist: shielded off Arrakis before its Ambush attack, which it survives', () => {
@@ -1187,4 +1222,143 @@ test('Weapons Courier: an Experience token to a friendly ground unit, not a spac
   state = settle(act(table({ hand0: ['courier'] }), 0, { type: 'play', card: 'h0' }))
   assert.equal(state.prompt, null)
   assert.equal(state.players[0].units.length, 1, 'only the Courier')
+})
+
+// --- Irulan's Emperor units and shield cards ---
+const shieldOf = (owner: PlayerId, id = 'sh') => ({ id, def: 'token-shield', owner })
+const unitOf = (state: GameState, def: string) => [...state.players[0].units, ...state.players[1].units].find((u) => u.def === def)!
+const pickBy = (state: GameState, label: RegExp) => state.prompt!.options.find((o) => label.test(o.label ?? ''))!.id
+
+test('Holtzman Barrier: one Shield token on Arrakis, two on different units off it; Kaitain Cadet gets +2/+0 while shielded', () => {
+  let state = table({ hand0: ['barrier'], units0: ['cadet', 'emperorGuard'] })
+  state = settle(act(state, 0, { type: 'play', card: 'h0' }))
+  assert.equal(shields(state, 0).reduce((a, b) => a + b), 1, 'on Arrakis')
+  state = table({ base0: 'caladan', hand0: ['barrier'], units0: ['cadet', 'emperorGuard'] })
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  state = answer(state, 'u00')
+  assert.ok(!state.prompt!.options.some((o) => o.id === 'u00'), 'another unit')
+  state = answer(state, 'u01')
+  assert.deepEqual(shields(state, 0), [1, 1])
+  assert.equal(powerOf(state, unitOf(state, 'cadet')), 3)
+})
+
+test('Kaitain Shield Bearer: a Shield token to a friendly Emperor unit, itself included', () => {
+  let state = table({ hand0: ['bearer'], units0: ['emperorGuard', 'trooper'] })
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  assert.deepEqual(state.prompt!.options.map((o) => o.id).sort(), ['h0', 'u00'])
+  state = answer(state, 'h0')
+  assert.equal(unitOf(state, 'bearer').upgrades.length, 1)
+})
+
+test('Imperial Bladesman: 2 damage to an enemy ground unit when a Shield token on it is defeated', () => {
+  let state = table({ units0: ['bladesman'], units1: ['big'] })
+  state.players[0].units[0].upgrades = [shieldOf(0)]
+  state = settle(act(state, 0, { type: 'attack', attacker: 'u00', target: 'u10' }))
+  assert.equal(unitOf(state, 'bladesman').damage, 0, 'the Shield took the damage back')
+  assert.equal(state.players[1].units.length, 0, 'the big one: 3 combat damage, then 2')
+})
+
+test('Captain of the Palace Guard: Shielded, then up to 2 Shield tokens spent for 2 damage each', () => {
+  let state = table({ hand0: ['captain'], units0: ['emperorGuard'], units1: ['big', 'trooper'] })
+  state.players[0].units[0].upgrades = [shieldOf(0)]
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  state = answer(state, pickBy(state, /Shielded/))
+  assert.equal(keywordsOf(state, unitOf(state, 'captain')).sentinel, true)
+  assert.equal(state.prompt!.options.filter((o) => o.id !== 'none').length, 2, 'its own Shield and the guard')
+  state = answer(state, 'sh')
+  state = answer(state, 'u10')
+  state = answer(state, state.prompt!.options.find((o) => o.id !== 'none')!.id)
+  state = answer(state, 'u10')
+  assert.equal(unitOf(state, 'big').damage, 4)
+  assert.deepEqual(shields(state, 0), [0, 0])
+  assert.ok(!state.prompt, 'no third')
+})
+
+test('Imperial Escort Shuttle: its Shield token prevents damage to another friendly Emperor unit', () => {
+  let state = table({ units0: ['escort', 'emperorGuard', 'trooper'], units1: ['big'] })
+  state.players[0].units[0].arena = 'space'
+  state.players[0].units[0].upgrades = [shieldOf(0)]
+  state = act(state, 0, { type: 'attack', attacker: 'u01', target: 'u10' })
+  assert.match(state.prompt!.text, /Imperial Escort Shuttle/)
+  state = answer(state, 'yes')
+  assert.equal(unitOf(state, 'emperorGuard').damage, 0)
+  assert.deepEqual(shields(state, 0), [0, 0, 0])
+  // Not for a unit that isn't an Emperor unit
+  state = table({ units0: ['escort', 'trooper'], units1: ['big'] })
+  state.players[0].units[0].upgrades = [shieldOf(0)]
+  state = act(state, 0, { type: 'attack', attacker: 'u01', target: 'u10' })
+  assert.ok(!state.prompt)
+  assert.equal(state.players[0].units.length, 1)
+})
+
+test('Wensicia Corrino: damage equal to the number of upgrades on friendly units', () => {
+  let state = table({ hand0: ['wensicia'], units0: ['emperorGuard'], units1: ['big'] })
+  state.players[0].units[0].upgrades = [shieldOf(0), { id: 'k0', def: 'knife', owner: 0 }]
+  state = settle(act(state, 0, { type: 'play', card: 'h0' }))
+  assert.equal(unitOf(state, 'big').damage, 2)
+})
+
+test('Ginaz Training: +1/+1 and a Shield token on the unit', () => {
+  let state = table({ hand0: ['ginaz'], units0: ['trooper'] })
+  state = settle(act(state, 0, { type: 'play', card: 'h0', attachTo: 'u00' }))
+  const unit = unitOf(state, 'trooper')
+  assert.deepEqual(unit.upgrades.map((u) => state.defs[u.def].name).sort(), ['Ginaz Training', 'Shield'])
+  assert.equal(powerOf(state, unit), 3)
+})
+
+test('Princess Irulan: Action [1, exhaust], a Shield token to a friendly Emperor unit', () => {
+  let state = table({ units0: ['trooper', 'emperorGuard'] })
+  state.players[0].leader.def = 'irulanLeader'
+  const ready = state.players[0].resources.filter((r) => !r.exhausted).length
+  state = settle(act(state, 0, { type: 'ability', source: 'leader', index: 0 }))
+  assert.deepEqual(shields(state, 0), [0, 1], 'the Emperor unit, not the other')
+  assert.equal(state.players[0].leader.exhausted, true)
+  assert.equal(state.players[0].resources.filter((r) => !r.exhausted).length, ready - 1)
+})
+
+test('The AI discards so as to keep its best play now and next round: a 5-cost card on 2 resources, not its 2-drop', () => {
+  const initiate = card('initiate', { ...scripted('Bene Gesserit Initiate'), cost: 2, power: 2, hp: 1, traits: ['Bene Gesserit'] })
+  let state = table({ hand0: ['initiate'] })
+  state.defs.initiate = initiate
+  state.players[1].hand = [{ id: 'x0', def: 'big' }, { id: 'x1', def: 'guard' }, { id: 'x2', def: 'trooper' }]
+  state.players[1].resources = state.players[1].resources.slice(0, 2)
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  while (state.prompt && state.prompt.player === 0) state = answer(state, state.prompt.options[0].id)
+  assert.equal(state.prompt?.player, 1)
+  state = act(state, 1, chooseAction(state, 1)!)
+  assert.deepEqual(state.players[1].hand.map((c) => c.def).sort(), ['guard', 'trooper'])
+})
+
+test("Paul Atreides' unit side: a card from the discard pile to the bottom of the deck, its On Attack used as his", () => {
+  let state = table({ units1: ['trooper'] })
+  state.players[0].leader.def = 'paulLeader'
+  state.players[0].discard = [{ id: 'x0', def: 'big' }, { id: 'x1', def: 'sandwalker' }]
+  state = settle(act(state, 0, { type: 'deploy' }))
+  const paul = state.players[0].units.find((u) => u.leader)!
+  paul.exhausted = false
+  state.active = 0
+  state = act(state, 0, { type: 'attack', attacker: paul.id, target: 'base' })
+  assert.match(state.prompt!.text, /discard pile on the bottom/)
+  state = answer(state, 'x1')
+  // The Sandwalker's On Attack: exhaust an enemy ground unit that costs 3 or less
+  state = answer(state, 'u10')
+  assert.equal(state.players[1].units[0].exhausted, true)
+  assert.deepEqual(state.players[0].discard.map((c) => c.id), ['x0'])
+  assert.equal(state.players[0].deck.at(-1)!.id, 'x1')
+})
+
+test('Paul Atreides, Heir: choose an enemy unit, reveal the top card; same cost, 1 damage to that unit or a base', () => {
+  let state = table({ units0: ['heirPinger'], units1: ['trooper', 'emperorGuard'], deck0: ['emperorGuard', 'big'] })
+  state = act(state, 0, { type: 'attack', attacker: 'u00', target: 'base' })
+  assert.deepEqual(state.prompt!.options.map((o) => o.id), ['u10', 'u11'], 'any enemy unit, not only the defender')
+  state = answer(state, 'u11')
+  assert.ok(state.log.some((l) => /reveals emperorGuard/.test(l.text)))
+  state = answer(state, 'base1')
+  assert.equal(state.players[1].base.damage, 3 + 1)
+  assert.equal(state.players[0].deck[0].def, 'emperorGuard', 'the card stays on top')
+  // No match: no damage
+  state = table({ units0: ['heirPinger'], units1: ['trooper'], deck0: ['big'] })
+  state = settle(act(state, 0, { type: 'attack', attacker: 'u00', target: 'base' }))
+  assert.equal(state.players[1].base.damage, 3)
+  assert.equal(state.players[1].units[0].damage, 0)
 })

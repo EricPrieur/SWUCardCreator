@@ -3173,6 +3173,16 @@ input.picker-button::placeholder {
   border-color: var(--sand);
 }
 
+/* A public card's button reads "Public", and "Make private" under the mouse or keyboard */
+.public-button .public-undo,
+.public-button:is(:hover, :focus-visible):not(:disabled) .public-now {
+  display: none;
+}
+
+.public-button:is(:hover, :focus-visible):not(:disabled) .public-undo {
+  display: inline;
+}
+
 .public-button:disabled {
   opacity: 0.6;
   cursor: default;

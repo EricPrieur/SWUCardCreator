@@ -18,7 +18,7 @@
   "name": "Muad'Dib's Jihad",
   "text": "Defeat each unit and each Spice token. If you control an [{Arrakis}] base, create a Fremen token for each friendly non-token [{Fremen}] unit defeated this way.",
   "trait": "Fremen, Tactic",
-  "number": "028",
+  "number": "029",
   "rarity": "L",
   "frameId": "event-aggression-cunning-heroism",
   "setCode": "DUNE",

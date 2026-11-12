@@ -1,0 +1,20 @@
+{
+  "hp": 4,
+  "id": "66983ec9-cf6c-4f55-85e8-09bfa1bdb6d2",
+  "art": {
+    "x": -1,
+    "y": 5,
+    "src": "Sardaukar Caid (art).webp",
+    "zoom": 0.9
+  },
+  "cost": 4,
+  "name": "Sardaukar Caid",
+  "text": "As an additional cost to play this unit, defeat a friendly Spice token.\n[When Played:] You may defeat a unit that costs [#3] or less.",
+  "power": 5,
+  "trait": "Emperor, Sardaukar, Trooper",
+  "number": "037",
+  "rarity": "U",
+  "frameId": "unit-vigilance-villainy",
+  "setCode": "DUNE",
+  "language": "EN"
+}

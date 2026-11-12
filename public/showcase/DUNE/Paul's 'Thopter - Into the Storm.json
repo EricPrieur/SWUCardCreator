@@ -12,7 +12,7 @@
   "text": "[When Defeated:] You may play an [{Atreides}] ground unit that costs [#2] or less from your discard pile for free.",
   "power": 2,
   "trait": "Atreides, Vehicle, Fighter",
-  "number": "081",
+  "number": "087",
   "rarity": "R",
   "unique": true,
   "frameId": "unit-command-heroism-space",

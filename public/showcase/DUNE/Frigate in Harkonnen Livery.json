@@ -12,7 +12,7 @@
   "text": "[When Played:] Ready a friendly ground [{Trooper}] unit. It gets [+2/+0] for this phase.",
   "power": 4,
   "trait": "Emperor, Harkonnen, Vehicle, Capital Ship",
-  "number": "183",
+  "number": "192",
   "rarity": "U",
   "frameId": "unit-villainy-space",
   "setCode": "DUNE",

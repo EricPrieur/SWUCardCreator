@@ -1,0 +1,21 @@
+{
+  "hp": 4,
+  "id": "3cc327fb-d62f-446a-9158-32b63493fcc9",
+  "art": {
+    "x": 2,
+    "y": 0,
+    "src": "Imperial Escort Shuttle (art).webp",
+    "zoom": 0.9,
+    "rotate": -19
+  },
+  "cost": 3,
+  "name": "Imperial Escort Shuttle",
+  "text": "[Shielded]\nIf damage would be dealt to another friendly [{Emperor}] unit, you may defeat a Shield token on this unit. If you do, prevent that damage.",
+  "power": 2,
+  "trait": "Emperor, Vehicle, Transport",
+  "number": "190",
+  "rarity": "U",
+  "frameId": "unit-villainy-space",
+  "setCode": "DUNE",
+  "language": "EN"
+}

@@ -1,0 +1,20 @@
+{
+  "hp": 5,
+  "id": "ee78ea02-432a-47a7-95a7-5bc49ef61f81",
+  "art": {
+    "x": -7,
+    "y": 19,
+    "src": "Captain of the Palace Guard (art).webp",
+    "zoom": 1.1
+  },
+  "cost": 5,
+  "name": "Captain of the Palace Guard",
+  "text": "[Sentinel]\n[Shielded]\n[When Played:] You may defeat Shield tokens on friendly units. For each Shield token defeated this way, deal 2 damage to an enemy ground unit.",
+  "power": 4,
+  "trait": "Emperor, Trooper",
+  "number": "038",
+  "rarity": "U",
+  "frameId": "unit-vigilance-villainy",
+  "setCode": "DUNE",
+  "language": "EN"
+}

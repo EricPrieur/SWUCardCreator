@@ -13,6 +13,8 @@ import type { Action, CardDef, GameState, PlayerId, Prompt, UnitState } from './
 export type Weighed = { action: Action; gain: number; rank?: number }
 export function chooseAction(state: GameState, p: PlayerId, why?: Weighed[]): Action | undefined {
   if (state.prompt) return state.prompt.player === p ? bestAnswer(state, p) : undefined
+  // Pressure is judged on the board as it is, not on each move played out
+  pressed[p] = underPressure(state, p)
   const actions = legalActions(state, p)
   if (!actions.length) return undefined
   const player = state.players[p]
@@ -70,7 +72,15 @@ export function chooseAction(state: GameState, p: PlayerId, why?: Weighed[]): Ac
     why?.push({ action: win.move, gain: Math.round((win.single - evaluate(state, p)) * 100) / 100 })
     return win.move
   }
-  const done = actions.find((a) => a.type === 'initiative') ?? { type: 'pass' }
+  const ending = actions.find((a) => a.type === 'initiative') ?? { type: 'pass' }
+  // Rather than end its turn with resources enough for a card ready and no card in hand it can
+  // play, it digs for one with a Spice token it keeps, unless a card it can play this round or
+  // the next will spend that token (a Sardaukar unit's additional cost)
+  const dig = actions.find((a) => a.type === 'ability' && spice.has(a.source))
+  const canPlay = actions.some((a) => a.type === 'play' && player.hand.some((c) => c.id === a.card))
+  const ready = player.resources.filter((r) => !r.exhausted).length
+  const digs = dig && !canPlay && ready >= DIG_READY && player.spice.length > spiceKept(state, p) && state.phase === 'action'
+  const done: Action = digs ? dig : ending
   // Then its most promising moves again, each after the opponent's best reply, and passing
   // the same way, so as not to leave a unit open to an easy attack. A follow-up attack it
   // planned keeps its worth. Short of time, it goes by the first look.
@@ -195,6 +205,40 @@ const SPICE_KEPT_WORTH = 1.5
 // What each resource is worth more, up to those its plan aims for (a resource sooner is a turn
 // gained: CHOAM Dividend for one Spice token, three turns in)
 const RAMP = 2.5
+// What its resources are worth more than one each, by how much sooner each makes its plays.
+// Up to its leader's deploy cost, while the leader isn't deployed, a resource is a turn gained
+// for the leader and the curve, the first ones most (CHOAM Dividend on turn 2 is worth more than
+// a 3-cost unit). Past that, still undeployed, a little toward its plan; deployed, only toward
+// the dearest card in its hand. (Deploying needs the resources, so the worth they had before
+// it is still counted after.)
+const RAMP_EARLY = 10
+const RAMP_EARLY_UPTO = 4
+const RAMP_LEADER = 6
+const RAMP_LATE = 1
+function rampWorth(state: GameState, p: PlayerId) {
+  const player = state.players[p]
+  const plan = deckPlan(state, p)
+  const have = player.resources.length
+  const early = Math.min(have, RAMP_EARLY_UPTO, plan.leader)
+  const toLeader = Math.min(have, plan.leader) - early
+  const past = Math.max(0, have - plan.leader)
+  const dearest = Math.max(0, ...player.hand.map((c) => playCost(state, p, state.defs[c.def])))
+  const later = player.leader.deployed ? Math.min(past, Math.max(0, dearest - plan.leader)) * RAMP_LATE : Math.min(past, Math.max(0, plan.target - plan.leader)) * RAMP
+  return early * RAMP_EARLY + toLeader * (pressed[p] ? RAMP : RAMP_LEADER) + later
+}
+// Under pressure: the opponent's units outpower its own by this much, or its base is down to
+// half its health. Ramping further then gives up the board, so only the first ramp counts in full.
+const PRESSURE_POWER = 3
+const pressed: Record<PlayerId, boolean> = { 0: false, 1: false }
+function underPressure(state: GameState, p: PlayerId) {
+  const foe = p === 0 ? 1 : 0
+  const power = (q: PlayerId) => state.players[q].units.reduce((sum, u) => sum + powerOf(state, u), 0)
+  const base = state.players[p].base
+  const hp = state.defs[base.def].hp
+  return power(foe) - power(p) >= PRESSURE_POWER || base.damage * 2 >= hp
+}
+// It digs with a Spice token it keeps only with this many resources ready, for the card it finds
+const DIG_READY = 2
 // The Spice tokens it keeps for the cards in its hand it can pay for this round or the next
 function spiceKept(state: GameState, p: PlayerId) {
   const player = state.players[p]
@@ -239,6 +283,9 @@ function resourcePicks(state: GameState, p: PlayerId, count: number) {
   const price = (id: string) => playCost(state, p, state.defs[player.hand.find((c) => c.id === id)!.def])
   const rank = (id: string) => {
     const cost = price(id)
+    // A card that ramps (CHOAM Dividend) once its leader is deployed: a resource and no more
+    const d = state.defs[player.hand.find((c) => c.id === id)!.def]
+    if (player.leader.deployed && /put this event into play as a resource/i.test(d.text ?? '')) return 4000
     if (cost > plan.target) return 3000 + cost
     if (cost > soon && cost < plan.target - 1) return 2000 + cost
     if (cost <= soon) return 1000 - cost
@@ -353,11 +400,10 @@ function side(state: GameState, p: PlayerId, own = false) {
   let score = left + Math.max(0, 10 - left) * 0.6
   for (const unit of player.units) score += unitWorth(state, unit, blocked(state, p, unit))
   const kept = own ? Math.min(player.spice.length, spiceKept(state, p)) : 0
-  const short = own ? Math.min(player.resources.length, deckPlan(state, p).target) : 0
   score +=
     player.hand.length * 1.5 +
     player.resources.length +
-    RAMP * short +
+    (own ? rampWorth(state, p) : 0) +
     kept * SPICE_KEPT_WORTH +
     (player.spice.length - kept) * spiceWorth(state, p)
   // A Fortification keeps giving while its base stands
@@ -415,6 +461,27 @@ function unitWorth(state: GameState, unit: UnitState, isBlocked = false) {
   return worth
 }
 
+// The cards of a hand in the order to give them up (discard, put away): it keeps the best card
+// it can play now and the best it can play next round, so a discard on turn 1 doesn't take its
+// only early play. Of the rest, the cheapest goes first: a big card is still to come, a small
+// one has had its moment. Its kept cards go last, the one for next round before the one for now.
+function discardOrder(state: GameState, p: PlayerId, ids: string[]) {
+  const player = state.players[p]
+  const now = player.resources.filter((r) => !r.exhausted).length
+  const next = player.resources.length + 1
+  const cost = (id: string) => {
+    const card = player.hand.find((c) => c.id === id)
+    return card ? playCost(state, p, state.defs[card.def]) : Infinity
+  }
+  const dearestUpTo = (most: number, not?: string) =>
+    ids.filter((id) => id !== not && cost(id) <= most).sort((a, b) => cost(b) - cost(a))[0]
+  const keepNow = dearestUpTo(now)
+  const keepNext = dearestUpTo(next, keepNow)
+  const kept = [keepNext, keepNow].filter((id): id is string => id !== undefined)
+  const rest = ids.filter((id) => !kept.includes(id)).sort((a, b) => cost(a) - cost(b))
+  return [...rest, ...kept]
+}
+
 // Answering an ability's question, as its script hints: 'harm' picks what hurts the opponent
 // most, 'help' what helps itself, 'cheap' its cheapest cards, 'best' the dearest card it can
 // soon pay for, an option's id that option, 'none' nothing. Anything else picks as little as it
@@ -451,6 +518,7 @@ function quickAnswer(state: GameState, p: PlayerId): Action {
   if (prompt.ai === 'harm') ranked = ids.filter((id) => worth(id) > 0).sort((a, b) => worth(b) - worth(a))
   else if (prompt.ai === 'help') ranked = ids.filter((id) => worth(id) < 0).sort((a, b) => worth(a) - worth(b))
   else if (prompt.ai === 'cheap') ranked = [...ids].sort((a, b) => cardCost(a) - cardCost(b))
+  else if (prompt.ai === 'discard') ranked = discardOrder(state, p, ids)
   else if (prompt.ai === 'best') {
     const soon = state.players[p].resources.length + 1
     ranked = [...ids].sort((a, b) => {

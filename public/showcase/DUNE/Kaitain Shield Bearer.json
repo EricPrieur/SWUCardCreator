@@ -1,0 +1,20 @@
+{
+  "hp": 2,
+  "id": "830e1b82-0d4f-47e1-b717-e5743c3ca815",
+  "art": {
+    "x": 0,
+    "y": -10,
+    "src": "Kaitain Shield Bearer (art).webp",
+    "zoom": 1.1
+  },
+  "cost": 2,
+  "name": "Kaitain Shield Bearer",
+  "text": "[When Played:] Give a Shield token to a friendly [{Emperor}] unit.",
+  "power": 2,
+  "trait": "Emperor, Trooper",
+  "number": "052",
+  "rarity": "C",
+  "frameId": "unit-vigilance",
+  "setCode": "DUNE",
+  "language": "EN"
+}

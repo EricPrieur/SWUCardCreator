@@ -1,5 +1,5 @@
 {
-  "hp": 3,
+  "hp": 4,
   "id": "9f59a5c3-b53d-492a-8bef-dd80cbc56c45",
   "art": {
     "x": 1,
@@ -12,7 +12,7 @@
   "text": "As an additional cost to play this unit, defeat a friendly Spice token.",
   "power": 4,
   "trait": "Emperor, Sardaukar, Trooper",
-  "number": "066",
+  "number": "072",
   "rarity": "C",
   "frameId": "unit-command-villainy",
   "setCode": "DUNE",

@@ -1,0 +1,20 @@
+{
+  "hp": 1,
+  "id": "663f286d-68e9-4d15-9e4e-eba8cba108f3",
+  "art": {
+    "x": 3,
+    "y": -13,
+    "src": "Ginaz Training (art).webp",
+    "zoom": 1
+  },
+  "cost": 2,
+  "name": "Ginaz Training",
+  "text": "Attach to a friendly unit.\n[When Played:] Give a Shield token to attached unit.",
+  "power": 1,
+  "trait": "Learned",
+  "number": "024",
+  "rarity": "C",
+  "frameId": "upgrade-vigilance-command",
+  "setCode": "DUNE",
+  "language": "EN"
+}

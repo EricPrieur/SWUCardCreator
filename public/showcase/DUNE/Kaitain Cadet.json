@@ -1,0 +1,20 @@
+{
+  "hp": 2,
+  "id": "36f390a2-21ac-4b6d-9ba0-9b267caf9a77",
+  "art": {
+    "x": 0,
+    "y": 10,
+    "src": "Kaitain Cadet (art).webp",
+    "zoom": 0.9
+  },
+  "cost": 1,
+  "name": "Kaitain Cadet",
+  "text": "While this unit has a Shield token, it gets [+2/+0].",
+  "power": 1,
+  "trait": "Emperor, Trooper",
+  "number": "189",
+  "rarity": "C",
+  "frameId": "unit-villainy",
+  "setCode": "DUNE",
+  "language": "EN"
+}

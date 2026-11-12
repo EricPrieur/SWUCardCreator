@@ -13,7 +13,7 @@
   "text": "Attach to a non-[{Vehicle}] unit.\nAttached unit gains [Sentinel] and: \"[When Defeated:] Create a Fremen token.\"",
   "power": 1,
   "trait": "Fremen",
-  "number": "165",
+  "number": "171",
   "rarity": "U",
   "unique": false,
   "frameId": "upgrade-cunning-heroism",

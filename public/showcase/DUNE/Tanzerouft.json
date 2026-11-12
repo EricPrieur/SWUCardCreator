@@ -11,7 +11,7 @@
   "name": "Tanzerouft",
   "text": "Give a Weakness token to an enemy unit. If you control a [{Fremen}] unit, give a Weakness token to an enemy unit.",
   "trait": "Fremen",
-  "number": "044",
+  "number": "048",
   "rarity": "C",
   "frameId": "event-vigilance-heroism",
   "setCode": "DUNE",

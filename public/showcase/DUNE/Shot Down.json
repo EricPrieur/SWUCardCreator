@@ -11,7 +11,7 @@
   "name": "Shot Down",
   "text": "Defeat a non-[{Capital Ship}] space unit.",
   "trait": "Tactic",
-  "number": "055",
+  "number": "061",
   "rarity": "C",
   "frameId": "event-vigilance",
   "setCode": "DUNE",

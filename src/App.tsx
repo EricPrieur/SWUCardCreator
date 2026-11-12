@@ -590,7 +590,18 @@ function ShowroomCard(props: {
             }
             onClick={() => onPublic(!published)}
           >
-            {publishing ? 'Drawing…' : 'Public'}
+            {/* Says what the card is now, and on hover what a click does: a lone "Public" read as a
+                caption, so private cards looked public */}
+            {publishing ? (
+              'Drawing…'
+            ) : published ? (
+              <>
+                <span className="public-now">Public</span>
+                <span className="public-undo">Make private</span>
+              </>
+            ) : (
+              'Make public'
+            )}
           </button>
         )}
       </div>

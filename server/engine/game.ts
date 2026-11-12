@@ -314,6 +314,7 @@ function createUnitToken(state: GameState, p: PlayerId, name: string) {
   }
   state.players[p].units.push(unit)
   log(state, `${state.players[p].name} creates a ${name} token`, p)
+  queueShielded(state, p, unit)
   queueAmbush(state, p, unit)
   trigger(state, p, 'whenYouCreate', { other: unit.id, otherDef: token }, unit.id)
   return unit
@@ -329,14 +330,41 @@ function giveToken(state: GameState, unit: UnitState, name: string) {
 // for each time damage is dealt (3.7.6): the damage dealt
 function damageUnit(state: GameState, unit: UnitState, amount: number) {
   if (amount <= 0) return 0
-  const shield = unit.upgrades.find((u) => def(state, u).token && def(state, u).name === 'Shield')
+  const shield = shieldOn(state, unit)
   if (shield) {
     unit.upgrades = unit.upgrades.filter((u) => u !== shield)
     log(state, `A Shield token prevents the damage to ${nameOf(state, unit)}`, controllerOf(state, unit))
+    shieldDefeated(state, unit)
+    return 0
+  }
+  // "If damage would be dealt to another friendly [Emperor] unit, you may defeat a Shield token on
+  // this unit. If you do, prevent that damage."
+  const p = controllerOf(state, unit)
+  for (const { self, abilities } of holders(state, p)) {
+    const guard = findUnit(state, self.id)
+    const spare = guard && guard !== unit && shieldOn(state, guard)
+    if (!guard || !spare || !abilities.sharesShield?.(new Game(state, p), self, unit)) continue
+    const yes = new Game(state, p).may(p, `${nameOf(state, guard)}: defeat a Shield token on it to prevent ${amount} damage to ${nameOf(state, unit)}?`, {
+      source: guard.def,
+      // The AI spends it on damage that would defeat the unit, or on 2 or more
+      ai: amount >= 2 || unit.damage + amount >= hpOf(state, unit),
+    })
+    if (!yes) continue
+    guard.upgrades = guard.upgrades.filter((u) => u !== spare)
+    log(state, `${nameOf(state, guard)}'s Shield token prevents the damage to ${nameOf(state, unit)}`, p)
+    shieldDefeated(state, guard)
     return 0
   }
   unit.damage += amount
   return amount
+}
+
+const shieldOn = (state: GameState, unit: UnitState) => unit.upgrades.find((u) => def(state, u).token && def(state, u).name === 'Shield')
+
+// "When a Shield token on this unit is defeated:"
+function shieldDefeated(state: GameState, unit: UnitState) {
+  const p = controllerOf(state, unit)
+  queue(state, p, nameOf(state, unit), 'a Shield token on it is defeated', unitScript(state, unit).whenShieldDefeated, { id: unit.id, controller: p, def: def(state, unit) })
 }
 
 // An upgrade leaving play: to its owner's discard pile, a token set aside (3.7.3)
@@ -1107,6 +1135,8 @@ function playCard(state: GameState, p: PlayerId, id: string, attachTo?: string, 
     const unit: UnitState = { ...card, owner: p, arena: d.arena ?? 'ground', damage: 0, exhausted: true, upgrades: [], entered: state.phaseCount }
     player.units.push(unit)
     log(state, `${player.name} plays ${d.name}${using}`, p)
+    // Shielded first, so a When Played ability can count or spend its Shield token
+    queueShielded(state, p, unit)
     queue(state, p, d.name, 'When Played', scriptOf(state, card).whenPlayed, self)
     if (options.awakened) queueWakeUp(state, p, unit.id)
     queueAmbush(state, p, unit)
@@ -1162,6 +1192,20 @@ function payFor(state: GameState, p: PlayerId, card: CardDef, price: number) {
     for (let i = 0; i < spent; i++) defeatSpice(state, p)
   }
   pay(state.players[p], price - spent)
+}
+
+// Shielded (7.5.12): as it is played, deployed or created, it gets a Shield token, in the same
+// window as its When Played abilities
+function queueShielded(state: GameState, p: PlayerId, unit: UnitState) {
+  if (!keywordsOf(state, unit).shielded) return
+  ;(current as Run).queue.push({
+    player: p,
+    label: `${nameOf(state, unit)}: Shielded`,
+    run: () => {
+      const still = findUnit(state, unit.id)
+      if (still) giveToken(state, still, 'Shield')
+    },
+  })
 }
 
 // Ambush (7.5.5): as it enters play, it may attack an enemy unit, exhausted as it is. The AI
@@ -1331,6 +1375,7 @@ function deploy(state: GameState, p: PlayerId) {
   }
   player.units.push(unit)
   log(state, `${player.name} deploys ${nameOf(state, player.leader)}`, p)
+  queueShielded(state, p, unit)
   queue(state, p, nameOf(state, unit), 'When Deployed', scriptOf(state, unit, 'back').whenDeployed, {
     id: unit.id,
     controller: p,
@@ -1600,6 +1645,7 @@ export class Game {
       unit.upgrades = unit.upgrades.filter((u) => u !== upgrade)
       discardUpgrade(this.state, upgrade)
       this.log(`${nameOf(this.state, upgrade)} on ${nameOf(this.state, unit)} is defeated`)
+      if (def(this.state, upgrade).token && def(this.state, upgrade).name === 'Shield') shieldDefeated(this.state, unit)
       checkDefeats(this.state)
     }
   }
@@ -1644,7 +1690,7 @@ export class Game {
   // A player chooses cards from their own hand and discards them
   discardChosen(p: PlayerId, count: number, text = `Choose ${count === 1 ? 'a card' : `${count} cards`} to discard`, source?: string) {
     const hand = this.state.players[p].hand.map((c) => c.id)
-    const picks = this.choose(p, text, hand, { min: count, max: count, ai: 'cheap', source })
+    const picks = this.choose(p, text, hand, { min: count, max: count, ai: 'discard', source })
     for (const id of picks) this.discard(p, id)
     return picks.length
   }

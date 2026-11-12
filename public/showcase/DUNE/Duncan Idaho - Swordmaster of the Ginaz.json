@@ -19,7 +19,7 @@
   "text": "[Sentinel]\n[When Defeated:] If this unit was defending and you control Paul Atreides or Lady Jessica, you may defeat the attacking unit.",
   "power": 4,
   "trait": "Atreides, Ginaz, Trooper",
-  "number": "085",
+  "number": "091",
   "rarity": "U",
   "unique": true,
   "frameId": "unit-command-heroism",

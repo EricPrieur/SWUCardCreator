@@ -12,7 +12,7 @@
   "text": "[Restore 1]\n[When Played:] Each opponent discards a card from their hand.",
   "power": 2,
   "trait": "Bene Gesserit",
-  "number": "046",
+  "number": "050",
   "rarity": "C",
   "frameId": "unit-vigilance",
   "setCode": "DUNE",

@@ -10,7 +10,7 @@
   "name": "Stunner Dart",
   "text": "Exhaust a unit.\n[Smuggle] [[1 Cunning]]",
   "trait": "Trick",
-  "number": "138",
+  "number": "144",
   "rarity": "C",
   "frameId": "event-aggression",
   "setCode": "DUNE",
