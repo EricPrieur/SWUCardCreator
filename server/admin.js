@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { query, SCHEMA } from './db.js'
 import { verifyToken, requireAdmin, enforcePermanentAdmins, userPublic, PERMANENT_ADMINS } from './auth.js'
+import { storageFor } from './tiers.ts'
 
 const router = Router()
 router.use(verifyToken, requireAdmin)
@@ -10,7 +11,7 @@ router.get('/users', async (req, res) => {
   try {
     await enforcePermanentAdmins()
     const { rows } = await query(
-      `SELECT u.id, u.username, u.is_admin, u.is_tester, u.quota_bytes, u.can_publish, u.created_at, u.last_login_at, u.discord_username,
+      `SELECT u.id, u.username, u.is_admin, u.is_tester, u.quota_bytes, u.can_publish, u.donated_cents, u.card_back, u.created_at, u.last_login_at, u.discord_username,
          (u.password_hash IS NOT NULL) AS has_password,
          COALESCE((SELECT SUM(bytes) FROM ${SCHEMA}.cards c WHERE c.user_id = u.id), 0)
        + COALESCE((SELECT SUM(bytes) FROM ${SCHEMA}.images i WHERE i.user_id = u.id), 0)
@@ -37,11 +38,14 @@ router.get('/users', async (req, res) => {
   }
 })
 
-// Change an account's admin or tester flag, storage limit (quotaBytes null: no limit), or
-// whether it may make cards public
+// Change an account's admin or tester flag, storage limit (quotaBytes null: no limit), whether
+// it may make cards public, or the tips it gave (donatedCents: its tier, and its storage with it,
+// 50 MB more for each $5, unless it has no limit)
 router.patch('/users/:id', async (req, res) => {
   const id = Number(req.params.id)
-  const { isAdmin, isTester, quotaBytes, canPublish } = req.body ?? {}
+  const { isAdmin, isTester, quotaBytes, canPublish, donatedCents } = req.body ?? {}
+  if (donatedCents !== undefined && !(Number.isInteger(donatedCents) && donatedCents >= 0 && donatedCents < 100_000_000))
+    return res.status(400).json({ error: 'donatedCents must be a whole number of cents' })
   if (!Number.isInteger(id)) return res.status(400).json({ error: 'Bad user id' })
   if (isAdmin !== undefined && typeof isAdmin !== 'boolean') return res.status(400).json({ error: 'isAdmin must be true or false' })
   if (isTester !== undefined && typeof isTester !== 'boolean') return res.status(400).json({ error: 'isTester must be true or false' })
@@ -53,18 +57,27 @@ router.patch('/users/:id', async (req, res) => {
   try {
     const { rows: found } = await query(`SELECT username FROM ${SCHEMA}.users WHERE id = $1`, [id])
     if (!found.length) return res.status(404).json({ error: 'User not found' })
-    if (PERMANENT_ADMINS.has(found[0].username.toLowerCase()))
+    if (PERMANENT_ADMINS.has(found[0].username.toLowerCase()) && (isAdmin !== undefined || quotaBytes !== undefined))
       return res.status(403).json({ error: 'This account is a permanent admin' })
     const { rows } = await query(
       `UPDATE ${SCHEMA}.users SET
          is_admin = COALESCE($2, is_admin),
          quota_bytes = CASE WHEN $3 THEN $4::BIGINT ELSE quota_bytes END,
          can_publish = COALESCE($5, can_publish),
-         is_tester = COALESCE($6, is_tester)
+         is_tester = COALESCE($6, is_tester),
+         donated_cents = COALESCE($7, donated_cents)
        WHERE id = $1
-       RETURNING id, username, is_admin, is_tester, quota_bytes, can_publish, created_at, discord_username, (password_hash IS NOT NULL) AS has_password`,
-      [id, isAdmin ?? null, quotaBytes !== undefined, quotaBytes ?? null, canPublish ?? null, isTester ?? null],
+       RETURNING id, username, is_admin, is_tester, quota_bytes, can_publish, donated_cents, card_back, created_at, discord_username, (password_hash IS NOT NULL) AS has_password`,
+      [id, isAdmin ?? null, quotaBytes !== undefined, quotaBytes ?? null, canPublish ?? null, isTester ?? null, donatedCents ?? null],
     )
+    // The tips set the storage, unless it was given in the same change or has no limit
+    if (donatedCents !== undefined && quotaBytes === undefined && rows[0].quota_bytes !== null) {
+      const { rows: again } = await query(`UPDATE ${SCHEMA}.users SET quota_bytes = $2 WHERE id = $1 RETURNING id, username, is_admin, is_tester, quota_bytes, can_publish, donated_cents, card_back, created_at, discord_username, (password_hash IS NOT NULL) AS has_password`, [
+        id,
+        storageFor(donatedCents),
+      ])
+      return res.json({ user: userPublic(again[0]) })
+    }
     res.json({ user: userPublic(rows[0]) })
   } catch (err) {
     console.error('Admin update error:', err)

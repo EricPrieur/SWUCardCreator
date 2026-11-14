@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import {
   api,
+  API_URL,
   ApiError,
   onAdminRequest,
   onDiscordDone,
@@ -15,6 +16,8 @@ import {
 import { CardsTab, DecksTab, defaultFilter, FilterBar, GamesTab, StatsTab, type GameFilter } from './AdminGames'
 import { CommunityTab } from './AdminCommunity'
 import { MailTab, NotificationsTab, useUnread, type Unread } from './Messages'
+import { KofiHover } from './Support'
+import { isSupporter, STEP_CENTS, TIER_NAMES, tierOf } from '../server/tiers.ts'
 
 type AdminUser = User & {
   lastLoginAt: string | null
@@ -322,6 +325,7 @@ function SettingsModal(props: {
         )}
         {(discord.error || unlinkError) && <p className="account-error">{discord.error || unlinkError}</p>}
       </section>
+      <SupportSection session={session} onUser={onUser} />
       <section className="account-section">
         <h3>Storage</h3>
         <div className="account-row">
@@ -371,6 +375,105 @@ function SettingsModal(props: {
 }
 
 const MB = 1024 * 1024
+
+// A card back, as the Simulator draws it: made 600 x 840 (a card's shape) as a JPEG
+async function cardBackImage(file: File) {
+  const bitmap = await createImageBitmap(file)
+  const canvas = document.createElement('canvas')
+  canvas.width = 600
+  canvas.height = 840
+  const context = canvas.getContext('2d')!
+  // Covering the card, cut to its shape
+  const scale = Math.max(canvas.width / bitmap.width, canvas.height / bitmap.height)
+  const width = bitmap.width * scale
+  const height = bitmap.height * scale
+  context.drawImage(bitmap, (canvas.width - width) / 2, (canvas.height - height) / 2, width, height)
+  return new Promise<Blob>((resolve, reject) => canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error('Could not read the image'))), 'image/jpeg', 0.9))
+}
+
+// The account's tier and its perks (see #support), and a Supporter's card back
+function SupportSection(props: { session: Session; onUser: (user: User) => void }) {
+  const { session, onUser } = props
+  const { user } = session
+  const tier = user.tier ?? tierOf(user)
+  const supporter = isSupporter(user)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const setBack = async (image: string | null) => {
+    const data = await api<{ user: User }>('/api/auth/me/card-back', { method: 'PUT', body: { image }, token: session.token })
+    onUser(data.user)
+  }
+  const upload = async (file: File) => {
+    setBusy(true)
+    setError(null)
+    try {
+      const blob = await cardBackImage(file)
+      const res = await fetch(`${API_URL}/api/images`, { method: 'POST', headers: { Authorization: `Bearer ${session.token}` }, body: blob })
+      const data = await res.json().catch(() => null)
+      if (!res.ok) throw new Error(data?.error ?? 'Could not upload the image')
+      await setBack(data.id)
+    } catch (err) {
+      setError((err as Error).message)
+    }
+    setBusy(false)
+  }
+  const dollars = (cents: number) => `$${(cents / 100).toFixed(cents % 100 ? 2 : 0)}`
+  return (
+    <section className="account-section">
+      <h3>Support</h3>
+      <div className="account-row">
+        <span>Tier</span>
+        <span>
+          {TIER_NAMES[tier]}{' '}
+          <a className="account-switch" href="#support">
+            See the tiers
+          </a>
+        </span>
+      </div>
+      {(user.donatedCents ?? 0) > 0 && (
+        <div className="account-row">
+          <span>Tips</span>
+          <span>{dollars(user.donatedCents ?? 0)}, thank you!</span>
+        </div>
+      )}
+      {!supporter && (
+        <p className="account-note">
+          A {dollars(STEP_CENTS)} tip on Ko-fi, with your username in its message, makes you a Supporter: 50 MB more storage for each{' '}
+          {dollars(STEP_CENTS)}, the Deck Builder's Prescient and Foil copies, and a card back of your own.
+        </p>
+      )}
+      {supporter && (
+        <div className="account-row card-back-row">
+          <span>Card back</span>
+          <span className="card-back-pick">
+            {user.cardBack && <img className="card-back-preview" src={`${API_URL}/api/public/images/${user.cardBack}`} alt="Your card back" />}
+            <label className="button">
+              {busy ? 'Uploading…' : user.cardBack ? 'Change' : 'Upload'}
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                hidden
+                disabled={busy}
+                onChange={(event) => {
+                  const file = event.target.files?.[0]
+                  event.target.value = ''
+                  if (file) upload(file)
+                }}
+              />
+            </label>
+            {user.cardBack && (
+              <button className="account-switch" type="button" disabled={busy} onClick={() => setBack(null).catch((err) => setError(err.message))}>
+                Use the set's
+              </button>
+            )}
+          </span>
+        </div>
+      )}
+      {supporter && <p className="account-note">Your card back shows on your deck, resources and hand in the Simulator, to both players.</p>}
+      {error && <p className="account-error">{error}</p>}
+    </section>
+  )
+}
 
 const ADMIN_TABS = [
   ['users', 'Users'],
@@ -438,7 +541,7 @@ function UsersTab(props: { session: Session; focus?: number }) {
 
   const change = async (
     user: AdminUser,
-    body: { isAdmin?: boolean; isTester?: boolean; quotaBytes?: number | null; canPublish?: boolean },
+    body: { isAdmin?: boolean; isTester?: boolean; quotaBytes?: number | null; canPublish?: boolean; donatedCents?: number },
   ) => {
     setError(null)
     try {
@@ -465,6 +568,7 @@ function UsersTab(props: { session: Session; focus?: number }) {
                 <th>Cards</th>
                 <th title="Games played in the Simulator">Games</th>
                 <th>Storage</th>
+                <th title="Tips given on Ko-fi, in dollars: $5 makes a Supporter, and each $5 adds 50 MB of storage">Tips</th>
                 <th>Joined</th>
                 <th>Last login</th>
               </tr>
@@ -506,6 +610,10 @@ function UsersTab(props: { session: Session; focus?: number }) {
                       <QuotaInput quota={user.quotaBytes} onChange={(quotaBytes) => change(user, { quotaBytes })} />
                     )}
                   </td>
+                  <td>
+                    <DonationInput cents={user.donatedCents ?? 0} onChange={(donatedCents) => change(user, { donatedCents })} />
+                    <div className="admin-tier">{TIER_NAMES[tierOf({ isAdmin: user.isAdmin, donatedCents: user.donatedCents })]}</div>
+                  </td>
                   <td>{formatDate(user.createdAt)}</td>
                   <td>{formatDate(user.lastLoginAt)}</td>
                 </tr>
@@ -519,6 +627,34 @@ function UsersTab(props: { session: Session; focus?: number }) {
 }
 
 // A limit in MB, applied when the box is left; empty is no limit
+// The tips an account gave, in dollars: set, they make its tier and its storage
+function DonationInput(props: { cents: number; onChange: (cents: number) => void }) {
+  const { cents, onChange } = props
+  const shown = cents ? String(cents / 100) : ''
+  const [text, setText] = useState(shown)
+  useEffect(() => setText(shown), [shown])
+  const apply = () => {
+    const next = text.trim() === '' ? 0 : Math.round(Number(text) * 100)
+    if (!(Number.isFinite(next) && next >= 0)) return setText(shown)
+    if (next !== cents) onChange(next)
+  }
+  return (
+    <span className="quota-input">
+      ${' '}
+      <input
+        type="number"
+        min="0"
+        step="5"
+        placeholder="0"
+        value={text}
+        onChange={(event) => setText(event.target.value)}
+        onBlur={apply}
+        onKeyDown={(event) => event.key === 'Enter' && event.currentTarget.blur()}
+      />
+    </span>
+  )
+}
+
 function QuotaInput(props: { quota: number | null; onChange: (quota: number | null) => void }) {
   const { quota, onChange } = props
   const shown = quota === null ? '' : String(Math.round(quota / MB))
@@ -635,10 +771,13 @@ export function AccountBar(props: { localCards: number; localDecks: number; onCo
         {discordIcon}
         Join the Discord for feedback
       </a>
-      <a className="kofi-link" href={KOFI} target="_blank" rel="noopener noreferrer">
-        {kofiIcon}
-        Support on Ko-fi
-      </a>
+      <span className="kofi-wrap">
+        <a className="kofi-link" href={KOFI} target="_blank" rel="noopener noreferrer">
+          {kofiIcon}
+          Support on Ko-fi
+        </a>
+        <KofiHover />
+      </span>
 
       {(open === 'login' || open === 'register') && (
         <AuthModal

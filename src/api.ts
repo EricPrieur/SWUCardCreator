@@ -17,6 +17,12 @@ export type User = {
   // Its Showroom has a page of its own (#showroom/<name>), showing its public cards; missing on
   // older sessions
   showroomPublic?: boolean
+  // The tips it gave (Ko-fi, added by an admin) and the tier they make (server/tiers.ts); missing
+  // on older sessions
+  donatedCents?: number
+  tier?: 'member' | 'supporter'
+  // A Supporter's card back: one of its images; null for the set's own
+  cardBack?: string | null
   // The Discord account it signs in with; null when none is linked
   discordName: string | null
   // Discord can only be unlinked from an account that also has a password

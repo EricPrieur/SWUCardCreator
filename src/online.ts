@@ -24,7 +24,8 @@ export type RoomInfo = {
 // this seat sees it (null while waiting), with the last card each player played
 export type RoomSnapshot = RoomInfo & {
   seat: PlayerId | null
-  players: ({ name: string; deck: string; gone: boolean } | null)[]
+  // back: a Supporter's card back, an image id; null for the set's
+  players: ({ name: string; deck: string; back?: string | null; gone: boolean } | null)[]
   watchers: number
   view: PlayerView | null
   last: [string | null, string | null]

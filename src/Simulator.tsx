@@ -1,3 +1,4 @@
+import { isSupporter } from '../server/tiers.ts'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { asset } from './asset'
 import { api, API_URL, useAccount, type Session } from './api'
@@ -706,6 +707,8 @@ type TableChat = { who: 'me' | 'opp'; text: string; name?: string }
 type OnlineTable = {
   view: PlayerView
   seat: PlayerId
+  // Each seat's card back: a Supporter's own, or null for the set's
+  backs: [string | null, string | null]
   watching: boolean
   last: [string | null, string | null]
   chat: TableChat[]
@@ -843,6 +846,7 @@ function OnlineGame(props: { seat: OnlineSeat; set: SetCards; drawCard?: (card: 
     seat: me,
     watching,
     last: room.last,
+    backs: [room.players[0]?.back ?? null, room.players[1]?.back ?? null],
     chat: chat.map((line) => ({ who: line.seat === me ? 'me' : 'opp', text: line.text, ...(watching && { name: line.name }) })),
     say: (text) => {
       if (!watching) sendChat(seat, text).catch((err: Error) => setError(err.message))
@@ -1211,8 +1215,10 @@ function SoundIcon(props: { on: boolean }) {
   )
 }
 
-function Back() {
-  return <div className="sim-back" style={{ backgroundImage: `url("${cardBack}")` }} />
+// A card face down: the set's back, or its player's own (a Supporter's, an image id)
+const backImage = (id?: string | null) => (id ? `${API_URL}/api/public/images/${id}` : cardBack)
+function Back(props: { src?: string | null }) {
+  return <div className="sim-back" style={{ backgroundImage: `url("${backImage(props.src)}")` }} />
 }
 
 // Drawing a card, the starting hand and a mulligan's included: each flies from the deck to its
@@ -1319,6 +1325,11 @@ function Table(props: {
   // Your seat, at the bottom; watching, the first player's
   const ME: PlayerId = online?.seat ?? YOU
   const THEM: PlayerId = ME === 0 ? 1 : 0
+  // Each side's card back: online, as the server says; against the AI, yours (a Supporter's)
+  const account = useAccount()
+  const myBack = isSupporter(account?.user) ? (account?.user.cardBack ?? null) : null
+  const backs: [string | null, string | null] = online?.backs ?? (YOU === 0 ? [myBack, null] : [null, myBack])
+  const backOf = (who: 'me' | 'opp') => backs[who === 'me' ? ME : THEM]
   const watching = !!online?.watching
   const [mode, setMode] = useState<Mode>(null)
   const [picked, setPicked] = useState<string[]>([])
@@ -1520,7 +1531,7 @@ function Table(props: {
         timers.push(
           window.setTimeout(() => {
             if (!deck || !slot) return land()
-            const image = slot.dataset.image ? img(slot.dataset.image) : cardBack
+            const image = slot.dataset.image ? img(slot.dataset.image) : backImage(backs[p])
             // In a fanned hand the card's image is wider than its slot
             const target = (slot.querySelector('img') ?? slot).getBoundingClientRect()
             const card = fly(image, deck.getBoundingClientRect(), target)
@@ -1946,7 +1957,7 @@ function Table(props: {
               onMouseLeave={leave}
             />
           ) : side.deckCount ? (
-            <Back />
+            <Back src={backOf(who)} />
           ) : (
             <div className="sim-empty">Deck</div>
           )}
@@ -1967,7 +1978,7 @@ function Table(props: {
                   onMouseEnter={r.card ? lookAt(r.card) : undefined}
                   onMouseLeave={leave}
                 >
-                  <Back />
+                  <Back src={backOf(who)} />
                 </div>
               )
             })}
@@ -2006,7 +2017,7 @@ function Table(props: {
               ))
             : Array.from({ length: side.handCount }, (_, i) => (
                 <div key={i} className="sim-hand-back" data-arriving={i >= side.handCount - arriving || undefined}>
-                  <Back />
+                  <Back src={backOf(who)} />
                 </div>
               ))}
           {!side.hand && <span className="sim-count hand">{side.handCount}</span>}

@@ -4050,3 +4050,161 @@ input.picker-button::placeholder {
   letter-spacing: 0.15em;
   white-space: nowrap;
 }
+
+
+/* The Ko-fi link's hover: the tiers in short, and the way to the Support page */
+.kofi-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.kofi-pop {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 50;
+  display: none;
+  width: 17rem;
+  margin-top: 0.35rem;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid rgb(255 94 91 / 0.45);
+  border-radius: 8px;
+  background: var(--night);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.5);
+  font-size: 0.78rem;
+  line-height: 1.4;
+  text-align: left;
+  color: var(--sand);
+}
+
+/* The gap between the link and the card, kept hovered */
+.kofi-pop::before {
+  content: '';
+  position: absolute;
+  inset: -0.5rem 0 auto;
+  height: 0.5rem;
+}
+
+.kofi-wrap:hover .kofi-pop,
+.kofi-wrap:focus-within .kofi-pop {
+  display: block;
+}
+
+.kofi-pop ul {
+  margin: 0.35rem 0;
+  padding-left: 1.1rem;
+}
+
+.kofi-pop-note {
+  display: block;
+  opacity: 0.7;
+}
+
+.kofi-pop a {
+  display: inline-block;
+  margin-top: 0.35rem;
+  color: #ff8a87;
+}
+
+/* The Support page: the tiers side by side, yours lit */
+.support-page {
+  max-width: 72rem;
+  margin: 1.5rem auto;
+  padding: 0 1rem;
+  text-align: left;
+}
+
+.support-page h2,
+.support-page h3 {
+  color: var(--spice);
+  letter-spacing: 0.08em;
+}
+
+.support-intro {
+  max-width: 44rem;
+  line-height: 1.5;
+  opacity: 0.85;
+}
+
+.support-tiers {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 11.5rem), 1fr));
+  gap: 1rem;
+  margin: 1.25rem 0 1.75rem;
+}
+
+.support-tier {
+  position: relative;
+  padding: 1rem 1.1rem 1.4rem;
+  border: 1px solid rgb(232 215 181 / 0.18);
+  border-radius: 10px;
+  background: rgb(0 0 0 / 0.2);
+}
+
+.support-tier h3 {
+  margin: 0;
+}
+
+.support-mine {
+  border-color: var(--spice);
+  box-shadow: 0 0 18px rgb(224 138 44 / 0.25);
+}
+
+.support-price {
+  margin: 0.25rem 0 0.6rem;
+  font-size: 0.85rem;
+  opacity: 0.75;
+}
+
+.support-tier ul {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
+.support-you {
+  position: absolute;
+  top: 0.8rem;
+  right: 0.9rem;
+  padding: 0.05rem 0.5rem;
+  border-radius: 999px;
+  background: var(--spice);
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--night);
+}
+
+.support-how {
+  line-height: 1.6;
+}
+
+.support-how a {
+  color: #ff8a87;
+}
+
+.support-kofi {
+  display: inline-block;
+  margin-top: 0.5rem;
+}
+
+/* A Supporter+'s card back, in Settings; their tier in the Admin panel */
+.card-back-pick {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.card-back-preview {
+  width: 3rem;
+  border-radius: 4px;
+}
+
+.admin-tier {
+  font-size: 0.7rem;
+  opacity: 0.7;
+}
+
+.kofi-pop-line {
+  margin: 0.35rem 0 0;
+}

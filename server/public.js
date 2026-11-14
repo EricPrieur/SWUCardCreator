@@ -94,6 +94,15 @@ router.get('/public/images/:id', async (req, res) => {
        LIMIT 1`,
       [id],
     )
+    // A Supporter's card back, which their opponents see in the Simulator
+    if (!rows.length) {
+      const { rows: backs } = await query(
+        `SELECT i.content_type FROM ${SCHEMA}.users u JOIN ${SCHEMA}.images i ON i.user_id = u.id AND i.id = u.card_back
+         WHERE u.card_back = $1 LIMIT 1`,
+        [id],
+      )
+      rows.push(...backs)
+    }
     if (!rows.length) return res.status(404).json({ error: 'Not found' })
     const bytes = await readFile(join(imageDir(), id))
     res.set('Content-Type', rows[0].content_type)

@@ -1,3 +1,5 @@
+import { SupportPage } from './Support'
+import { isSupporter } from '../server/tiers.ts'
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type CSSProperties, type ReactNode, type RefObject } from 'react'
 import { createPortal, flushSync } from 'react-dom'
 import artFiles from 'virtual:art-list'
@@ -72,7 +74,9 @@ const tabs = [
   { id: 'projects', label: 'My Other Projects' },
 ] as const
 
-type TabId = (typeof tabs)[number]['id']
+// support: the Support page (#support), which no tab shows; the Ko-fi link's hover and the
+// account's Settings link to it
+type TabId = (typeof tabs)[number]['id'] | 'support'
 
 const typeFilters: { label: string; value: FrameFilter }[] = [
   { label: 'Units', value: 'Unit' },
@@ -750,6 +754,7 @@ function Projects() {
 function tabFromHash(): TabId {
   const id = window.location.hash.slice(1)
   if (showroomOwnerFromHash()) return 'community'
+  if (id === 'support') return 'support'
   return tabs.find((tab) => tab.id === id)?.id ?? 'creator'
 }
 
@@ -4418,7 +4423,8 @@ function DeckBuilder(props: {
 
   const copies = (id: string) => copiesOf(deck.cards, id) + copiesOf(deck.sideboard, id)
   // Prescient and foil copies: in Sealed those the pool has; otherwise any, once signed in
-  const printingsOn = sealed || account !== null
+  // A Sealed pool's printings; otherwise Prescient and Foil copies are a Supporter perk
+  const printingsOn = sealed || isSupporter(account?.user)
   const usedOf = (id: string, printing: Printing) => printingCopies(deck.cards, id, printing) + printingCopies(deck.sideboard, id, printing)
   const ownedOf = (card: DeckCard, printing: Printing) => (card.pooled ? printingCopies([card.pooled], card.pooled.id, printing) : Infinity)
   const room = (card: DeckCard) => (printing: Printing) => usedOf(card.id, printing) < ownedOf(card, printing)
@@ -7255,6 +7261,7 @@ function App() {
       {prescient.stage}
       {tab === 'decks' && <DeckFormats key={decksCopied} cards={cards.flatMap(deckCardOf)} />}
       {tab === 'projects' && <Projects />}
+      {tab === 'support' && <SupportPage />}
       {tab === 'creator' && (
         <CardCreator
           draft={draft}

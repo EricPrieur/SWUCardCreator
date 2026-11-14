@@ -56,6 +56,10 @@ export async function initDB() {
   await query(`ALTER TABLE ${SCHEMA}.users ADD COLUMN IF NOT EXISTS showroom_public BOOLEAN NOT NULL DEFAULT FALSE`)
   // A tester may use the game simulator while it is being built; admins always may
   await query(`ALTER TABLE ${SCHEMA}.users ADD COLUMN IF NOT EXISTS is_tester BOOLEAN NOT NULL DEFAULT FALSE`)
+  // The tips an account gave (Ko-fi, added by an admin), which make its tier (server/tiers.ts);
+  // a Supporter's card back, one of its images, shown in the Simulator
+  await query(`ALTER TABLE ${SCHEMA}.users ADD COLUMN IF NOT EXISTS donated_cents INTEGER NOT NULL DEFAULT 0`)
+  await query(`ALTER TABLE ${SCHEMA}.users ADD COLUMN IF NOT EXISTS card_back CHAR(64)`)
   // The Discord account it signs in with, if any, and its name there
   await query(`ALTER TABLE ${SCHEMA}.users ADD COLUMN IF NOT EXISTS discord_id VARCHAR(32)`)
   await query(`ALTER TABLE ${SCHEMA}.users ADD COLUMN IF NOT EXISTS discord_username VARCHAR(64)`)

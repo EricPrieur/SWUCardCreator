@@ -2,6 +2,7 @@ import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
 import { Router } from 'express'
 import { query, SCHEMA, usedBytes } from './db.js'
+import { isSupporter, tierOf } from './tiers.ts'
 
 const SALT_ROUNDS = 10
 // Accounts that are always admins, with no storage limit, whatever the table says
@@ -15,7 +16,7 @@ function secret() {
 }
 
 const USER_COLUMNS =
-  'id, username, is_admin, is_tester, quota_bytes, can_publish, showroom_public, created_at, discord_username, (password_hash IS NOT NULL) AS has_password'
+  'id, username, is_admin, is_tester, quota_bytes, can_publish, showroom_public, donated_cents, card_back, created_at, discord_username, (password_hash IS NOT NULL) AS has_password'
 
 // The sites allowed to call this server: the app on GitHub Pages and the dev server
 const DEFAULT_ORIGINS = ['https://ericprieur.github.io', 'http://localhost:5173']
@@ -42,6 +43,11 @@ export function userPublic(user) {
     canPublish: user.can_publish !== false,
     // Its Showroom has a public page, showing its public cards
     showroomPublic: !!user.showroom_public,
+    // The tips it gave, and the tier they make (server/tiers.ts)
+    donatedCents: user.donated_cents ?? 0,
+    tier: tierOf({ isAdmin: !!user.is_admin, donatedCents: user.donated_cents ?? 0 }),
+    // A Supporter's card back: one of its images, null for the set's
+    cardBack: user.card_back ?? null,
     // The Discord account it signs in with; null when none is linked
     discordName: user.discord_username ?? null,
     // A Discord account can only be unlinked from one that also has a password
@@ -348,6 +354,28 @@ router.put('/me/showroom', verifyToken, async (req, res) => {
     res.json({ user: userPublic(rows[0]) })
   } catch (err) {
     console.error('Showroom public error:', err)
+    res.status(500).json({ error: 'Server error' })
+  }
+})
+
+// A Supporter's card back: { image } one of its images, or null for the set's own
+router.put('/me/card-back', verifyToken, async (req, res) => {
+  const { image } = req.body ?? {}
+  if (image !== null && !(typeof image === 'string' && /^[0-9a-f]{64}$/.test(image)))
+    return res.status(400).json({ error: 'image must be an image id, or null' })
+  try {
+    const { rows: me } = await query(`SELECT is_admin, donated_cents FROM ${SCHEMA}.users WHERE id = $1`, [req.user.id])
+    if (!me.length) return res.status(404).json({ error: 'User not found' })
+    if (image && !isSupporter({ isAdmin: me[0].is_admin, donatedCents: me[0].donated_cents }))
+      return res.status(403).json({ error: 'A card back of your own is a Supporter perk' })
+    if (image) {
+      const { rows: own } = await query(`SELECT 1 FROM ${SCHEMA}.images WHERE user_id = $1 AND id = $2`, [req.user.id, image])
+      if (!own.length) return res.status(404).json({ error: 'Upload the image first' })
+    }
+    const { rows } = await query(`UPDATE ${SCHEMA}.users SET card_back = $2 WHERE id = $1 RETURNING ${USER_COLUMNS}`, [req.user.id, image])
+    res.json({ user: userPublic(rows[0]) })
+  } catch (err) {
+    console.error('Card back error:', err)
     res.status(500).json({ error: 'Server error' })
   }
 })

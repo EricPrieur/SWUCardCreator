@@ -6,6 +6,7 @@ import { poolDefs, poolOf } from './sets.js'
 import { createGame } from './engine/game.ts'
 import { recordAction, startRecord, summarize } from './engine/record.ts'
 import { viewFor } from './engine/view.ts'
+import { isSupporter } from './tiers.ts'
 
 // Online games, as on The Chrome Grid: a player opens a room with a deck, another joins it with
 // theirs, and the server plays the game between them, the engine checking every move. Rooms
@@ -58,6 +59,17 @@ function checkDeck(list, defs) {
 }
 
 const deckName = (body) => String(body?.deckName ?? '').slice(0, 80) || 'Deck'
+// A player's card back: a Supporter's own, shown to both players; null for the set's
+async function cardBackOf(user) {
+  if (!user) return null
+  try {
+    const { rows } = await query(`SELECT is_admin, donated_cents, card_back FROM ${SCHEMA}.users WHERE id = $1`, [user.id])
+    const me = rows[0]
+    return me?.card_back && isSupporter({ isAdmin: me.is_admin, donatedCents: me.donated_cents }) ? me.card_back : null
+  } catch {
+    return null
+  }
+}
 const seatOf = (room, key) => (key ? room.seats.findIndex((seat) => seat?.key === key) : -1)
 
 // What a room says of itself in the lists
@@ -80,7 +92,7 @@ function snapshot(room, seat) {
   return {
     ...about(room),
     seat,
-    players: room.seats.map((s, p) => s && { name: s.name, deck: s.deckName, gone: !!room.state && !s.streams && p !== seat }),
+    players: room.seats.map((s, p) => s && { name: s.name, deck: s.deckName, back: s.back ?? null, gone: !!room.state && !s.streams && p !== seat }),
     watchers: [...room.streams].filter((s) => s.seat === null).length,
     view: room.state && viewFor(room.state, watching ? 0 : seat, watching),
     last: room.last,
@@ -171,7 +183,10 @@ router.post('/rooms', optionalUser, async (req, res) => {
     isDev: isDev(req),
     pool,
     defs,
-    seats: [{ key: newKey(), userId: req.user?.id ?? null, name: req.user?.username ?? 'Guest', deck, deckName: deckName(req.body), streams: 0, goneAt: now }, null],
+    seats: [
+      { key: newKey(), userId: req.user?.id ?? null, name: req.user?.username ?? 'Guest', back: await cardBackOf(req.user), deck, deckName: deckName(req.body), streams: 0, goneAt: now },
+      null,
+    ],
     state: null,
     record: null,
     last: [null, null],
@@ -188,16 +203,18 @@ router.get('/rooms/:id', (req, res) => {
 })
 
 // Joined with a deck: { deck, deckName } → { key, seat }; the game starts
-router.post('/rooms/:id/join', optionalUser, (req, res) => {
+router.post('/rooms/:id/join', optionalUser, async (req, res) => {
   const room = rooms.get(req.params.id)
   if (!room) return res.status(404).json({ error: 'This game is over or was never opened' })
   if (room.state || room.seats[1]) return res.status(409).json({ error: 'Someone joined this game first' })
   const deck = checkDeck(req.body?.deck, room.defs)
   if (deck.error) return res.status(400).json({ error: deck.error })
+  const back = await cardBackOf(req.user)
+  if (room.state || room.seats[1]) return res.status(409).json({ error: 'Someone joined this game first' })
   const host = room.seats[0]
   let name = req.user?.username ?? 'Guest'
   if (name === host.name) name = `${name} (2)`
-  room.seats[1] = { key: newKey(), userId: req.user?.id ?? null, name, deck, deckName: deckName(req.body), streams: 0, goneAt: Date.now() }
+  room.seats[1] = { key: newKey(), userId: req.user?.id ?? null, name, back, deck, deckName: deckName(req.body), streams: 0, goneAt: Date.now() }
   // Each player named in the game by their account
   const decks = room.seats.map((seat) => ({ name: seat.name, ...seat.deck }))
   const seed = Date.now()
