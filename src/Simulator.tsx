@@ -100,7 +100,8 @@ type CommunityCard = { key: string; data: SavedCard; image: string; backImage: s
 export async function loadCommunitySet(): Promise<SetCards> {
   const [set, { cards }] = await Promise.all([
     loadSet().catch(() => ({ defs: [], images: {}, cards: {} }) as SetCards),
-    api<{ cards: CommunityCard[] }>('/api/community/cards'),
+    // DUNE's alone, should the community's not load
+    api<{ cards: CommunityCard[] }>('/api/community/cards').catch(() => ({ cards: [] as CommunityCard[] })),
   ])
   const url = (id: string) => `${API_URL}/api/public/images/${id}`
   for (const card of cards) {

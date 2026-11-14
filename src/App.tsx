@@ -2859,14 +2859,18 @@ function deckCardOfCommunity(card: CommunityCard): DeckCard[] {
 }
 
 // The Community Deck Builder: the supported community cards, each maker's set its own, and
-// DUNE's, left out of a deck until it is ticked
+// DUNE's, left out of a deck until it is ticked in its Sets. Should the community's cards not
+// load, DUNE's are still there.
 function CommunityDecks() {
   const [cards, setCards] = useState<DeckCard[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   useEffect(() => {
     let live = true
     Promise.all([
-      api<{ cards: CommunityCard[] }>('/api/community/cards'),
+      api<{ cards: CommunityCard[] }>('/api/community/cards').catch((err: Error) => {
+        if (live) setError(err.message)
+        return { cards: [] as CommunityCard[] }
+      }),
       fetch(asset('/showcase/DUNE/showcase.json'), { cache: 'no-cache' })
         .then((response) => (response.ok ? (response.json() as Promise<ShowcaseList>) : null))
         .catch(() => null),
@@ -2883,17 +2887,23 @@ function CommunityDecks() {
       live = false
     }
   }, [])
-  if (error) return <p className="empty-note">{error}</p>
-  if (!cards) return <p className="empty-note">Loading the community's cards…</p>
+  if (!cards) return <p className="empty-note">{error ?? "Loading the community's cards…"}</p>
+  const anyCommunity = cards.some((card) => card.id.startsWith('community:'))
   return (
     <>
-      {!cards.some((card) => card.id.startsWith('community:')) && (
+      {error && <p className="account-note community-intro">Could not load the community's cards ({error}): DUNE's are here.</p>}
+      {!error && !anyCommunity && (
         <p className="account-note community-intro">
-          No community card is playable yet. Make a card public in your Showroom, then Submit for play: once it is supported, it is
-          here. DUNE's cards are here too, for a deck that ticks DUNE in its Sets.
+          No community card is playable yet: make a card public in your Showroom, then Submit for play. Meanwhile, tick DUNE in a
+          deck's Sets to build with DUNE's cards.
         </p>
       )}
-      <DeckBuilder cards={cards} prefix="community.decks" storageKey="dune-unlimited.decks.community" offByDefault={['DUNE']} />
+      <DeckBuilder
+        cards={cards}
+        prefix="community.decks"
+        storageKey="dune-unlimited.decks.community"
+        offByDefault={['DUNE']}
+      />
     </>
   )
 }
