@@ -1044,6 +1044,9 @@ type SortKey = (typeof sorts)[number]['value']
 
 // A setting remembered in this browser under a name: it is the same after going to
 // another tab, or coming back another day
+// A link to a game online: ?room=<id> in the address
+const invitedToRoom = () => new URLSearchParams(window.location.search).has('room')
+
 function useRemembered<T>(name: string, first: T) {
   const key = `dune-unlimited.remember.${name}`
   const [value, setValue] = useState<T>(() => {
@@ -2608,6 +2611,10 @@ function Showcase(props: { folder: string }) {
   // The set's cards, a Deck Builder that only uses them, and for DUNE, the game simulator, which
   // plays its cards: open to anyone here. The author's other games are in the site's tabs above.
   const [stored, setView] = useRemembered<'cards' | 'decks' | 'play' | 'projects'>(`showcase.${props.folder}.view`, 'cards')
+  // A link to a game online (?room=) opens the Simulator
+  useEffect(() => {
+    if (props.folder === 'DUNE' && invitedToRoom()) setView('play')
+  }, [])
   // My Other Projects was a view here before the site's tabs were on this page
   const view = stored === 'projects' ? 'cards' : stored
   const playable = props.folder === 'DUNE'
@@ -2912,6 +2919,10 @@ function CommunityDecks() {
 // Simulator that plays them against the AI, as the DUNE page's does
 function CommunityPage(props: { session: Session | null }) {
   const [view, setView] = useRemembered<'cards' | 'decks' | 'play'>('community.view', 'cards')
+  // A link to a game online (?room=) opens the Simulator
+  useEffect(() => {
+    if (invitedToRoom()) setView('play')
+  }, [])
   // DUNE's cards drawn in full art, for the Prescient copies a deck plays
   const prescient = usePrescientDrawer()
   const views = (

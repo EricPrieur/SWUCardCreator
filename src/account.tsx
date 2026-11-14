@@ -14,6 +14,7 @@ import {
 } from './api'
 import { CardsTab, DecksTab, defaultFilter, FilterBar, GamesTab, StatsTab, type GameFilter } from './AdminGames'
 import { CommunityTab } from './AdminCommunity'
+import { MailTab, NotificationsTab, useUnread, type Unread } from './Messages'
 
 type AdminUser = User & {
   lastLoginAt: string | null
@@ -173,7 +174,65 @@ function AuthModal(props: { mode: 'login' | 'register'; onDone: (session: Sessio
   )
 }
 
+// The account's window: its Settings, its Notifications and its Mail, each tab with its unread
+type AccountTab = 'settings' | 'notification' | 'mail'
+function AccountModal(props: {
+  session: Session
+  tab: AccountTab
+  unread: Unread
+  onUnreadChange: () => void
+  localCards: number
+  localDecks: number
+  onCopyLocal: () => Promise<string>
+  onUser: (user: User) => void
+  onLogOut: () => void
+  onClose: () => void
+}) {
+  const [tab, setTab] = useState<AccountTab>(props.tab)
+  const { session, unread, onUnreadChange, onClose } = props
+  const tabs: [AccountTab, string, number][] = [
+    ['settings', 'Settings', 0],
+    ['notification', 'Notifications', unread.notification],
+    ['mail', 'Mail', unread.mail],
+  ]
+  const nav = (
+    <nav className="tabs admin-tabs account-tabs">
+      {tabs.map(([value, label, count]) => (
+        <a
+          key={value}
+          href="#"
+          aria-current={tab === value ? 'page' : undefined}
+          onClick={(event) => {
+            event.preventDefault()
+            setTab(value)
+          }}
+        >
+          {label}
+          {count > 0 && <span className="tab-count">{count > 99 ? '99+' : count}</span>}
+        </a>
+      ))}
+    </nav>
+  )
+  if (tab === 'settings') return <SettingsModal {...props} nav={nav} />
+  return (
+    <Modal title="Account" onClose={onClose}>
+      {nav}
+      {tab === 'notification' ? (
+        <NotificationsTab session={session} onChange={onUnreadChange} onGo={onClose} />
+      ) : (
+        <MailTab session={session} onChange={onUnreadChange} />
+      )}
+      <div className="account-buttons">
+        <button className="button button-primary" type="button" onClick={onClose}>
+          Close
+        </button>
+      </div>
+    </Modal>
+  )
+}
+
 function SettingsModal(props: {
+  nav: ReactNode
   session: Session
   localCards: number
   localDecks: number
@@ -220,7 +279,8 @@ function SettingsModal(props: {
 
   const share = used !== null && user.quotaBytes ? Math.min(1, used / user.quotaBytes) : 0
   return (
-    <Modal title="Settings" onClose={onClose}>
+    <Modal title="Account" onClose={onClose}>
+      {props.nav}
       <section className="account-section">
         <h3>Account</h3>
         <div className="account-row">
@@ -490,7 +550,9 @@ function QuotaInput(props: { quota: number | null; onChange: (quota: number | nu
 export function AccountBar(props: { localCards: number; localDecks: number; onCopyLocal: () => Promise<string> }) {
   const session = useSession()
   const online = useServerOnline()
-  const [open, setOpen] = useState<'login' | 'register' | 'settings' | 'admin' | null>(null)
+  const [open, setOpen] = useState<'login' | 'register' | 'settings' | 'notification' | 'mail' | 'admin' | null>(null)
+  const { unread, refresh } = useUnread(session, online)
+  const unreadTotal = unread.notification + unread.mail
   // The account the Admin panel opens at, when asked from elsewhere on the page
   const [focus, setFocus] = useState<number | undefined>()
   const isAdmin = !!session?.user.isAdmin
@@ -524,11 +586,25 @@ export function AccountBar(props: { localCards: number; localDecks: number; onCo
         <div className="account-bar-row">
           {session ? (
             <>
-              <button className="account-name" type="button" title="Open account settings" onClick={() => setOpen('settings')}>
+              <button
+                className="account-name"
+                type="button"
+                title={
+                  unreadTotal
+                    ? `${[unread.notification && `${unread.notification} notification${unread.notification === 1 ? '' : 's'}`, unread.mail && `${unread.mail} mail`].filter(Boolean).join(' and ')} unread`
+                    : 'Open your account: settings, notifications and mail'
+                }
+                // Straight to what is unread, notifications first
+                onClick={() => setOpen(unread.notification ? 'notification' : unread.mail ? 'mail' : 'settings')}
+              >
                 {session.user.username}
-                <span className="account-gear" aria-hidden="true">
-                  ⚙
-                </span>
+                {unreadTotal > 0 ? (
+                  <span className="tab-count">{unreadTotal > 99 ? '99+' : unreadTotal}</span>
+                ) : (
+                  <span className="account-gear" aria-hidden="true">
+                    ⚙
+                  </span>
+                )}
               </button>
               {session.user.isAdmin && (
                 <button
@@ -574,8 +650,11 @@ export function AccountBar(props: { localCards: number; localDecks: number; onCo
           onClose={() => setOpen(null)}
         />
       )}
-      {open === 'settings' && session && (
-        <SettingsModal
+      {(open === 'settings' || open === 'notification' || open === 'mail') && session && (
+        <AccountModal
+          tab={open}
+          unread={unread}
+          onUnreadChange={refresh}
           session={session}
           localCards={props.localCards}
           localDecks={props.localDecks}

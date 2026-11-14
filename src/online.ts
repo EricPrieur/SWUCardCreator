@@ -9,6 +9,8 @@ import type { PlayerView } from '../server/engine/view.ts'
 // A room as the lists show it
 export type RoomInfo = {
   id: string
+  // The cards it is played with: DUNE's, or the community's
+  pool?: 'DUNE' | 'community'
   host: string
   deck: string
   leader: string
@@ -32,30 +34,33 @@ export type ChatLine = { seat: PlayerId; name: string; text: string }
 // A seat held in a room, kept in this tab so a reload finds the game again (each tab its own: two
 // tabs can play each other); no key: watching
 export type OnlineSeat = { room: string; key: string | null }
+// Each Simulator its own: DUNE's, the community's
 const SEAT_KEY = 'dune-unlimited.simulator.online'
-export function keptSeat(): OnlineSeat | null {
+const seatKey = (pool: Pool) => (pool === 'DUNE' ? SEAT_KEY : `${SEAT_KEY}.community`)
+type Pool = 'DUNE' | 'community'
+export function keptSeat(pool: Pool = 'DUNE'): OnlineSeat | null {
   try {
-    const seat = JSON.parse(sessionStorage.getItem(SEAT_KEY) ?? 'null')
+    const seat = JSON.parse(sessionStorage.getItem(seatKey(pool)) ?? 'null')
     return seat?.room ? seat : null
   } catch {
     return null
   }
 }
-export function keepSeat(seat: OnlineSeat | null) {
+export function keepSeat(seat: OnlineSeat | null, pool: Pool = 'DUNE') {
   try {
-    if (seat?.key) sessionStorage.setItem(SEAT_KEY, JSON.stringify(seat))
-    else sessionStorage.removeItem(SEAT_KEY)
+    if (seat?.key) sessionStorage.setItem(seatKey(pool), JSON.stringify(seat))
+    else sessionStorage.removeItem(seatKey(pool))
   } catch {
     // Not found again after a reload, then
   }
 }
 
-export const listRooms = () => api<{ rooms: RoomInfo[] }>('/api/rooms').then((found) => found.rooms)
+export const listRooms = (pool: Pool = 'DUNE') => api<{ rooms: RoomInfo[] }>(`/api/rooms?pool=${pool}`).then((found) => found.rooms)
 export const roomInfo = (room: string) => api<{ room: RoomInfo }>(`/api/rooms/${encodeURIComponent(room)}`).then((found) => found.room)
 
 // The deck as the engine takes it (named on the server by its player), and the name it goes by
 type Opening = { deck: Omit<DeckList, 'name'>; deckName: string }
-export const openRoom = (session: Session | null, opening: Opening & { public: boolean; spectators: boolean }) =>
+export const openRoom = (session: Session | null, opening: Opening & { public: boolean; spectators: boolean; pool: Pool }) =>
   api<{ id: string; key: string }>('/api/rooms', { method: 'POST', body: opening, token: session?.token })
 export const joinRoom = (session: Session | null, room: string, opening: Opening) =>
   api<{ key: string }>(`/api/rooms/${encodeURIComponent(room)}/join`, { method: 'POST', body: opening, token: session?.token })

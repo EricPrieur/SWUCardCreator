@@ -2,7 +2,7 @@ import { randomBytes } from 'node:crypto'
 import { Router } from 'express'
 import { query, SCHEMA } from './db.js'
 import { optionalUser } from './auth.js'
-import { setDefs } from './sets.js'
+import { poolDefs, poolOf } from './sets.js'
 import { createGame } from './engine/game.ts'
 import { recordAction, startRecord, summarize } from './engine/record.ts'
 import { viewFor } from './engine/view.ts'
@@ -63,6 +63,7 @@ const seatOf = (room, key) => (key ? room.seats.findIndex((seat) => seat?.key ==
 // What a room says of itself in the lists
 const about = (room) => ({
   id: room.id,
+  pool: room.pool,
   host: room.seats[0].name,
   deck: room.seats[0].deckName,
   leader: room.seats[0].deck.leader,
@@ -103,10 +104,10 @@ async function save(room) {
     if (!room.saved) {
       const key = newKey()
       const { rows } = await query(
-        `INSERT INTO ${SCHEMA}.games (user_id, key, mode, status, winner, draw, rounds, sides, names, record, bytes, is_dev, is_public, spectators, finished_at)
-         VALUES ($1, $2, 'online', $3::VARCHAR, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, CASE WHEN $3::VARCHAR = 'playing' THEN NULL ELSE NOW() END)
+        `INSERT INTO ${SCHEMA}.games (user_id, key, mode, status, winner, draw, rounds, sides, names, record, bytes, is_dev, is_public, spectators, pool, finished_at)
+         VALUES ($1, $2, 'online', $3::VARCHAR, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, CASE WHEN $3::VARCHAR = 'playing' THEN NULL ELSE NOW() END)
          RETURNING id`,
-        [room.seats[0].userId, key, ...values, JSON.stringify(summary.sides), JSON.stringify(summary.names), json, json.length, room.isDev, room.isPublic, room.spectators],
+        [room.seats[0].userId, key, ...values, JSON.stringify(summary.sides), JSON.stringify(summary.names), json, json.length, room.isDev, room.isPublic, room.spectators, room.pool],
       )
       room.saved = { id: rows[0].id, key }
     } else {
@@ -137,20 +138,23 @@ function move(room, seat, action) {
   broadcast(room)
 }
 
+// The rooms waiting for a player, of one pool (?pool=community; DUNE's otherwise)
 router.get('/rooms', (req, res) => {
   const dev = isDev(req)
-  const waiting = [...rooms.values()].filter((room) => room.isPublic && !room.state && (dev || !room.isDev))
+  const pool = poolOf(req.query.pool)
+  const waiting = [...rooms.values()].filter((room) => room.pool === pool && room.isPublic && !room.state && (dev || !room.isDev))
   res.json({ rooms: waiting.sort((a, b) => b.createdAt - a.createdAt).map(about) })
 })
 
-// Opened with a deck: { deck, deckName, public, spectators } → { id, key, seat }
+// Opened with a deck: { deck, deckName, public, spectators, pool } → { id, key, seat }
 router.post('/rooms', optionalUser, async (req, res) => {
   const now = Date.now()
   const recent = (opens.get(req.ip) ?? []).filter((t) => now - t < 3600_000)
   if (recent.length >= OPENS_AN_HOUR) return res.status(429).json({ error: 'Too many games opened; try again later' })
+  const pool = poolOf(req.body?.pool)
   let defs
   try {
-    defs = await setDefs()
+    defs = await poolDefs(pool)
   } catch (err) {
     console.error('Set load error:', err)
     return res.status(503).json({ error: 'The cards could not be read; try again shortly' })
@@ -165,6 +169,7 @@ router.post('/rooms', optionalUser, async (req, res) => {
     isPublic: req.body?.public !== false,
     spectators: req.body?.spectators === true,
     isDev: isDev(req),
+    pool,
     defs,
     seats: [{ key: newKey(), userId: req.user?.id ?? null, name: req.user?.username ?? 'Guest', deck, deckName: deckName(req.body), streams: 0, goneAt: now }, null],
     state: null,

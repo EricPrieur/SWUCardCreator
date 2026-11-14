@@ -3910,3 +3910,143 @@ input.picker-button::placeholder {
   flex: 1 1 14rem;
   min-width: 0;
 }
+
+/* The account's Notifications and Mail: unread ones lit in spice, each opened in place */
+.messages {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  text-align: left;
+}
+
+.messages-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.messages-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: 55vh;
+  overflow-y: auto;
+}
+
+.message {
+  position: relative;
+  border-bottom: 1px solid rgb(232 215 181 / 0.12);
+}
+
+.message-unread {
+  border-left: 3px solid var(--spice);
+  background: rgb(224 138 44 / 0.07);
+}
+
+.message-open {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.15rem 0.75rem;
+  width: 100%;
+  padding: 0.6rem 2rem 0.6rem 0.6rem;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.message-open:hover {
+  background: rgb(232 215 181 / 0.05);
+}
+
+.message-subject {
+  font-size: 0.9rem;
+}
+
+.message-unread .message-subject {
+  font-weight: 700;
+  color: var(--spice);
+}
+
+.message-when {
+  font-size: 0.75rem;
+  opacity: 0.6;
+  white-space: nowrap;
+}
+
+.message-body {
+  grid-column: 1 / -1;
+  font-size: 0.82rem;
+  opacity: 0.8;
+}
+
+.message-full {
+  white-space: pre-wrap;
+  opacity: 0.95;
+  padding-top: 0.35rem;
+}
+
+.message-tag {
+  margin-left: 0.4rem;
+  padding: 0 0.35rem;
+  border: 1px solid var(--spice);
+  border-radius: 999px;
+  font-size: 0.65rem;
+  color: var(--spice);
+}
+
+.message-remove {
+  position: absolute;
+  top: 0.45rem;
+  right: 0.3rem;
+  border: 0;
+  background: none;
+  color: inherit;
+  font-size: 1.1rem;
+  line-height: 1;
+  opacity: 0.45;
+  cursor: pointer;
+}
+
+.message-remove:hover {
+  opacity: 1;
+}
+
+.message-actions {
+  padding: 0 0.6rem 0.6rem;
+}
+
+.message-compose {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.message-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid rgb(232 215 181 / 0.25);
+  border-radius: 6px;
+  background: rgb(0 0 0 / 0.25);
+  color: inherit;
+  font: inherit;
+  font-size: 0.85rem;
+}
+
+.account-name .tab-count {
+  margin-left: 0.35rem;
+}
+
+/* The account window's tabs, on one line */
+.account-tabs {
+  flex-wrap: nowrap;
+  gap: 1.1rem;
+}
+
+.account-tabs a {
+  letter-spacing: 0.15em;
+  white-space: nowrap;
+}

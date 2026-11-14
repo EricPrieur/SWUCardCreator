@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { query, SCHEMA } from './db.js'
 import { verifyToken, requireAdmin } from './auth.js'
+import { notify } from './messages.js'
 import { cardDef } from './engine/cards.ts'
 import { scriptStatus, unplayedLines } from './engine/scripts.ts'
 
@@ -18,6 +19,34 @@ const STATUSES = ['awaiting', 'supported', 'declined']
 const engineCard = (row) => {
   const def = cardDef(row.data)
   return def && { ...def, community: `${row.user_id}/${row.card_id}` }
+}
+
+// The supported community cards as the engine plays them, for the server's games (online rooms):
+// each its own card, community:<account>/<card>, a two-sided base's back too. Read again after a
+// little while, so a card supported is soon played.
+const DEFS_KEPT = 60 * 1000
+let keptDefs = null
+export async function communityDefs() {
+  if (keptDefs && Date.now() - keptDefs.at < DEFS_KEPT) return keptDefs.defs
+  const { rows } = await query(
+    `SELECT cc.user_id, cc.card_id, cc.data
+     FROM ${SCHEMA}.community_cards cc
+     JOIN ${SCHEMA}.cards c ON c.user_id = cc.user_id AND c.id = cc.card_id
+     JOIN ${SCHEMA}.users u ON u.id = cc.user_id
+     WHERE cc.status = 'supported' AND u.can_publish AND NOT c.hidden`,
+  )
+  const defs = []
+  for (const row of rows) {
+    const key = `${row.user_id}/${row.card_id}`
+    const id = `community:${key}`
+    const def = cardDef({ ...row.data, id })
+    if (!def) continue
+    defs.push({ ...def, community: key })
+    const back = def.type === 'base' && row.data.backFrameId && cardDef({ ...row.data, id: `${id}#back`, frameId: row.data.backFrameId })
+    if (back) defs.push({ ...back, community: key })
+  }
+  keptDefs = { defs, at: Date.now() }
+  return defs
 }
 
 // The account's submissions, card by card: the latest version's state, whether a version of it is
@@ -199,10 +228,19 @@ router.patch('/admin/community/:userId/:cardId/:version', verifyToken, requireAd
   try {
     const { rows } = await query(
       `UPDATE ${SCHEMA}.community_cards SET status = $4, note = $5, auto = FALSE, reviewed_at = NOW()
-       WHERE user_id = $1 AND card_id = $2 AND version = $3 RETURNING version`,
+       WHERE user_id = $1 AND card_id = $2 AND version = $3 RETURNING version, entry, (SELECT status FROM ${SCHEMA}.community_cards p
+         WHERE p.user_id = $1 AND p.card_id = $2 AND p.version = $3) AS before`,
       [...key, status, typeof note === 'string' && note.trim() ? note.trim().slice(0, 500) : null],
     )
     if (!rows.length) return res.status(404).json({ error: 'Not found' })
+    // Its owner told, when it changes: playable, or declined (with the note)
+    const { entry, before } = rows[0]
+    const name = [entry?.name, entry?.subtitle].filter(Boolean).join(', ') || 'Your card'
+    const said = typeof note === 'string' ? note.trim() : ''
+    if (status !== before && status === 'supported')
+      await notify(key[0], `${name} is now playable`, 'It is in the Community Deck Builder and Simulator, for anyone to play.', '#showroom')
+    else if (status !== before && status === 'declined')
+      await notify(key[0], `${name} was declined`, said ? `The admin's note: ${said}` : 'Change it, then submit it again.', '#showroom')
     if (status === 'supported')
       await query(
         `UPDATE ${SCHEMA}.community_cards SET status = 'replaced'

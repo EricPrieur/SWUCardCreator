@@ -3,6 +3,7 @@ import { Router } from 'express'
 import { query, SCHEMA } from './db.js'
 import { optionalUser } from './auth.js'
 import { roomOfGame } from './rooms.js'
+import { poolOf } from './sets.js'
 
 // The Simulator's games, saved as they are played: started, then saved again each round and
 // at the end, by the browser holding the key it got when it started
@@ -52,6 +53,7 @@ function parse(body) {
     bytes: json.length,
     isPublic: body.public !== false,
     spectators: body.spectators === true,
+    pool: poolOf(body.pool),
   }
 }
 
@@ -65,8 +67,8 @@ router.post('/games', optionalUser, async (req, res) => {
   const key = randomBytes(16).toString('hex')
   try {
     const { rows } = await query(
-      `INSERT INTO ${SCHEMA}.games (user_id, key, status, winner, draw, rounds, ai_version, sides, names, record, bytes, is_dev, finished_at, is_public, spectators)
-       VALUES ($1, $2, $3::VARCHAR, $4, $5, $6, $7, $8, $9, $10, $11, $12, CASE WHEN $3::VARCHAR = 'playing' THEN NULL ELSE NOW() END, $13, $14)
+      `INSERT INTO ${SCHEMA}.games (user_id, key, status, winner, draw, rounds, ai_version, sides, names, record, bytes, is_dev, finished_at, is_public, spectators, pool)
+       VALUES ($1, $2, $3::VARCHAR, $4, $5, $6, $7, $8, $9, $10, $11, $12, CASE WHEN $3::VARCHAR = 'playing' THEN NULL ELSE NOW() END, $13, $14, $15)
        RETURNING id`,
       [
         req.user?.id ?? null,
@@ -83,6 +85,7 @@ router.post('/games', optionalUser, async (req, res) => {
         isDev(req),
         game.isPublic,
         game.spectators,
+        game.pool,
       ],
     )
     res.json({ id: rows[0].id, key })
@@ -115,7 +118,7 @@ router.put('/games/:id', async (req, res) => {
   }
 })
 
-// The games of the last hour, the newest first: those going on (saved in that hour) and those
+// The games of the last hour of one pool (?pool=community; DUNE's otherwise), the newest first: those going on (saved in that hour) and those
 // over in it, an online game still played with its room, to watch it. Anyone sees the public ones open to spectators; an admin, every one, and `all`
 // says so. Games played on a developer's computer are only seen from one.
 const RECENT_GAMES = 100
@@ -131,10 +134,10 @@ router.get('/games/recent', optionalUser, async (req, res) => {
               g.started_at, g.updated_at, g.finished_at, u.username
        FROM ${SCHEMA}.games g LEFT JOIN ${SCHEMA}.users u ON u.id = g.user_id
        WHERE ((g.status = 'playing' AND g.updated_at > NOW() - INTERVAL '1 hour') OR g.finished_at > NOW() - INTERVAL '1 hour')
-         AND (NOT g.is_dev OR $1) AND ($2 OR (g.is_public AND g.spectators))
+         AND (NOT g.is_dev OR $1) AND ($2 OR (g.is_public AND g.spectators)) AND g.pool = $3
        ORDER BY g.started_at DESC, g.id DESC
        LIMIT ${RECENT_GAMES}`,
-      [isDev(req), all],
+      [isDev(req), all, poolOf(req.query.pool)],
     )
     // Each side as the list shows it, without its cards
     const games = rows.map(({ sides, ...game }) => ({

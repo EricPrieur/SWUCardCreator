@@ -36,6 +36,16 @@ async function load() {
   return defs
 }
 
+// The cards a game of a pool plays: DUNE's, or the community's with DUNE's
+export const POOLS = ['DUNE', 'community']
+export const poolOf = (value) => (value === 'community' ? 'community' : 'DUNE')
+export async function poolDefs(pool) {
+  if (pool !== 'community') return setDefs()
+  const { communityDefs } = await import('./community.js')
+  const [dune, community] = await Promise.all([setDefs().catch(() => []), communityDefs()])
+  return [...dune, ...community]
+}
+
 export async function setDefs() {
   if (kept && Date.now() - kept.at < KEEP_FOR) return kept.defs
   loading ??= load()

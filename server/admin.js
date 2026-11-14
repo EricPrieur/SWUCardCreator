@@ -81,6 +81,8 @@ function gameFilter(req, alias = '') {
   const a = alias ? `${alias}.` : ''
   const where = []
   if (req.query.dev !== '1') where.push(`NOT ${a}is_dev`)
+  // DUNE's games, or the community's: their stats kept apart
+  where.push(`${a}pool = '${req.query.pool === 'community' ? 'community' : 'DUNE'}'`)
   const days = Number(req.query.days)
   if (Number.isFinite(days) && days > 0) where.push(`${a}started_at > NOW() - INTERVAL '1 day' * ${Math.min(3650, Math.floor(days))}`)
   return where.length ? `WHERE ${where.join(' AND ')}` : ''
@@ -170,7 +172,7 @@ router.get('/games/:id', async (req, res) => {
   const id = Number(req.params.id)
   if (!Number.isInteger(id)) return res.status(400).json({ error: 'Bad game id' })
   query(
-    `SELECT g.id, g.mode, ${statusOf} AS status, g.winner, g.draw, g.rounds, g.ai_version, g.sides, g.names, g.record, g.bytes, g.is_dev,
+    `SELECT g.id, g.mode, ${statusOf} AS status, g.winner, g.draw, g.rounds, g.ai_version, g.sides, g.names, g.record, g.bytes, g.is_dev, g.pool,
        g.started_at, g.updated_at, g.finished_at, u.username
      FROM ${SCHEMA}.games g LEFT JOIN ${SCHEMA}.users u ON u.id = g.user_id WHERE g.id = $1`,
     [id],

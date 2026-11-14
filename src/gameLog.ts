@@ -9,7 +9,8 @@ import type { GameState } from '../server/engine/types.ts'
 // `onSaved` hears of a new one, to keep it with the game. `seen`: who may see it while it goes on,
 // told the server as it starts: listed for anyone (public) and open to watch (spectators).
 export type SavedGame = { id: number; key: string }
-export type GameSeen = { public?: boolean; spectators?: boolean }
+// pool: the cards it is played with, DUNE's or the community's
+export type GameSeen = { public?: boolean; spectators?: boolean; pool?: 'DUNE' | 'community' }
 export function gameLog(
   session: Session | null,
   record: GameRecord,

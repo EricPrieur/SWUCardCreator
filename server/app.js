@@ -4,6 +4,7 @@ import adminRouter from './admin.js'
 import cardsRouter from './cards.js'
 import publicRouter from './public.js'
 import communityRouter from './community.js'
+import messagesRouter from './messages.js'
 import decksRouter from './decks.js'
 import gamesRouter from './games.js'
 import roomsRouter from './rooms.js'
@@ -33,6 +34,7 @@ export function createApp() {
   // Before the admin router, which wants an admin for everything under /api/admin
   app.use('/api', publicRouter)
   app.use('/api', communityRouter)
+  app.use('/api', messagesRouter)
   app.use('/api/admin', adminRouter)
   app.use('/api', cardsRouter)
   app.use('/api', decksRouter)

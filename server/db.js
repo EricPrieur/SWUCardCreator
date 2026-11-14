@@ -104,6 +104,26 @@ export async function initDB() {
       FOREIGN KEY (user_id, card_id) REFERENCES ${SCHEMA}.cards (user_id, id) ON DELETE CASCADE
     )
   `)
+  // An account's notifications (from the site: from_user_id NULL) and mail (from an account),
+  // unread until read_at; reply_to: the mail one answers
+  await query(`
+    CREATE TABLE IF NOT EXISTS ${SCHEMA}.messages (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES ${SCHEMA}.users(id) ON DELETE CASCADE,
+      from_user_id INTEGER REFERENCES ${SCHEMA}.users(id) ON DELETE SET NULL,
+      kind VARCHAR(16) NOT NULL,
+      subject VARCHAR(120) NOT NULL,
+      body TEXT NOT NULL DEFAULT '',
+      link VARCHAR(200),
+      reply_to INTEGER,
+      read_at TIMESTAMP,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW()
+    )
+  `)
+  await query(`CREATE INDEX IF NOT EXISTS messages_user ON ${SCHEMA}.messages (user_id, kind, created_at)`)
+  // A mail to the admins: each admin's copy; copy_of, the first copy's id (the Sent box shows one)
+  await query(`ALTER TABLE ${SCHEMA}.messages ADD COLUMN IF NOT EXISTS to_admins BOOLEAN NOT NULL DEFAULT FALSE`)
+  await query(`ALTER TABLE ${SCHEMA}.messages ADD COLUMN IF NOT EXISTS copy_of INTEGER`)
   // Supported as it was submitted: the engine played every line of it, so it needed no review
   await query(`ALTER TABLE ${SCHEMA}.community_cards ADD COLUMN IF NOT EXISTS auto BOOLEAN NOT NULL DEFAULT FALSE`)
   // Art uploaded by an account: the file is on disk, named by the SHA-256 of its bytes
@@ -161,6 +181,8 @@ export async function initDB() {
   // the AI always is), spectators, open to watch. Unlisted or closed, admins still see it
   await query(`ALTER TABLE ${SCHEMA}.games ADD COLUMN IF NOT EXISTS is_public BOOLEAN NOT NULL DEFAULT TRUE`)
   await query(`ALTER TABLE ${SCHEMA}.games ADD COLUMN IF NOT EXISTS spectators BOOLEAN NOT NULL DEFAULT FALSE`)
+  // Which cards it was played with: DUNE's, or the community's (with DUNE's), whose replay needs them
+  await query(`ALTER TABLE ${SCHEMA}.games ADD COLUMN IF NOT EXISTS pool VARCHAR(16) NOT NULL DEFAULT 'DUNE'`)
 }
 
 // The bytes an account uses: its cards' data, its images and its decks

@@ -371,9 +371,14 @@ function DeckPicker(props: {
   const value = props.value.startsWith('deck:') && !chosen ? 'random-generated' : props.value
   // Your own decks first, those built from Sealed pools after the Deck Builder's, the ones that
   // ship with the site last
-  const groups = [deckSources[0].from, SEALED, ...deckSources.slice(1).map(({ from }) => from), FEATURED].map((from) => ({ from, decks: decks.filter((deck) => deck.from === from) }))
+  const groups = [deckSources[0].from, COMMUNITY_DECKS, SEALED, ...deckSources.slice(1).map(({ from }) => from), FEATURED].map((from) => ({
+    from,
+    decks: decks.filter((deck) => deck.from === from),
+  }))
+  // The Community Simulator's cards: DUNE's and the community's playable ones
+  const community = set.defs.some((d) => d.community)
   const about: Record<string, string> = {
-    'random-generated': `A random leader and base, with 50 cards of the ${SET} set they can pay for.`,
+    'random-generated': `A random leader and base, with 50 cards ${community ? `of ${SET} and the community's playable cards` : `of the ${SET} set`} they can pay for.`,
     random: decks.length ? 'One of the decks in this list, picked at random.' : 'There are no decks yet: a random deck is made instead.',
     'different-random':
       decks.length > 1 ? 'One of the decks in this list at random, not the one you play.' : 'One of the decks in this list, picked at random.',
@@ -434,20 +439,18 @@ function replyTo(text: string) {
 }
 
 // drawCard: draws a card as an image, for the Prescient copies in a game; without it they show plain
-// pool: which cards it plays, DUNE's or the community's (with DUNE's). The community's games are
-// against the AI only for now, and not saved to the server, whose games are DUNE's.
+// pool: which cards it plays, DUNE's or the community's (with DUNE's). Each has its own games:
+// its online rooms, its games saved and listed, its game kept to resume.
 export function Simulator(props: { drawCard?: (card: Card) => Promise<string>; pool?: SimPool }) {
   const pool = props.pool ?? 'DUNE'
   const community = pool === 'community'
   const account = useAccount()
-  // Each game's record saved to the server as it goes; not the community's
-  const startLog: typeof gameLog = (...args) => (community ? { moved() {}, undone() {}, left() {} } : gameLog(...args))
   // The room a link invites to (?room=), and the seat held in a game online
   const [invited, setInvited] = useState(() => new URLSearchParams(window.location.search).get('room'))
-  const [online, setOnline] = useState<OnlineSeat | null>(() => (community ? null : keptSeat()))
-  const [view, setView] = useState<'ai' | 'online'>(invited && !community ? 'online' : 'ai')
+  const [online, setOnline] = useState<OnlineSeat | null>(() => keptSeat(pool))
+  const [view, setView] = useState<'ai' | 'online'>(invited ? 'online' : 'ai')
   const takeSeat = (seat: OnlineSeat | null) => {
-    keepSeat(seat)
+    keepSeat(seat, pool)
     setOnline(seat)
     if (seat && invited) {
       setInvited(null)
@@ -544,7 +547,7 @@ export function Simulator(props: { drawCard?: (card: Card) => Promise<string>; p
     record.current = startRecord(seed, named, [{ kind: 'human' }, { kind: 'ai', version: AI_VERSION }])
     const game_: KeptGame = { record: record.current, deckNames: deckNames as [string, string], server: null }
     kept.current = game_
-    log.current = startLog(
+    log.current = gameLog(
       account,
       record.current,
       game_.deckNames,
@@ -553,7 +556,7 @@ export function Simulator(props: { drawCard?: (card: Card) => Promise<string>; p
         game_.server = saved
         if (kept.current === game_ && gameNow.current?.phase !== 'over') keep()
       },
-      { spectators },
+      { spectators, pool },
     )
     const next = createGame({ seed, defs: set.defs, decks: named })
     log.current.moved(next)
@@ -610,7 +613,7 @@ export function Simulator(props: { drawCard?: (card: Card) => Promise<string>; p
     const game_ = waiting
     kept.current = game_
     record.current = game_.record
-    log.current = startLog(account, game_.record, game_.deckNames, game_.server, (saved) => {
+    log.current = gameLog(account, game_.record, game_.deckNames, game_.server, (saved) => {
       game_.server = saved
       if (kept.current === game_ && gameNow.current?.phase !== 'over') keep()
     })
@@ -625,7 +628,7 @@ export function Simulator(props: { drawCard?: (card: Card) => Promise<string>; p
     setWaiting(null)
     keepGame(null, pool)
     const rebuilt = set && rebuild(waiting)
-    if (rebuilt && rebuilt.state.phase !== 'over') startLog(account, waiting.record, waiting.deckNames, waiting.server).left(rebuilt.state)
+    if (rebuilt && rebuilt.state.phase !== 'over') gameLog(account, waiting.record, waiting.deckNames, waiting.server, undefined, { pool }).left(rebuilt.state)
   }
 
   if (online && set) {
@@ -654,18 +657,16 @@ export function Simulator(props: { drawCard?: (card: Card) => Promise<string>; p
         <button type="button" role="tab" aria-selected={view === 'ai'} onClick={() => setView('ai')}>
           Play vs AI
         </button>
-        {!community && (
-          <button type="button" role="tab" aria-selected={view === 'online'} onClick={() => setView('online')}>
-            Online Game
-          </button>
-        )}
+        <button type="button" role="tab" aria-selected={view === 'online'} onClick={() => setView('online')}>
+          Online Game
+        </button>
       </div>
       {failed || !set ? (
         <div className="sim-menu-panel">
           <p>{failed || `Loading the ${community ? 'community' : SET} cards…`}</p>
         </div>
       ) : view === 'online' ? (
-        <OnlineLobby account={account} set={set} decks={decks} invited={invited} onSeat={takeSeat} />
+        <OnlineLobby account={account} set={set} decks={decks} invited={invited} onSeat={takeSeat} pool={pool} />
       ) : (
         <div className="sim-menu-panel">
           {waiting && (
@@ -685,12 +686,10 @@ export function Simulator(props: { drawCard?: (card: Card) => Promise<string>; p
             <DeckPicker title="Your Deck" side="me" value={choices[0]} decks={decks} set={set} onChange={(c) => choose(0, c)} />
             <DeckPicker title="AI Deck" side="opp" value={choices[1]} decks={decks} set={set} onChange={(c) => choose(1, c)} />
           </div>
-          {!community && (
-            <label className="sim-toggle" title="Others may watch this game: it is listed in the Online Game tab's In Progress">
-              <input type="checkbox" checked={spectators} onChange={(event) => setSpectators(event.target.checked)} />
-              Spectators
-            </label>
-          )}
+          <label className="sim-toggle" title="Others may watch this game: it is listed in the Online Game tab's In Progress">
+            <input type="checkbox" checked={spectators} onChange={(event) => setSpectators(event.target.checked)} />
+            Spectators
+          </label>
           <button type="button" className="sim-button go" onClick={start}>
             Start game
           </button>
@@ -923,8 +922,10 @@ function OnlineLobby(props: {
   // The room a link invites to
   invited: string | null
   onSeat: (seat: OnlineSeat) => void
+  // Its rooms and games: DUNE's, or the community's
+  pool: SimPool
 }) {
-  const { account, set, decks } = props
+  const { account, set, decks, pool } = props
   const [deck, setDeck] = useState<Choice>(() => {
     try {
       return (localStorage.getItem(ONLINE_DECK_KEY) as Choice | null) ?? 'random-generated'
@@ -963,7 +964,7 @@ function OnlineLobby(props: {
   }
   const create = () =>
     run(async () => {
-      const opened = await openRoom(account, { ...opening(), public: listed, spectators })
+      const opened = await openRoom(account, { ...opening(), public: listed, spectators, pool })
       return { room: opened.id, key: opened.key }
     })
   const join = (room: string) => run(async () => ({ room, key: (await joinRoom(account, room, opening())).key }))
@@ -981,7 +982,7 @@ function OnlineLobby(props: {
     if (tab !== 'public') return
     let live = true
     const load = () =>
-      listRooms()
+      listRooms(pool)
         .then((found) => live && setWaiting(found))
         .catch(() => live && setWaiting((now) => now ?? []))
     load()
@@ -998,7 +999,7 @@ function OnlineLobby(props: {
     if (tab !== 'progress') return
     let live = true
     const load = () =>
-      api<{ games: RecentGame[]; all: boolean }>('/api/games/recent', { token: account?.token })
+      api<{ games: RecentGame[]; all: boolean }>(`/api/games/recent?pool=${pool}`, { token: account?.token })
         .then((found) => {
           if (!live) return
           setRecent(found)
