@@ -4,6 +4,7 @@ import { verifyToken, requireAdmin } from './auth.js'
 import { notify } from './messages.js'
 import { cardDef } from './engine/cards.ts'
 import { scriptStatus, unplayedLines } from './engine/scripts.ts'
+import { STEP_CENTS } from './tiers.ts'
 
 // Community cards: a public card its owner submits to be played. Each submission is a version, a
 // copy of the card as it is then, waiting in the Admin panel's queue until an admin supports it
@@ -151,7 +152,7 @@ router.delete('/community/:cardId', verifyToken, async (req, res) => {
 router.get('/community/cards', async (req, res) => {
   try {
     const { rows } = await query(
-      `SELECT cc.user_id, cc.card_id, cc.version, cc.entry, cc.data, cc.image, cc.back_image, u.username
+      `SELECT cc.user_id, cc.card_id, cc.version, cc.entry, cc.data, cc.image, cc.back_image, u.username, (u.donated_cents >= ${STEP_CENTS}) AS supporter
        FROM ${SCHEMA}.community_cards cc
        JOIN ${SCHEMA}.cards c ON c.user_id = cc.user_id AND c.id = cc.card_id
        JOIN ${SCHEMA}.users u ON u.id = cc.user_id
@@ -165,6 +166,7 @@ router.get('/community/cards', async (req, res) => {
         cardId: row.card_id,
         version: row.version,
         owner: row.username,
+        ownerSupporter: !!row.supporter,
         entry: row.entry,
         // The card as saved, for the Simulator's engine
         data: row.data,

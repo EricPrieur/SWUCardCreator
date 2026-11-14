@@ -1,3 +1,4 @@
+import { SupporterMark } from './Support'
 import { isSupporter } from '../server/tiers.ts'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { asset } from './asset'
@@ -903,6 +904,8 @@ type RecentGame = {
   spectators: boolean
   started_at: string
   username: string | null
+  // The account that saved it tipped: a Supporter
+  supporter?: boolean
   // An online game still played: its room, to watch it
   room: string | null
 }
@@ -1179,7 +1182,11 @@ function RecentGameItem(props: { game: RecentGame; set: SetCards; admin: boolean
                   ),
                 )}
               </div>
-              <strong>{who(i)}</strong>
+              <strong>
+                {who(i)}
+                {/* The account that saved it: the human side against the AI, the host online */}
+                <SupporterMark on={game.supporter && (game.mode === 'online' ? i === 0 : side?.seat !== 'ai')} />
+              </strong>
               <span>{side?.deck || side?.name}</span>
             </div>
           )

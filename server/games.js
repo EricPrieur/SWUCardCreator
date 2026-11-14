@@ -4,6 +4,7 @@ import { query, SCHEMA } from './db.js'
 import { optionalUser } from './auth.js'
 import { roomOfGame } from './rooms.js'
 import { poolOf } from './sets.js'
+import { STEP_CENTS } from './tiers.ts'
 
 // The Simulator's games, saved as they are played: started, then saved again each round and
 // at the end, by the browser holding the key it got when it started
@@ -131,7 +132,7 @@ router.get('/games/recent', optionalUser, async (req, res) => {
     }
     const { rows } = await query(
       `SELECT g.id, g.mode, g.status, g.winner, g.draw, g.rounds, g.sides, g.is_public, g.spectators,
-              g.started_at, g.updated_at, g.finished_at, u.username
+              g.started_at, g.updated_at, g.finished_at, u.username, (u.donated_cents >= ${STEP_CENTS}) AS supporter
        FROM ${SCHEMA}.games g LEFT JOIN ${SCHEMA}.users u ON u.id = g.user_id
        WHERE ((g.status = 'playing' AND g.updated_at > NOW() - INTERVAL '1 hour') OR g.finished_at > NOW() - INTERVAL '1 hour')
          AND (NOT g.is_dev OR $1) AND ($2 OR (g.is_public AND g.spectators)) AND g.pool = $3

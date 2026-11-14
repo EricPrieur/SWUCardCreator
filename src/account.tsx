@@ -16,7 +16,7 @@ import {
 import { CardsTab, DecksTab, defaultFilter, FilterBar, GamesTab, StatsTab, type GameFilter } from './AdminGames'
 import { CommunityTab } from './AdminCommunity'
 import { MailTab, NotificationsTab, useUnread, type Unread } from './Messages'
-import { KofiHover } from './Support'
+import { KofiHover, SupporterMark } from './Support'
 import { isSupporter, STEP_CENTS, TIER_NAMES, tierOf } from '../server/tiers.ts'
 
 type AdminUser = User & {
@@ -734,6 +734,7 @@ export function AccountBar(props: { localCards: number; localDecks: number; onCo
                 onClick={() => setOpen(unread.notification ? 'notification' : unread.mail ? 'mail' : 'settings')}
               >
                 {session.user.username}
+                <SupporterMark on={(session.user.donatedCents ?? 0) >= STEP_CENTS} />
                 {unreadTotal > 0 ? (
                   <span className="tab-count">{unreadTotal > 99 ? '99+' : unreadTotal}</span>
                 ) : (

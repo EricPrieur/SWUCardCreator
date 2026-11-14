@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api, type Session } from './api'
+import { SupporterMark } from './Support'
 
 // An account's notifications and mail (server/messages.js), as on The Chrome Grid: the site's
 // news of its cards, and mail from people. The account's name in the corner counts the unread.
@@ -10,6 +11,7 @@ type Message = {
   kind: 'notification' | 'mail'
   from: string | null
   fromAdmin: boolean
+  fromSupporter?: boolean
   to: string | null
   // Written to the admins: each admin has a copy
   toAdmins: boolean
@@ -263,6 +265,7 @@ export function MailTab(props: { session: Session; onChange: () => void }) {
               <button className="message-open" type="button" onClick={() => show(message)}>
                 <span className="message-subject">
                   {box === 'sent' ? `To ${message.to}` : message.from ?? 'Someone'}
+                  {box === 'inbox' && <SupporterMark on={message.fromSupporter} />}
                   {box === 'inbox' && message.fromAdmin && <span className="message-tag">Admin</span>}
                   {box === 'inbox' && message.toAdmins && <span className="message-tag">To the Admins</span>} · {message.subject}
                 </span>

@@ -4208,3 +4208,12 @@ input.picker-button::placeholder {
 .kofi-pop-line {
   margin: 0.35rem 0 0;
 }
+
+/* A Supporter's mark after their name */
+.supporter-mark {
+  margin-left: 0.25em;
+  font-size: 0.85em;
+  color: #ff5e5b;
+  text-shadow: 0 0 6px rgb(255 94 91 / 0.45);
+  cursor: help;
+}

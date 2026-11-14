@@ -78,6 +78,16 @@ export function SupportPage() {
   )
 }
 
+// A Supporter's mark, after their name wherever it shows: a small heart in Ko-fi's coral
+export function SupporterMark(props: { on?: boolean }) {
+  if (!props.on) return null
+  return (
+    <span className="supporter-mark" title="Supporter: their tips keep the site running" aria-label="Supporter">
+      ♥
+    </span>
+  )
+}
+
 // The Ko-fi link's hover: the tiers in a line each, and the way to the Support page
 export function KofiHover() {
   return (

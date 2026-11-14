@@ -4,6 +4,7 @@ import { Router } from 'express'
 import { query, SCHEMA } from './db.js'
 import { optionalUser, verifyToken, requireAdmin } from './auth.js'
 import { imageDir } from './cards.js'
+import { STEP_CENTS } from './tiers.ts'
 
 const IMAGE_ID = /^[0-9a-f]{64}$/
 
@@ -25,6 +26,8 @@ const publicCard = (row) => ({
   ownerBlocked: !row.can_publish,
   // Its owner's Showroom has a page of its own
   ownerShowroom: !!row.showroom_public,
+  // Its owner tipped: a Supporter, marked by their name
+  ownerSupporter: !!row.supporter,
 })
 
 // Everyone's public cards, newest first, for the Community tab. Admins also get the
@@ -38,7 +41,7 @@ router.get('/public/cards', optionalUser, async (req, res) => {
     }
     const { rows } = await query(
       `SELECT c.user_id, c.id, u.username, c.public_entry, c.public_image, c.public_back_image, c.published_at, c.hidden,
-         u.can_publish, u.showroom_public
+         u.can_publish, u.showroom_public, (u.donated_cents >= ${STEP_CENTS}) AS supporter
        FROM ${SCHEMA}.cards c JOIN ${SCHEMA}.users u ON u.id = c.user_id
        WHERE c.is_public ${admin ? '' : 'AND NOT c.hidden AND u.can_publish'}
        ORDER BY c.published_at DESC`,
@@ -55,7 +58,7 @@ router.get('/public/cards', optionalUser, async (req, res) => {
 router.get('/public/showroom/:username', optionalUser, async (req, res) => {
   try {
     const { rows: users } = await query(
-      `SELECT id, username, showroom_public, can_publish FROM ${SCHEMA}.users WHERE LOWER(username) = LOWER($1)`,
+      `SELECT id, username, showroom_public, can_publish, donated_cents FROM ${SCHEMA}.users WHERE LOWER(username) = LOWER($1)`,
       [req.params.username],
     )
     const user = users[0]
@@ -64,13 +67,13 @@ router.get('/public/showroom/:username', optionalUser, async (req, res) => {
       return res.status(404).json({ error: 'This Showroom is not public.' })
     const { rows } = await query(
       `SELECT c.user_id, c.id, u.username, c.public_entry, c.public_image, c.public_back_image, c.published_at, c.hidden,
-         u.can_publish, u.showroom_public
+         u.can_publish, u.showroom_public, (u.donated_cents >= ${STEP_CENTS}) AS supporter
        FROM ${SCHEMA}.cards c JOIN ${SCHEMA}.users u ON u.id = c.user_id
        WHERE c.user_id = $1 AND c.is_public AND NOT c.hidden
        ORDER BY c.created_at`,
       [user.id],
     )
-    res.json({ owner: user.username, public: user.showroom_public, cards: rows.map(publicCard) })
+    res.json({ owner: user.username, ownerSupporter: user.donated_cents >= STEP_CENTS, public: user.showroom_public, cards: rows.map(publicCard) })
   } catch (err) {
     console.error('Public showroom error:', err)
     res.status(500).json({ error: 'Server error' })

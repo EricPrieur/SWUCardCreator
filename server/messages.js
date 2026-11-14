@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { query, SCHEMA } from './db.js'
 import { verifyToken } from './auth.js'
+import { STEP_CENTS } from './tiers.ts'
 
 // An account's notifications and mail, as on The Chrome Grid: what the site tells it (a card
 // submitted for play is supported, or declined with a note) and mail from people. An admin may
@@ -37,6 +38,7 @@ const row = (r) => ({
   kind: r.kind,
   from: r.from_name ?? null,
   fromAdmin: !!r.from_admin,
+  fromSupporter: !!r.from_supporter,
   to: r.to_admins ? 'Admins' : (r.to_name ?? null),
   toAdmins: !!r.to_admins,
   subject: r.subject,
@@ -68,7 +70,7 @@ router.get('/messages', verifyToken, async (req, res) => {
   const sent = req.query.sent === '1' && kind === 'mail'
   try {
     const { rows } = await query(
-      `SELECT m.*, f.username AS from_name, f.is_admin AS from_admin, t.username AS to_name
+      `SELECT m.*, f.username AS from_name, f.is_admin AS from_admin, (f.donated_cents >= ${STEP_CENTS}) AS from_supporter, t.username AS to_name
        FROM ${SCHEMA}.messages m
        LEFT JOIN ${SCHEMA}.users f ON f.id = m.from_user_id
        LEFT JOIN ${SCHEMA}.users t ON t.id = m.user_id

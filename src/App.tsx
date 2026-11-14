@@ -1,4 +1,4 @@
-import { SupportPage } from './Support'
+import { SupporterMark, SupportPage } from './Support'
 import { isSupporter } from '../server/tiers.ts'
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type CSSProperties, type ReactNode, type RefObject } from 'react'
 import { createPortal, flushSync } from 'react-dom'
@@ -2707,6 +2707,8 @@ type PublicCard = {
   ownerBlocked: boolean
   // Its owner's Showroom has a page of its own
   ownerShowroom?: boolean
+  // Its owner tipped: a Supporter, a heart after their name
+  ownerSupporter?: boolean
 }
 
 // A public card the Community tab can show; an older or odd one is left out rather than
@@ -3021,7 +3023,11 @@ function Community(props: { session: Session | null; owner?: string | null }) {
   const own = !!owner && owner.toLowerCase() === session?.user.username.toLowerCase()
   const heading = owner && (
     <div className="public-showroom-head">
-      <h2>{list && list[0] ? list[0].owner : owner}'s Showroom</h2>
+      <h2>
+        {list && list[0] ? list[0].owner : owner}
+        <SupporterMark on={list?.[0]?.ownerSupporter} />
+        's Showroom
+      </h2>
       <CopyLinkButton link={showroomLink(owner)} />
       <a className="button" href="#community">
         Community
@@ -3151,6 +3157,7 @@ function CommunityItem(props: {
           ) : (
             card.owner
           )}
+          <SupporterMark on={card.ownerSupporter} />
           {admin && card.ownerShowroom && (
             <>
               {' · '}
