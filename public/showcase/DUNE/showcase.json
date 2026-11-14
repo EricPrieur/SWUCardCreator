@@ -2763,7 +2763,7 @@
         "Vehicle",
         "Capital Ship"
       ],
-      "text": "when played: deal 1 damage to an enemy ground unit for each friendly fremen ground unit.",
+      "text": "when played: deal damage to an enemy ground unit equal to the number of friendly fremen ground units.",
       "set": "DUNE",
       "number": "138",
       "arena": "Space",

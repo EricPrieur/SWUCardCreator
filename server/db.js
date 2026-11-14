@@ -82,6 +82,30 @@ export async function initDB() {
   await query(`ALTER TABLE ${SCHEMA}.cards ADD COLUMN IF NOT EXISTS published_at TIMESTAMP`)
   await query(`ALTER TABLE ${SCHEMA}.cards ADD COLUMN IF NOT EXISTS hidden BOOLEAN NOT NULL DEFAULT FALSE`)
   await query(`CREATE INDEX IF NOT EXISTS cards_public ON ${SCHEMA}.cards (published_at) WHERE is_public`)
+  // Community cards: a public card its owner submitted to be played, each submission a version,
+  // a copy of the card as it was then (its showcase entry, its data, the JPG of each side), so a
+  // later edit changes nothing in decks until an admin supports the new version. awaiting: in the
+  // Admin panel's queue; supported: in the Community Deck Builder; declined: with a note to its
+  // owner; replaced: a supported version a newer one took over from. Withdrawn with the card.
+  await query(`
+    CREATE TABLE IF NOT EXISTS ${SCHEMA}.community_cards (
+      user_id INTEGER NOT NULL,
+      card_id VARCHAR(64) NOT NULL,
+      version INTEGER NOT NULL,
+      status VARCHAR(16) NOT NULL DEFAULT 'awaiting',
+      entry JSONB NOT NULL,
+      data JSONB NOT NULL,
+      image CHAR(64) NOT NULL,
+      back_image CHAR(64),
+      note TEXT,
+      submitted_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      reviewed_at TIMESTAMP,
+      PRIMARY KEY (user_id, card_id, version),
+      FOREIGN KEY (user_id, card_id) REFERENCES ${SCHEMA}.cards (user_id, id) ON DELETE CASCADE
+    )
+  `)
+  // Supported as it was submitted: the engine played every line of it, so it needed no review
+  await query(`ALTER TABLE ${SCHEMA}.community_cards ADD COLUMN IF NOT EXISTS auto BOOLEAN NOT NULL DEFAULT FALSE`)
   // Art uploaded by an account: the file is on disk, named by the SHA-256 of its bytes
   await query(`
     CREATE TABLE IF NOT EXISTS ${SCHEMA}.images (

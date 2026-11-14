@@ -1204,12 +1204,13 @@ test('Mercenary Strike Fighter: a Spice token for 2 damage to a unit, in either 
   assert.equal(state.players[1].units[0].damage, 0)
 })
 
-test('Commandeered Harkonnen Frigate: 1 damage to an enemy ground unit for each friendly Fremen ground unit', () => {
+test('Commandeered Harkonnen Frigate: damage to one enemy ground unit equal to the friendly Fremen ground units', () => {
   let state = table({ hand0: ['commandeered'], units0: ['fremen', 'fremen', 'trooper', 'thopter'], units1: ['big', 'trooper'] })
   state.players[0].units[3].arena = 'space'
   state = act(state, 0, { type: 'play', card: 'h0' })
+  assert.match(state.prompt!.text, /deal 2 damage/)
   state = answer(state, 'u10')
-  state = answer(state, 'u10')
+  assert.equal(state.prompt, null, 'one target, asked once')
   state = settle(state)
   assert.equal(state.players[1].units[0].damage, 2, "two Fremen on the ground: not the Trooper, not the Fremen 'thopter")
   assert.equal(state.players[1].units[1].damage, 0)

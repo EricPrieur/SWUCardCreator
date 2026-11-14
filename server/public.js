@@ -86,7 +86,11 @@ router.get('/public/images/:id', async (req, res) => {
       `SELECT i.content_type FROM ${SCHEMA}.cards c
        JOIN ${SCHEMA}.images i ON i.user_id = c.user_id AND i.id = $1
        JOIN ${SCHEMA}.users u ON u.id = c.user_id
-       WHERE c.is_public AND NOT c.hidden AND u.can_publish AND (c.public_image = $1 OR c.public_back_image = $1)
+       WHERE NOT c.hidden AND u.can_publish
+         AND ((c.is_public AND (c.public_image = $1 OR c.public_back_image = $1))
+           -- A supported community card's copy, the card changed since or not
+           OR EXISTS (SELECT 1 FROM ${SCHEMA}.community_cards cc
+             WHERE cc.user_id = c.user_id AND cc.card_id = c.id AND cc.status = 'supported' AND (cc.image = $1 OR cc.back_image = $1)))
        LIMIT 1`,
       [id],
     )
@@ -111,7 +115,10 @@ router.get('/admin/public-images/:id', verifyToken, requireAdmin, async (req, re
     const { rows } = await query(
       `SELECT i.content_type FROM ${SCHEMA}.cards c
        JOIN ${SCHEMA}.images i ON i.user_id = c.user_id AND i.id = $1
-       WHERE c.is_public AND (c.public_image = $1 OR c.public_back_image = $1)
+       WHERE (c.is_public AND (c.public_image = $1 OR c.public_back_image = $1))
+         -- A community card's copy, in the Admin panel's queue
+         OR EXISTS (SELECT 1 FROM ${SCHEMA}.community_cards cc
+           WHERE cc.user_id = c.user_id AND cc.card_id = c.id AND (cc.image = $1 OR cc.back_image = $1))
        LIMIT 1`,
       [id],
     )

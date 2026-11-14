@@ -64,6 +64,9 @@ export type CardDef = {
   text?: string
   // A leader's unit side's text
   backText?: string
+  // A community card (one a player submitted to be played): '<account id>/<card id>'. Its
+  // script is found by that, among the community scripts, never by its name among DUNE's.
+  community?: string
 }
 
 // One physical card in a game; def names its CardDef

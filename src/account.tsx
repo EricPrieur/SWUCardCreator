@@ -13,6 +13,7 @@ import {
   type User,
 } from './api'
 import { CardsTab, DecksTab, defaultFilter, FilterBar, GamesTab, StatsTab, type GameFilter } from './AdminGames'
+import { CommunityTab } from './AdminCommunity'
 
 type AdminUser = User & {
   lastLoginAt: string | null
@@ -317,6 +318,7 @@ const ADMIN_TABS = [
   ['games', 'Games'],
   ['decks', 'Decks'],
   ['cards', 'Cards'],
+  ['community', 'Community'],
 ] as const
 type AdminTab = (typeof ADMIN_TABS)[number][0]
 
@@ -341,12 +343,13 @@ function AdminModal(props: { session: Session; focus?: number; onClose: () => vo
           </a>
         ))}
       </nav>
-      {tab !== 'users' && <FilterBar filter={filter} onChange={setFilter} />}
+      {tab !== 'users' && tab !== 'community' && <FilterBar filter={filter} onChange={setFilter} />}
       {tab === 'users' && <UsersTab session={session} focus={focus} />}
       {tab === 'stats' && <StatsTab session={session} filter={filter} />}
       {tab === 'games' && <GamesTab session={session} filter={filter} />}
       {tab === 'decks' && <DecksTab session={session} filter={filter} />}
       {tab === 'cards' && <CardsTab session={session} filter={filter} />}
+      {tab === 'community' && <CommunityTab session={session} />}
       <div className="account-buttons">
         <button className="button button-primary" type="button" onClick={onClose}>
           Close

@@ -7,7 +7,7 @@ import './App.css'
 import { CardView, partBoxes } from './CardView'
 import { AccountBar, Modal } from './account'
 import { leaveGuard, setLeaveGuard } from './leaveGuard'
-import { EVENT_PACK_SIZE, EVENT_PACKS, planSealedEvent, seededRandom, type EventPlan } from './sealedEvent'
+import { EVENT_PACK_SIZE, EVENT_PACKS, planSealedEvent, playerBases, seededRandom, type EventPlan } from './sealedEvent'
 import { playClick, Simulator } from './Simulator'
 import {
   copyLocalDecks,
@@ -527,6 +527,76 @@ function bothSides(first: ReactNode, second: ReactNode, base: boolean) {
   }
 }
 
+// Drawn large, a card needs no preview, but a two-sided card's other side still shows: the
+// side not shown, as wide as its frame (a leader side and a base are landscape)
+function otherSide(face: ReactNode, landscape: boolean) {
+  return { preview: face, width: landscape ? Math.round(PREVIEW_WIDTH * 1.4) : PREVIEW_WIDTH }
+}
+const hoverOf = (preview: boolean, sides: { preview: ReactNode; width?: number }, other?: { preview: ReactNode; width: number }) =>
+  preview ? { enabled: true, ...sides } : other ? { enabled: true, ...other } : { enabled: false, ...sides }
+
+// A card submitted to be played (Community Deck Builder): its latest version's state, whether a
+// version of it is playable, and whether the card changed since it was last submitted
+type CommunityState = { version: number; status: 'awaiting' | 'supported' | 'declined' | 'replaced'; note: string | null; changed: boolean; playable: boolean }
+
+// Submit for play, and where the card stands: under a public card in the Showroom
+function CommunityControls(props: { state?: CommunityState; busy: boolean; onSubmit: () => void; onWithdraw: () => void }) {
+  const { state, busy, onSubmit, onWithdraw } = props
+  const [withdrawing, setWithdrawing] = useState(false)
+  if (!state)
+    return (
+      <div className="community-controls">
+        <button className="button" type="button" disabled={busy} title="Ask for this card to be made playable in the Community Deck Builder" onClick={onSubmit}>
+          Submit for play
+        </button>
+      </div>
+    )
+  const label =
+    state.status === 'awaiting'
+      ? state.playable
+        ? 'Playable · new version awaiting support'
+        : 'Awaiting support'
+      : state.status === 'declined'
+        ? state.playable
+          ? 'Playable · new version declined'
+          : 'Declined'
+        : 'Playable'
+  return (
+    <div className="community-controls">
+      <span className={`community-status community-${state.status}`} title={`Version ${state.version}`}>
+        {label}
+      </span>
+      {state.note && <span className="community-note">“{state.note}”</span>}
+      {(state.changed || state.status === 'declined') && (
+        <button
+          className="button"
+          type="button"
+          disabled={busy}
+          title={state.status === 'awaiting' ? 'Bring the version waiting up to date with your changes' : 'Submit the card as it is now, as a new version'}
+          onClick={onSubmit}
+        >
+          {state.status === 'awaiting' ? 'Update submission' : 'Submit again'}
+        </button>
+      )}
+      {withdrawing ? (
+        <span className="confirm">
+          Withdraw{state.playable ? ', and take it out of decks' : ''}?
+          <button className="button button-primary" type="button" onClick={() => (setWithdrawing(false), onWithdraw())}>
+            Yes
+          </button>
+          <button className="button" type="button" onClick={() => setWithdrawing(false)}>
+            No
+          </button>
+        </span>
+      ) : (
+        <button className="button" type="button" disabled={busy} title="Take this card out of the community, every version" onClick={() => setWithdrawing(true)}>
+          Withdraw
+        </button>
+      )}
+    </div>
+  )
+}
+
 function ShowroomCard(props: {
   card: Card
   // Show a large copy of the card while the mouse is over it
@@ -541,21 +611,25 @@ function ShowroomCard(props: {
   // An admin turned off making cards public for the account
   blocked?: boolean
   onPublic?: (makePublic: boolean) => void
+  // Signed in, a public card: submitting it to be played, and where it stands
+  community?: { state?: CommunityState; busy: boolean; onSubmit: () => void; onWithdraw: () => void }
 }) {
-  const { card, preview, format, onFormat, onEdit, onRemove, published, publishing, blocked, onPublic } = props
+  const { card, preview, format, onFormat, onEdit, onRemove, published, publishing, blocked, onPublic, community } = props
   const [back, setBack] = useState(false)
   // Remove asks once more before it does anything
   const [removing, setRemoving] = useState(false)
   const [note, setNote] = useState<string | null>(null)
   const ref = useRef<HTMLDivElement>(null)
   const side = cardSide(card, back)
+  const isBase = findFrame(card.frameId).type === 'Base'
   const sides = backFrameOf(card)
-    ? bothSides(<CardFace card={card} />, <CardFace card={card} back />, findFrame(card.frameId).type === 'Base')
+    ? bothSides(<CardFace card={card} />, <CardFace card={card} back />, isBase)
     : { preview: <CardFace card={card} back={back} />, width: undefined }
+  const hover = hoverOf(preview, sides, backFrameOf(card) && otherSide(<CardFace card={card} back={!back} />, isBase || back))
 
   return (
     <li>
-      <HoverPreview enabled={preview} preview={sides.preview} width={sides.width}>
+      <HoverPreview enabled={hover.enabled} preview={hover.preview} width={hover.width}>
         <div ref={ref}>
           <CardFace card={card} back={back} />
         </div>
@@ -624,6 +698,7 @@ function ShowroomCard(props: {
           </button>
         )}
       </div>
+      {community && (published || community.state) && !published?.hidden && <CommunityControls {...community} />}
       {note && <p className="saved-note showroom-note">{note}</p>}
       {published?.hidden && <p className="saved-note showroom-note">Hidden from the Community tab by an admin</p>}
     </li>
@@ -1760,11 +1835,49 @@ function Showroom(props: {
   onPublic?: (card: Card, makePublic: boolean) => void
   // Signed in: making the Showroom's own page public, and its link
   share?: ReactNode
+  // Signed in: each card's submission to be played, and how to submit or withdraw one
+  community?: { states: Record<string, CommunityState>; busy: string | null; onSubmit: (card: Card) => void; onWithdraw: (card: Card) => void }
 }) {
-  const { cards, onEdit, onRemove, onImport, published, publishing, blocked, onPublic, share } = props
+  const { cards, onEdit, onRemove, onImport, published, publishing, blocked, onPublic, share, community } = props
+  // Signed in: only the public cards, the private ones, or those submitted to be played
+  const [visibility, setVisibility] = useRemembered<'all' | 'public' | 'private' | 'submitted'>('showroom.visibility', 'all')
+  const isPublic = (card: Card) => !!published?.[card.id!]
+  const seen = !published
+    ? cards
+    : cards.filter((card) =>
+        visibility === 'public'
+          ? isPublic(card)
+          : visibility === 'private'
+            ? !isPublic(card)
+            : visibility === 'submitted'
+              ? !!community?.states[card.id!]
+              : true,
+      )
+  const visibilityChips = published && (
+    <>
+      {(
+        [
+          ['public', 'Public', cards.filter(isPublic).length],
+          ['private', 'Private', cards.filter((card) => !isPublic(card)).length],
+          ...(community ? [['submitted', 'Submitted for play', Object.keys(community.states).length] as const] : []),
+        ] as const
+      ).map(([value, label, count]) => (
+        <button
+          key={value}
+          className="chip"
+          type="button"
+          aria-pressed={visibility === value}
+          title={`Only the ${label.toLowerCase()} cards (${count})`}
+          onClick={() => setVisibility(visibility === value ? 'all' : value)}
+        >
+          {label}
+        </button>
+      ))}
+    </>
+  )
   const { bar, shown, grid, preview, missingImage } = useCardFilters(
     'showroom',
-    cards.map((card) => ({ item: card, facts: cardFacts(card) })),
+    seen.map((card) => ({ item: card, facts: cardFacts(card) })),
     undefined,
     undefined,
     undefined,
@@ -1791,10 +1904,29 @@ function Showroom(props: {
     <section className="showroom">
       {share}
       {bar}
-      <CardFiles cards={shown.map(({ item }) => item)} onImport={onImport} first={missingImage} />
+      <CardFiles
+        cards={shown.map(({ item }) => item)}
+        onImport={onImport}
+        first={
+          <>
+            {missingImage}
+            {visibilityChips}
+          </>
+        }
+      />
 
       {shown.length === 0 ? (
-        <p className="empty-note">No card matches these filters.</p>
+        <p className="empty-note">
+          No card matches these filters.
+          {visibility !== 'all' && published && (
+            <>
+              {' '}
+              <button className="chip" type="button" onClick={() => setVisibility('all')}>
+                Show all cards
+              </button>
+            </>
+          )}
+        </p>
       ) : (
         <ul className={grid}>
           {shown.map(({ item: card }) => (
@@ -1810,6 +1942,14 @@ function Showroom(props: {
               publishing={publishing === card.id}
               blocked={blocked}
               onPublic={onPublic && ((makePublic) => onPublic(card, makePublic))}
+              community={
+                community && {
+                  state: community.states[card.id!],
+                  busy: community.busy === card.id || publishing === card.id,
+                  onSubmit: () => community.onSubmit(card),
+                  onWithdraw: () => community.onWithdraw(card),
+                }
+              }
             />
           ))}
         </ul>
@@ -1841,6 +1981,8 @@ function showcaseFacts(card: ShowcaseCard): Facts {
 function ShowcaseItem(props: { folder: string; card: ShowcaseCard; preview: boolean; code?: string }) {
   const { folder, card, preview, code } = props
   const [back, setBack] = useState(false)
+  const [prescient, setPrescient] = useState(false)
+  const [foil, setFoil] = useState(false)
   const file = back && card.back ? card.back : card.image
   const src = asset(`${folder}/${encodeURIComponent(file)}.jpg`)
   if (code && !back) {
@@ -1862,27 +2004,62 @@ function ShowcaseItem(props: { folder: string; card: ShowcaseCard; preview: bool
       </li>
     )
   }
-  const sideImage = (name: string) => <img className="showcase-image" src={asset(`${folder}/${encodeURIComponent(name)}.jpg`)} alt="" />
+  // Its Prescient (full art) and foil versions, as the Deck Builder shows them, for anyone
+  const side = (name: string, second: boolean) =>
+    prescient ? (
+      <ShowcaseDrawn folder={folder} image={card.image} fallback={asset(`${folder}/${encodeURIComponent(name)}.jpg`)} prescient back={second} />
+    ) : (
+      <img className="showcase-image" src={asset(`${folder}/${encodeURIComponent(name)}.jpg`)} alt="" />
+    )
+  const foiled = (face: ReactNode) => (foil ? <div className="foil">{face}</div> : face)
   const sides = card.back
-    ? bothSides(sideImage(card.image), sideImage(card.back), card.type === 'Base')
-    : { preview: <img className="showcase-image" src={src} alt="" />, width: undefined }
+    ? bothSides(foiled(side(card.image, false)), foiled(side(card.back, true)), card.type === 'Base')
+    : { preview: foiled(side(card.image, false)), width: undefined }
+  const hover = hoverOf(preview, sides, card.back ? otherSide(foiled(side(back ? card.image : card.back, !back)), card.type === 'Base' || back) : undefined)
+  const shown = prescient ? (
+    <ShowcaseDrawn folder={folder} image={card.image} fallback={src} prescient back={back && !!card.back} />
+  ) : (
+    <img
+      className="showcase-image"
+      src={src}
+      alt={back && card.backName ? card.backName : card.name}
+      loading="lazy"
+      // A PNG saved in place of the JPG
+      onError={(event) => {
+        const img = event.currentTarget
+        if (img.src.endsWith('.jpg')) img.src = img.src.replace(/\.jpg$/, '.png')
+      }}
+    />
+  )
   return (
-    <li>
-      <HoverPreview enabled={preview} preview={sides.preview} width={sides.width}>
-      <a href={src} target="_blank" rel="noopener noreferrer" title="Open the full image">
-        <img
-          className="showcase-image"
-          src={src}
-          alt={back && card.backName ? card.backName : card.name}
-          loading="lazy"
-          // A PNG saved in place of the JPG
-          onError={(event) => {
-            const img = event.currentTarget
-            if (img.src.endsWith('.jpg')) img.src = img.src.replace(/\.jpg$/, '.png')
-          }}
-        />
-      </a>
+    <li className="showcase-item">
+      <HoverPreview enabled={hover.enabled} preview={hover.preview} width={hover.width}>
+        <a href={src} target="_blank" rel="noopener noreferrer" title="Open the full image" className={foil ? 'foil' : undefined}>
+          {shown}
+        </a>
       </HoverPreview>
+      <div className="deck-printings">
+        {canBePrescient(card.type) && (
+          <button
+            className="deck-printing printing-prescient"
+            type="button"
+            aria-pressed={prescient}
+            title={prescient ? 'Prescient: on' : 'Prescient: show the full-art version'}
+            onClick={() => setPrescient(!prescient)}
+          >
+            ◈
+          </button>
+        )}
+        <button
+          className="deck-printing printing-foil"
+          type="button"
+          aria-pressed={foil}
+          title={foil ? 'Foil: on' : 'Foil: show the foil version'}
+          onClick={() => setFoil(!foil)}
+        >
+          ✦
+        </button>
+      </div>
       {card.back && (
         <div className="showroom-actions">
           <button className="button" type="button" onClick={() => setBack(!back)}>
@@ -2099,7 +2276,7 @@ function PrintFiles(props: { folder: string; cards: ShowcaseCard[] }) {
         'print run.csv': runCsv + '\n',
         'README.txt': [
           `${set} Sealed event for ${count} player${count === 1 ? '' : 's'}: ${packs.length} packs of ${EVENT_PACK_SIZE}, ${total} cards, ${different} different.`,
-          'A pack: a leader and a base (each rare one pack in 6), 8 commons, 3 uncommons, a rare or legendary, and a wild card',
+          'A pack: a leader (rare one pack in 6) and a base (each player gets the 4 common bases and 2 different two-sided rare ones), 8 commons, 3 uncommons, a rare or legendary, and a wild card',
           '(any rarity, as often as each is in a pack, printed as its full-art Prescient version). One leader in 6 is Prescient too,',
           'both sides, and one base in 6, with its token Prescient on the back. No pack has the same card twice.',
           'The cards go pack after pack, so the printed deck comes in packs: "P1-2" in a file name is player 1, pack 2.',
@@ -2266,7 +2443,7 @@ function PrintFiles(props: { folder: string; cards: ShowcaseCard[] }) {
           <div className="event-preview">
             <p className="account-note">
               Each player opens {EVENT_PACKS} packs of {EVENT_PACK_SIZE}: a leader, a base, 8 commons, 3 uncommons, a rare or legendary and a
-              wild card in full art (Prescient). Make the files prints the deal shown here: one file per card, pack after pack, so the printed
+              wild card in full art (Prescient). Across their packs, each player gets every common base once and two different two-sided rare bases. Make the files prints the deal shown here: one file per card, pack after pack, so the printed
               deck comes in packs, and a list of what goes in each pack.
             </p>
             <div className="event-bar">
@@ -2612,6 +2789,153 @@ function useCommunityNew(session: Session | null, online: boolean, looking: bool
   return count
 }
 
+// A supported community card, as the Community Deck Builder plays it: the copy an admin
+// supported, its images from the server
+type CommunityCard = {
+  key: string
+  userId: number
+  cardId: string
+  version: number
+  owner: string
+  entry: ShowcaseCard
+  image: string
+  backImage: string | null
+}
+
+// Its set in the Community Deck Builder: the set code its maker gave it, with the maker's name, so
+// two makers' sets of the same code stay apart
+const communitySet = (card: CommunityCard) => `${card.entry.set?.toUpperCase() || 'NO SET'} (${card.owner})`
+
+function deckCardOfCommunity(card: CommunityCard): DeckCard[] {
+  const entry = card.entry
+  const set = communitySet(card)
+  const make = (side: ShowcaseCard, id: string, image: string, backImage?: string | null): DeckCard => {
+    const label = [side.name, side.subtitle].filter(Boolean).join(', ')
+    const src = publicImage(image)
+    const deckCard: DeckCard = {
+      id,
+      name: side.name,
+      subtitle: side.subtitle,
+      label,
+      type: side.type,
+      arena: side.arena,
+      icons: side.type === 'Leader' ? [...new Set(side.aspects)] : side.aspects,
+      cost: side.cost,
+      rarity: side.rarity ?? '',
+      traits: side.traits,
+      set,
+      number: side.number,
+      max: maxCopies(side.text ?? ''),
+      facts: { ...showcaseFacts(side), set },
+      face: <img className="showcase-image" src={src} alt={label} loading="lazy" />,
+      backFace:
+        side.type === 'Leader' && backImage ? (
+          <img className="showcase-image" src={publicImage(backImage)} alt={side.backName ?? label} loading="lazy" />
+        ) : undefined,
+    }
+    return {
+      ...deckCard,
+      // The deck image is laid out out of sight, where a lazy image never loads: loaded first
+      forImage: async () => {
+        const picture = new Image()
+        picture.src = src
+        await picture.decode().catch(() => undefined)
+        return { ...deckCard, face: <img className="showcase-image" src={src} alt={label} /> }
+      },
+    }
+  }
+  const id = `community:${card.key}`
+  // A two-sided base is two bases, one per side, as in a Showcase
+  if (entry.type === 'Base' && card.backImage && entry.backAspects)
+    return [
+      { ...make({ ...entry, back: undefined, backAspects: undefined }, id, card.image), label: sideLabel(entry.name, entry.aspects) },
+      {
+        ...make({ ...entry, aspects: entry.backAspects }, id + BACK_SIDE, card.backImage),
+        label: sideLabel(entry.name, entry.backAspects),
+        back: true,
+      },
+    ]
+  return [make(entry, id, card.image, card.backImage)]
+}
+
+// The Community Deck Builder: the supported community cards, each maker's set its own, and
+// DUNE's, left out of a deck until it is ticked
+function CommunityDecks() {
+  const [cards, setCards] = useState<DeckCard[] | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  useEffect(() => {
+    let live = true
+    Promise.all([
+      api<{ cards: CommunityCard[] }>('/api/community/cards'),
+      fetch(asset('/showcase/DUNE/showcase.json'), { cache: 'no-cache' })
+        .then((response) => (response.ok ? (response.json() as Promise<ShowcaseList>) : null))
+        .catch(() => null),
+    ])
+      .then(([community, dune]) => {
+        if (!live) return
+        setCards([
+          ...community.cards.filter((card) => showable({ entry: card.entry } as PublicCard)).flatMap(deckCardOfCommunity),
+          ...(dune?.cards ?? []).flatMap((card) => deckCardOfShowcase('/showcase/DUNE', card)),
+        ])
+      })
+      .catch((err) => live && setError(err.message))
+    return () => {
+      live = false
+    }
+  }, [])
+  if (error) return <p className="empty-note">{error}</p>
+  if (!cards) return <p className="empty-note">Loading the community's cards…</p>
+  return (
+    <>
+      {!cards.some((card) => card.id.startsWith('community:')) && (
+        <p className="account-note community-intro">
+          No community card is playable yet. Make a card public in your Showroom, then Submit for play: once it is supported, it is
+          here. DUNE's cards are here too, for a deck that ticks DUNE in its Sets.
+        </p>
+      )}
+      <DeckBuilder cards={cards} prefix="community.decks" storageKey="dune-unlimited.decks.community" offByDefault={['DUNE']} />
+    </>
+  )
+}
+
+// The Community tab: everyone's public cards, a Deck Builder of the cards made playable, and a
+// Simulator that plays them against the AI, as the DUNE page's does
+function CommunityPage(props: { session: Session | null }) {
+  const [view, setView] = useRemembered<'cards' | 'decks' | 'play'>('community.view', 'cards')
+  // DUNE's cards drawn in full art, for the Prescient copies a deck plays
+  const prescient = usePrescientDrawer()
+  const views = (
+    <nav className="tabs showcase-views">
+      {(['cards', 'decks', 'play'] as const).map((value) => (
+        <a
+          key={value}
+          href={window.location.hash}
+          aria-current={view === value ? 'page' : undefined}
+          onClick={(event) => {
+            event.preventDefault()
+            setView(value)
+          }}
+        >
+          {value === 'cards' ? 'Cards' : value === 'decks' ? 'Deck Builder' : 'Simulator'}
+        </a>
+      ))}
+    </nav>
+  )
+  return (
+    <>
+      {views}
+      {view === 'cards' && <Community session={props.session} />}
+      {view === 'decks' && <CommunityDecks />}
+      {view === 'play' && (
+        <>
+          <Simulator pool="community" drawCard={prescient.drawCard} />
+          {prescient.stage}
+        </>
+      )}
+    </>
+  )
+}
+
 // owner: one account's public Showroom (#showroom/<name>) instead of everyone's cards: its
 // public cards, in the order it made them
 function Community(props: { session: Session | null; owner?: string | null }) {
@@ -2766,6 +3090,13 @@ function CommunityItem(props: {
         card.entry.type === 'Base',
       )
     : { preview: <img className="showcase-image" src={src!} alt="" />, width: undefined }
+  const hover = hoverOf(
+    preview,
+    sides,
+    card.backImage
+      ? otherSide(<img className="showcase-image" src={publicImage(back ? card.image : card.backImage)} alt="" />, card.entry.type === 'Base' || back)
+      : undefined,
+  )
 
   return (
     <li className={off ? 'community-off' : undefined}>
@@ -2774,7 +3105,7 @@ function CommunityItem(props: {
           {image ?? <div className="community-placeholder">{name}</div>}
         </div>
       ) : (
-        <HoverPreview enabled={preview} preview={sides.preview} width={sides.width}>
+        <HoverPreview enabled={hover.enabled} preview={hover.preview} width={hover.width}>
           <a href={src!} target="_blank" rel="noopener noreferrer" title="Open the full image">
             {image}
           </a>
@@ -3025,8 +3356,9 @@ function ShowcasePrescient(props: { folder: string; image: string; fallback: str
 
 // A Showcase card drawn from its .json rather than shown as its image: in full art (prescient),
 // or with a print run's code in place of the artist. Its image is shown until the .json has come.
-function ShowcaseDrawn(props: { folder: string; image: string; fallback: string; prescient?: boolean; code?: string }) {
-  const { folder, image, fallback, prescient, code } = props
+// back: its other side (a leader's unit side, a base's second side)
+function ShowcaseDrawn(props: { folder: string; image: string; fallback: string; prescient?: boolean; code?: string; back?: boolean }) {
+  const { folder, image, fallback, prescient, code, back } = props
   const [card, setCard] = useState<Card | null>(null)
   useEffect(() => {
     let live = true
@@ -3036,8 +3368,12 @@ function ShowcaseDrawn(props: { folder: string; image: string; fallback: string;
     }
   }, [folder, image])
   if (!card) return <img className="showcase-image" src={fallback} alt="" />
+  // Already full art, with no Prescient art or look of its own: its Prescient version is the card
+  // as it is, so its image is shown rather than drawn again, which renders text a little differently
+  if (prescient && !code && !card.prescient && card.look?.frameOpacity === 0)
+    return <img className="showcase-image" src={fallback} alt="" />
   const face = prescient ? prescientOf(card) : card
-  return <CardFace card={code ? { ...face, code } : face} />
+  return <CardFace card={code ? { ...face, code } : face} back={back} />
 }
 
 const deckGroups = ['Ground units', 'Space units', 'Events', 'Upgrades'] as const
@@ -3861,8 +4197,11 @@ function DeckBuilder(props: {
   source?: 'Showroom' | 'set'
   // Sealed: the cards are a pool's, each card's max what the pool has
   sealed?: boolean
+  // Sets a deck leaves out until they are ticked: with no set ticked, every other set (the
+  // Community Deck Builder's DUNE)
+  offByDefault?: string[]
 }) {
-  const { cards, prefix = 'decks', storageKey, source = 'Showroom', sealed = false } = props
+  const { cards, prefix = 'decks', storageKey, source = 'Showroom', sealed = false, offByDefault = [] } = props
   const fixedSet = source === 'set' || sealed
   const deckSize = sealed ? SEALED_DECK_SIZE : DECK_SIZE
   const sourceName = sealed ? 'pool' : source
@@ -4032,7 +4371,8 @@ function DeckBuilder(props: {
   // What the leader and base cover; until both are chosen there is no penalty to show
   const covered = leader && base ? [...leader.icons, ...base.icons] : undefined
   const penaltyOf = (card: DeckCard) => (covered ? missingAspects(card, covered) * ASPECT_PENALTY : 0)
-  const inSets = (card: DeckCard) => fixedSet || !deck || deck.sets.length === 0 || deck.sets.includes(card.set)
+  const inSets = (card: DeckCard) =>
+    fixedSet || !deck || (deck.sets.length === 0 ? !offByDefault.includes(card.set) : deck.sets.includes(card.set))
 
   // A deck starts with its leader, then its base, then the cards
   const step: DeckStep | null = changing ?? (!leader ? 'Leader' : !base ? 'Base' : null)
@@ -4335,7 +4675,11 @@ function DeckBuilder(props: {
             <>
               <CheckDropdown label="Sets" options={setOptions} selected={deck.sets} onChange={(sets) => changeDeck({ ...deck, sets })} />
               <span className="filter-label">
-                {deck.sets.length ? deck.sets.map((set) => (set === NO_SET ? 'No set' : set)).join(', ') : 'All sets'}
+                {deck.sets.length
+                  ? deck.sets.map((set) => (set === NO_SET ? 'No set' : set)).join(', ')
+                  : offByDefault.length
+                    ? `All sets but ${offByDefault.join(', ')}`
+                    : 'All sets'}
               </span>
             </>
           )}
@@ -4681,10 +5025,25 @@ function pickSome<T>(list: T[], count: number) {
   return picked
 }
 
-function openBooster(cards: DeckCard[], set?: string): PackCard[] {
-  const offered = cards.filter(
-    (card) => !card.back && card.type !== 'Token' && (!set || card.set === set) && ['C', 'U', 'R', 'L'].includes(card.rarity),
+// The cards a booster can give: of the set, with a rarity, not a token nor a base's second side
+const boosterCards = (cards: DeckCard[], set?: string) =>
+  cards.filter((card) => !card.back && card.type !== 'Token' && (!set || card.set === set) && ['C', 'U', 'R', 'L'].includes(card.rarity))
+
+// A Sealed pool's bases, one a booster: each common base once (the Arrakis base of each aspect),
+// two-sided rare ones in the boosters left, each a different one
+function plannedBases(cards: DeckCard[], set: string | undefined, boosters: number) {
+  const bases = boosterCards(cards, set).filter((card) => card.type === 'Base')
+  const rares = bases.filter((card) => card.rarity === 'R')
+  const commons = bases.filter((card) => card.rarity === 'C')
+  return playerBases(commons.length ? commons : rares, [...rares].sort(() => Math.random() - 0.5), boosters, Math.random).map(
+    (card) => card.id,
   )
+}
+
+// base: the base this booster gives, planned for its pool (see plannedBases); without one, a base
+// rare one pack in 6
+function openBooster(cards: DeckCard[], set?: string, base?: DeckCard): PackCard[] {
+  const offered = boosterCards(cards, set)
   const of = (type: 'Leader' | 'Base' | 'Other', rarity: string) =>
     offered.filter(
       (card) => (type === 'Other' ? card.type !== 'Leader' && card.type !== 'Base' : card.type === type) && card.rarity === rarity,
@@ -4695,7 +5054,8 @@ function openBooster(cards: DeckCard[], set?: string): PackCard[] {
   const add = (card: DeckCard | undefined, slot: PackSlot, printing: Printing = 'plain') => card && pack.push({ card, slot, printing })
   for (const type of ['Leader', 'Base'] as const) {
     const rare = Math.random() < RARE_LEADER_ODDS
-    const card = pickOne(rare ? firstOf(of(type, 'R'), of(type, 'C')) : firstOf(of(type, 'C'), of(type, 'R')))
+    const card =
+      type === 'Base' && base ? base : pickOne(rare ? firstOf(of(type, 'R'), of(type, 'C')) : firstOf(of(type, 'C'), of(type, 'R')))
     // A leader or a base is Prescient one pack in 6
     add(card, type, card?.prescientFace && Math.random() < PRESCIENT_SIDE_ODDS ? 'prescient' : 'plain')
   }
@@ -4973,11 +5333,14 @@ function SealedPools(props: DeckBuilderProps) {
   // A booster's cards go in the pool as it is opened; showing them is for the fun of it
   const openNext = () => {
     if (opened >= boosters) return
-    const pack = openBooster(cards, poolSet)
+    // The pool's bases, chosen as its first booster is opened
+    const bases = pool.bases ?? (opened === 0 ? plannedBases(cards, poolSet, boosters) : undefined)
+    const base = bases?.[opened] ? cards.find((card) => card.id === bases[opened]) : undefined
+    const pack = openBooster(cards, poolSet, base)
     if (!pack.length) return setNote('There are no cards to open: no card has a rarity in this set.')
     let entries = pool.cards
     for (const each of pack) entries = withPrinting(entries, each.card.id, each.printing, 1)
-    if (changePool({ ...pool, set: poolSet, opened: opened + 1, cards: entries })) setOpening(pack)
+    if (changePool({ ...pool, set: poolSet, opened: opened + 1, cards: entries, ...(bases && { bases }) })) setOpening(pack)
   }
 
   // The pool, card by card
@@ -6590,6 +6953,55 @@ function App() {
     setPublishing(null)
     setAllProgress(null)
   }
+  // The account's cards submitted to be played (Community Deck Builder)
+  const [communityStates, setCommunityStates] = useState<Record<string, CommunityState>>({})
+  const [communityBusy, setCommunityBusy] = useState<string | null>(null)
+  const loadCommunity = () =>
+    account &&
+    api<{ cards: Record<string, CommunityState> }>('/api/community/mine', { token: account.token })
+      .then(({ cards }) => setCommunityStates(cards))
+      .catch(() => {})
+  useEffect(() => {
+    setCommunityStates({})
+    if (account && accountCards === 'ready') loadCommunity()
+  }, [account?.token, accountCards])
+  const communityChange = async (card: Card, withdraw: boolean) => {
+    if (!account || !card.id || communityBusy) return
+    setCommunityBusy(card.id)
+    try {
+      // Its last change saved and drawn first: what is submitted is the card as it is public
+      await saving.current
+      await api(`/api/community/${encodeURIComponent(card.id)}`, { method: withdraw ? 'DELETE' : 'POST', token: account.token })
+      await loadCommunity()
+    } catch (err) {
+      setSyncError(`Could not ${withdraw ? 'withdraw' : 'submit'} the card: ${(err as Error).message}`)
+    }
+    setCommunityBusy(null)
+  }
+  // Submit for play, every public card in one go: those never submitted, and those changed since
+  const toSubmit = cards.filter((card) => {
+    const state = communityStates[card.id!]
+    return published[card.id!] && !published[card.id!].hidden && (!state || state.changed)
+  })
+  const [submitProgress, setSubmitProgress] = useState<{ done: number; of: number } | null>(null)
+  const submitAll = async () => {
+    if (!account || communityBusy || submitProgress) return
+    const todo = toSubmit
+    setSubmitProgress({ done: 0, of: todo.length })
+    try {
+      await saving.current
+      for (const [at, card] of todo.entries()) {
+        setCommunityBusy(card.id!)
+        await api(`/api/community/${encodeURIComponent(card.id!)}`, { method: 'POST', token: account.token })
+        setSubmitProgress({ done: at + 1, of: todo.length })
+      }
+    } catch (err) {
+      setSyncError(`Could not submit every card: ${(err as Error).message}`)
+    }
+    await loadCommunity()
+    setCommunityBusy(null)
+    setSubmitProgress(null)
+  }
   const publicCount = Object.values(published).filter((card) => !card.hidden).length
   const showroomPublic = !!account?.user.showroomPublic
   const share = account && accountCards === 'ready' && account.user.canPublish !== false && (
@@ -6618,9 +7030,25 @@ function App() {
           </button>
         </>
       )}
+      {toSubmit.length > 0 && (
+        <button
+          className="button"
+          type="button"
+          disabled={!!communityBusy || !!submitProgress || !!publishing}
+          title="Submit every public card not submitted yet, and bring changed submissions up to date, to be made playable in the Community Deck Builder"
+          onClick={submitAll}
+        >
+          Submit all for play ({toSubmit.length})
+        </button>
+      )}
       {allProgress && (
         <span className="showroom-share-text">
           Making cards public… {allProgress.done} of {allProgress.of}
+        </span>
+      )}
+      {submitProgress && (
+        <span className="showroom-share-text">
+          Submitting for play… {submitProgress.done} of {submitProgress.of}
         </span>
       )}
     </div>
@@ -6788,9 +7216,19 @@ function App() {
           blocked={account?.user.canPublish === false}
           onPublic={account && accountCards === 'ready' ? changePublic : undefined}
           share={share}
+          community={
+            account && accountCards === 'ready' && account.user.canPublish !== false
+              ? {
+                  states: communityStates,
+                  busy: communityBusy,
+                  onSubmit: (card) => communityChange(card, false),
+                  onWithdraw: (card) => communityChange(card, true),
+                }
+              : undefined
+          }
         />
       )}
-      {tab === 'community' && <Community session={account} owner={viewing} />}
+      {tab === 'community' && (viewing ? <Community session={account} owner={viewing} /> : <CommunityPage session={account} />)}
       {askAllModal}
       {drawer.stage}
       {prescient.stage}

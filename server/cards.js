@@ -59,6 +59,12 @@ async function dropOrphanImages(userId) {
          WHERE c.user_id = i.user_id
            AND (c.data::TEXT LIKE '%account:' || i.id || '%' OR c.public_image = i.id OR c.public_back_image = i.id)
        )
+       -- A community card's copy keeps its own pictures, the card edited since or not
+       AND NOT EXISTS (
+         SELECT 1 FROM ${SCHEMA}.community_cards cc
+         WHERE cc.user_id = i.user_id
+           AND (cc.data::TEXT LIKE '%account:' || i.id || '%' OR cc.image = i.id OR cc.back_image = i.id)
+       )
      RETURNING i.id`,
     [userId, ORPHAN_GRACE],
   )

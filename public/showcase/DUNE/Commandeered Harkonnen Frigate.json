@@ -9,7 +9,7 @@
   },
   "cost": 5,
   "name": "Commandeered Harkonnen Frigate",
-  "text": "[When Played:] Deal 1 damage to an enemy ground unit for each friendly [{Fremen}] ground unit.",
+  "text": "[When Played:] Deal damage to an enemy ground unit equal to the number of friendly [{Fremen}] ground units.",
   "power": 4,
   "trait": "Fremen, Vehicle, Capital Ship",
   "number": "138",

@@ -279,6 +279,9 @@ export type SealedPool = {
   boosters?: number
   opened?: number
   set?: string
+  // The base each booster gives, by card id, chosen as the first one is opened: each common base
+  // once, two-sided rare ones in the boosters left (a pool opened before had none)
+  bases?: string[]
 }
 
 // Decks live in this browser too, beside the cards they are made of

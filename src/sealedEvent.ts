@@ -1,6 +1,7 @@
 // A Sealed event on paper: what to print for so many players, and what goes in each pack.
-// Each player opens 6 packs of 15 cards: a leader and a base (each rare one pack in 6, as the
-// Deck Builder's Sealed opens them), 8 commons, 3 uncommons, a rare or legendary (each one
+// Each player opens 6 packs of 15 cards: a leader (rare one pack in 6, as the Deck Builder's
+// Sealed opens them) and a base (each player gets every common base once, the Arrakis base of
+// each aspect, and two-sided rare ones in the packs left: see playerBases), 8 commons, 3 uncommons, a rare or legendary (each one
 // once, legendaries in their share of the set; with near enough packs for all, every one of
 // them) and a wild card, of any rarity as often as each is in a pack, printed as its Prescient
 // (full-art) version, a legendary too. One leader in 6 is Prescient as well, both sides, and one
@@ -43,6 +44,15 @@ function shuffle<T>(list: T[], random: () => number) {
   return out
 }
 
+// A player's bases, one a pack, in the order the packs give them: every common base once (as
+// many as there are packs, two kept for rare ones), then rare ones, each a different one as long
+// as there are enough. rares: the rare ones to give, in order.
+export function playerBases<T>(commons: T[], rares: T[], packs: number, random: () => number): T[] {
+  const commonCount = Math.min(commons.length, Math.max(0, packs - Math.min(2, rares.length)))
+  const picked = [...shuffle(commons, random).slice(0, commonCount), ...rares.slice(0, packs - commonCount)]
+  return shuffle(picked, random)
+}
+
 // count cards from the list, each as often as the others give or take one (which ones get one
 // more is left to chance)
 function spread<T>(list: T[], count: number, random: () => number) {
@@ -78,7 +88,6 @@ export function planSealedEvent<T extends EventCard>(cards: T[], players: number
   ]
   const groups: { slot: EventSlot; per: number; pool: T[] }[] = [
     { slot: 'Leader', per: 1, pool: sides('Leader') },
-    { slot: 'Base', per: 1, pool: sides('Base') },
     { slot: 'Common', per: 8, pool: spread(of('Other', 'C'), packCount * 8, random) },
     { slot: 'Uncommon', per: 3, pool: spread(firstOf(of('Other', 'U'), of('Other', 'C')), packCount * 3, random) },
     { slot: 'Rare', per: 1, pool: tops },
@@ -139,6 +148,19 @@ export function planSealedEvent<T extends EventCard>(cards: T[], players: number
   for (let tries = 1; tries < DEALS && score(packs) > 0; tries++) {
     const next = deal()
     if (score(next) < score(packs)) packs = next
+  }
+  // The bases, after each leader: every player has each common base, and rare ones in the packs
+  // left, as many of each rare one printed as of the others, a player's two never the same
+  const commonBases = of('Base', 'C')
+  const rareBases = of('Base', 'R')
+  const rareCount = Math.max(0, EVENT_PACKS - Math.min(commonBases.length, EVENT_PACKS - Math.min(2, rareBases.length)))
+  const rareRun = spread(rareBases, players * rareCount, random)
+  for (let player = 1; player <= players; player++) {
+    const rares = rareRun.slice((player - 1) * rareCount, player * rareCount)
+    const bases = playerBases(commonBases.length ? commonBases : rareBases, rares, EVENT_PACKS, random)
+    packs
+      .filter((pack) => pack.player === player)
+      .forEach((pack, i) => bases[i] && pack.cards.splice(1, 0, { card: bases[i], slot: 'Base' }))
   }
   // Prescient bases, then leaders: as many as one pack in 6, in packs left to chance (the bases
   // first, so a print run dealt before leaders were Prescient keeps its bases)

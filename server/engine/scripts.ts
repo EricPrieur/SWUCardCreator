@@ -1,6 +1,7 @@
 import type { Game } from './game.ts'
 import { enginePlays } from './cards.ts'
 import type { CardDef, Keywords, PlayerId, UnitState } from './types.ts'
+import { communityScripts } from './community.ts'
 
 // What each card's text does. A script names the card and quotes its text as printed: while
 // the card's text is the same, the script plays it; once the card is changed in the Creator,
@@ -2670,17 +2671,22 @@ const dune: CardScript[] = [
   },
   {
     name: 'Commandeered Harkonnen Frigate',
-    text: '[When Played:] Deal 1 damage to an enemy ground unit for each friendly [{Fremen}] ground unit.',
+    text: '[When Played:] Deal damage to an enemy ground unit equal to the number of friendly [{Fremen}] ground units.',
     front: {
+      // All of it to one unit. The AI defeats the enemy ground unit worth the most that it can
+      // finish, else hits the one worth the most.
       whenPlayed: (g, self) => {
         const p = self.controller
-        const times = friendlyIds(g, self, (u) => u.arena === 'ground' && g.hasTrait(u, 'Fremen')).length
-        for (let k = 0; k < times; k++) {
-          const enemies = unitIds(g, (u) => g.controller(u) !== p && u.arena === 'ground')
-          const pick = g.chooseOne(p, `Commandeered Harkonnen Frigate: deal 1 damage to an enemy ground unit (${times - k} left)`, enemies, { ai: 'harm', source: self.def.id })
-          if (!pick) break
-          g.damage(pick, 1, self)
-        }
+        const amount = friendlyIds(g, self, (u) => u.arena === 'ground' && g.hasTrait(u, 'Fremen')).length
+        if (!amount) return
+        const enemies = g.units((u) => g.controller(u) !== p && u.arena === 'ground')
+        const byWorth = [...enemies].sort((a, b) => g.cost(b) - g.cost(a))
+        const target = byWorth.find((u) => g.hp(u) - u.damage <= amount) ?? byWorth[0]
+        const pick = g.chooseOne(p, `Commandeered Harkonnen Frigate: deal ${amount} damage to an enemy ground unit`, enemies.map((u) => u.id), {
+          ai: target?.id ?? 'harm',
+          source: self.def.id,
+        })
+        if (pick) g.damage(pick, amount, self)
       },
     },
   },
@@ -3661,6 +3667,13 @@ const normal = (text = '') =>
 // A card is known by its name and, for a unique one, its subtitle
 const keyOf = (name: string, subtitle?: string) => `${name}|${subtitle?.trim() ?? ''}`
 const byKey = new Map(dune.map((script) => [keyOf(script.name, script.subtitle), script]))
+// The community cards' scripts, by '<account id>/<card id>' (community.ts), looked up when first
+// needed: that file uses this one's helpers
+let communityByKey: Map<string, CardScript> | undefined
+const communityScript = (key: string) => {
+  communityByKey ??= new Map(communityScripts.map((script) => [script.card, script]))
+  return communityByKey.get(key)
+}
 
 // Looked up again and again as the engine works out what units have: each card's text is
 // compared with its script's once
@@ -3678,9 +3691,9 @@ export function scriptFor(card: CardDef): CardScript | undefined {
 }
 
 function findScript(card: CardDef): CardScript | undefined {
-  const lookup = `${keyOf(card.name, card.subtitle)}|${card.type}|${card.text}|${card.backText}`
+  const lookup = `${card.community ?? ''}|${keyOf(card.name, card.subtitle)}|${card.type}|${card.text}|${card.backText}`
   if (found.has(lookup)) return found.get(lookup)
-  let script = byKey.get(keyOf(card.name, card.subtitle))
+  let script = card.community ? communityScript(card.community) : byKey.get(keyOf(card.name, card.subtitle))
   if (script && normal(script.text) !== normal(card.text)) script = undefined
   if (script && card.type === 'leader' && normal(script.backText) !== normal(card.backText)) script = undefined
   found.set(lookup, script)
@@ -3693,10 +3706,17 @@ function findScript(card: CardDef): CardScript | undefined {
 // itself (keywords, Smuggle, Spice costs, see enginePlays) needs no script.
 export function scriptStatus(card: CardDef): 'scripted' | 'outdated' | 'none' | 'blank' {
   if (scriptFor(card)) return 'scripted'
-  if (byKey.has(keyOf(card.name, card.subtitle))) return 'outdated'
+  if (card.community ? communityScript(card.community) : byKey.has(keyOf(card.name, card.subtitle))) return 'outdated'
   const lines = [normal(card.text), normal(card.backText)].join('\n').split('\n').filter(Boolean)
   if (!lines.length) return 'blank'
   return lines.every(enginePlays) ? 'scripted' : 'none'
+}
+
+// The lines of a card's text no script plays and the engine doesn't play by itself: what a
+// community card still needs a script for
+export function unplayedLines(card: CardDef): string[] {
+  if (scriptFor(card)) return []
+  return [normal(card.text), normal(card.backText)].join('\n').split('\n').filter((line) => line && !enginePlays(line))
 }
 
 const nothing: Abilities = {}

@@ -698,5 +698,105 @@
         "count": 3
       }
     ]
+  },
+  {
+    "id": "356bc9da-cfe3-4221-844c-2b44dd158c29",
+    "name": "Chani Burn",
+    "leader": "1091df90-0323-4117-b6aa-d015e0fbfd86",
+    "base": "ede5069e-07b3-459b-b0ea-035771cda18a",
+    "cards": [
+      {
+        "id": "0aa8cbb6-78d1-4f8f-959d-6ea81378fa84",
+        "count": 2
+      },
+      {
+        "id": "eb58a351-defb-4ff4-82cc-11ab0a539a72",
+        "count": 3
+      },
+      {
+        "id": "1b7e7beb-b860-4fbf-836d-68341351e7f8",
+        "count": 1
+      },
+      {
+        "id": "e53319e6-3415-4b35-9541-697201d829db",
+        "count": 2
+      },
+      {
+        "id": "c8547544-fce6-4f97-8d59-63237aa515d1",
+        "count": 1
+      },
+      {
+        "id": "60349849-6284-4098-be3d-df0495ecd485",
+        "count": 1
+      },
+      {
+        "id": "6016d1f0-bb83-4a96-99e8-d6056a0413f9",
+        "count": 3
+      },
+      {
+        "id": "20bd2da1-91d0-43d3-96a9-4163e48675ad",
+        "count": 1
+      },
+      {
+        "id": "d8ef2479-5d4c-4381-82cc-dd57aae24c88",
+        "count": 2
+      },
+      {
+        "id": "b315b6cc-75ec-4bd7-ba92-eaf36628f9e5",
+        "count": 1
+      },
+      {
+        "id": "94203e8c-0a0a-4b7f-b52e-b087a48fe5c2",
+        "count": 3
+      },
+      {
+        "id": "abacdb60-bcc1-45e5-94e9-ee3ebe98472e",
+        "count": 2
+      },
+      {
+        "id": "8c73f01a-8e4d-4013-933a-5225d6447954",
+        "count": 2
+      },
+      {
+        "id": "c64a1e84-663f-4c24-b763-c9027c6b29fa",
+        "count": 2
+      },
+      {
+        "id": "b5a0d3e5-b64e-4a72-a2c7-5305a768032a",
+        "count": 3
+      },
+      {
+        "id": "7484d1ed-3110-4f06-aa0d-5090d4e04815",
+        "count": 2
+      },
+      {
+        "id": "6c083df4-6bf0-4265-8e95-0cf21fd24ac6",
+        "count": 2
+      },
+      {
+        "id": "ac05b51d-8181-4dcc-9244-0d654053d7f4",
+        "count": 3
+      },
+      {
+        "id": "dcfbdc45-80f5-4c85-a2e3-443fd5743af6",
+        "count": 3
+      },
+      {
+        "id": "bc33e990-cdb4-48eb-b483-55e9b0d21d32",
+        "count": 3
+      },
+      {
+        "id": "48449f2c-fdcc-4c8d-9eff-1f0280b64cf5",
+        "count": 3
+      },
+      {
+        "id": "b8a0ba1b-4f51-40f2-8681-59ca4b921de6",
+        "count": 3
+      },
+      {
+        "id": "a97c85ec-2d72-4f20-8c1c-25f152fc8b11",
+        "count": 2
+      }
+    ]
   }
 ]
