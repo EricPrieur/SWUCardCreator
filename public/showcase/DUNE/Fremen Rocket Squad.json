@@ -12,7 +12,7 @@
   "text": "While you control an [{Arrakis}] base, this unit gains [Hidden].\n[On Attack:] You may deal 2 damage to a space unit.",
   "power": 3,
   "trait": "Fremen, Trooper",
-  "number": "131",
+  "number": "133",
   "rarity": "C",
   "frameId": "unit-aggression-heroism",
   "setCode": "DUNE",

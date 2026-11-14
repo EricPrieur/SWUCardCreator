@@ -12,7 +12,7 @@
   "text": "[Sentinel]\n[When Defeated:] Create 2 Spice tokens.",
   "power": 3,
   "trait": "Vehicle, Transport",
-  "number": "105",
+  "number": "106",
   "rarity": "U",
   "frameId": "unit-command-space",
   "setCode": "DUNE",

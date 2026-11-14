@@ -15,7 +15,7 @@ function secret() {
 }
 
 const USER_COLUMNS =
-  'id, username, is_admin, is_tester, quota_bytes, can_publish, created_at, discord_username, (password_hash IS NOT NULL) AS has_password'
+  'id, username, is_admin, is_tester, quota_bytes, can_publish, showroom_public, created_at, discord_username, (password_hash IS NOT NULL) AS has_password'
 
 // The sites allowed to call this server: the app on GitHub Pages and the dev server
 const DEFAULT_ORIGINS = ['https://ericprieur.github.io', 'http://localhost:5173']
@@ -40,6 +40,8 @@ export function userPublic(user) {
     quotaBytes: user.quota_bytes === null ? null : Number(user.quota_bytes),
     // May make cards public
     canPublish: user.can_publish !== false,
+    // Its Showroom has a public page, showing its public cards
+    showroomPublic: !!user.showroom_public,
     // The Discord account it signs in with; null when none is linked
     discordName: user.discord_username ?? null,
     // A Discord account can only be unlinked from one that also has a password
@@ -329,6 +331,23 @@ router.delete('/discord', verifyToken, async (req, res) => {
     res.json({ user: userPublic(rows[0]) })
   } catch (err) {
     console.error('Unlink Discord error:', err)
+    res.status(500).json({ error: 'Server error' })
+  }
+})
+
+// Gives the account's Showroom a public page, or takes it away
+router.put('/me/showroom', verifyToken, async (req, res) => {
+  const { public: shown } = req.body ?? {}
+  if (typeof shown !== 'boolean') return res.status(400).json({ error: 'public must be true or false' })
+  try {
+    const { rows } = await query(
+      `UPDATE ${SCHEMA}.users SET showroom_public = $2 WHERE id = $1 RETURNING ${USER_COLUMNS}`,
+      [req.user.id, shown],
+    )
+    if (!rows.length) return res.status(404).json({ error: 'User not found' })
+    res.json({ user: userPublic(rows[0]) })
+  } catch (err) {
+    console.error('Showroom public error:', err)
     res.status(500).json({ error: 'Server error' })
   }
 })

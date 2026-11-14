@@ -1,0 +1,20 @@
+{
+  "hp": 2,
+  "id": "ac05b51d-8181-4dcc-9244-0d654053d7f4",
+  "art": {
+    "x": 0,
+    "y": 0,
+    "src": "Fedaykin Martyr (art).webp",
+    "zoom": 1
+  },
+  "cost": 2,
+  "name": "Fedaykin Martyr",
+  "text": "[Raid 1]\n[When Defeated:] Deal 2 damage to an enemy base.",
+  "power": 2,
+  "trait": "Fremen, Fedaykin",
+  "number": "132",
+  "rarity": "C",
+  "frameId": "unit-aggression-heroism",
+  "setCode": "DUNE",
+  "language": "EN"
+}

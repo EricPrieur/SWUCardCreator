@@ -18,8 +18,8 @@
     "frameOpacity": 0
   },
   "name": "Duke Leto Atreides",
-  "text": "[When Played/When Defeated:] Give an Experience token to each other friendly [{Atreides}] unit.",
-  "power": 6,
+  "text": "[When Played/When Defeated:] Give an Experience token to each other friendly unit.",
+  "power": 7,
   "trait": "Atreides, Official",
   "number": "095",
   "rarity": "L",

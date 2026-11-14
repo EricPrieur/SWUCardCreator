@@ -147,11 +147,13 @@ test('an Action ability pays its cost, exhausts the leader and can make an attac
   state = answer(state, 'u00')
   // 1 damage to the brute, then it attacks: the trooper or the base
   assert.deepEqual(state.prompt?.options.map((o) => o.id), ['u10', 'base1'])
-  state = answer(state, 'base1')
-  assert.equal(state.players[1].base.damage, 5, '3 power, +2 for a Harkonnen unit')
-  assert.equal(state.players[0].units[0].damage, 1)
+  state = answer(state, 'u10')
+  // 3 power +1 into the 2 HP trooper: a Harkonnen unit gains Overwhelm, the 2 left go to the base
+  assert.equal(state.players[1].units.length, 0)
+  assert.equal(state.players[1].base.damage, 2, '+1/+0 and Overwhelm for a Harkonnen unit')
+  assert.equal(state.players[0].units[0].damage, 1 + 2)
   assert.ok(state.players[0].leader.exhausted)
-  assert.deepEqual(state.effects, [], 'the +2 lasted for the attack only')
+  assert.deepEqual(state.effects, [], 'the +1 and Overwhelm lasted for the attack only')
   assert.equal(state.active, 1)
   // Exhausted, the leader can't do it again this round
   state.active = 0

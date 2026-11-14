@@ -11,7 +11,7 @@
   "name": "Battle of Arrakeen",
   "text": "Choose an arena. Deal 2 damage to each non-[{Fremen}] unit in that arena.",
   "trait": "Fremen, Tactic",
-  "number": "135",
+  "number": "142",
   "rarity": "R",
   "frameId": "event-aggression-heroism",
   "setCode": "DUNE",

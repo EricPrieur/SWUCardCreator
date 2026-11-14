@@ -14,6 +14,9 @@ export type User = {
   quotaBytes: number | null
   // May make cards public; an admin can turn it off
   canPublish: boolean
+  // Its Showroom has a page of its own (#showroom/<name>), showing its public cards; missing on
+  // older sessions
+  showroomPublic?: boolean
   // The Discord account it signs in with; null when none is linked
   discordName: string | null
   // Discord can only be unlinked from an account that also has a password

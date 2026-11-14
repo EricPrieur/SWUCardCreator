@@ -90,7 +90,8 @@ export type PlayerState = {
   name: string
   leader: { def: string; deployed: boolean; exhausted: boolean; epicUsed: boolean }
   // Fortifications attached to it (none in a game saved before them)
-  base: { def: string; damage: number; upgrades?: (Inst & { owner: PlayerId })[] }
+  // hits: how many times it was dealt damage in the phase `hitPhase` (Fedaykin Strike Leader)
+  base: { def: string; damage: number; upgrades?: (Inst & { owner: PlayerId })[]; hits?: number; hitPhase?: number }
   deck: Inst[]
   hand: Inst[]
   discard: Inst[]
@@ -170,6 +171,8 @@ export type Revealed = { cards: string[]; by: string }
 export type GameState = {
   rng: number
   round: number
+  // The round in which no Spice token can be created and no base healed (He Who Can Destroy a Thing)
+  spiceLock?: number
   phase: Phase
   // Counts the phases gone by, for what lasts "this phase"
   phaseCount: number

@@ -1010,6 +1010,35 @@ input.picker-button::placeholder {
   background: rgb(232 215 181 / 0.08);
 }
 
+/* An option's preview beside the open list: a deck's leader, both its sides */
+.choice-preview {
+  position: absolute;
+  top: calc(100% + 0.4rem);
+  z-index: 11;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  pointer-events: none;
+}
+
+.choice-preview-sides {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 18rem;
+}
+
+.choice-preview-face {
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 12px 30px rgb(0 0 0 / 0.6);
+}
+
+.choice-preview-face .showcase-image {
+  display: block;
+  width: 100%;
+}
+
 .choice-options button[aria-selected='true'] {
   background: var(--spice);
   font-weight: 600;
@@ -2398,6 +2427,8 @@ input.picker-button::placeholder {
   border: 0;
   background: none;
   cursor: pointer;
+  /* A button centres its text: the card drawn in it keeps its own, as it is everywhere else */
+  text-align: start;
 }
 
 .deck-pool-image[aria-disabled='true'] {
@@ -3562,4 +3593,200 @@ input.picker-button::placeholder {
   pointer-events: none;
   border: 1px dashed rgb(255 120 100 / 0.8);
   border-radius: 2px;
+}
+
+/* A deck's aspects after its name in a menu */
+.option-icons {
+  display: inline-flex;
+  gap: 2px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+.option-icons img {
+  width: 14px;
+  height: 14px;
+}
+
+/* A deck's numbers at a glance, beside its leader in the deck menus */
+.deck-glance {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  width: 11rem;
+  padding: 0.7rem;
+  border: 1px solid rgb(232 215 181 / 0.25);
+  border-radius: 8px;
+  background: #1d1610;
+  box-shadow: 0 12px 30px rgb(0 0 0 / 0.6);
+  font-size: 0.75rem;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  text-align: left;
+  color: var(--sand);
+}
+
+.deck-glance-title {
+  color: var(--sand-dim);
+}
+
+.deck-glance-curve {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 0.2rem;
+  height: 4.5rem;
+}
+
+.deck-glance-bar {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  min-height: 0;
+}
+
+.deck-glance-fill {
+  width: 100%;
+  max-height: calc(100% - 1.8rem);
+  border-radius: 2px 2px 0 0;
+  background: var(--spice);
+}
+
+.deck-glance-count,
+.deck-glance-cost {
+  font-size: 0.65rem;
+  line-height: 0.9rem;
+  color: var(--sand-dim);
+}
+
+.deck-glance ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.deck-glance-types li {
+  display: grid;
+  grid-template-columns: 3.6rem 1fr 1.4rem;
+  align-items: center;
+  gap: 0.35rem;
+  line-height: 1.25rem;
+}
+
+.deck-glance-track {
+  height: 0.45rem;
+  border-radius: 2px;
+  background: rgb(232 215 181 / 0.08);
+}
+
+.deck-glance-track span {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--spice);
+}
+
+.deck-glance-n {
+  text-align: right;
+  color: var(--sand-dim);
+}
+
+.deck-glance-aspects {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+}
+
+.deck-glance-pie {
+  flex: none;
+  width: 3.2rem;
+  height: 3.2rem;
+  border-radius: 50%;
+  /* So a dark slice (Villainy) still shows on the dark panel */
+  box-shadow: 0 0 0 1.5px rgb(232 215 181 / 0.45);
+}
+
+.deck-glance-aspects ul {
+  flex: 1;
+}
+
+.deck-glance-aspects li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  line-height: 1.15rem;
+}
+
+.deck-glance-icons {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.deck-glance-icons img {
+  width: 14px;
+  height: 14px;
+}
+
+/* A leader's two sides in a hover preview, side by side and as tall as each other: widths in
+   the ratio of a landscape card to a portrait one (88/63 to 63/88) */
+.preview-sides {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.preview-side-leader {
+  flex: 1.95 1 0;
+  min-width: 0;
+}
+
+.preview-side-unit {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.preview-sides .showcase-image {
+  display: block;
+  width: 100%;
+}
+
+/* The Showroom's own page: making it public, its link */
+.showroom-share {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  margin-bottom: 1rem;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid rgb(232 215 181 / 0.18);
+  border-radius: 6px;
+}
+
+.showroom-share-text {
+  flex: 1 1 18rem;
+  font-size: 0.9rem;
+  color: var(--sand-dim);
+}
+
+.showroom-share-text a {
+  color: var(--spice);
+}
+
+/* Someone's public Showroom: whose it is, its link, the way back */
+.public-showroom-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.public-showroom-head h2 {
+  flex: 1 1 auto;
+  margin: 0;
+}
+
+.public-showroom-head .account-note {
+  flex-basis: 100%;
+  margin: 0;
 }

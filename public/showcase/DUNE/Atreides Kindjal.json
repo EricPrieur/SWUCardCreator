@@ -1,0 +1,21 @@
+{
+  "hp": 1,
+  "id": "44bf6892-600c-4c78-9c6e-836cc182ecd4",
+  "art": {
+    "x": 8,
+    "y": -26,
+    "src": "Atreides Kindjal (art).webp",
+    "zoom": 0.9,
+    "rotate": 15
+  },
+  "cost": 1,
+  "name": "Atreides Kindjal",
+  "text": "Attach to a non-[{Vehicle}] unit.\nAttached unit gains [Saboteur].",
+  "power": 1,
+  "trait": "Atreides, Item, Weapon",
+  "number": "098",
+  "rarity": "C",
+  "frameId": "upgrade-command-heroism",
+  "setCode": "DUNE",
+  "language": "EN"
+}

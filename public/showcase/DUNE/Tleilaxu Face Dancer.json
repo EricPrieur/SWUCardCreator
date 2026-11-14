@@ -12,7 +12,7 @@
   "text": "[Sentinel]\n[When Played:] Choose another unit. Give this unit Experience tokens equal to half the total of that unit's power and HP, rounded down.",
   "power": 0,
   "trait": "Tleilaxu",
-  "number": "151",
+  "number": "159",
   "rarity": "U",
   "frameId": "unit-cunning-villainy",
   "setCode": "DUNE",

@@ -12,7 +12,7 @@
   "text": "[When Played:] Give an Experience token to each of up to 3 friendly ground units.",
   "power": 4,
   "trait": "Atreides, Vehicle, Capital Ship",
-  "number": "194",
+  "number": "202",
   "rarity": "R",
   "unique": true,
   "frameId": "unit-heroism-space",

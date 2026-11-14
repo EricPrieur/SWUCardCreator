@@ -12,7 +12,7 @@
   "text": "[RAID 1]\n[When Played/On Attack:] Look at the top card of your deck. You may put it on the bottom of your deck or discard it.",
   "power": 1,
   "trait": "Vehicle, Fighter",
-  "number": "196",
+  "number": "204",
   "rarity": "C",
   "frameId": "unit-neutral-space",
   "setCode": "DUNE",

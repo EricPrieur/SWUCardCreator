@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ChangeEvent, type CSSPropert
 import { createPortal, flushSync } from 'react-dom'
 import artFiles from 'virtual:art-list'
 import { asset } from './asset'
+import { DeckGlance, type GlanceCard, type GlanceKind } from './DeckGlance'
 import './App.css'
 import { CardView, partBoxes } from './CardView'
 import { AccountBar, Modal } from './account'
@@ -19,7 +20,7 @@ import {
   unpublishCard,
   type Published,
 } from './accountCards'
-import { api, API_URL, openAdminPanel, useAccount, useServerOnline, type Session } from './api'
+import { api, API_URL, openAdminPanel, setSession, useAccount, useServerOnline, type Session, type User } from './api'
 import {
   defaultLook,
   loadCards,
@@ -655,8 +656,16 @@ function Projects() {
 
 function tabFromHash(): TabId {
   const id = window.location.hash.slice(1)
+  if (showroomOwnerFromHash()) return 'community'
   return tabs.find((tab) => tab.id === id)?.id ?? 'creator'
 }
+
+// Someone's public Showroom: #showroom/<their name>, shown under the Community tab
+function showroomOwnerFromHash() {
+  const name = /^showroom\/([A-Za-z0-9_-]+)\/*$/.exec(window.location.hash.slice(1))?.[1]
+  return name ?? null
+}
+const showroomLink = (name: string) => `${window.location.origin}${window.location.pathname}#showroom/${name}`
 
 // Showcases on the site that no menu links to: the address's name, and its folder in public/showcase
 // A published set is at #set/<SET>; some also have a name of their own
@@ -737,9 +746,10 @@ function CheckDropdown<T extends string | number>(props: {
 
 // A dropdown to pick one of a few choices, in the look of the filter dropdowns: the
 // button shows the choice, the list opens under it with the choice marked
+// An option's icons (a deck's aspects) show after its label, small
 function ChoiceDropdown<T extends string>(props: {
   label: string
-  options: { label: string; value: T }[]
+  options: { label: string; value: T; icons?: Aspect[]; preview?: ReactNode }[]
   selected: T
   onChange: (value: T) => void
   // In place of the chip look, for a dropdown joined to another button
@@ -748,9 +758,14 @@ function ChoiceDropdown<T extends string>(props: {
 }) {
   const { label, options, selected, onChange, buttonClass, title } = props
   const [open, setOpen] = useState(false)
+  // The option the pointer is on, whose preview shows beside the list
+  const [hovered, setHovered] = useState<T | null>(null)
   const ref = useRef<HTMLDivElement>(null)
+  const listRef = useRef<HTMLDivElement>(null)
+  const preview = open && hovered !== null ? options.find((option) => option.value === hovered)?.preview : undefined
 
   useEffect(() => {
+    if (!open) setHovered(null)
     if (!open) return
     const onPointerDown = (event: PointerEvent) => {
       if (!ref.current?.contains(event.target as Node)) setOpen(false)
@@ -777,27 +792,67 @@ function ChoiceDropdown<T extends string>(props: {
         aria-expanded={open}
         onClick={() => setOpen(!open)}
       >
-        {options.find((option) => option.value === selected)?.label} ▾
+        {options.find((option) => option.value === selected)?.label}
+        <OptionIcons icons={options.find((option) => option.value === selected)?.icons} /> ▾
       </button>
       {open && (
-        <div className="check-options choice-options" role="listbox" aria-label={label}>
+        <div className="check-options choice-options" role="listbox" aria-label={label} ref={listRef} onPointerLeave={() => setHovered(null)}>
           {options.map((option) => (
             <button
               type="button"
               role="option"
               key={option.value}
               aria-selected={option.value === selected}
+              onPointerEnter={() => setHovered(option.value)}
               onClick={() => {
                 onChange(option.value)
                 setOpen(false)
               }}
             >
               {option.label}
+              <OptionIcons icons={option.icons} />
             </button>
           ))}
         </div>
       )}
+      {preview && (
+        <div className="choice-preview" style={{ left: (listRef.current?.offsetWidth ?? 0) + 8 }} aria-hidden>
+          {preview}
+        </div>
+      )}
     </div>
+  )
+}
+
+// A deck's leader, both its sides, and its numbers at a glance, for the deck menu's hover
+function leaderPreview(leader: DeckCard | undefined, cards: GlanceCard[]) {
+  if (!leader) return undefined
+  return (
+    <>
+      <div className="choice-preview-sides">
+        <div className="choice-preview-face">{leader.face}</div>
+        {leader.backFace && <div className="choice-preview-face">{leader.backFace}</div>}
+      </div>
+      <DeckGlance cards={cards} />
+    </>
+  )
+}
+
+// A deck card as the glance counts it
+const glanceKinds: Record<DeckGroup, GlanceKind> = { 'Ground units': 'Ground', 'Space units': 'Space', Events: 'Event', Upgrades: 'Upgrade' }
+function glanceOf(card: DeckCard, count: number): GlanceCard {
+  const group = deckGroup(card)
+  return { cost: card.cost ?? 0, kind: group && glanceKinds[group], aspects: card.icons, count }
+}
+
+function OptionIcons(props: { icons?: Aspect[] }) {
+  if (!props.icons?.length) return null
+  return (
+    <span className="option-icons" title={props.icons.join(', ')}>
+      {props.icons.map((aspect, index) => (
+        <img key={index} src={aspectIcon(aspect)} alt={aspect} />
+      ))}
+    </span>
   )
 }
 
@@ -930,6 +985,8 @@ function useCardFilters<T>(
   cardOf?: (item: T) => string,
   // Put at the end of the bar, after the count: a Showcase's print button
   extra?: ReactNode,
+  // Whether a card has no image yet: offers a "Missing image" filter, to put where the caller likes
+  noImage?: (item: T) => boolean,
 ) {
   const [query, setQuery] = useRemembered(`${name}.search`, '')
   const [types, setTypes] = useRemembered<FrameFilter[]>(`${name}.types`, [])
@@ -945,6 +1002,7 @@ function useCardFilters<T>(
   const [rarityPicks, setRarityPicks] = useRemembered<string[]>(`${name}.rarities`, [])
   const [sort, setSort] = useRemembered<SortKey>(`${name}.sort`, startSort)
   const [descending, setDescending] = useRemembered(`${name}.descending`, false)
+  const [onlyNoImage, setOnlyNoImage] = useRemembered(`${name}.noImage`, false)
   const [size, setSize] = useState<CardSize>(loadCardSize)
   const changeSize = (next: CardSize) => {
     setSize(next)
@@ -993,7 +1051,7 @@ function useCardFilters<T>(
   const search = query.trim().toLowerCase()
   // Within Type, Trait and Cost any ticked box will do; every picked aspect must be on the card
   const found = listed.filter(
-    ({ facts }) =>
+    ({ item, facts }) =>
       (search === '' || facts.names.some((name) => name.includes(search)) || facts.text.includes(search)) &&
       (types.length === 0 || types.includes(facts.type)) &&
       (traits.length === 0 || traits.some((trait) => facts.traits.includes(trait))) &&
@@ -1002,6 +1060,7 @@ function useCardFilters<T>(
       (arenas.length === 0 || (facts.arena !== undefined && arenas.includes(facts.arena))) &&
       (rarityPicks.length === 0 || rarityPicks.includes(facts.rarity || NO_RARITY)) &&
       (!neutral || facts.aspects.length === 0) &&
+      (!onlyNoImage || !noImage || noImage(item)) &&
       picked.every((aspect) => facts.aspects.includes(aspect)),
   )
   const typeOrder = typeFilters.map(({ value }) => value)
@@ -1029,6 +1088,7 @@ function useCardFilters<T>(
   const filtered =
     search !== '' ||
     neutral ||
+    (onlyNoImage && !!noImage) ||
     types.length + traits.length + costs.length + sets.length + arenas.length + rarityPicks.length + picked.length > 0
 
   const bar = (
@@ -1133,6 +1193,7 @@ function useCardFilters<T>(
               setRarityPicks([])
               setNeutral(false)
               setPicked([])
+              setOnlyNoImage(false)
             }}
           >
             Clear filters
@@ -1143,7 +1204,18 @@ function useCardFilters<T>(
     </div>
   )
   // The class for the grid of cards, which sets their size
-  return { bar, shown, grid: `showroom-grid card-size-${size}`, preview: size !== 'l' }
+  const missingImage = noImage && (
+    <button
+      className="chip"
+      type="button"
+      aria-pressed={onlyNoImage}
+      title={`Only the cards with no image yet (${items.filter(({ item }) => noImage(item)).length})`}
+      onClick={() => setOnlyNoImage(!onlyNoImage)}
+    >
+      Missing image
+    </button>
+  )
+  return { bar, shown, grid: `showroom-grid card-size-${size}`, preview: size !== 'l', missingImage }
 }
 
 // The name a card's image is saved under: its name and subtitle, and "(unit)" for a
@@ -1508,7 +1580,8 @@ function usePrescientDrawer() {
 // a .json of the card, for Import to bring back. On this computer (the dev server)
 // they go into public/showcase/<SET>; on the site into a .zip.
 // Import: brings cards back from those .json or .zip files.
-function CardFiles(props: { cards: Card[]; onImport: (cards: Card[]) => string }) {
+// first: put before the buttons (the Showroom's Missing image filter)
+function CardFiles(props: { cards: Card[]; onImport: (cards: Card[]) => string; first?: ReactNode }) {
   const { cards, onImport } = props
   const [status, setStatus] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -1607,6 +1680,7 @@ function CardFiles(props: { cards: Card[]; onImport: (cards: Card[]) => string }
 
   return (
     <div className="card-files">
+      {props.first}
       {cards.length > 0 && (
         <>
           <button
@@ -1666,11 +1740,19 @@ function Showroom(props: {
   publishing?: string | null
   blocked?: boolean
   onPublic?: (card: Card, makePublic: boolean) => void
+  // Signed in: making the Showroom's own page public, and its link
+  share?: ReactNode
 }) {
-  const { cards, onEdit, onRemove, onImport, published, publishing, blocked, onPublic } = props
-  const { bar, shown, grid, preview } = useCardFilters(
+  const { cards, onEdit, onRemove, onImport, published, publishing, blocked, onPublic, share } = props
+  const { bar, shown, grid, preview, missingImage } = useCardFilters(
     'showroom',
     cards.map((card) => ({ item: card, facts: cardFacts(card) })),
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    // A card with no art (a back side without its own borrows the front's)
+    (card) => !card.art?.src,
   )
   // One choice of image format for every card
   const [format, changeFormat] = useImageFormat()
@@ -1689,8 +1771,9 @@ function Showroom(props: {
 
   return (
     <section className="showroom">
+      {share}
       {bar}
-      <CardFiles cards={shown.map(({ item }) => item)} onImport={onImport} />
+      <CardFiles cards={shown.map(({ item }) => item)} onImport={onImport} first={missingImage} />
 
       {shown.length === 0 ? (
         <p className="empty-note">No card matches these filters.</p>
@@ -2411,6 +2494,8 @@ type PublicCard = {
   hidden: boolean
   // Its owner may no longer make cards public
   ownerBlocked: boolean
+  // Its owner's Showroom has a page of its own
+  ownerShowroom?: boolean
 }
 
 // A public card the Community tab can show; an older or odd one is left out rather than
@@ -2428,6 +2513,27 @@ const showable = (card: PublicCard) => {
 }
 
 const publicImage = (id: string) => `${API_URL}/api/public/images/${id}`
+
+// Copies a link, saying so for a moment
+function CopyLinkButton(props: { link: string; label?: string }) {
+  const { link, label = 'Copy link' } = props
+  const [copied, setCopied] = useState(false)
+  return (
+    <button
+      className="button"
+      type="button"
+      title={link}
+      onClick={() =>
+        navigator.clipboard.writeText(link).then(() => {
+          setCopied(true)
+          window.setTimeout(() => setCopied(false), 1500)
+        })
+      }
+    >
+      {copied ? 'Copied' : label}
+    </button>
+  )
+}
 
 // Everyone's public cards, as a Showcase shows a set: newest first, with the same
 // search and filters, and who made each. Admins can hide a card from it.
@@ -2484,22 +2590,38 @@ function useCommunityNew(session: Session | null, online: boolean, looking: bool
   return count
 }
 
-function Community(props: { session: Session | null }) {
-  const { session } = props
+// owner: one account's public Showroom (#showroom/<name>) instead of everyone's cards: its
+// public cards, in the order it made them
+function Community(props: { session: Session | null; owner?: string | null }) {
+  const { session, owner } = props
   const [list, setList] = useState<PublicCard[] | null>(null)
   const [error, setError] = useState<string | null>(null)
+  // The Showroom's page as its owner sees it while it isn't public yet
+  const [ownerOnly, setOwnerOnly] = useState(false)
   const admin = !!session?.user.isAdmin
   useEffect(() => {
-    api<{ cards: PublicCard[] }>('/api/public/cards', { token: session?.token })
-      .then((data) => {
-        setList(data.cards.filter(showable))
-        // Seen now: the tab's count starts again from these
-        markCommunitySeen(data.cards)
+    setList(null)
+    setError(null)
+    if (owner)
+      api<{ owner: string; public: boolean; cards: PublicCard[] }>(`/api/public/showroom/${encodeURIComponent(owner)}`, {
+        token: session?.token,
       })
-      .catch((err) => setError(err.message))
-  }, [session?.token])
+        .then((data) => {
+          setList(data.cards.filter(showable))
+          setOwnerOnly(!data.public)
+        })
+        .catch((err) => setError(err.message))
+    else
+      api<{ cards: PublicCard[] }>('/api/public/cards', { token: session?.token })
+        .then((data) => {
+          setList(data.cards.filter(showable))
+          // Seen now: the tab's count starts again from these
+          markCommunitySeen(data.cards)
+        })
+        .catch((err) => setError(err.message))
+  }, [session?.token, owner])
   const { bar, shown, grid, preview } = useCardFilters(
-    'community',
+    owner ? 'public-showroom' : 'community',
     (list ?? []).map((card) => ({
       item: card,
       // The maker's name is searched with the card's
@@ -2508,7 +2630,7 @@ function Community(props: { session: Session | null }) {
         return { ...facts, names: [...facts.names, card.owner.toLowerCase()] }
       })(),
     })),
-    'Newest first',
+    owner ? undefined : 'Newest first',
   )
 
   const hide = async (card: PublicCard, hidden: boolean) => {
@@ -2524,8 +2646,35 @@ function Community(props: { session: Session | null }) {
     }
   }
 
+  const own = !!owner && owner.toLowerCase() === session?.user.username.toLowerCase()
+  const heading = owner && (
+    <div className="public-showroom-head">
+      <h2>{list && list[0] ? list[0].owner : owner}'s Showroom</h2>
+      <CopyLinkButton link={showroomLink(owner)} />
+      <a className="button" href="#community">
+        Community
+      </a>
+      {own && ownerOnly && <p className="account-note">Only you see this page: your Showroom isn't public.</p>}
+    </div>
+  )
+  if (owner && error && !list)
+    return (
+      <section className="showroom">
+        {heading}
+        <p className="empty-note">{error}</p>
+      </section>
+    )
   if (error && !list) return <p className="empty-note">{error}</p>
   if (!list) return <p className="empty-note">Loading…</p>
+  if (owner && list.length === 0)
+    return (
+      <section className="showroom">
+        {heading}
+        <p className="empty-note">
+          {own ? 'None of your cards is public yet: make some public in your Showroom.' : 'No public cards here yet.'}
+        </p>
+      </section>
+    )
   if (list.length === 0)
     return (
       <section className="empty">
@@ -2535,6 +2684,7 @@ function Community(props: { session: Session | null }) {
     )
   return (
     <section className="showroom">
+      {heading}
       {bar}
       {error && <p className="account-error">{error}</p>}
       {shown.length === 0 ? (
@@ -2546,6 +2696,7 @@ function Community(props: { session: Session | null }) {
               key={card.key}
               card={card}
               preview={preview}
+              byline={!owner}
               session={admin ? session : null}
               onHide={(hidden) => hide(card, hidden)}
             />
@@ -2556,8 +2707,15 @@ function Community(props: { session: Session | null }) {
   )
 }
 
-function CommunityItem(props: { card: PublicCard; preview: boolean; session: Session | null; onHide: (hidden: boolean) => void }) {
-  const { card, preview, session, onHide } = props
+// byline: who made it, under it (not in their own Showroom)
+function CommunityItem(props: {
+  card: PublicCard
+  preview: boolean
+  byline: boolean
+  session: Session | null
+  onHide: (hidden: boolean) => void
+}) {
+  const { card, preview, byline, session, onHide } = props
   const admin = !!session
   const [back, setBack] = useState(false)
   const id = back && card.backImage ? card.backImage : card.image
@@ -2593,17 +2751,31 @@ function CommunityItem(props: { card: PublicCard; preview: boolean; session: Ses
           </a>
         </HoverPreview>
       )}
-      <p className="community-owner">
-        by{' '}
-        {admin ? (
-          <button className="community-owner-link" type="button" title="Open this account in the Admin panel" onClick={() => openAdminPanel(card.userId)}>
-            {card.owner}
-          </button>
-        ) : (
-          card.owner
-        )}
-        {card.ownerBlocked && <span className="community-flag"> · may not publish</span>}
-      </p>
+      {byline && (
+        <p className="community-owner">
+          by{' '}
+          {admin ? (
+            <button className="community-owner-link" type="button" title="Open this account in the Admin panel" onClick={() => openAdminPanel(card.userId)}>
+              {card.owner}
+            </button>
+          ) : card.ownerShowroom ? (
+            <a className="community-owner-link" href={`#showroom/${card.owner}`} title={`See ${card.owner}'s Showroom`}>
+              {card.owner}
+            </a>
+          ) : (
+            card.owner
+          )}
+          {admin && card.ownerShowroom && (
+            <>
+              {' · '}
+              <a className="community-owner-link" href={`#showroom/${card.owner}`} title={`See ${card.owner}'s Showroom`}>
+                Showroom
+              </a>
+            </>
+          )}
+          {card.ownerBlocked && <span className="community-flag"> · may not publish</span>}
+        </p>
+      )}
       {(card.backImage || admin) && (
         <div className="showroom-actions">
           {card.backImage && (
@@ -2663,6 +2835,8 @@ type DeckCard = {
   back?: boolean
   facts: Facts
   face: ReactNode
+  // A leader's other side, its unit side
+  backFace?: ReactNode
   // The card as a booster's Prescient card shows it, for the cards that can be one
   prescientFace?: ReactNode
   // Sealed: the pool's copies of it, and how many of each printing
@@ -2705,6 +2879,7 @@ function deckCardOf(card: Card): DeckCard[] {
     max: maxCopies(card.text),
     facts,
     face: <CardFace card={card} />,
+    backFace: facts.type === 'Leader' ? <CardFace card={card} back /> : undefined,
     prescientFace: canBePrescient(facts.type) ? <CardFace card={prescientOf(card)} /> : undefined,
   }
   const second = isTwoSidedBase(card) ? backFrameOf(card) : undefined
@@ -2767,6 +2942,10 @@ function deckCardOfShowcase(folder: string, card: ShowcaseCard): DeckCard[] {
     max: maxCopies(card.text ?? ''),
     facts: showcaseFacts(card),
     face: <img className="showcase-image" src={src} alt={label} loading="lazy" />,
+    backFace:
+      card.type === 'Leader' && card.back ? (
+        <img className="showcase-image" src={asset(`${folder}/${encodeURIComponent(card.back)}.jpg`)} alt={card.backName ?? label} loading="lazy" />
+      ) : undefined,
     prescientFace: canBePrescient(card.type) ? <ShowcasePrescient folder={folder} image={card.image} fallback={src} /> : undefined,
   }
   // The deck image is laid out out of sight, where a lazy image never loads: loaded first
@@ -3003,13 +3182,26 @@ function DeckRow(props: {
 // choosing it among the cards
 type DeckStep = 'Leader' | 'Base'
 
+// A leader's preview shows both its sides side by side, as tall as each other: the leader side
+// (landscape) takes about two thirds of the width, the unit side the rest
+function withBack(card: DeckCard, face: ReactNode) {
+  if (!card.backFace) return face
+  return (
+    <div className="preview-sides">
+      <div className="preview-side-leader">{face}</div>
+      <div className="preview-side-unit">{card.backFace}</div>
+    </div>
+  )
+}
+const previewWidth = (card: DeckCard) => (card.backFace ? PREVIEW_WIDTH * 2 : undefined)
+
 function DeckChoice(props: { label: DeckStep; card?: DeckCard; active: boolean; onPick: () => void }) {
   const { label, card, active, onPick } = props
   return (
     <button className="deck-choice" type="button" aria-pressed={active} title={`Choose another ${label.toLowerCase()}`} onClick={onPick}>
       <span className="filter-label">{label}</span>
       {card ? (
-        <HoverPreview enabled preview={card.face}>
+        <HoverPreview enabled preview={withBack(card, card.face)} width={previewWidth(card)}>
           <span className="deck-row-name">{card.label}</span>
         </HoverPreview>
       ) : (
@@ -3051,7 +3243,12 @@ function DeckPoolCard(props: {
   const full = count >= max || (room !== undefined && !room(printing))
   return (
     <li className={`deck-pool-card${!choice && full ? ' deck-full' : ''}`}>
-      <HoverPreview enabled={preview} preview={face}>
+      {/* Drawn large, the card needs no preview, but a leader's other side still shows */}
+      <HoverPreview
+        enabled={preview || !!card.backFace}
+        preview={preview ? withBack(card, face) : card.backFace}
+        width={preview ? previewWidth(card) : undefined}
+      >
         <button
           className="deck-pool-image"
           type="button"
@@ -4070,7 +4267,18 @@ function DeckBuilder(props: {
         <div className="deck-bar">
           <ChoiceDropdown
             label="Deck"
-            options={allDecks.map(({ id, name }) => ({ value: id, label: `${name || 'Unnamed deck'}${drafts[id] ? ' (not saved)' : ''}` }))}
+            options={allDecks.map(({ id, name, leader, base, cards }) => ({
+              value: id,
+              label: `${name || 'Unnamed deck'}${drafts[id] ? ' (not saved)' : ''}`,
+              icons: [...(leader ? (byId.get(leader)?.icons ?? []) : []), ...(base ? (byId.get(base)?.icons ?? []) : [])],
+              preview: leaderPreview(
+                leader ? byId.get(leader) : undefined,
+                cards.flatMap(({ id, count }) => {
+                  const card = byId.get(id)
+                  return card ? [glanceOf(card, count)] : []
+                }),
+              ),
+            }))}
             selected={deck.id}
             onChange={(id) => {
               setCurrentId(id)
@@ -6145,6 +6353,7 @@ function ArtControls(props: { art?: Art; onChange: (art?: Art) => void }) {
 function App() {
   const [tab, setTab] = useState<TabId>(tabFromHash)
   const [showcase, setShowcase] = useState(showcaseFromHash)
+  const [viewing, setViewing] = useState(showroomOwnerFromHash)
   const [cards, setCards] = useState<Card[]>(loadCards)
   const [draft, setDraft] = useState<Draft>(() => loadDraft() ?? { ...blankDraft, ...loadCardLine() })
   const [saved, setSaved] = useState(false)
@@ -6164,6 +6373,7 @@ function App() {
       shownHash.current = window.location.hash
       setTab(tabFromHash())
       setShowcase(showcaseFromHash())
+      setViewing(showroomOwnerFromHash())
     }
     window.addEventListener('hashchange', onHashChange)
     return () => window.removeEventListener('hashchange', onHashChange)
@@ -6177,6 +6387,7 @@ function App() {
     window.location.hash = leaving.hash
     setTab(tabFromHash())
     setShowcase(showcaseFromHash())
+    setViewing(showroomOwnerFromHash())
   }
   const leaveModal = leaving && (
     <Modal title="Save your changes?" onClose={() => setLeaving(null)}>
@@ -6305,6 +6516,96 @@ function App() {
     }
     setPublishing(null)
   }
+
+  // The Showroom's own page: made public, it shows the public cards. Asked then whether to make
+  // every card public too; with no, cards are made public one by one as before.
+  const [askAll, setAskAll] = useState(false)
+  const [sharing, setSharing] = useState(false)
+  // Making every card public: how many are done, of how many
+  const [allProgress, setAllProgress] = useState<{ done: number; of: number } | null>(null)
+  const privateCards = cards.filter((card) => card.id && !published[card.id])
+  const changeShowroomPublic = async (shown: boolean) => {
+    if (!account || sharing) return
+    setSharing(true)
+    try {
+      const { user } = await api<{ user: User }>('/api/me/showroom', { method: 'PUT', body: { public: shown }, token: account.token })
+      setSession({ ...account, user })
+      if (shown && privateCards.length) setAskAll(true)
+    } catch (err) {
+      setSyncError(`Could not change your Showroom: ${(err as Error).message}`)
+    }
+    setSharing(false)
+  }
+  const publishAll = async () => {
+    setAskAll(false)
+    if (!account || publishing) return
+    const todo = privateCards
+    setAllProgress({ done: 0, of: todo.length })
+    try {
+      await saving.current
+      for (const [at, card] of todo.entries()) {
+        setPublishing(card.id)
+        await showPublic(account, card)
+        setAllProgress({ done: at + 1, of: todo.length })
+      }
+    } catch (err) {
+      setSyncError(`Could not make every card public: ${(err as Error).message}`)
+    }
+    setPublishing(null)
+    setAllProgress(null)
+  }
+  const publicCount = Object.values(published).filter((card) => !card.hidden).length
+  const showroomPublic = !!account?.user.showroomPublic
+  const share = account && accountCards === 'ready' && account.user.canPublish !== false && (
+    <div className="showroom-share">
+      {showroomPublic ? (
+        <>
+          <span className="showroom-share-text">
+            Your Showroom is public: {publicCount} of {cards.length} card{cards.length === 1 ? '' : 's'} show on{' '}
+            <a href={`#showroom/${account.user.username}`}>its page</a>.
+          </span>
+          <CopyLinkButton link={showroomLink(account.user.username)} />
+          {privateCards.length > 0 && (
+            <button className="button" type="button" disabled={!!publishing} onClick={() => setAskAll(true)}>
+              Make all public
+            </button>
+          )}
+          <button className="button" type="button" disabled={sharing} onClick={() => changeShowroomPublic(false)}>
+            Make private
+          </button>
+        </>
+      ) : (
+        <>
+          <span className="showroom-share-text">Give your Showroom a page of its own, with a link to share. It shows only your public cards.</span>
+          <button className="button button-primary" type="button" disabled={sharing} onClick={() => changeShowroomPublic(true)}>
+            Make my Showroom public
+          </button>
+        </>
+      )}
+      {allProgress && (
+        <span className="showroom-share-text">
+          Making cards public… {allProgress.done} of {allProgress.of}
+        </span>
+      )}
+    </div>
+  )
+  const askAllModal = askAll && (
+    <Modal title="Make all your cards public?" onClose={() => setAskAll(false)}>
+      <p className="account-note">
+        Your Showroom's page shows only your public cards. {privateCards.length} of your cards {privateCards.length === 1 ? 'is' : 'are'} private:
+        make {privateCards.length === 1 ? 'it' : 'them all'} public now? Public cards also show on the Community tab.
+      </p>
+      <p className="account-note">With No, you can still make cards public one by one with their Public button.</p>
+      <div className="leave-buttons">
+        <button className="button" type="button" onClick={() => setAskAll(false)}>
+          No, I'll choose
+        </button>
+        <button className="button button-primary" type="button" onClick={publishAll}>
+          Make all public
+        </button>
+      </div>
+    </Modal>
+  )
 
   // The cards kept in this browser, which can be copied to the account
   const localCount = useMemo(() => (account ? loadCards().length : 0), [account?.token])
@@ -6450,9 +6751,11 @@ function App() {
           publishing={publishing}
           blocked={account?.user.canPublish === false}
           onPublic={account && accountCards === 'ready' ? changePublic : undefined}
+          share={share}
         />
       )}
-      {tab === 'community' && <Community session={account} />}
+      {tab === 'community' && <Community session={account} owner={viewing} />}
+      {askAllModal}
       {drawer.stage}
       {prescient.stage}
       {tab === 'decks' && <DeckFormats key={decksCopied} cards={cards.flatMap(deckCardOf)} />}

@@ -9,7 +9,7 @@
   },
   "cost": 4,
   "name": "Paul Atreides",
-  "text": "You may look at the top card of your deck at any time.\n[Action [Arrow]:] Discard the top card of your deck. Then, attack with a unit. If it has the same cost as the discarded card, it gets [+2/+0] for this attack.",
+  "text": "You may look at the top card of your deck at any time.\n[Action [Arrow]:] Discard the top card of your deck. Then, attack with a unit. If it has the same cost as the discarded card, it gets [+2/+0] for this attack. If it costs more, it gets [+1/+0] instead.",
   "power": 2,
   "trait": "Atreides",
   "number": "007",
@@ -23,7 +23,7 @@
   },
   "frameId": "leader-command-heroism",
   "setCode": "DUNE",
-  "backText": "[Raid 1]\n[On Attack:] You may put a card from your discard pile on the bottom of your deck. If it has an [On Attack] ability, use it as if it were this unit's.",
+  "backText": "[Raid 1]\n[On Attack:] You may put a unit card from your discard pile on the bottom of your deck. If you do, use its [When Played] ability now, as if it were this unit's.",
   "language": "EN",
   "subtitle": "Haunted by Dreams",
   "prescient": {

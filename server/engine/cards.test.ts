@@ -471,9 +471,9 @@ test('Selective Breeding gives a Weakness token only when attached to a Bene Ges
   assert.deepEqual(play('small'), [])
 })
 
-test('The AI takes the initiative to act first when the units it faces can defeat its base next round, unless it can deal with them now', () => {
-  const danger = (units0: string[]) => {
-    const state = table({ units0, units1: ['big'], hand0: ['frail'] })
+test('The AI facing defeat next round plays its turn first and takes the initiative once done; the attacker claims it at once when one attack wins next round', () => {
+  const danger = (units0: string[], hand0: string[]) => {
+    const state = table({ units0, units1: ['big'], hand0 })
     state.players[1].hand = []
     // The opponent can't deploy their leader
     state.players[1].resources = state.players[1].resources.slice(0, 3)
@@ -481,18 +481,24 @@ test('The AI takes the initiative to act first when the units it faces can defea
     state.players[1].units[0].exhausted = true
     state.players[0].base.damage = state.defs[state.players[0].base.def].hp - 5
     state.initiative = 1
-    return { action: chooseAction(state, 0)!, state }
+    return state
   }
-  assert.deepEqual(danger(['small']).action, { type: 'initiative' })
-  // With a unit that can trade with the threat, it doesn't hit the base first, which would let
-  // the opponent take the initiative and attack first next round: it trades, or takes the
-  // initiative to trade first next round
-  const { action, state } = danger(['big'])
-  assert.ok(
-    [JSON.stringify({ type: 'attack', attacker: 'u00', target: 'u10' }), JSON.stringify({ type: 'initiative' })].includes(JSON.stringify(action)),
-    JSON.stringify(action),
-  )
-  // And the opponent, given the chance, takes the initiative from it
-  let after = act(state, 0, { type: 'attack', attacker: 'u00', target: 'base' })
-  assert.deepEqual(chooseAction(after, 1), { type: 'initiative' })
+  // Resources ready and a card to play: not yet, the opponent can't count on attacking first
+  assert.notDeepEqual(chooseAction(danger(['small'], ['frail']), 0), { type: 'initiative' })
+  // Nothing left to do: it takes the initiative rather than pass
+  const done = danger([], [])
+  for (const r of done.players[0].resources) r.exhausted = true
+  assert.deepEqual(chooseAction(done, 0), { type: 'initiative' })
+  // The opponent claims it at once when a single attack next round defeats that base: only the
+  // first action of a round is sure to be theirs. Resources ready and a card in hand don't matter.
+  const one = danger(['small'], ['frail'])
+  one.players[1].hand = [{ id: 'e0', def: 'small' }]
+  one.active = 1
+  assert.deepEqual(chooseAction(one, 1), { type: 'initiative' })
+  // Lethal only with the whole board (three 2/2s for 5): it plays its turn instead
+  const board = danger(['small'], ['frail'])
+  board.players[1].units = ['a', 'b', 'c'].map((x) => ({ id: `u1${x}`, def: 'small', owner: 1 as const, arena: 'ground' as const, damage: 0, exhausted: true, upgrades: [] }))
+  board.players[1].hand = [{ id: 'e0', def: 'small' }]
+  board.active = 1
+  assert.notDeepEqual(chooseAction(board, 1), { type: 'initiative' })
 })

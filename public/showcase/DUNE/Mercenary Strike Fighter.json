@@ -13,7 +13,7 @@
   "text": "[When Played:] You may defeat a friendly Spice token. If you do, deal 2 damage to a unit.",
   "power": 3,
   "trait": "Underworld, Ginaz, Vehicle, Fighter",
-  "number": "140",
+  "number": "147",
   "rarity": "C",
   "frameId": "unit-aggression-space",
   "setCode": "DUNE",

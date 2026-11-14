@@ -9,6 +9,24 @@ const IMAGE_ID = /^[0-9a-f]{64}$/
 
 const router = Router()
 
+// A public card as the Community tab and a public Showroom show it
+const publicCard = (row) => ({
+  // A card's id is only unique within its account
+  key: `${row.user_id}/${row.id}`,
+  userId: row.user_id,
+  cardId: row.id,
+  owner: row.username,
+  entry: row.public_entry,
+  image: row.public_image,
+  backImage: row.public_back_image,
+  publishedAt: row.published_at,
+  hidden: row.hidden,
+  // Its owner may no longer make cards public: off the tab for everyone but admins
+  ownerBlocked: !row.can_publish,
+  // Its owner's Showroom has a page of its own
+  ownerShowroom: !!row.showroom_public,
+})
+
 // Everyone's public cards, newest first, for the Community tab. Admins also get the
 // cards they hid, marked so.
 router.get('/public/cards', optionalUser, async (req, res) => {
@@ -20,29 +38,41 @@ router.get('/public/cards', optionalUser, async (req, res) => {
     }
     const { rows } = await query(
       `SELECT c.user_id, c.id, u.username, c.public_entry, c.public_image, c.public_back_image, c.published_at, c.hidden,
-         u.can_publish
+         u.can_publish, u.showroom_public
        FROM ${SCHEMA}.cards c JOIN ${SCHEMA}.users u ON u.id = c.user_id
        WHERE c.is_public ${admin ? '' : 'AND NOT c.hidden AND u.can_publish'}
        ORDER BY c.published_at DESC`,
     )
-    res.json({
-      cards: rows.map((row) => ({
-        // A card's id is only unique within its account
-        key: `${row.user_id}/${row.id}`,
-        userId: row.user_id,
-        cardId: row.id,
-        owner: row.username,
-        entry: row.public_entry,
-        image: row.public_image,
-        backImage: row.public_back_image,
-        publishedAt: row.published_at,
-        hidden: row.hidden,
-        // Its owner may no longer make cards public: off the tab for everyone but admins
-        ownerBlocked: !row.can_publish,
-      })),
-    })
+    res.json({ cards: rows.map(publicCard) })
   } catch (err) {
     console.error('Public cards error:', err)
+    res.status(500).json({ error: 'Server error' })
+  }
+})
+
+// An account's public Showroom: its public cards, in the order it made them, for anyone, while
+// it keeps the page public. Its owner sees it too while it isn't, to see what others would.
+router.get('/public/showroom/:username', optionalUser, async (req, res) => {
+  try {
+    const { rows: users } = await query(
+      `SELECT id, username, showroom_public, can_publish FROM ${SCHEMA}.users WHERE LOWER(username) = LOWER($1)`,
+      [req.params.username],
+    )
+    const user = users[0]
+    const own = !!user && req.user?.id === user.id
+    if (!user || (!own && (!user.showroom_public || !user.can_publish)))
+      return res.status(404).json({ error: 'This Showroom is not public.' })
+    const { rows } = await query(
+      `SELECT c.user_id, c.id, u.username, c.public_entry, c.public_image, c.public_back_image, c.published_at, c.hidden,
+         u.can_publish, u.showroom_public
+       FROM ${SCHEMA}.cards c JOIN ${SCHEMA}.users u ON u.id = c.user_id
+       WHERE c.user_id = $1 AND c.is_public AND NOT c.hidden
+       ORDER BY c.created_at`,
+      [user.id],
+    )
+    res.json({ owner: user.username, public: user.showroom_public, cards: rows.map(publicCard) })
+  } catch (err) {
+    console.error('Public showroom error:', err)
     res.status(500).json({ error: 'Server error' })
   }
 })

@@ -19,7 +19,7 @@
   "text": "While you control an [{Arrakis}] base, this unit gains [Hidden]",
   "power": 3,
   "trait": "Fremen, Trooper",
-  "number": "156",
+  "number": "164",
   "rarity": "C",
   "unique": false,
   "frameId": "unit-cunning-heroism",

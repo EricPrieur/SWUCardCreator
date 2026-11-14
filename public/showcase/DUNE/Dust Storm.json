@@ -11,7 +11,7 @@
   "name": "Dust Storm",
   "text": "Give a Weakness token to each space unit. Then, if you control an [{Arrakis}] base, give a Weakness token to each enemy space unit.",
   "trait": "Disaster",
-  "number": "185",
+  "number": "193",
   "rarity": "U",
   "frameId": "event-cunning",
   "setCode": "DUNE",

@@ -1,0 +1,20 @@
+{
+  "hp": 4,
+  "id": "eb58a351-defb-4ff4-82cc-11ab0a539a72",
+  "art": {
+    "x": 1,
+    "y": 10,
+    "src": "Fedaykin Strike Leader (art).webp",
+    "zoom": 0.9
+  },
+  "cost": 5,
+  "name": "Fedaykin Strike Leader",
+  "text": "[When Played:] Deal 1 damage to an enemy base for each time an enemy base was dealt damage this phase. If it was 3 or more times, ready this unit.",
+  "power": 5,
+  "trait": "Fremen, Fedaykin",
+  "number": "137",
+  "rarity": "U",
+  "frameId": "unit-aggression-heroism",
+  "setCode": "DUNE",
+  "language": "EN"
+}

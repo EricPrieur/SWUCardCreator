@@ -51,6 +51,18 @@ const baseOwner = (id: string): PlayerId | undefined => (id === 'base0' ? 0 : id
 // The Fortifications on a player's base
 export const baseUpgrades = (state: GameState, p: PlayerId) => (state.players[p].base.upgrades ??= [])
 
+// Damage to a player's base, counted as one more time it was dealt damage this phase
+export function hitBase(state: GameState, p: PlayerId, amount: number) {
+  if (amount <= 0) return
+  const base = state.players[p].base
+  base.damage += amount
+  if (base.hitPhase !== state.phaseCount) base.hits = 0
+  base.hitPhase = state.phaseCount
+  base.hits = (base.hits ?? 0) + 1
+}
+// How many times a player's base was dealt damage this phase
+export const baseHits = (state: GameState, p: PlayerId) => (state.players[p].base.hitPhase === state.phaseCount ? state.players[p].base.hits ?? 0 : 0)
+
 // 5.2: bases and leaders in play, a random player chosen to decide who starts with the
 // initiative; then, actions of their own, that choice, the 6 cards drawn, the mulligans and the
 // 2 resources
@@ -280,7 +292,14 @@ const controllerOf = (state: GameState, unit: UnitState): PlayerId => (state.pla
 const tokenDef = (state: GameState, name: string) =>
   Object.values(state.defs).find((d) => d.token && d.name === name) as CardDef
 
+// "Until the end of the round, Spice tokens can't be created and bases can't be healed."
+export const spiceLocked = (state: GameState) => state.spiceLock === state.round
+
 function createSpice(state: GameState, p: PlayerId, count = 1) {
+  if (spiceLocked(state)) {
+    log(state, `${state.players[p].name} can't create Spice tokens this round`, p)
+    return
+  }
   const spice = tokenDef(state, 'Spice')
   // "you may create 2 Spice tokens instead" (Carthag Refinery): one more each time it is used
   if (current) for (const { self, abilities } of holders(state, p)) if (abilities.moreSpice?.(new Game(state, p), self)) count++
@@ -402,7 +421,9 @@ class Pause extends Error {
 // A triggered ability waiting to resolve
 // \`same\`: the ability and the card it is on, which tells one ability triggered twice (Chani's, once
 // for the card played and once for each token created) from two that need an order
-type Trigger = { player: PlayerId; label: string; run: () => void; same?: unknown[] }
+// last: an ability that counts what happened this phase (Fedaykin Strike Leader), which the AI
+// resolves after the others
+type Trigger = { player: PlayerId; label: string; run: () => void; same?: unknown[]; last?: boolean }
 
 // The action being played: the answers it has, the next to hand out, the abilities triggered.
 // One action at a time, start to end in one go, so it can live outside the game state.
@@ -419,7 +440,8 @@ function ask(prompt: Prompt): string[] {
 // trigger: a card with two abilities waiting (a leader and its unit, say) is told apart
 function queue(state: GameState, player: PlayerId, source: string, what: string, ability: Ability | undefined, self: Self) {
   if (!ability || !current) return
-  current.queue.push({ player, label: `${source}: ${what}`, run: () => ability(new Game(state, player), self), same: [ability, self.id] })
+  const last = /this phase/.test(self.def.text ?? '') && /for each time/.test(self.def.text ?? '')
+  current.queue.push({ player, label: `${source}: ${what}`, run: () => ability(new Game(state, player), self), same: [ability, self.id], last })
 }
 
 // The abilities a card has where it is: a unit's, a leader's unit side's once deployed, a
@@ -508,7 +530,7 @@ function resolveTriggers(state: GameState) {
         options: mine.map((t, i) => ({ id: String(i), label: t.label })),
         min: 1,
         max: 1,
-        ai: '0',
+        ai: String(Math.max(0, mine.findIndex((t) => !t.last))),
       })
       next = mine[Number(pick)]
     }
@@ -597,6 +619,7 @@ function defeatUnit(state: GameState, unit: UnitState) {
 }
 
 function heal(state: GameState, p: PlayerId, amount: number) {
+  if (spiceLocked(state)) return
   const base = state.players[p].base
   base.damage = Math.max(0, base.damage - amount)
 }
@@ -609,7 +632,7 @@ function draw(state: GameState, p: PlayerId, count: number) {
     if (card) {
       player.hand.push(card)
       player.drawn++
-    } else player.base.damage += EMPTY_DECK_DAMAGE
+    } else hitBase(state, p, EMPTY_DECK_DAMAGE)
   }
 }
 
@@ -1254,6 +1277,14 @@ function queuePlots(state: GameState, p: PlayerId) {
 }
 
 // What an attack may do differently, for an ability that makes one
+// Saboteur: the defending unit's Shield tokens defeated
+const sabotage: Ability = (g, self) => {
+  const target = self.attack?.target
+  const unit = target && target !== 'base' ? g.unit(target) : undefined
+  if (!unit) return
+  for (const shield of unit.upgrades.filter((u) => g.def(u).token && g.def(u).name === 'Shield').map((u) => u.id)) g.defeatUpgrade(shield)
+}
+
 type AttackOptions = { power?: number; firstStrike?: boolean; overwhelm?: boolean; onAttack?: Ability }
 // onAttack: an On Attack ability the unit gains for this attack (Strafing Run)
 
@@ -1288,6 +1319,11 @@ function attack(state: GameState, p: PlayerId, attackerId: string, target: strin
   const self: Self = { id: attackerId, controller: p, def: def(state, attacker), attack: { attacker: attackerId, target } }
   queue(state, p, nameOf(state, attacker), 'On Attack', unitScript(state, attacker).onAttack, self)
   if (options.onAttack) queue(state, p, nameOf(state, attacker), 'On Attack', options.onAttack, self)
+  // An On Attack its upgrades give it (Maula Pistol): the unit's own, as it attacks
+  for (const upgrade of attacker.upgrades)
+    queue(state, p, nameOf(state, attacker), 'On Attack', scriptOf(state, upgrade).attachedOnAttack, { ...self, attachedTo: attackerId })
+  // Saboteur's second ability (7.5.10a): "On Attack: Defeat all Shield tokens attached to the defending unit."
+  if (keywordsOf(state, attacker).saboteur && target !== 'base') queue(state, p, nameOf(state, attacker), 'Saboteur', sabotage, self)
   trigger(state, p, 'whenFriendlyAttacks', { other: attackerId, attack: self.attack }, attackerId)
   trigger(state, other(p), 'whenEnemyAttacks', { other: attackerId, attack: self.attack })
   const defending = target === 'base' ? undefined : findUnit(state, target)
@@ -1310,7 +1346,7 @@ function attack(state: GameState, p: PlayerId, attackerId: string, target: strin
     // Restore (7.5.9): when it attacks, heal that much damage from your base
     if (keywords.restore) heal(state, p, keywords.restore)
     if (!defender) {
-      enemy.base.damage += power
+      hitBase(state, other(p), power)
       log(state, `${nameOf(state, still)} deals ${power} damage to ${nameOf(state, enemy.base)}`, p)
       if (power > 0) trigger(state, p, 'whenCombatDamageBase', { other: attackerId, attack: { attacker: attackerId, target } })
     } else {
@@ -1325,7 +1361,7 @@ function attack(state: GameState, p: PlayerId, attackerId: string, target: strin
       // Overwhelm (7.5.7): damage beyond what defeats the defender goes to its controller's base,
       // unless a Shield token prevented it (7.5.7e)
       if (keywords.overwhelm && dealt && power > remaining) {
-        enemy.base.damage += power - remaining
+        hitBase(state, other(p), power - remaining)
         trigger(state, p, 'whenCombatDamageBase', { other: attackerId, attack: { attacker: attackerId, target } })
       }
     }
@@ -1594,7 +1630,7 @@ export class Game {
   damage(target: string, amount: number, from?: Self) {
     if (amount <= 0) return 0
     const owner = baseOwner(target)
-    if (owner !== undefined) this.state.players[owner].base.damage += amount
+    if (owner !== undefined) hitBase(this.state, owner, amount)
     else {
       const unit = this.unit(target)
       if (!unit || !damageUnit(this.state, unit, amount)) return 0
@@ -1603,10 +1639,18 @@ export class Game {
     checkDefeats(this.state)
     return amount
   }
+  // How many times a player's base was dealt damage this phase
+  baseHits(p: PlayerId) {
+    return baseHits(this.state, p)
+  }
   heal(target: string, amount: number, from?: Self) {
     const owner = baseOwner(target)
     const damaged = owner !== undefined ? this.state.players[owner].base : this.unit(target)
     if (!damaged || amount <= 0) return
+    if (owner !== undefined && spiceLocked(this.state)) {
+      this.log(`${this.name(target)} can't be healed this round`, from?.controller)
+      return
+    }
     const healed = Math.min(amount, damaged.damage)
     damaged.damage -= healed
     this.log(`${from ? `${from.def.name} heals` : 'Healed'} ${healed} damage from ${this.name(target)}`, from?.controller)
@@ -1755,6 +1799,11 @@ export class Game {
   }
   createSpice(p: PlayerId, count = 1) {
     createSpice(this.state, p, count)
+  }
+  // "Until the end of the round, Spice tokens can't be created and bases can't be healed."
+  lockSpice() {
+    this.state.spiceLock = this.state.round
+    this.log("Until the end of the round, Spice tokens can't be created and bases can't be healed")
   }
   // A player's Spice token, this one or any, defeated by them or by the player named: whether
   // there was one to defeat

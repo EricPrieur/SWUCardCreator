@@ -13,7 +13,7 @@
   "text": "[Shielded]\nIf damage would be dealt to another friendly [{Emperor}] unit, you may defeat a Shield token on this unit. If you do, prevent that damage.",
   "power": 2,
   "trait": "Emperor, Vehicle, Transport",
-  "number": "190",
+  "number": "198",
   "rarity": "U",
   "frameId": "unit-villainy-space",
   "setCode": "DUNE",

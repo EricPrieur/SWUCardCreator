@@ -37,7 +37,8 @@ for (const file of files) {
       if (won) deck.wins++
       const mine = state.log.filter((l) => l.player === p).map((l) => l.text)
       for (const name of new Set(list.deck.map(nameOf))) {
-        const plays = mine.filter((text) => text.includes(` plays ${name}`)).length
+        // Upgrades and Fortifications are logged as attached, not played
+        const plays = mine.filter((text) => text.includes(` plays ${name}`) || text.includes(` attaches ${name} to `)).length
         const count = (deck.cards[name] ??= { plays: 0, games: 0, wins: 0 })
         count.plays += plays
         if (plays) {

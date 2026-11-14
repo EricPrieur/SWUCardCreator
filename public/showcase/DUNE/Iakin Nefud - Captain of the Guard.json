@@ -12,7 +12,7 @@
   "text": "Other friendly [{Harkonnen}] [{Trooper}] units get [+1/+0].\n[When Played:] You may defeat a friendly Spice token. If you do, ready this unit.",
   "power": 4,
   "trait": "Harkonnen, Official",
-  "number": "117",
+  "number": "118",
   "rarity": "U",
   "unique": true,
   "frameId": "unit-aggression-villainy",

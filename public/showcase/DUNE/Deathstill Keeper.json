@@ -1,0 +1,20 @@
+{
+  "hp": 4,
+  "id": "d8ef2479-5d4c-4381-82cc-dd57aae24c88",
+  "art": {
+    "x": 0,
+    "y": 6,
+    "src": "Deathstill Keeper (art).webp",
+    "zoom": 0.9
+  },
+  "cost": 3,
+  "name": "Deathstill Keeper",
+  "text": "[When a friendly [{Fremen}] unit is defeated (including this one):] Deal 1 damage to an enemy base.",
+  "power": 2,
+  "trait": "Fremen",
+  "number": "135",
+  "rarity": "U",
+  "frameId": "unit-aggression-heroism",
+  "setCode": "DUNE",
+  "language": "EN"
+}

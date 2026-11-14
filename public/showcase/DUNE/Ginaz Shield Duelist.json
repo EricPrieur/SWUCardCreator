@@ -13,7 +13,7 @@
   "text": "[Ambush]\n[When Played:] If you don't control an [{Arrakis}] base, give a Shield token to this unit.",
   "power": 3,
   "trait": "Ginaz, Trooper",
-  "number": "139",
+  "number": "146",
   "rarity": "U",
   "frameId": "unit-aggression",
   "setCode": "DUNE",

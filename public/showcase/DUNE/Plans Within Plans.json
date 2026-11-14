@@ -11,7 +11,7 @@
   "name": "Plans Within Plans",
   "text": "Attack with a unit. It gets [+2/+0] for this attack. You may defeat a friendly Spice token. If you do, it gets [+4/+0] instead.",
   "trait": "Trick",
-  "number": "154",
+  "number": "162",
   "rarity": "C",
   "frameId": "event-cunning-villainy",
   "setCode": "DUNE",

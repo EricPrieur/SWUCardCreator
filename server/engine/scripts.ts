@@ -79,9 +79,11 @@ export type Abilities = {
   // "If damage would be dealt to another friendly [Emperor] unit, you may defeat a Shield token
   // on this unit. If you do, prevent that damage.": whether it may for that unit
   sharesShield?: (g: Game, self: Self, unit: UnitState) => boolean
-  // An upgrade's: when the unit it is on becomes exhausted; when that unit is defeated
+  // An upgrade's: when the unit it is on becomes exhausted; when that unit is defeated; the On
+  // Attack that unit gains ("Attached unit gains: "[On Attack:] …""), the unit's own when it attacks
   whenAttachedExhausted?: Ability
   attachedWhenDefeated?: Ability
+  attachedOnAttack?: Ability
   // What it gives a unit (every unit in play is asked, so a script says whom it gives to)
   gives?: (g: Game, self: Self, unit: UnitState) => Grant | undefined
   // Whether the additional costs of a card being played may be ignored
@@ -229,9 +231,9 @@ const dune: CardScript[] = [
   {
     name: 'Glossu Rabban',
     subtitle: 'Governor of Arrakis',
-    text: '[Action [[Arrow]]:] Choose a friendly unit. Deal 1 damage to it. Then, attack with it. It gets [+1/+0] for this attack, or [+2/+0] instead if it\'s a [{Harkonnen}] unit.',
+    text: "[Action [[Arrow]]:] Choose a friendly unit. Deal 1 damage to it. Then, attack with it. It gets [+1/+0] for this attack. If it's a [{Harkonnen}] unit, it also gains [Overwhelm] for this attack.",
     backText:
-      '[Overwhelm]\nWhen another friendly unit attacks: You may deal 1 damage to it. If you do, it gets [+1/+0] for this attack, or [+2/+0] instead if it\'s a [{Harkonnen}] unit.',
+      "[Overwhelm]\nWhen another friendly unit attacks: You may deal 1 damage to it. If you do, it gets [+1/+0] for this attack. If it's a [{Harkonnen}] unit, it also gains [Overwhelm] for this attack.",
     front: {
       actions: [
         {
@@ -249,7 +251,7 @@ const dune: CardScript[] = [
             g.damage(id, 1, self)
             const unit = g.unit(id)
             if (!unit) return
-            g.attackWith(id, { power: g.hasTrait(unit, 'Harkonnen') ? 2 : 1 })
+            g.attackWith(id, { power: 1, overwhelm: g.hasTrait(unit, 'Harkonnen') })
           },
         },
       ],
@@ -259,9 +261,9 @@ const dune: CardScript[] = [
         const attacker = g.unit(self.other!)
         if (!attacker) return
         const left = g.hp(attacker) - attacker.damage
-        const bonus = g.hasTrait(attacker, 'Harkonnen') ? 2 : 1
+        const harkonnen = g.hasTrait(attacker, 'Harkonnen')
         if (
-          !g.may(self.controller, `Glossu Rabban: deal 1 damage to ${g.name(attacker.id)} to give it +${bonus}/+0 for this attack?`, {
+          !g.may(self.controller, `Glossu Rabban: deal 1 damage to ${g.name(attacker.id)} to give it +1/+0${harkonnen ? ' and Overwhelm' : ''} for this attack?`, {
             yes: 'Deal 1 damage',
             no: 'Skip',
             ai: left > 1,
@@ -270,7 +272,9 @@ const dune: CardScript[] = [
         )
           return
         g.damage(attacker.id, 1, self)
-        if (g.unit(attacker.id)) g.buff(attacker.id, bonus, 0, 'attack')
+        if (!g.unit(attacker.id)) return
+        g.buff(attacker.id, 1, 0, 'attack')
+        if (harkonnen) g.grant(attacker.id, { overwhelm: true }, 'attack', self.def.id)
       },
     },
   },
@@ -750,7 +754,9 @@ const dune: CardScript[] = [
   {
     name: 'Stilgar',
     subtitle: 'Naib of Sietch Tabr',
-    text: '[Action [[1, Arrow]]:] Create a Fremen token.',
+    // Was "[Action [[1, Arrow]]:] Create a Fremen token." (62% against the Featured Decks in AI
+    // games, 2026-11-12; with this one about 8 points less)
+    text: '[Action [[1, Arrow]]:] If you played a [{Fremen}] unit this phase, create a Fremen token.',
     backText: 'While you control an [{Arrakis}] base, this unit gains [Hidden].\n[On Attack:] Create a Fremen token.',
     front: {
       actions: [
@@ -758,6 +764,10 @@ const dune: CardScript[] = [
           label: 'create a Fremen token',
           resources: 1,
           exhaust: true,
+          // A Fremen unit played this phase: one that entered play this phase and is still there,
+          // not a token (a unit played and already defeated is missed)
+          can: (g, self) =>
+            friendlyIds(g, self, (u) => !u.leader && !g.def(u).token && g.hasTrait(u, 'Fremen') && u.entered === g.state.phaseCount).length > 0,
           run: (g, self) => {
             g.createToken(self.controller, 'Fremen')
           },
@@ -1176,6 +1186,31 @@ const dune: CardScript[] = [
     },
   },
   {
+    // Burn for Chani's deck: the deathstill takes a dead Fremen's water for the tribe; this
+    // one hits the enemy base for it, its own death included (2026-11-13)
+    name: 'Deathstill Keeper',
+    text: '[When a friendly [{Fremen}] unit is defeated (including this one):] Deal 1 damage to an enemy base.',
+    front: {
+      whenDefeated: (g, self) => {
+        g.damage(`base${1 - self.controller}`, 1, self)
+      },
+      triggersIf: { whenFriendlyDefeated: (_g, self) => !!self.otherDef?.traits.includes('Fremen') },
+      whenFriendlyDefeated: (g, self) => {
+        g.damage(`base${1 - self.controller}`, 1, self)
+      },
+    },
+  },
+  {
+    // Burn for Chani's deck: traded away, it still hits the base (2026-11-13)
+    name: 'Fedaykin Martyr',
+    text: '[Raid 1]\n[When Defeated:] Deal 2 damage to an enemy base.',
+    front: {
+      whenDefeated: (g, self) => {
+        g.damage(`base${1 - self.controller}`, 2, self)
+      },
+    },
+  },
+  {
     name: 'Otheym',
     subtitle: 'Fedaykin',
     text: '[When Played:] If you control another unique [{Fremen}] unit, create a Fremen token and ready it.',
@@ -1231,6 +1266,19 @@ const dune: CardScript[] = [
           g.playCard(p, pick, { free: true, onto: fremen() })
           left = left.filter((id) => id !== pick)
         }
+      },
+    },
+  },
+  {
+    name: 'Fedaykin Strike Leader',
+    text: '[When Played:] Deal 1 damage to an enemy base for each time an enemy base was dealt damage this phase. If it was 3 or more times, ready this unit.',
+    front: {
+      // Played after the attacks (and after Chani's leader pings for it), it finishes the turn
+      whenPlayed: (g, self) => {
+        const foe = (1 - self.controller) as PlayerId
+        const hits = g.baseHits(foe)
+        if (hits) g.damage(`base${foe}`, hits, self)
+        if (hits >= 3) g.ready(self.id)
       },
     },
   },
@@ -1376,8 +1424,9 @@ const dune: CardScript[] = [
   {
     name: 'Duke Leto Atreides',
     subtitle: 'The Red Duke',
-    text: '[When Played/When Defeated:] Give an Experience token to each other friendly [{Atreides}] unit.',
-    front: { whenPlayed: eachAtreidesExperience, whenDefeated: eachAtreidesExperience },
+    // Changed 2026-11-12 (was 6/7, each other friendly Atreides unit)
+    text: '[When Played/When Defeated:] Give an Experience token to each other friendly unit.',
+    front: { whenPlayed: eachOtherExperience, whenDefeated: eachOtherExperience },
   },
   {
     name: 'Atreides House Guard',
@@ -1608,9 +1657,9 @@ const dune: CardScript[] = [
   {
     name: 'Chani',
     subtitle: 'Sihaya',
-    text: '[When you play a [{Fremen}] unit or create a [{Fremen}] token:] You may exhaust this leader. If you do, deal 1 damage to an enemy base.',
+    text: '[When you play a [{Fremen}] card or create a [{Fremen}] token:] You may exhaust this leader. If you do, deal 1 damage to an enemy base.',
     backText:
-      'While you control an [{Arrakis}] base, this unit gains [Hidden].\n[When you play a [{Fremen}] unit or create a [{Fremen}] token:] Deal 1 damage to an enemy unit or base.',
+      'While you control an [{Arrakis}] base, this unit gains [Hidden].\n[When you play a [{Fremen}] card or create a [{Fremen}] token:] Deal 1 damage to an enemy unit or base.',
     front: { whenYouPlay: chaniLeader, whenYouCreate: chaniLeader },
     back: { whenYouPlay: chaniUnit, whenYouCreate: chaniUnit },
   },
@@ -1728,30 +1777,50 @@ const dune: CardScript[] = [
   {
     name: 'Duke Leto Atreides',
     subtitle: 'Duke of House Atreides',
-    text: '[When you play a unit:] You may exhaust this leader and either pay [1] or defeat a friendly Spice token. If you do, give an Experience token to that unit.',
-    backText: '<If you control another [{Atreides}] unit, this unit gains [Sentinel].>\n[When Defeated:] Defeat an enemy non-leader unit.',
+    // Was "…exhaust this leader and either pay [1] or defeat a friendly Spice token…" (75% against
+    // the Featured Decks in AI games, 2026-11-12: an Experience token nearly every round), then
+    // for any unit, with a Sentinel unit side whose When Defeated defeated a unit (73%). Only
+    // Atreides units, a plain unit side and the poison tooth: 49%; its On Attack Experience
+    // token made it 60% as a 5/7, 56% as a 4/7 (2026-11-13).
+    text: '[When you play an [{Atreides}] unit:] You may exhaust this leader and defeat a friendly Spice token. If you do, give an Experience token to that unit.',
+    backText: '[On Attack:] Give an Experience token to another friendly [{Atreides}] unit.\n[When Defeated:] Deal 1 damage to each enemy ground unit.',
     front: {
-      triggersIf: { whenYouPlay: (g, self) => self.otherDef?.type === 'unit' && g.leaderReady(self.controller) },
+      triggersIf: {
+        whenYouPlay: (g, self) =>
+          self.otherDef?.type === 'unit' && self.otherDef.traits.includes('Atreides') && g.leaderReady(self.controller) && g.spice(self.controller) > 0,
+      },
       whenYouPlay: (g, self) => {
         const p = self.controller
-        if (self.otherDef?.type !== 'unit' || !self.other || !g.unit(self.other) || !g.leaderReady(p)) return
-        const choices = ['Skip', ...(g.canPay(p, 1) ? ['Pay 1'] : []), ...(g.spice(p) ? ['Defeat a Spice token'] : [])]
-        if (choices.length === 1) return
-        // The AI spends a spare Spice token, or a spare resource
-        const ai = g.spice(p) > 1 ? choices.indexOf('Defeat a Spice token') : g.canPay(p, 3) ? choices.indexOf('Pay 1') : 0
-        const choice = choices[g.option(p, `Duke Leto Atreides: exhaust this leader to give ${self.otherDef.name} an Experience token?`, choices, { ai: Math.max(0, ai), source: self.def.id })]
-        if (choice === 'Skip') return
-        if (choice === 'Pay 1' ? !g.pay(p, 1) : !g.defeatSpice(p)) return
+        if (self.otherDef?.type !== 'unit' || !self.otherDef.traits.includes('Atreides') || !self.other || !g.unit(self.other) || !g.leaderReady(p) || !g.spice(p)) return
+        // The AI spends a spare Spice token; its last one for a unit that pays off when one is
+        // defeated (Tuek's Lighter readies) or a big one (a Worm Rider)
+        const payoff = /\[When you defeat a friendly Spice token:\]/.test(self.otherDef.text ?? '')
+        // ... or, with no such payoff in hand to keep it for, a sturdy early unit (a 2/4 made a 3/5)
+        const sturdy = (self.otherDef.power ?? 0) + (self.otherDef.hp ?? 0) >= 5
+        const waiting = g.player(p).hand.some((c) => c.id !== self.other && /\[When you defeat a friendly Spice token:\]/.test(g.def(c).text ?? ''))
+        const yes = g.may(p, `Duke Leto Atreides: exhaust this leader and defeat a Spice token to give ${self.otherDef.name} an Experience token?`, {
+          yes: 'Defeat a Spice token',
+          no: 'Skip',
+          ai: g.spice(p) > 1 || payoff || self.otherDef.cost >= 5 || (sturdy && !waiting),
+          source: self.def.id,
+        })
+        if (!yes || !g.defeatSpice(p)) return
         g.exhaustLeader(p)
         g.giveToken(self.other, 'Experience')
       },
     },
     back: {
-      gives: (g, self, unit) => (unit.id === self.id && anotherAtreides(g, self) ? { keywords: { sentinel: true } } : undefined),
+      onAttack: (g, self) => {
+        const targets = friendlyIds(g, self, (u) => u.id !== self.id && g.hasTrait(u, 'Atreides'))
+        const pick = g.chooseOne(self.controller, 'Duke Leto Atreides: give an Experience token to another friendly Atreides unit', targets, {
+          ai: 'help',
+          source: self.def.id,
+        })
+        if (pick) g.giveToken(pick, 'Experience')
+      },
+      // The poison tooth
       whenDefeated: (g, self) => {
-        const targets = unitIds(g, (u) => g.controller(u) !== self.controller && !u.leader)
-        const pick = g.chooseOne(self.controller, 'Duke Leto Atreides: defeat an enemy non-leader unit', targets, { ai: 'harm', source: self.def.id })
-        if (pick) g.defeat(pick)
+        for (const u of g.units((u) => g.controller(u) !== self.controller && u.arena === 'ground')) g.damage(u.id, 1, self)
       },
     },
   },
@@ -1999,6 +2068,56 @@ const dune: CardScript[] = [
     },
   },
   {
+    // Chani's deck's finisher (2026-11-13): her discard pile of Fremen units turned into burn,
+    // as many as she has Fremen units in play
+    name: 'Chani',
+    subtitle: 'Sayyadina of the Fedaykin',
+    text: 'While you control an [{Arrakis}] base, this unit gains [Raid 3].\n[When Played/On Attack:] For each [{Fremen}] unit you control, you may put a [{Fremen}] unit card from your discard pile on the bottom of your deck. Deal 1 damage to an enemy base for each card put this way.',
+    front: { whenPlayed: sayyadina, onAttack: sayyadina },
+  },
+  {
+    // Paul's ultimatum: the Water of Life could end the spice. Every Spice token, both players',
+    // fuels a barrage of 1-damage pings (2026-11-13)
+    name: 'He Who Can Destroy a Thing',
+    text: "Defeat each Spice token. For each Spice token defeated this way, deal 1 damage to a unit or base.\nUntil the end of the round, Spice tokens can't be created and bases can't be healed.",
+    front: {
+      play: (g, self) => {
+        const p = self.controller
+        let pings = 0
+        for (const owner of [0, 1] as const) while (g.defeatSpice(owner, undefined, p)) pings++
+        for (let left = pings; left > 0; left--) {
+          const foe = enemy(g, self)
+          // The AI defeats the enemy unit worth the most that the pings left can finish, else
+          // hits the enemy base
+          const killable = g
+            .units((u) => g.controller(u) === foe && g.hp(u) - u.damage <= left)
+            .sort((a, b) => g.cost(b) - g.cost(a))[0]
+          const pick = g.chooseOne(p, `He Who Can Destroy a Thing: deal 1 damage to a unit or base (${left} left)`, [...unitIds(g, () => true), ...bases()], {
+            ai: killable?.id ?? `base${foe}`,
+            source: self.def.id,
+          })
+          if (pick) g.damage(pick, 1, self)
+        }
+        g.lockSpice()
+      },
+    },
+  },
+  {
+    // Burn for Chani's deck: a Fremen card for 1 that also chips the base (2026-11-13)
+    name: 'Sietch Ambush',
+    text: 'Deal 1 damage to a ground unit. Then, if you control a [{Fremen}] unit, deal 1 damage to an enemy base.',
+    front: {
+      play: (g, self) => {
+        const pick = g.chooseOne(self.controller, 'Sietch Ambush: deal 1 damage to a ground unit', unitIds(g, (u) => u.arena === 'ground'), {
+          ai: 'harm',
+          source: self.def.id,
+        })
+        if (pick) g.damage(pick, 1, self)
+        if (friendlyIds(g, self, (u) => g.hasTrait(u, 'Fremen')).length) g.damage(`base${1 - self.controller}`, 1, self)
+      },
+    },
+  },
+  {
     name: 'Battle of Arrakeen',
     text: 'Choose an arena. Deal 2 damage to each non-[{Fremen}] unit in that arena.',
     front: {
@@ -2233,7 +2352,7 @@ const dune: CardScript[] = [
   // --- Upgrades ---
   {
     name: 'Litany Against Fear',
-    text: "Attached unit can't be defeated by enemy card abilities.",
+    text: "Attach to a non-[{Vehicle}] unit.\nAttached unit can't be defeated by enemy card abilities.",
     front: { cantBeDefeatedByEnemies: true },
   },
   {
@@ -2241,6 +2360,13 @@ const dune: CardScript[] = [
     text: "Attach to a non-[{Vehicle}] unit.\nAttached unit gains [Restore 1], or [Restore 2] instead if it's a [{Fremen}] unit.",
     front: {
       gives: (g, self, unit) => (unit.id === self.attachedTo ? { keywords: { restore: g.hasTrait(unit, 'Fremen') ? 2 : 1 } } : undefined),
+    },
+  },
+  {
+    name: 'Atreides Kindjal',
+    text: 'Attach to a non-[{Vehicle}] unit.\nAttached unit gains [Saboteur].',
+    front: {
+      gives: (_g, self, unit) => (unit.id === self.attachedTo ? { keywords: { saboteur: true } } : undefined),
     },
   },
   {
@@ -2261,6 +2387,16 @@ const dune: CardScript[] = [
       gives: (_g, self, unit) => (unit.id === self.attachedTo ? { keywords: { sentinel: true } } : undefined),
       attachedWhenDefeated: (g, self) => {
         g.createToken(self.controller, 'Fremen')
+      },
+    },
+  },
+  {
+    // Burn for Chani's deck: a Fremen weapon whose unit chips the base each attack (2026-11-13)
+    name: 'Maula Pistol',
+    text: 'Attach to a non-[{Vehicle}] unit.\nAttached unit gains: "[On Attack:] Deal 1 damage to an enemy base."',
+    front: {
+      attachedOnAttack: (g, self) => {
+        g.damage(`base${1 - self.controller}`, 1, self)
       },
     },
   },
@@ -3071,9 +3207,11 @@ const dune: CardScript[] = [
   {
     name: 'Paul Atreides',
     subtitle: 'Haunted by Dreams',
-    text: 'You may look at the top card of your deck at any time.\n[Action [Arrow]:] Discard the top card of your deck. Then, attack with a unit. If it has the same cost as the discarded card, it gets [+2/+0] for this attack.',
+    // Changed 2026-11-13 (was +2 for the same cost only, and an On Attack borrowed from any card):
+    // 33% -> 40% against the Featured Decks in AI games
+    text: 'You may look at the top card of your deck at any time.\n[Action [Arrow]:] Discard the top card of your deck. Then, attack with a unit. If it has the same cost as the discarded card, it gets [+2/+0] for this attack. If it costs more, it gets [+1/+0] instead.',
     backText:
-      "[Raid 1]\n[On Attack:] You may put a card from your discard pile on the bottom of your deck. If it has an [On Attack] ability, use it as if it were this unit's.",
+      "[Raid 1]\n[On Attack:] You may put a unit card from your discard pile on the bottom of your deck. If you do, use its [When Played] ability now, as if it were this unit's.",
     front: {
       seesTopCard: true,
       actions: [
@@ -3087,40 +3225,46 @@ const dune: CardScript[] = [
             if (!top) return
             g.mill(p, top.id)
             const cost = g.def(top).cost
+            const bonus = (id: string) => (g.cost(g.unit(id)!) === cost ? 2 : g.cost(g.unit(id)!) > cost ? 1 : 0)
             const ready = friendlyIds(g, self, (u) => g.canAttack(u.id))
-            const same = ready.find((id) => g.cost(g.unit(id)!) === cost)
-            const pick = g.chooseOne(p, `Paul Atreides: attack with a unit (one that costs ${cost} gets +2/+0)`, ready, {
-              ai: same ?? 'help',
+            // The AI: the most power with its bonus
+            const best = [...ready].sort((a, b) => g.power(g.unit(b)!) + bonus(b) - (g.power(g.unit(a)!) + bonus(a)))[0]
+            const pick = g.chooseOne(p, `Paul Atreides: attack with a unit (one that costs ${cost} gets +2/+0, one that costs more +1/+0)`, ready, {
+              ai: best ?? 'help',
               source: self.def.id,
             })
-            if (pick) g.attackWith(pick, { power: g.cost(g.unit(pick)!) === cost ? 2 : 0 })
+            if (pick) g.attackWith(pick, { power: bonus(pick) })
           },
         },
       ],
     },
     back: {
-      // Changed 2026-11-12 (was: look at the top 3 cards, discard 1, use its On Attack): the
-      // card his leader side's Action discards can come back to lend its ability
+      // The card his leader side's Action discards can come back to lend its When Played
       onAttack: (g, self) => {
         const p = self.controller
-        const discard = g.player(p).discard.map((c) => c.id)
-        // The AI takes back the dearest card with an On Attack ability, or none
-        const withAttack = g
-          .player(p)
-          .discard.filter((c) => abilitiesOf(g.def(c), 'front').onAttack)
-          .sort((a, b) => g.def(b).cost - g.def(a).cost)[0]
-        const pick = g.chooseOne(p, 'Paul Atreides: you may put a card from your discard pile on the bottom of your deck', discard, {
+        const units = g.player(p).discard.filter((c) => g.def(c).type === 'unit')
+        // The AI: the dearest unit whose When Played does something now
+        const useful = (c: { def: string }) => {
+          const d = g.def(c)
+          if (!abilitiesOf(d, 'front').whenPlayed) return false
+          if (/for each time an enemy base was dealt damage this phase/.test(d.text ?? '')) return g.baseHits((1 - p) as PlayerId) > 0
+          if (/defeat a friendly Spice token/.test(d.text ?? '')) return g.spice(p) > 0
+          if (/for each friendly \[\{Fremen\}\] ground unit/.test(d.text ?? '')) return friendlyIds(g, self, (u) => u.arena === 'ground' && g.hasTrait(u, 'Fremen')).length > 0
+          return true
+        }
+        const best = units.filter(useful).sort((a, b) => g.def(b).cost - g.def(a).cost)[0]
+        const pick = g.chooseOne(p, 'Paul Atreides: you may put a unit card from your discard pile on the bottom of your deck to use its When Played ability', units.map((c) => c.id), {
           optional: true,
-          ai: withAttack?.id ?? 'none',
+          ai: best?.id ?? 'none',
           source: self.def.id,
         })
         if (!pick) return
-        const card = g.card(pick)!
+        const d = g.def(g.card(pick)!)
         g.discardToBottom(p, pick)
-        const onAttack = abilitiesOf(g.def(card), 'front').onAttack
-        if (onAttack) {
-          g.log(`Paul Atreides uses ${g.def(card).name}'s On Attack ability`, p)
-          onAttack(g, self)
+        const whenPlayed = abilitiesOf(d, 'front').whenPlayed
+        if (whenPlayed) {
+          g.log(`Paul Atreides uses ${d.name}'s When Played ability`, p)
+          whenPlayed(g, self)
         }
       },
     },
@@ -3158,8 +3302,8 @@ function otherAtreidesExperience(g: Game, self: Self) {
 }
 
 // "Give an Experience token to each other friendly [{Atreides}] unit."
-function eachAtreidesExperience(g: Game, self: Self) {
-  for (const id of friendlyIds(g, self, (u) => u.id !== self.id && g.hasTrait(u, 'Atreides'))) g.giveToken(id, 'Experience')
+function eachOtherExperience(g: Game, self: Self) {
+  for (const id of friendlyIds(g, self, (u) => u.id !== self.id)) g.giveToken(id, 'Experience')
 }
 
 // Spotter 'Thopter: Spice with an Arrakis base and a Harvester Vehicle
@@ -3168,8 +3312,9 @@ function spotterSpice(g: Game, self: Self) {
   if (g.controlsArrakis(self.controller) && harvester) g.createSpice(self.controller)
 }
 
-// Chani: a Fremen unit played or a Fremen token created
-const fremenArrives = (self: Self) => self.otherDef?.type === 'unit' && self.otherDef.traits.includes('Fremen')
+// Chani: a Fremen card played (a unit, an event, an upgrade) or a Fremen token created. Was
+// Fremen units only (2026-11-13): her burn deck plays Fremen events and weapons too.
+const fremenArrives = (self: Self) => !!self.otherDef?.traits.includes('Fremen')
 
 function chaniLeader(g: Game, self: Self) {
   const p = self.controller
@@ -3185,6 +3330,30 @@ function chaniUnit(g: Game, self: Self) {
   const ids = [...unitIds(g, (u) => g.controller(u) === foe), `base${foe}`]
   const pick = g.chooseOne(self.controller, 'Chani: deal 1 damage to an enemy unit or base', ids, { ai: 'harm', source: self.def.id })
   if (pick) g.damage(pick, 1, self)
+}
+
+// Chani, Sayyadina of the Fedaykin: one Fremen unit card from the discard pile to the bottom of
+// the deck for each friendly Fremen unit (her included), 1 damage to the enemy base for each.
+// The AI puts back as many as it may.
+function sayyadina(g: Game, self: Self) {
+  const p = self.controller
+  const most = friendlyIds(g, self, (u) => g.hasTrait(u, 'Fremen')).length
+  let put = 0
+  for (let i = 0; i < most; i++) {
+    const ids = g
+      .player(p)
+      .discard.filter((c) => g.def(c).type === 'unit' && g.hasTrait(c, 'Fremen'))
+      .map((c) => c.id)
+    const pick = g.chooseOne(p, `Chani: you may put a Fremen unit card from your discard pile on the bottom of your deck (${most - i} left)`, ids, {
+      optional: true,
+      ai: ids[0],
+      source: self.def.id,
+    })
+    if (!pick) break
+    g.discardToBottom(p, pick)
+    put++
+  }
+  if (put) g.damage(`base${enemy(g, self)}`, put, self)
 }
 
 // Shaddam IV: the Sardaukar cards in hand he can play

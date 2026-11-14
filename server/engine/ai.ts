@@ -44,26 +44,43 @@ export function chooseAction(state: GameState, p: PlayerId, why?: Weighed[]): Ac
   // hand, all of them together (up to SPICE_KEPT), and, with a deck of cards that spend Spice, a
   // token kept for those still to come (none on a base that pays off for each token spent)
   const reserve = spicePays(state, p) ? 0 : deckPlan(state, p).spiceReserve
-  const inHand = player.hand.reduce((sum, c) => sum + spiceWanted(state.defs[c.def]), 0)
+  const inHand = player.hand.reduce((sum, c) => sum + spiceFor(state, p, state.defs[c.def]), 0)
   const needed = Math.max(reserve, Math.min(SPICE_KEPT, inHand))
   const spice = new Set(player.spice.map((t) => t.id))
-  // Taking the initiative ends its turn: a move of its own only in danger, the opponent going
-  // first next round, to act before the units that threaten it can attack
-  const foe = p === 0 ? 1 : 0
-  const seize = state.phase === 'action' && state.initiative === foe && inDanger(state, p)
+  // Taking the initiative ends its turn, so it is never a move among the others: it is what the
+  // AI does once done (below). In danger itself, it plays its cards first: while it has resources
+  // ready, the opponent can't count on the first attack next round (a bluff, too).
   const moves = actions.filter(
-    (a) =>
-      a.type !== 'pass' &&
-      (a.type !== 'initiative' || seize) &&
-      !(a.type === 'ability' && spice.has(a.source) && player.spice.length <= needed),
+    (a) => a.type !== 'pass' && a.type !== 'initiative' && !(a.type === 'ability' && spice.has(a.source) && player.spice.length <= needed),
   )
+  // But it claims at once when a single attack next round defeats the opponent's base: only the
+  // first action of a round is sure to be its own. (Lethal that takes the whole board, the
+  // opponent acting between the attacks, isn't worth its turn now.)
+  const claim = actions.find((a) => a.type === 'initiative')
+  if (claim && state.phase === 'action' && oneActionLethal(state, p) && !lethalNow(state, p)) {
+    why?.push({ action: claim, gain: 0 })
+    return claim
+  }
+  // Attacks before cards, and the base first when the units that can reach it this round have
+  // the power for what it has left. What an attack opens up (a unit traded away) the replies
+  // below still weigh, so a Sentinel played first to cover it can still come out ahead.
+  const racing = lethalNow(state, p)
+  const bias = (move: Action) =>
+    move.type !== 'attack' ? 0 : ATTACK_FIRST + (racing && move.target === 'base' ? LETHAL_RACE + 0.1 * powerOf(state, state.players[p].units.find((u) => u.id === move.attacker)!) : 0)
   // Past its time budget, it judges the moves left without trying its later answers
   const start = performance.now()
   const tried = moves.map((move) => {
     const deep = performance.now() - start < BUDGET
     const after = outcome(state, p, move, p, deep)
     const single = after ? evaluate(after, p) : -Infinity
-    return { move, after, single, best: Math.max(single, deep ? combo(state, p, move) : -Infinity) + leaderPlays(state, p, move, after) }
+    return {
+      move,
+      after,
+      single,
+      best: Math.max(single, deep ? combo(state, p, move) : -Infinity, after ? awakened(after, p) : -Infinity) + leaderPlays(state, p, move, after) + searchPlays(state, p, move),
+      // Kept apart, so a reason to wait (a negative) isn't lost below
+      extra: timing(state, p, move, actions),
+    }
   })
   // A move that wins is made at once: playing on first may look better, a win still in reach
   // next action, but the opponent acts in between, with the cards in their hand it doesn't see
@@ -84,12 +101,15 @@ export function chooseAction(state: GameState, p: PlayerId, why?: Weighed[]): Ac
   // Then its most promising moves again, each after the opponent's best reply, and passing
   // the same way, so as not to leave a unit open to an easy attack. A follow-up attack it
   // planned keeps its worth. Short of time, it goes by the first look.
-  const promising = tried.filter((t) => t.after && t.best > -Infinity).sort((a, b) => b.best - a.best).slice(0, REPLY_WIDTH)
+  const promising = tried.filter((t) => t.after && t.best > -Infinity).sort((a, b) => b.best + b.extra - (a.best + a.extra)).slice(0, REPLY_WIDTH)
   if (promising.length && performance.now() - start < BUDGET) {
     // Doing nothing gives the opponent their turn as it is now. (Passing may end the phase,
     // but what they could do then, such as deploying their leader, they still will.)
     const stay = afterReply({ ...state, active: p === 0 ? 1 : 0 }, p)
-    const weighed: Weighed[] = promising.map((t) => ({ action: t.move, gain: afterReply(t.after!, p) + Math.max(0, t.best - t.single) - stay }))
+    const weighed: Weighed[] = promising.map((t) => {
+      const gain = afterReply(t.after!, p) + Math.max(0, t.best - t.single) + t.extra - stay
+      return { action: t.move, gain: gain > MIN_GAIN ? gain + bias(t.move) : gain }
+    })
     // Among the moves worth making, the order matters: each is played on to its next move too,
     // as long as time allows. A card in hand can still be played after an attack, but an
     // attack put off may be lost, its unit traded away first.
@@ -101,13 +121,13 @@ export function chooseAction(state: GameState, p: PlayerId, why?: Weighed[]): Ac
         break
       }
       const t = promising.find((x) => x.move === w.action)!
-      w.rank = afterReply(t.after!, p, (s) => Math.max(evaluate(s, p), followUp(s, p, needed))) + Math.max(0, t.best - t.single)
+      w.rank = afterReply(t.after!, p, (s) => Math.max(evaluate(s, p), followUp(s, p, needed))) + Math.max(0, t.best - t.single) + t.extra + bias(w.action)
     }
     return pick(weighed, done, why)
   }
   const now = evaluate(state, p)
   return pick(
-    tried.map((t) => ({ action: t.move, gain: t.best - now })),
+    tried.map((t) => ({ action: t.move, gain: t.best + t.extra - now > MIN_GAIN ? t.best + t.extra - now + bias(t.move) : t.best + t.extra - now })),
     done,
     why,
   )
@@ -119,6 +139,101 @@ const LEADER_PLAY = 1.5
 function leaderPlays(state: GameState, p: PlayerId, move: Action, after: GameState | undefined) {
   if (move.type !== 'ability' || move.source !== 'leader' || !after) return 0
   return after.players[p].hand.length < state.players[p].hand.length ? LEADER_PLAY : 0
+}
+
+// The Sleeper Has Awakened: a friendly unit defeated, then played again from the discard pile for
+// free and ready (or another of the same name: Paul Atreides). Worth what the board is once that
+// play is made, a little less, the opponent acting between.
+const AWAKEN_COST = 0.4
+function awakened(after: GameState, p: PlayerId) {
+  if (after.phase !== 'action') return -Infinity
+  let best = -Infinity
+  const again = { ...after, active: p }
+  for (const play of legalActions(again, p)) {
+    if (play.type !== 'play' || !play.awakened) continue
+    try {
+      best = Math.max(best, evaluate(settle(applyAction(again, p, play), p, false), p) - AWAKEN_COST)
+    } catch {
+      // a play the engine refuses
+    }
+  }
+  return best
+}
+
+// When a card is worth playing, beyond what the board shows right after:
+// - one that counts the enemy base's hits this phase (Fedaykin Strike Leader) waits while
+//   attacks are left to make, so they count;
+// - an upgrade goes on a sturdy unit, the leader unit above all (cards rarely remove it), not
+//   one an enemy unit can attack and defeat, taking 2 cards for 1 (less so if it attacks now,
+//   the upgrade paying off first); one that protects its unit (Litany Against Fear) is worth
+//   more on a dear one
+const HOLD_FOR_HITS = 2.5
+const UPGRADE_ON_LEADER = 1
+const PROTECT_PER_COST = 0.2
+const UPGRADE_PER_HP = 0.1
+const UPGRADE_AT_RISK = 1.5
+// A leader that discards the top card of its deck for a unit side that uses units from the
+// discard pile (Paul Atreides): a unit on top is fuel, worth discarding, unless it's the card the
+// AI wants to draw (one it can play next round, near the top of its curve); but not at the cost
+// of the initiative, while it's still there to take
+const DISCARD_FUEL = 1
+const DISCARD_WANTED = 1.5
+function fuel(state: GameState, p: PlayerId, move: Action, actions: Action[]) {
+  if (move.type !== 'ability' || move.source !== 'leader') return 0
+  const player = state.players[p]
+  const leader = state.defs[player.leader.def]
+  if (player.leader.deployed || !/Discard the top card of your deck/.test(leader.text ?? '') || !/from your discard pile/.test(leader.backText ?? '')) return 0
+  if (actions.some((a) => a.type === 'initiative')) return 0
+  const top = player.deck[0] && state.defs[player.deck[0].def]
+  if (!top) return 0
+  const next = player.resources.length + 1
+  if ((top.cost ?? 0) <= next && (top.cost ?? 0) >= next - 2) return -DISCARD_WANTED
+  return top.type === 'unit' ? DISCARD_FUEL : 0
+}
+
+function timing(state: GameState, p: PlayerId, move: Action, actions: Action[]) {
+  if (move.type === 'ability') return fuel(state, p, move, actions)
+  if (move.type !== 'play') return 0
+  const card = state.players[p].hand.find((c) => c.id === move.card)
+  if (!card) return 0
+  const d = state.defs[card.def]
+  let worth = 0
+  if (/for each time an enemy base was dealt damage this phase/.test(d.text ?? '') && actions.some((a) => a.type === 'attack')) worth -= HOLD_FOR_HITS
+  const unit = d.type === 'upgrade' && move.attachTo ? state.players[p].units.find((u) => u.id === move.attachTo) : undefined
+  if (unit) {
+    if (unit.leader) worth += UPGRADE_ON_LEADER
+    if (/can't be defeated by enemy card abilities/.test(d.text ?? '')) worth += PROTECT_PER_COST * (state.defs[unit.def].cost ?? 0)
+    const left = hpOf(state, unit) - unit.damage + (d.hp ?? 0)
+    worth += UPGRADE_PER_HP * left
+    const foe = state.players[p === 0 ? 1 : 0]
+    const threat = Math.max(0, ...foe.units.filter((u) => u.arena === unit.arena).map((u) => powerOf(state, u, true)))
+    if (threat >= left) worth -= (UPGRADE_AT_RISK + 0.3 * (d.cost ?? 0)) * (unit.exhausted ? 1 : 0.5)
+  }
+  return worth
+}
+
+// A card that searches the deck for a kind of card (Thumper: a Creature card, and those cost 1
+// less): the AI doesn't see its deck, so the search is worth no card to it. Worth a card found,
+// more with none of that kind in hand, and more again as its resources near what the dearest of
+// that kind costs (a Worm Rider on 6 with the Thumper's 1 less)
+const SEARCH_WORTH = 1.5
+const SEARCH_NONE_IN_HAND = 1.5
+const SEARCH_SOON = 1
+function searchPlays(state: GameState, p: PlayerId, move: Action) {
+  if (move.type !== 'play') return 0
+  const player = state.players[p]
+  const card = player.hand.find((c) => c.id === move.card)
+  if (!card) return 0
+  const text = state.defs[card.def].text ?? ''
+  const kind = text.match(/Search the top \d+ cards of your deck for an? \[\{?(\w+)\}?\] (?:card|unit)/)?.[1]
+  if (!kind) return 0
+  const ofKind = (c: { def: string }) => state.defs[c.def].traits?.includes(kind)
+  const inHand = player.hand.filter((c) => c.id !== card.id && ofKind(c))
+  const dearest = Math.max(0, ...[...player.deck, ...inHand].filter(ofKind).map((c) => state.defs[c.def].cost ?? 0))
+  const less = /cost \[1\] less/.test(text) ? 1 : 0
+  const have = player.resources.length
+  const soon = dearest - less - have <= 2 && dearest - less >= have ? SEARCH_SOON : 0
+  return (inHand.length ? 0 : SEARCH_WORTH + SEARCH_NONE_IN_HAND) + soon + (inHand.length && less ? SEARCH_WORTH * 0.5 : 0)
 }
 
 // The move that gains the most, if any gains enough; else it is done for now
@@ -176,7 +291,7 @@ export type DeckPlan = { curve: number[]; average: number; leader: number; top: 
 const plans = new WeakMap<object, [DeckPlan?, DeckPlan?]>()
 // Costs from 0 to this, the dearer ones counted with it
 // Which AI this is, kept with each game it plays, to tell its versions apart in the stats
-export const AI_VERSION = '2026-11-02 lethal'
+export const AI_VERSION = '2026-11-13 race'
 
 export const CURVE_TOP = 8
 
@@ -189,6 +304,19 @@ export function spiceWanted(d: CardDef) {
   if (/defeat any number of friendly Spice tokens/i.test(d.text ?? '')) return 3
   const may = (d.text ?? '').match(/may defeat (a|\d+) friendly Spice tokens?/i)
   return may ? (/^\d+$/.test(may[1]) ? Number(may[1]) : 1) : 0
+}
+// The Spice tokens a card in its hand wants, with its leader: a unit that pays off when a Spice
+// token is defeated (Tuek's Lighter readies) wants one more under a leader that may defeat one
+// as the unit is played (Duke Leto Atreides), so a token is kept for it rather than dug with
+function spiceFor(state: GameState, p: PlayerId, d: CardDef) {
+  const player = state.players[p]
+  const leader = state.defs[player.leader.def]
+  const combo =
+    d.type === 'unit' &&
+    /\[When you defeat a friendly Spice token:\]/.test(d.text ?? '') &&
+    !player.leader.deployed &&
+    /When you play a unit:\][^\n]*defeat a friendly Spice token/.test(leader.text ?? '')
+  return spiceWanted(d) + (combo ? 1 : 0)
 }
 // A Spice token on the board: a card dug for later, and more when its base pays off for each
 // one spent (Castle Caladan's heal): a little more there, but less than spending it brings
@@ -243,7 +371,7 @@ const DIG_READY = 2
 function spiceKept(state: GameState, p: PlayerId) {
   const player = state.players[p]
   const soon = player.resources.length + 1
-  const wanted = player.hand.reduce((sum, c) => sum + (playCost(state, p, state.defs[c.def]) <= soon ? spiceWanted(state.defs[c.def]) : 0), 0)
+  const wanted = player.hand.reduce((sum, c) => sum + (playCost(state, p, state.defs[c.def]) <= soon ? spiceFor(state, p, state.defs[c.def]) : 0), 0)
   return Math.min(SPICE_KEPT, wanted)
 }
 
@@ -385,8 +513,23 @@ function bestAnswer(state: GameState, p: PlayerId, deep = true): Action {
 // its own. It counts only what both players can see: how many cards are in a hand, not
 // which. A game won or lost still counts the board, so with every move losing it still makes
 // the one that does the most, in case the opponent doesn't see their win.
+// The race: each side's damage a round against what the other's base has left. Removing an
+// attacker slows their clock, base damage speeds up its own. Tested 2026-11-13 on 210 games
+// each: Mohiam 44% to 50%, Paul 44% to 53% (a beatdown/control role on top did worse).
+const RACE = 20
+function raceRate(state: GameState, p: PlayerId) {
+  const foe = state.players[p === 0 ? 1 : 0]
+  const left = Math.max(1, state.defs[foe.base.def].hp - foe.base.damage)
+  let power = 0
+  for (const unit of state.players[p].units) {
+    if (state.doomed.includes(unit.id)) continue
+    power += (powerOf(state, unit) + (keywordsOf(state, unit).raid ?? 0)) * (blocked(state, p, unit) ? 0.5 : 1)
+  }
+  return power / left
+}
+
 export function evaluate(state: GameState, p: PlayerId) {
-  const board = side(state, p, true) - side(state, p === 0 ? 1 : 0)
+  const board = side(state, p, true) - side(state, p === 0 ? 1 : 0) + RACE * (raceRate(state, p) - raceRate(state, p === 0 ? 1 : 0))
   if (state.phase === 'over') return state.winner === p ? 1000 + board : state.winner === 'draw' ? board : -1000 + board
   return board
 }
@@ -398,7 +541,12 @@ function side(state: GameState, p: PlayerId, own = false) {
   // The base's health left, each point dearer as it runs out
   const left = Math.max(0, state.defs[player.base.def].hp - player.base.damage)
   let score = left + Math.max(0, 10 - left) * 0.6
-  for (const unit of player.units) score += unitWorth(state, unit, blocked(state, p, unit))
+  // A unit taken until the regroup phase (Seduction) goes back to its owner: it counts on its
+  // owner's side, so trading it away costs the taker nothing (what it does before then, its
+  // attacks, the board shows)
+  const borrowed = new Set(state.borrowed.map((b) => b.unit))
+  for (const unit of player.units) if (!borrowed.has(unit.id)) score += unitWorth(state, unit, blocked(state, p, unit))
+  for (const unit of state.players[p === 0 ? 1 : 0].units) if (borrowed.has(unit.id) && unit.owner === p) score += unitWorth(state, unit, false)
   const kept = own ? Math.min(player.spice.length, spiceKept(state, p)) : 0
   score +=
     player.hand.length * 1.5 +
@@ -412,6 +560,43 @@ function side(state: GameState, p: PlayerId, own = false) {
   // Next round's first action goes to whoever has the initiative: in danger, that matters most
   if (inDanger(state, p)) score -= state.initiative === p ? DANGER_FIRST : DANGER
   return score
+}
+
+// One attack next round defeats the opponent's base: a unit not held off by a Sentinel, with its
+// Raid, and what its leader adds to that same attack ("Then, attack with it. It gets [+1/+0]…,
+// or [+2/+0] instead if it's a [{Harkonnen}] unit", on either side), but nothing a second action
+// would add
+function oneActionLethal(state: GameState, p: PlayerId) {
+  const player = state.players[p]
+  const foe = state.players[p === 0 ? 1 : 0]
+  const left = state.defs[foe.base.def].hp - foe.base.damage
+  const leader = state.defs[player.leader.def]
+  const text = (player.leader.deployed ? leader.backText : leader.text) ?? ''
+  // Only a boost sure to come with the attack (Paul's needs a cost to match; Irulan's is in the power)
+  const sure = /Then, attack with it\.|When another friendly unit attacks:/.test(text)
+  const boost = sure && text.match(/\[\+(\d+)\/\+0\](?:[^.]*?, or \[\+(\d+)\/\+0\] instead if it's a \[\{(\w+)\}\] unit)?/)
+  return player.units.some((unit) => {
+    if (blocked(state, p, unit)) return false
+    let power = powerOf(state, unit) + (keywordsOf(state, unit).raid ?? 0)
+    if (boost && !(unit.leader && player.leader.deployed)) power += boost[3] && state.defs[unit.def].traits?.includes(boost[3]) ? Number(boost[2]) : Number(boost[1])
+    return power >= left
+  })
+}
+// Attacks come before cards by this much, and base attacks this much more when racing for the win
+const ATTACK_FIRST = 0.5
+const LETHAL_RACE = 4
+// Lethal this round: the units that can attack the opponent's base now have the power (Raid
+// counted) for what it has left
+function lethalNow(state: GameState, p: PlayerId) {
+  if (state.phase !== 'action') return false
+  const foe = state.players[p === 0 ? 1 : 0]
+  const left = state.defs[foe.base.def].hp - foe.base.damage
+  let power = 0
+  for (const unit of state.players[p].units) {
+    if (unit.exhausted || blocked(state, p, unit)) continue
+    power += powerOf(state, unit) + (keywordsOf(state, unit).raid ?? 0)
+  }
+  return power >= left
 }
 
 // In danger: the opponent's units, readied next round, have the power to defeat this player's

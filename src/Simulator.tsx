@@ -28,6 +28,7 @@ import {
   type RoomSnapshot,
 } from './online'
 import { combatSounds } from './combatSounds'
+import { DeckGlance, type GlanceCard } from './DeckGlance'
 import './Simulator.css'
 
 // The game simulator: you against a first AI, on the DUNE set as exported to the Showcase,
@@ -208,6 +209,120 @@ function keepGame(kept: KeptGame | null) {
   }
 }
 
+// A deck's aspects, its leader's then its base's, as small icons
+function DeckIcons(props: { deck: Deck; set: SetCards }) {
+  const def = (id?: string | null) => (id ? props.set.defs.find((d) => d.id === id) : undefined)
+  const aspects = [...(def(props.deck.leader)?.aspects ?? []), ...(def(props.deck.base)?.aspects ?? [])]
+  if (!aspects.length) return null
+  return (
+    <span className="sim-deck-icons" title={aspects.join(', ')}>
+      {aspects.map((aspect, index) => (
+        <img key={index} src={asset(`/icons/aspect/${aspect.toLowerCase()}.png`)} alt={aspect} />
+      ))}
+    </span>
+  )
+}
+
+// The deck choices as a menu, each saved deck with its aspects (a <select> can't show pictures)
+function DeckMenu(props: {
+  title: string
+  value: Choice
+  fixed: { value: Choice; label: string }[]
+  groups: { from: string; decks: SavedDeck[] }[]
+  set: SetCards
+  // Which side of the screen the menu is on: its leader preview opens toward the middle
+  side: 'me' | 'opp'
+  onChange: (choice: Choice) => void
+}) {
+  const [open, setOpen] = useState(false)
+  // The deck the pointer is on, whose leader shows beside the list
+  const [hovered, setHovered] = useState<SavedDeck | null>(null)
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) setHovered(null)
+    if (!open) return
+    const away = (event: PointerEvent) => {
+      if (!ref.current?.contains(event.target as Node)) setOpen(false)
+    }
+    const key = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('pointerdown', away)
+    document.addEventListener('keydown', key)
+    return () => {
+      document.removeEventListener('pointerdown', away)
+      document.removeEventListener('keydown', key)
+    }
+  }, [open])
+  const decks = props.groups.flatMap((group) => group.decks)
+  const chosen = decks.find((deck) => `deck:${deck.id}` === props.value)
+  const pick = (choice: Choice) => {
+    props.onChange(choice)
+    setOpen(false)
+  }
+  return (
+    <div className="sim-deck-menu" ref={ref}>
+      <button type="button" aria-haspopup="listbox" aria-expanded={open} aria-label={props.title} onClick={() => setOpen(!open)}>
+        <span className="sim-deck-menu-name">{chosen ? chosen.name : props.fixed.find((f) => f.value === props.value)?.label}</span>
+        {chosen && <DeckIcons deck={chosen} set={props.set} />}
+        <span aria-hidden="true">▾</span>
+      </button>
+      {open && (
+        <div className="sim-deck-options" role="listbox" aria-label={props.title} onPointerLeave={() => setHovered(null)}>
+          {props.fixed.map((option) => (
+            <button key={option.value} type="button" role="option" aria-selected={option.value === props.value} onClick={() => pick(option.value)}>
+              {option.label}
+            </button>
+          ))}
+          {props.groups.map((group) => (
+            <div key={group.from} role="group" aria-label={group.from}>
+              <div className="sim-deck-group">{group.from}</div>
+              {group.decks.map((deck) => (
+                <button
+                  key={deck.id}
+                  type="button"
+                  role="option"
+                  aria-selected={`deck:${deck.id}` === props.value}
+                  onPointerEnter={() => setHovered(deck)}
+                  onClick={() => pick(`deck:${deck.id}`)}
+                >
+                  <span className="sim-deck-menu-name">{deck.name}</span>
+                  <DeckIcons deck={deck} set={props.set} />
+                </button>
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
+      {open && hovered && <LeaderPreview deck={hovered} set={props.set} side={props.side} />}
+    </div>
+  )
+}
+
+// A deck's leader, both its sides, beside the open deck menu
+function LeaderPreview(props: { deck: SavedDeck; set: SetCards; side: 'me' | 'opp' }) {
+  const images = props.deck.leader ? props.set.images[props.deck.leader] : undefined
+  if (!images) return null
+  // The deck's cards, each once with its copies
+  const counts = new Map<string, number>()
+  for (const id of deckList(props.deck, props.set).deck) counts.set(id, (counts.get(id) ?? 0) + 1)
+  const cards = [...counts].flatMap(([id, count]): GlanceCard[] => {
+    const def = props.set.defs.find((d) => d.id === id)
+    if (!def) return []
+    const kind = def.type === 'unit' ? (def.arena === 'space' ? 'Space' : 'Ground') : def.type === 'event' ? 'Event' : def.type === 'upgrade' ? 'Upgrade' : undefined
+    return [{ cost: def.cost, kind, aspects: def.aspects, count }]
+  })
+  return (
+    <div className={`sim-deck-preview ${props.side}`} aria-hidden="true">
+      <div className="sim-deck-preview-sides">
+        <img src={img(images.image)} alt="" />
+        {images.back && <img src={img(images.back)} alt="" />}
+      </div>
+      <DeckGlance cards={cards} />
+    </div>
+  )
+}
+
 function DeckPicker(props: {
   title: string
   side: 'me' | 'opp'
@@ -231,26 +346,22 @@ function DeckPicker(props: {
   }
   return (
     <div className={`sim-picker ${props.side}`}>
-      <label>
+      <div className="sim-picker-label">
         {props.title}
-        <select value={value} onChange={(event) => props.onChange(event.target.value as Choice)}>
-          <option value="random-generated">Create a Random Deck</option>
-          {props.side === 'opp' && <option value="different-random">Different Random (any)</option>}
-          <option value="random">Random (any)</option>
-          {groups.map(
-            (group) =>
-              !!group.decks.length && (
-                <optgroup key={group.from} label={group.from}>
-                  {group.decks.map((deck) => (
-                    <option key={deck.id} value={`deck:${deck.id}`}>
-                      {deck.name}
-                    </option>
-                  ))}
-                </optgroup>
-              ),
-          )}
-        </select>
-      </label>
+        <DeckMenu
+          title={props.title}
+          value={value}
+          fixed={[
+            { value: 'random-generated', label: 'Create a Random Deck' },
+            ...(props.side === 'opp' ? [{ value: 'different-random' as Choice, label: 'Different Random (any)' }] : []),
+            { value: 'random', label: 'Random (any)' },
+          ]}
+          groups={groups.filter((group) => group.decks.length)}
+          set={set}
+          side={props.side}
+          onChange={props.onChange}
+        />
+      </div>
       {chosen ? (
         <>
           <div className="sim-seat-cards">
@@ -2324,7 +2435,12 @@ function Table(props: {
         </div>
       )}
       {menu && !asked && (
-        <div className="sim-choice">
+        // Moved like the other choices, and where they were last left
+        <div
+          className="sim-choice movable"
+          style={{ transform: `translate(calc(-50% + ${choiceAt.x}px), calc(-50% + ${choiceAt.y}px))` }}
+          onMouseDown={drag}
+        >
           <p>{defOf(menu.card).name}: choose one</p>
           <div className="sim-choice-cards">
             <img

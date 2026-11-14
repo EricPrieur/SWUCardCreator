@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { applyAction, createGame, hpOf, keywordsOf, legalActions, powerOf, traitsOf } from './game.ts'
+import { applyAction, createGame, Game, hpOf, keywordsOf, legalActions, powerOf, traitsOf } from './game.ts'
 import { readText } from './cards.ts'
 import { chooseAction } from './ai.ts'
 import { scripts, scriptStatus } from './scripts.ts'
@@ -45,6 +45,7 @@ const defs: CardDef[] = [
   card('bashar', { ...scripted('Sardaukar Bashar'), cost: 3, power: 3, hp: 4, traits: ['Sardaukar', 'Trooper'] }),
   card('plotter', { cost: 2, power: 1, hp: 1, text: '[PLOT]' }),
   card('shieldTrooper', { ...scripted('Atreides Shield Trooper'), cost: 2, power: 2, hp: 2 }),
+  card('lasgunVolley', { type: 'event', cost: 3, text: 'Deal 4 damage to a unit.' }),
   card('desertPower', { ...scripted('Desert Power'), type: 'event', cost: 4, arena: undefined }),
   card('runner', { ...scripted('Spice Runner'), cost: 1, power: 2, hp: 1 }),
   card('executioner', { ...scripted('Sardaukar Executioner'), cost: 4, power: 5, hp: 4, traits: ['Sardaukar', 'Trooper'] }),
@@ -90,6 +91,20 @@ const defs: CardDef[] = [
   card('ambusher', { cost: 3, power: 3, hp: 3, text: '[Ambush]' }),
   card('shielded', { cost: 3, power: 3, hp: 3, text: '[Sentinel]\n[Shielded]' }),
   card('irulanLeader', { ...scriptedBy('Princess Irulan', 'Daughter of the Emperor'), type: 'leader', cost: 5, traits: ['Emperor'], unit: { power: 2, hp: 6, arena: 'ground', keywords: {} } }),
+  card('stilgarLeader', { ...scriptedBy('Stilgar', 'Naib of Sietch Tabr'), type: 'leader', cost: 5, traits: ['Fremen'], unit: { power: 4, hp: 6, arena: 'ground', keywords: {} } }),
+  card('kindjal', { ...scripted('Atreides Kindjal'), type: 'upgrade', cost: 1, power: 1, hp: 1, traits: ['Atreides', 'Item', 'Weapon'] }),
+  card('maula', { ...scripted('Maula Pistol'), type: 'upgrade', cost: 1, power: 1, hp: 0, traits: ['Fremen', 'Item', 'Weapon'] }),
+  card('ambush', { ...scripted('Sietch Ambush'), type: 'event', cost: 1, arena: undefined, aspects: ['Aggression', 'Heroism'], traits: ['Fremen', 'Tactic'] }),
+  card('keeper', { ...scripted('Deathstill Keeper'), cost: 3, power: 2, hp: 4, traits: ['Fremen'] }),
+  card('sayyadina', { ...scriptedBy('Chani', 'Sayyadina of the Fedaykin'), cost: 7, power: 4, hp: 6, unique: true, traits: ['Fremen', 'Fedaykin'] }),
+  card('ultimatum', { ...scripted('He Who Can Destroy a Thing'), type: 'event', cost: 3, arena: undefined, aspects: ['Aggression', 'Heroism'], traits: ['Fremen', 'Tactic'] }),
+  card('martyr', { ...scripted('Fedaykin Martyr'), cost: 2, power: 2, hp: 2, traits: ['Fremen', 'Fedaykin'] }),
+  card('litany', { ...scripted('Litany Against Fear'), type: 'upgrade', cost: 2, power: 2, hp: 2, traits: ['Bene Gesserit', 'Learned'] }),
+  card('sixer', { cost: 6, power: 6, hp: 6 }),
+  card('strikeLeader', { ...scripted('Fedaykin Strike Leader'), cost: 5, power: 5, hp: 4, traits: ['Fremen', 'Fedaykin'] }),
+  card('chaniLeader', { ...scriptedBy('Chani', 'Sihaya'), type: 'leader', cost: 4, traits: ['Fremen'], unit: { power: 3, hp: 5, arena: 'ground', keywords: {} } }),
+  card('letoLeader', { ...scriptedBy('Duke Leto Atreides', 'Duke of House Atreides'), type: 'leader', cost: 6, traits: ['Atreides'], unit: { power: 4, hp: 7, arena: 'ground', keywords: {} } }),
+  card('lighter', { ...scripted("Tuek's Lighter"), subtitle: "Smuggler's Run", cost: 3, power: 2, hp: 3, arena: 'space', traits: ['Underworld', 'Vehicle'] }),
   card('paulLeader', { ...scriptedBy('Paul Atreides', 'Haunted by Dreams'), type: 'leader', cost: 4, traits: ['Atreides'], unit: { power: 2, hp: 5, arena: 'ground', keywords: { raid: 1 } } }),
   card('heirPinger', { ...scriptedBy('Paul Atreides', 'Heir to House Atreides'), cost: 2, power: 3, hp: 3, unique: true, traits: ['Atreides'] }),
   card('emperorGuard', { cost: 2, power: 2, hp: 3, traits: ['Emperor', 'Trooper'] }),
@@ -1316,6 +1331,31 @@ test('Princess Irulan: Action [1, exhaust], a Shield token to a friendly Emperor
   assert.equal(state.players[0].resources.filter((r) => !r.exhausted).length, ready - 1)
 })
 
+test('Stilgar: his token only once a Fremen unit was played this phase, not for one already in play', () => {
+  let state = table({ units0: ['fremen'], hand0: ['fremen'] })
+  state.players[0].leader.def = 'stilgarLeader'
+  state.players[0].units[0].entered = -1
+  const ability: Action = { type: 'ability', source: 'leader', index: 0 }
+  assert.ok(!legalActions(state, 0).some((a) => a.type === 'ability' && a.source === 'leader'))
+  state = settle(act(state, 0, { type: 'play', card: 'h0' }))
+  state.active = 0
+  state = settle(act(state, 0, ability))
+  assert.equal(state.players[0].units.filter((u) => state.defs[u.def].name === 'Fremen').length, 1, 'a Fremen token')
+})
+
+test("Duke Leto's leader side gives Experience to Atreides units only: Tuek's Lighter gets none, the Spice token stays", () => {
+  let state = table({ hand0: ['lighter'] })
+  state.players[0].leader.def = 'letoLeader'
+  state.players[0].resources = state.players[0].resources.slice(0, 3)
+  assert.equal(state.players[0].spice.length, 1)
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  while (state.prompt?.player === 0) state = act(state, 0, chooseAction(state, 0)!)
+  const lighter = state.players[0].units.find((u) => u.def === 'lighter')!
+  assert.equal(lighter.upgrades.length, 0, 'no Experience token: not an Atreides unit')
+  assert.equal(state.players[0].spice.length, 1, 'the Spice token kept')
+  assert.equal(state.players[0].leader.exhausted, false, 'the leader still ready')
+})
+
 test('The AI discards so as to keep its best play now and next round: a 5-cost card on 2 resources, not its 2-drop', () => {
   const initiate = card('initiate', { ...scripted('Bene Gesserit Initiate'), cost: 2, power: 2, hp: 1, traits: ['Bene Gesserit'] })
   let state = table({ hand0: ['initiate'] })
@@ -1329,21 +1369,23 @@ test('The AI discards so as to keep its best play now and next round: a 5-cost c
   assert.deepEqual(state.players[1].hand.map((c) => c.def).sort(), ['guard', 'trooper'])
 })
 
-test("Paul Atreides' unit side: a card from the discard pile to the bottom of the deck, its On Attack used as his", () => {
+test("Paul Atreides' unit side: a unit card from the discard pile to the bottom of the deck, its When Played used as his", () => {
   let state = table({ units1: ['trooper'] })
   state.players[0].leader.def = 'paulLeader'
-  state.players[0].discard = [{ id: 'x0', def: 'big' }, { id: 'x1', def: 'sandwalker' }]
+  state.players[0].discard = [{ id: 'x0', def: 'big' }, { id: 'x1', def: 'shieldTrooper' }, { id: 'x2', def: 'lasgunVolley' }]
   state = settle(act(state, 0, { type: 'deploy' }))
   const paul = state.players[0].units.find((u) => u.leader)!
   paul.exhausted = false
   state.active = 0
   state = act(state, 0, { type: 'attack', attacker: paul.id, target: 'base' })
   assert.match(state.prompt!.text, /discard pile on the bottom/)
+  assert.deepEqual(state.prompt!.options.map((o) => o.id), ['x0', 'x1'], 'unit cards only')
   state = answer(state, 'x1')
-  // The Sandwalker's On Attack: exhaust an enemy ground unit that costs 3 or less
-  state = answer(state, 'u10')
-  assert.equal(state.players[1].units[0].exhausted, true)
-  assert.deepEqual(state.players[0].discard.map((c) => c.id), ['x0'])
+  while (state.prompt) state = answer(state, state.prompt.ai ?? state.prompt.options[0].id)
+  // Atreides Shield Trooper's When Played, on an Arrakis base: an Experience token to "this unit", Paul
+  const after = state.players[0].units.find((u) => u.leader)!
+  assert.deepEqual(after.upgrades.map((u) => state.defs[u.def].name), ['Experience'])
+  assert.deepEqual(state.players[0].discard.map((c) => c.id), ['x0', 'x2'])
   assert.equal(state.players[0].deck.at(-1)!.id, 'x1')
 })
 
@@ -1362,3 +1404,221 @@ test('Paul Atreides, Heir: choose an enemy unit, reveal the top card; same cost,
   assert.equal(state.players[1].base.damage, 3)
   assert.equal(state.players[1].units[0].damage, 0)
 })
+
+test('Fedaykin Strike Leader: 1 damage for each time the enemy base was dealt damage this phase, ready at 3; the AI pings with Chani first', () => {
+  const attackAll = (state: GameState) => {
+    for (const u of state.players[0].units) {
+      state.active = 0
+      state = act(state, 0, { type: 'attack', attacker: u.id, target: 'base' })
+    }
+    state.active = 0
+    return state
+  }
+  let state = attackAll(table({ hand0: ['strikeLeader'], units0: ['trooper', 'trooper'] }))
+  assert.equal(state.players[1].base.damage, 4)
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  assert.equal(state.players[1].base.damage, 6, '2 hits, 2 damage')
+  assert.equal(state.players[0].units.at(-1)!.exhausted, true)
+  // Chani's ping first makes it 3
+  state = attackAll(table({ hand0: ['strikeLeader'], units0: ['trooper', 'trooper'] }))
+  state.players[0].leader.def = 'chaniLeader'
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  while (state.prompt) state = answer(state, state.prompt.ai ?? state.prompt.options[0].id)
+  assert.equal(state.players[1].base.damage, 4 + 1 + 3, 'Chani 1, then 3 hits')
+  assert.equal(state.players[0].units.at(-1)!.exhausted, false, 'ready')
+})
+
+test('Atreides Kindjal: +1/+1 and Saboteur, so the armed unit attacks the base past a Sentinel', () => {
+  let state = table({ hand0: ['kindjal'], units0: ['trooper'], units1: ['guard'] })
+  const attacker = state.players[0].units[0].id
+  assert.equal(legalActions(state, 0).some((a) => a.type === 'attack' && a.attacker === attacker && a.target === 'base'), false, 'the Sentinel guards')
+  state = act(state, 0, { type: 'play', card: 'h0', attachTo: attacker })
+  while (state.prompt) state = answer(state, state.prompt.ai ?? state.prompt.options[0].id)
+  state.active = 0
+  const unit = state.players[0].units[0]
+  assert.equal(powerOf(state, unit), 3)
+  assert.equal(hpOf(state, unit), 3)
+  state = act(state, 0, { type: 'attack', attacker, target: 'base' })
+  assert.equal(state.players[1].base.damage, 3)
+})
+
+test('Saboteur defeats the defending unit\'s Shield tokens before combat damage (7.5.10a)', () => {
+  let state = table({ hand0: ['kindjal'], units0: ['trooper'], units1: ['guard'] })
+  const attacker = state.players[0].units[0].id
+  const guard = state.players[1].units[0]
+  guard.upgrades.push({ id: 's1', def: 'token-shield', owner: 1 }, { id: 's2', def: 'token-shield', owner: 1 })
+  state = act(state, 0, { type: 'play', card: 'h0', attachTo: attacker })
+  while (state.prompt) state = answer(state, state.prompt.ai ?? state.prompt.options[0].id)
+  state.active = 0
+  state = act(state, 0, { type: 'attack', attacker, target: guard.id })
+  while (state.prompt) state = answer(state, state.prompt.ai ?? state.prompt.options[0].id)
+  const after = state.players[1].units.find((u) => u.id === guard.id)!
+  assert.equal(after.upgrades.length, 0, 'both Shields gone')
+  assert.equal(after.damage, 3, 'and the 3 damage dealt')
+})
+
+test('The AI attacks the base before it plays a Fedaykin Strike Leader, so the hits count', () => {
+  let state = table({ hand0: ['strikeLeader'], units0: ['trooper', 'trooper'] })
+  state.players[1].units = []
+  // Its turns, until it plays the Strike Leader: by then both units have attacked
+  for (let i = 0; i < 10 && state.players[0].hand.length; i++) {
+    const move = chooseAction(state, 0)!
+    if (move.type === 'play') assert.equal(state.players[0].units.filter((u) => !u.leader && u.exhausted).length, 2, 'both attacked first')
+    state = act(state, 0, move)
+    while (state.prompt) state = answer(state, state.prompt.ai ?? state.prompt.options[0].id)
+    state.active = 0
+  }
+  assert.equal(state.players[0].hand.length, 0, 'played')
+})
+
+test('The AI puts Litany Against Fear on its leader unit rather than a cheap unit', () => {
+  let state = table({ hand0: ['litany'], units0: ['trooper'] })
+  for (const r of state.players[0].resources) r.exhausted = false
+  state = act(state, 0, { type: 'deploy' })
+  while (state.prompt) state = answer(state, state.prompt.ai ?? state.prompt.options[0].id)
+  state.active = 0
+  const leaderUnit = state.players[0].units.find((u) => u.leader)!
+  leaderUnit.exhausted = true
+  state.players[0].units[0].exhausted = true
+  const move = chooseAction(state, 0)!
+  assert.equal(move.type, 'play')
+  assert.equal(move.type === 'play' && move.attachTo, leaderUnit.id)
+})
+
+test('The AI keeps an upgrade off a unit an enemy unit can defeat, putting it on a sturdy one', () => {
+  let state = table({ hand0: ['litany'], units0: ['trooper', 'guard'], units1: ['big'] })
+  for (const u of state.players[0].units) u.exhausted = true
+  // Its leader can't deploy yet: 3 resources
+  state.players[0].resources = state.players[0].resources.slice(0, 3)
+  state.players[0].spice = []
+  // The trooper (2/2) would be a 4/4 the enemy 5/5 defeats; the guard (1/4) a 3/6 it doesn't
+  const move = chooseAction(state, 0)!
+  assert.equal(move.type, 'play')
+  assert.equal(move.type === 'play' && move.attachTo, state.players[0].units[1].id)
+})
+
+test('The AI counts a unit it took until the regroup phase as its owner\'s: trading it away costs it nothing', () => {
+  let state = table({ units0: ['big'], units1: ['guard'] })
+  // Its 5/5 is borrowed (Seduction): attacking the 1/4 Sentinel with it is free
+  const big = state.players[0].units[0]
+  big.owner = 1
+  state.borrowed = [{ unit: big.id, owner: 1 }]
+  state.players[0].resources = state.players[0].resources.slice(0, 3)
+  state.players[0].spice = []
+  state.players[0].hand = []
+  const move = chooseAction(state, 0)!
+  assert.equal(move.type, 'attack')
+})
+
+test("Paul Atreides' leader side: the AI discards a unit on top for his unit side, keeps a card it wants to draw", () => {
+  let state = table({ units0: ['trooper'] })
+  state.players[0].leader.def = 'paulLeader'
+  state.players[0].spice = []
+  state.players[0].hand = []
+  state.initiative = 1
+  state.initiativeTaken = true
+  const uses = (s: GameState) => {
+    const legal = legalActions(s, 0)
+    return legal.some((a) => a.type === 'ability' && a.source === 'leader') && !legal.some((a) => a.type === 'initiative')
+  }
+  // A cheap unit on top (cost 1, 6 resources): fuel
+  state.players[0].deck = [{ id: 'd0', def: 'trooper' }, ...state.players[0].deck]
+  assert.ok(uses(state), 'the opponent has the initiative')
+  const fuelled = chooseAction(state, 0)!
+  assert.equal(fuelled.type === 'ability' && fuelled.source, 'leader')
+  // A 6-cost card on top with 6 resources: the one it wants next round, kept
+  state.players[0].deck[0] = { id: 'd0', def: 'sixer' }
+  const kept = chooseAction(state, 0)!
+  assert.notEqual(kept.type === 'ability' && kept.source, 'leader')
+})
+
+test('Maula Pistol: the armed unit gains an On Attack, 1 damage to the enemy base, its own', () => {
+  let state = table({ hand0: ['maula'], units0: ['trooper'] })
+  const attacker = state.players[0].units[0].id
+  state = act(state, 0, { type: 'play', card: 'h0', attachTo: attacker })
+  while (state.prompt) state = answer(state, state.prompt.ai ?? state.prompt.options[0].id)
+  state.active = 0
+  state = act(state, 0, { type: 'attack', attacker, target: 'base' })
+  assert.equal(state.players[1].base.damage, 3 + 1, '3 combat damage and the On Attack')
+})
+
+test('Sietch Ambush: 1 damage to a ground unit, and 1 to the enemy base only with a Fremen unit', () => {
+  let state = table({ hand0: ['ambush'], units1: ['sixer'] })
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  state = answer(state, state.players[1].units[0].id)
+  assert.equal(state.players[1].units[0].damage, 1)
+  assert.equal(state.players[1].base.damage, 0, 'no Fremen unit')
+  state = table({ hand0: ['ambush'], units0: ['martyr'], units1: ['sixer'] })
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  state = answer(state, state.players[1].units[0].id)
+  assert.equal(state.players[1].base.damage, 1, 'with a Fremen unit')
+})
+
+test('Fedaykin Martyr: defeated, it deals 2 damage to the enemy base', () => {
+  let state = table({ units0: ['martyr'], units1: ['sixer'] })
+  state = act(state, 0, { type: 'attack', attacker: state.players[0].units[0].id, target: state.players[1].units[0].id })
+  while (state.prompt) state = answer(state, state.prompt.ai ?? state.prompt.options[0].id)
+  assert.equal(state.players[0].units.length, 0, 'the Martyr is defeated')
+  assert.equal(state.players[1].base.damage, 2)
+})
+
+test('Deathstill Keeper: 1 damage to the enemy base when another friendly Fremen unit is defeated, and when it is', () => {
+  let state = table({ units0: ['keeper', 'martyr'], units1: ['sixer'] })
+  const [keeper, martyr] = state.players[0].units.map((u) => u.id)
+  state = act(state, 0, { type: 'attack', attacker: martyr, target: state.players[1].units[0].id })
+  while (state.prompt) state = answer(state, state.prompt.ai ?? state.prompt.options[0].id)
+  assert.equal(state.players[1].base.damage, 2 + 1, "the Martyr's 2 and the Keeper's 1")
+  state.active = 0
+  state = act(state, 0, { type: 'attack', attacker: keeper, target: state.players[1].units[0].id })
+  while (state.prompt) state = answer(state, state.prompt.ai ?? state.prompt.options[0].id)
+  assert.equal(state.players[0].units.length, 0)
+  assert.equal(state.players[1].base.damage, 3 + 1, 'its own death')
+})
+
+test("Chani's leader side: a Fremen event played (Sietch Ambush) triggers her too", () => {
+  let state = table({ hand0: ['ambush'], units0: ['martyr'], units1: ['sixer'] })
+  state.players[0].leader.def = 'chaniLeader'
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  state = answer(state, state.players[1].units[0].id)
+  assert.match(state.prompt?.text ?? '', /^Chani:/)
+  state = answer(state, 'yes')
+  assert.equal(state.players[1].base.damage, 1 + 1, "the Ambush's 1 and Chani's 1")
+  assert.equal(state.players[0].leader.exhausted, true)
+})
+
+test('Chani, Sayyadina of the Fedaykin: a Fremen unit card from the discard pile to the bottom of the deck for each Fremen unit, 1 damage each', () => {
+  let state = table({ hand0: ['sayyadina'], units0: ['martyr'] })
+  state.players[0].resources.push(...Array(7).fill(0).map((_, i) => ({ card: { id: `r${i}`, def: 'trooper' }, exhausted: false })))
+  state.players[0].discard = [{ id: 'x0', def: 'martyr' }, { id: 'x1', def: 'keeper' }, { id: 'x2', def: 'martyr' }, { id: 'x3', def: 'trooper' }]
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  while (state.prompt) state = answer(state, state.prompt.ai ?? state.prompt.options[0].id)
+  // Two Fremen units (her and the Martyr): two cards put back, the Trooper not a Fremen
+  assert.equal(state.players[1].base.damage, 2)
+  assert.deepEqual(state.players[0].discard.map((c) => c.id).sort(), ['x2', 'x3'])
+  assert.deepEqual(state.players[0].deck.slice(-2).map((c) => c.id), ['x0', 'x1'])
+})
+
+test('He Who Can Destroy a Thing: every Spice token defeated, both sides, each a 1-damage ping; no Spice created and no base healed this round', () => {
+  let state = table({ hand0: ['ultimatum'], units1: ['martyr'] })
+  state.players[0].resources.push(...Array(3).fill(0).map((_, i) => ({ card: { id: `r${i}`, def: 'trooper' }, exhausted: false })))
+  for (const p of [0, 1] as const) {
+    state.players[p].spice.push({ id: `extra${p}`, def: state.players[p].spice[0]?.def ?? 'spice' })
+  }
+  const tokens = state.players[0].spice.length + state.players[1].spice.length
+  state.players[1].base.damage = 5
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  while (state.prompt) state = answer(state, state.prompt.ai ?? state.prompt.options[0].id)
+  assert.equal(state.players[0].spice.length + state.players[1].spice.length, 0, 'every Spice token defeated')
+  // The AI finishes the 2/2 Martyr with two pings, the rest at the base
+  assert.equal(state.players[1].units.length, 0)
+  assert.equal(state.players[1].base.damage, 5 + tokens - 2)
+  const g = new Game(state, 1)
+  g.createSpice(1)
+  g.heal('base1', 3)
+  assert.equal(state.players[1].spice.length, 0, "no Spice token created")
+  assert.equal(state.players[1].base.damage, 5 + tokens - 2, 'no damage healed')
+  state.round++
+  g.createSpice(1)
+  assert.equal(state.players[1].spice.length, 1, 'next round it is over')
+})
+

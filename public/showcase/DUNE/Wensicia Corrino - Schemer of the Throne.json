@@ -12,7 +12,7 @@
   "text": "[When Played:] Deal damage to an enemy unit equal to the number of upgrades on friendly units.",
   "power": 4,
   "trait": "Emperor, Corrino, Official",
-  "number": "191",
+  "number": "199",
   "rarity": "R",
   "unique": true,
   "frameId": "unit-villainy",

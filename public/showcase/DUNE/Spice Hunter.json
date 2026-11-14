@@ -12,7 +12,7 @@
   "text": "[On Attack:] If you control another [{Fremen}] unit, you may defeat an enemy Spice token. ",
   "power": 3,
   "trait": "Fremen, Trooper",
-  "number": "129",
+  "number": "130",
   "rarity": "U",
   "frameId": "unit-aggression-heroism",
   "setCode": "DUNE",

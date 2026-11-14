@@ -9,7 +9,7 @@
   },
   "cost": 5,
   "name": "Stilgar",
-  "text": "[Action [[1, Arrow]]:] Create a Fremen token.",
+  "text": "[Action [[1, Arrow]]:] If you played a [{Fremen}] unit this phase, create a Fremen token.",
   "power": 4,
   "trait": "Fremen, Official",
   "artist": "",

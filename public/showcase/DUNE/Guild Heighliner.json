@@ -21,7 +21,7 @@
   "text": "[Sentinel]\nAs you play this unit, you may defeat any number of friendly Spice tokens. It costs [1] less for each Spice token defeated this way.\n[When Played:] Search the top 8 cards of your deck for any number of ground units with a combined cost of [#8] or less and play them for free. They gain [Ambush] for this phase.",
   "power": 2,
   "trait": "Spacing Guild, Vehicle, Capital Ship",
-  "number": "200",
+  "number": "208",
   "rarity": "L",
   "frameId": "unit-neutral-space",
   "setCode": "DUNE",

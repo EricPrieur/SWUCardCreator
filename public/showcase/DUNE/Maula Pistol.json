@@ -1,0 +1,21 @@
+{
+  "hp": 0,
+  "id": "6c083df4-6bf0-4265-8e95-0cf21fd24ac6",
+  "art": {
+    "x": 0,
+    "y": -6,
+    "src": "Maula Pistol (art).webp",
+    "zoom": 0.9,
+    "rotate": 0
+  },
+  "cost": 1,
+  "name": "Maula Pistol",
+  "text": "Attach to a non-[{Vehicle}] unit.\nAttached unit gains: \"[On Attack:] Deal 1 damage to an enemy base.\"",
+  "power": 1,
+  "trait": "Fremen, Item, Weapon",
+  "number": "157",
+  "rarity": "C",
+  "frameId": "upgrade-aggression",
+  "setCode": "DUNE",
+  "language": "EN"
+}

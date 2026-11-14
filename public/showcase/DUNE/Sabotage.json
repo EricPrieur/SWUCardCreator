@@ -10,7 +10,7 @@
   "name": "Sabotage",
   "text": "Choose one:\n• Defeat an upgrade.\n• Deal 2 damage to a base.",
   "trait": "Tactic",
-  "number": "126",
+  "number": "127",
   "rarity": "U",
   "frameId": "event-aggression-villainy",
   "setCode": "DUNE",

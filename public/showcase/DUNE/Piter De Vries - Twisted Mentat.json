@@ -12,7 +12,7 @@
   "text": "[When Played:] Draw 2 cards, then put a card from your hand on the top or bottom of your deck or discard it.\n[PLOT]\n[When Played using Plot:] Give a Weakness token to each enemy unit. Then, defeat this unit.",
   "power": 4,
   "trait": "Harkonnen, Mentat",
-  "number": "123",
+  "number": "124",
   "rarity": "R",
   "unique": true,
   "frameId": "unit-aggression-villainy",

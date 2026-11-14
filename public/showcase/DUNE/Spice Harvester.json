@@ -12,7 +12,7 @@
   "text": "[When Played/On Attack:] If you control an [{Arrakis}] base, create a Spice token.\n\n[When the regroup phase starts:] You may defeat 3 friendly Spice tokens. If you do, put the top card of your deck into play as a resource.",
   "power": 2,
   "trait": "Vehicle, Harvester",
-  "number": "102",
+  "number": "103",
   "rarity": "C",
   "frameId": "unit-command",
   "setCode": "DUNE",

@@ -249,6 +249,115 @@
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
+.sim-picker-label {
+  display: grid;
+  gap: 0.35rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+/* A hovered deck's leader, both its sides, beside the open list, toward the screen's middle */
+.sim-deck-preview {
+  position: absolute;
+  z-index: 21;
+  top: calc(100% + 4px);
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  pointer-events: none;
+}
+/* The AI's menu opens its preview leftward: the numbers then sit between the leader and the list */
+.sim-deck-preview.opp {
+  flex-direction: row-reverse;
+}
+.sim-deck-preview-sides {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 18rem;
+}
+.sim-deck-preview.me {
+  left: calc(100% + 8px);
+}
+.sim-deck-preview.opp {
+  right: calc(100% + 8px);
+}
+.sim-deck-preview img {
+  display: block;
+  width: 100%;
+  border-radius: 10px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6);
+}
+/* The deck menu: a saved deck's aspects after its name */
+.sim-deck-menu {
+  position: relative;
+}
+.sim-deck-menu > button,
+.sim-deck-options button {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid rgba(232, 215, 181, 0.16);
+  border-radius: 6px;
+  background: #1c140e;
+  color: var(--sand);
+  font: inherit;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  text-align: start;
+  cursor: pointer;
+}
+.sim-deck-menu-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sim-deck-options {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: min(70vh, 40rem);
+  overflow-y: auto;
+  padding: 0.25rem;
+  border: 1px solid rgba(232, 215, 181, 0.25);
+  border-radius: 6px;
+  background: #1c140e;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+.sim-deck-options button {
+  border-color: transparent;
+  padding: 0.35rem 0.5rem;
+}
+.sim-deck-options button:hover,
+.sim-deck-options button[aria-selected='true'] {
+  background: rgba(232, 215, 181, 0.12);
+}
+.sim-deck-group {
+  margin-top: 0.35rem;
+  padding: 0.5rem 0.5rem 0.25rem;
+  border-top: 1px solid rgba(232, 215, 181, 0.25);
+  color: var(--sand);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.sim-deck-icons {
+  display: inline-flex;
+  flex: none;
+  gap: 2px;
+}
+.sim-deck-icons img {
+  width: 16px;
+  height: 16px;
+}
 .sim-picker select {
   width: 100%;
   padding: 0.5rem;

@@ -1,0 +1,61 @@
+{
+  "hp": 6,
+  "id": "0aa8cbb6-78d1-4f8f-959d-6ea81378fa84",
+  "art": {
+    "x": 0,
+    "y": 15,
+    "src": "Chani - Sayyadina of the Fedaykin (art).webp",
+    "zoom": 1
+  },
+  "cost": 7,
+  "look": {
+    "textGlow": 0,
+    "lightText": true,
+    "panelBlur": 0,
+    "panelFill": 0.5,
+    "solidIcons": true,
+    "frameOpacity": 0
+  },
+  "name": "Chani",
+  "text": "While you control an [{Arrakis}] base, this unit gains [Raid 3].\n[When Played/On Attack:] For each [{Fremen}] unit you control, you may put a [{Fremen}] unit card from your discard pile on the bottom of your deck. Deal 1 damage to an enemy base for each card put this way.",
+  "power": 4,
+  "trait": "Fremen, Fedaykin",
+  "number": "139",
+  "rarity": "L",
+  "unique": true,
+  "frameId": "unit-aggression-heroism",
+  "setCode": "DUNE",
+  "language": "EN",
+  "subtitle": "Sayyadina of the Fedaykin",
+  "prescient": {
+    "art": {
+      "x": 0,
+      "y": 4,
+      "src": "Chani - Sayyadina of the Fedaykin (prescient art).webp",
+      "zoom": 1,
+      "rotate": 0
+    },
+    "look": {
+      "textGlow": 0,
+      "lightText": true,
+      "panelBlur": 0,
+      "panelFill": 0,
+      "solidIcons": true,
+      "frameOpacity": 0
+    },
+    "layout": {
+      "name": {
+        "x": 0,
+        "y": -13
+      },
+      "text": {
+        "x": 0,
+        "y": 40
+      },
+      "trait": {
+        "x": -2,
+        "y": 76
+      }
+    }
+  }
+}

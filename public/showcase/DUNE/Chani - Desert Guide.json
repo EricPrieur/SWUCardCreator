@@ -12,7 +12,7 @@
   "text": "While you control an [{Arrakis}] base, this unit gains [Hidden].\nOther friendly [{Fremen}] units get [+1/+0].",
   "power": 3,
   "trait": "Fremen",
-  "number": "160",
+  "number": "168",
   "rarity": "R",
   "unique": true,
   "frameId": "unit-cunning-heroism",

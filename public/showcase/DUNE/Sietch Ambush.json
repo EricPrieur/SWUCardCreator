@@ -1,0 +1,18 @@
+{
+  "id": "67749c68-539f-48a5-ba0f-ec93fc14038b",
+  "art": {
+    "x": 0,
+    "y": 0,
+    "src": "Sietch Ambush (art).webp",
+    "zoom": 1
+  },
+  "cost": 1,
+  "name": "Sietch Ambush",
+  "text": "Deal 1 damage to a ground unit. Then, if you control a [{Fremen}] unit, deal 1 damage to an enemy base.",
+  "trait": "Fremen, Tactic",
+  "number": "140",
+  "rarity": "C",
+  "frameId": "event-aggression-heroism",
+  "setCode": "DUNE",
+  "language": "EN"
+}
