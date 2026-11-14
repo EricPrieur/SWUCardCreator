@@ -512,6 +512,21 @@ function HoverPreview(props: { enabled: boolean; preview: ReactNode; children: R
   )
 }
 
+// A two-sided card's preview shows both its sides: a leader's side by side, as tall as each
+// other (the landscape leader side about two thirds of the width, the unit side the rest); a
+// two-sided base's one above the other. Its width, for HoverPreview, with it.
+function bothSides(first: ReactNode, second: ReactNode, base: boolean) {
+  return {
+    preview: (
+      <div className={base ? 'preview-sides preview-sides-stacked' : 'preview-sides'}>
+        <div className={base ? 'preview-side-base' : 'preview-side-leader'}>{first}</div>
+        <div className={base ? 'preview-side-base' : 'preview-side-unit'}>{second}</div>
+      </div>
+    ),
+    width: base ? Math.round(PREVIEW_WIDTH * 1.4) : PREVIEW_WIDTH * 2,
+  }
+}
+
 function ShowroomCard(props: {
   card: Card
   // Show a large copy of the card while the mouse is over it
@@ -534,10 +549,13 @@ function ShowroomCard(props: {
   const [note, setNote] = useState<string | null>(null)
   const ref = useRef<HTMLDivElement>(null)
   const side = cardSide(card, back)
+  const sides = backFrameOf(card)
+    ? bothSides(<CardFace card={card} />, <CardFace card={card} back />, findFrame(card.frameId).type === 'Base')
+    : { preview: <CardFace card={card} back={back} />, width: undefined }
 
   return (
     <li>
-      <HoverPreview enabled={preview} preview={<CardFace card={card} back={back} />}>
+      <HoverPreview enabled={preview} preview={sides.preview} width={sides.width}>
         <div ref={ref}>
           <CardFace card={card} back={back} />
         </div>
@@ -1844,9 +1862,13 @@ function ShowcaseItem(props: { folder: string; card: ShowcaseCard; preview: bool
       </li>
     )
   }
+  const sideImage = (name: string) => <img className="showcase-image" src={asset(`${folder}/${encodeURIComponent(name)}.jpg`)} alt="" />
+  const sides = card.back
+    ? bothSides(sideImage(card.image), sideImage(card.back), card.type === 'Base')
+    : { preview: <img className="showcase-image" src={src} alt="" />, width: undefined }
   return (
     <li>
-      <HoverPreview enabled={preview} preview={<img className="showcase-image" src={src} alt="" />}>
+      <HoverPreview enabled={preview} preview={sides.preview} width={sides.width}>
       <a href={src} target="_blank" rel="noopener noreferrer" title="Open the full image">
         <img
           className="showcase-image"
@@ -2737,6 +2759,13 @@ function CommunityItem(props: {
   }, [off, session, id])
   const src = off ? adminSrc : publicImage(id)
   const image = src && <img className="showcase-image" src={src} alt={name} loading="lazy" />
+  const sides = card.backImage
+    ? bothSides(
+        <img className="showcase-image" src={publicImage(card.image)} alt="" />,
+        <img className="showcase-image" src={publicImage(card.backImage)} alt="" />,
+        card.entry.type === 'Base',
+      )
+    : { preview: <img className="showcase-image" src={src!} alt="" />, width: undefined }
 
   return (
     <li className={off ? 'community-off' : undefined}>
@@ -2745,7 +2774,7 @@ function CommunityItem(props: {
           {image ?? <div className="community-placeholder">{name}</div>}
         </div>
       ) : (
-        <HoverPreview enabled={preview} preview={<img className="showcase-image" src={src!} alt="" />}>
+        <HoverPreview enabled={preview} preview={sides.preview} width={sides.width}>
           <a href={src!} target="_blank" rel="noopener noreferrer" title="Open the full image">
             {image}
           </a>
@@ -4797,8 +4826,14 @@ function BoosterOpening(props: { pack: PackCard[]; label: string; fast: boolean;
             <HoverPreview
               key={i}
               enabled
-              preview={printingFace(each.card, each.printing)}
-              width={each.card.type === 'Leader' || each.card.type === 'Base' ? PREVIEW_WIDTH * 1.4 : PREVIEW_WIDTH}
+              preview={withBack(each.card, printingFace(each.card, each.printing))}
+              width={
+                each.card.backFace
+                  ? previewWidth(each.card)
+                  : each.card.type === 'Leader' || each.card.type === 'Base'
+                    ? PREVIEW_WIDTH * 1.4
+                    : PREVIEW_WIDTH
+              }
             >
               <PackCardView pack={each} flipped={flipped} delay={i * 90} />
             </HoverPreview>
@@ -5101,7 +5136,8 @@ function SealedPools(props: DeckBuilderProps) {
                         <li key={card.id} className="deck-pool-card">
                           <HoverPreview
                             enabled={poolFilters.preview}
-                            preview={foilCount(card.id) ? <div className="foil">{poolFace(card)}</div> : poolFace(card)}
+                            preview={withBack(card, foilCount(card.id) ? <div className="foil">{poolFace(card)}</div> : poolFace(card))}
+                            width={previewWidth(card)}
                           >
                             <div className={`deck-pool-image${foilCount(card.id) ? ' foil' : ''}`} title={kinds(card) || undefined}>
                               {poolFace(card)}
@@ -5133,7 +5169,7 @@ function SealedPools(props: DeckBuilderProps) {
                           {rows.map(({ card, count }) => (
                             <li key={card.id} className="deck-row">
                               <span className="deck-row-count">{count}×</span>
-                              <HoverPreview enabled preview={poolFace(card)}>
+                              <HoverPreview enabled preview={withBack(card, poolFace(card))} width={previewWidth(card)}>
                                 <span className="deck-row-name" title={kinds(card) || undefined}>
                                   {prescientCount(card.id) > 0 && <span className="pool-prescient">◈ </span>}
                                   {foilCount(card.id) > 0 && <span className="pool-foil">✦ </span>}

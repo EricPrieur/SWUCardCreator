@@ -1274,6 +1274,17 @@
 .sim-preview img {
   border-radius: 1.2vh;
 }
+/* A leader: its leader side and its unit side, as tall as each other */
+.sim-preview.both {
+  display: flex;
+  gap: 1vh;
+  height: 38vh;
+  aspect-ratio: auto;
+}
+.sim-preview.both img {
+  height: 100%;
+  width: auto;
+}
 
 .sim-over {
   position: fixed;

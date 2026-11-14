@@ -1140,7 +1140,8 @@ function RecentGameItem(props: { game: RecentGame; set: SetCards; admin: boolean
   )
 }
 
-type Hover = { image: string; landscape: boolean; right: boolean; foil?: boolean } | null
+// unit: a leader's unit side, shown beside its leader side (image)
+type Hover = { image: string; landscape: boolean; right: boolean; foil?: boolean; unit?: string } | null
 // What a click on the board means now: choosing a target for an attack, or a unit for an upgrade
 // How a card is played: using Smuggle, from the discard pile, for a Spice token instead of its cost
 type Way = { smuggle?: boolean; discard?: boolean; spice?: boolean }
@@ -1512,6 +1513,13 @@ function Table(props: {
 
   const look = (image: string | undefined, landscape = false, foil = false) => (event: React.MouseEvent) =>
     image && setHover({ image, landscape, right: event.clientX < window.innerWidth / 2, foil })
+  // A leader: both its sides
+  const lookLeader = (def: string, foil = false) => (event: React.MouseEvent) => {
+    const image = imageOf(def)
+    const unit = imageOf(def, true)
+    if (!image) return
+    setHover({ image, landscape: true, right: event.clientX < window.innerWidth / 2, foil, unit: unit !== image ? unit : undefined })
+  }
   const leave = () => setHover(null)
   const imageOf = (id: string, unitSide = false) => {
     const images = set.images[id]
@@ -1781,7 +1789,7 @@ function Table(props: {
         <button
           type="button"
           className={[...classes, foil(u.id) && 'sim-foil'].filter(Boolean).join(' ')}
-          onMouseEnter={look(image, false, foil(u.id))}
+          onMouseEnter={u.leader ? lookLeader(u.def, foil(u.id)) : look(image, false, foil(u.id))}
           onMouseLeave={leave}
           onClick={() => clickUnit(u.id)}
         >
@@ -1987,7 +1995,7 @@ function Table(props: {
         type="button"
         className={classes.filter(Boolean).join(' ')}
         title={side.leader.deployed ? 'Deployed' : options.map((o) => o.label).join(' or ') || undefined}
-        onMouseEnter={look(image, true)}
+        onMouseEnter={lookLeader(side.leader.def)}
         onMouseLeave={leave}
         onClick={options.length ? () => offer(side.leader.def, options, true) : undefined}
       >
@@ -2527,8 +2535,11 @@ function Table(props: {
         </div>
       )}
       {hover && (
-        <div className={`sim-preview ${hover.right ? 'right' : 'left'}${hover.landscape ? ' landscape' : ''}${hover.foil ? ' sim-foil' : ''}`}>
+        <div
+          className={`sim-preview ${hover.right ? 'right' : 'left'}${hover.landscape ? ' landscape' : ''}${hover.unit ? ' both' : ''}${hover.foil ? ' sim-foil' : ''}`}
+        >
           <img src={img(hover.image)} alt="" />
+          {hover.unit && <img src={img(hover.unit)} alt="" />}
         </div>
       )}
       {asking && (

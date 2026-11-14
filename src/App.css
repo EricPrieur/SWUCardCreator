@@ -3790,3 +3790,12 @@ input.picker-button::placeholder {
   flex-basis: 100%;
   margin: 0;
 }
+
+/* A two-sided base's preview: one side above the other */
+.preview-sides-stacked {
+  flex-direction: column;
+}
+
+.preview-side-base {
+  width: 100%;
+}
