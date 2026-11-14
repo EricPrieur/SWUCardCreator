@@ -6528,7 +6528,7 @@ function App() {
     if (!account || sharing) return
     setSharing(true)
     try {
-      const { user } = await api<{ user: User }>('/api/me/showroom', { method: 'PUT', body: { public: shown }, token: account.token })
+      const { user } = await api<{ user: User }>('/api/auth/me/showroom', { method: 'PUT', body: { public: shown }, token: account.token })
       setSession({ ...account, user })
       if (shown && privateCards.length) setAskAll(true)
     } catch (err) {
