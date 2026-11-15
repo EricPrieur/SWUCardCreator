@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { applyAction, createGame, keywordsOf, legalActions } from './game.ts'
 import { readText } from './cards.ts'
 import { scripts } from './scripts.ts'
+import { chooseAction } from './ai.ts'
 import type { Action, CardDef, GameState, PlayerId, UnitState } from './types.ts'
 
 // Test cards, scripted ones quoting their DUNE card (a leader its two sides)
@@ -40,6 +41,11 @@ const defs: CardDef[] = [
   card('plain', { type: 'base', hp: 30 }),
   card('trooper', { cost: 1, power: 2, hp: 2, traits: ['Harkonnen'] }),
   card('big', { cost: 5, power: 5, hp: 5 }),
+  card('plotter', { cost: 3, power: 3, hp: 3, text: '[PLOT]' }),
+  card('artillery', { ...scripted('Harkonnen Siege Artillery'), cost: 6, power: 5, hp: 6, traits: ['Harkonnen', 'Vehicle'] }),
+  card('yueh', { ...scripted('Dr. Wellington Yueh', 'Broken Conditioning'), cost: 3, power: 2, hp: 4, traits: ['Atreides', 'Suk'] }),
+  card('poison', { ...scripted('Residual Poison'), type: 'upgrade', cost: 2, power: -2, hp: 0, arena: undefined }),
+  card('infiltrator', { ...scripted('Harkonnen Infiltrator'), cost: 2, power: 2, hp: 1, traits: ['Harkonnen', 'Trooper'] }),
   card('staban', { ...scripted('Staban Tuek'), cost: 5, power: 4, hp: 5 }),
   card('hunter', { ...scripted('Spice Hunter'), cost: 2, power: 3, hp: 2, traits: ['Fremen'] }),
   card('fremenUnit', { cost: 1, power: 1, hp: 1, traits: ['Fremen'] }),
@@ -157,17 +163,132 @@ test("Shaddam IV: ignores a Sardaukar card's additional cost once each round, an
   assert.ok(!legalActions(state, 0).some((a) => a.type === 'play'))
 })
 
-test("The Baron's Action plays a card from the resources for 1 less, as if using Plot", () => {
-  let state = table({ leader0: 'baron', base0: 'arrakis' })
-  state.players[0].resources[0].card = { id: 'res', def: 'trooper' }
-  state.players[0].deck = [{ id: 'top', def: 'big' }]
+test("The Baron's Action defeats a friendly Harkonnen unit: a Spice token, and 1 damage to a unit or base", () => {
+  let state = table({ leader0: 'baron', base0: 'plain', units0: ['trooper', 'big'], units1: ['big'] })
+  state.players[0].units[1].def = 'trooper'
   state = act(state, 0, { type: 'ability', source: 'leader', index: 0 })
+  state = answer(state, 'u00')
+  assert.ok(state.prompt!.options.some((o) => o.id === 'base1'), 'a base too')
+  state = answer(state, 'u10')
+  assert.equal(state.players[1].units[0].damage, 1)
+  assert.equal(state.players[0].spice.length, 1)
+  assert.ok(state.players[0].discard.some((c) => c.def === 'trooper'))
+  assert.equal(state.players[0].resources.filter((r) => r.exhausted).length, 0, 'free')
+})
+
+test("The Baron's Action can't defeat a non-Harkonnen unit", () => {
+  const state = table({ leader0: 'baron', units0: ['big', 'fremenUnit'] })
+  assert.ok(!legalActions(state, 0).some((a) => a.type === 'ability' && a.source === 'leader'))
+})
+
+test('The Baron deployed: cards played using Plot cost 1 less, his deploy included', () => {
+  let state = table({ leader0: 'baron' })
+  const player = state.players[0]
+  player.resources[0].card = { id: 'res', def: 'plotter' }
+  // Two ready resources: the 3-cost Plot card is paid for only at 1 less
+  player.resources.forEach((r, i) => (r.exhausted = i >= 2))
+  player.deck = [{ id: 'top', def: 'big' }, ...player.deck]
+  state = act(state, 0, { type: 'deploy' })
+  while (state.prompt && !/Plot/.test(state.prompt.text)) state = answer(state)
+  assert.match(state.prompt!.text, /Plot/)
   state = answer(state, 'res')
   assert.ok(state.players[0].units.some((u) => u.id === 'res'))
-  assert.equal(state.players[0].spice.length, 0)
-  assert.equal(state.players[0].base.damage, 1)
   assert.equal(state.players[0].resources[0].card.id, 'top')
-  assert.ok(state.log.some((l) => /plays trooper using Plot/.test(l.text)))
+  assert.equal(state.players[0].resources.filter((r) => !r.exhausted).length, 0)
+})
+
+test("The Baron's On Attack: a Spice token defeated plays a card with Plot from the resources, for 1 less", () => {
+  let state = table({ leader0: 'baron', base0: 'arrakis' })
+  state = act(state, 0, { type: 'deploy' })
+  while (state.prompt) state = answer(state)
+  const player = state.players[0]
+  player.resources[0].card = { id: 'res', def: 'plotter' }
+  player.resources[1].card = { id: 'plain', def: 'trooper' }
+  player.resources.forEach((r, i) => (r.exhausted = i >= 2))
+  const baron = player.units.find((u) => u.def === 'baron')!
+  baron.exhausted = false
+  state.active = 0
+  state = act(state, 0, { type: 'attack', attacker: baron.id, target: 'base' })
+  assert.match(state.prompt!.text, /defeat a Spice token/)
+  state = yes(state)
+  // Only the card with Plot: the plain trooper in the resources isn't offered
+  if (state.prompt?.kind !== 'option' && state.prompt?.options.length) assert.deepEqual(state.prompt.options.map((o) => o.id), ['res'])
+  if (state.prompt) state = answer(state, 'res')
+  assert.ok(state.players[0].units.some((u) => u.id === 'res'))
+  assert.equal(state.players[0].spice.length, 0)
+})
+
+test('Harkonnen Siege Artillery played using Plot: 3 damage to two ground units, 1 less with the Baron', () => {
+  let state = table({ leader0: 'baron', units1: ['big', 'big'] })
+  const player = state.players[0]
+  player.resources[0].card = { id: 'res', def: 'artillery' }
+  // Five ready resources: it costs 6, 5 using Plot under the Baron
+  player.resources.forEach((r, i) => (r.exhausted = i >= 5))
+  state = act(state, 0, { type: 'deploy' })
+  while (state.prompt && !/Plot/.test(state.prompt.text)) state = answer(state)
+  state = answer(state, 'res')
+  state = answer(state, 'u10')
+  assert.deepEqual(state.prompt!.options.map((o) => o.id).includes('u10'), false, 'another ground unit')
+  state = answer(state, 'u11')
+  assert.deepEqual(state.players[1].units.map((u) => u.damage), [3, 3])
+})
+
+test('Dr. Wellington Yueh played using Plot exhausts each enemy ground unit costing 4 or less, then is defeated', () => {
+  let state = table({ leader0: 'baron', units1: ['trooper', 'big'] })
+  const player = state.players[0]
+  player.resources[0].card = { id: 'res', def: 'yueh' }
+  state = act(state, 0, { type: 'deploy' })
+  while (state.prompt && !/Plot/.test(state.prompt.text)) state = answer(state)
+  state = answer(state, 'res')
+  if (state.prompt) state = answer(state, 'u11')
+  assert.deepEqual(state.players[1].units.map((u) => u.exhausted), [true, true])
+  assert.ok(!state.players[0].units.some((u) => u.id === 'res'))
+  assert.ok(state.players[0].discard.some((c) => c.id === 'res'))
+})
+
+test('Residual Poison attaches only to an enemy unit: 2 damage as the regroup phase starts', () => {
+  let state = table({ base0: 'plain', units0: ['big'], units1: ['big'], hand0: ['poison'] })
+  const targets = legalActions(state, 0).flatMap((a) => (a.type === 'play' ? [a.attachTo] : []))
+  assert.deepEqual(targets, ['u10'])
+  state = act(state, 0, { type: 'play', card: 'h0', attachTo: 'u10' })
+  // Its printed -2 power: a 5-power unit with Residual Poison deals 3
+  state = act(state, 1, { type: 'attack', attacker: 'u10', target: 'base' })
+  assert.equal(state.players[0].base.damage, 3)
+  state = act(state, 0, { type: 'pass' })
+  state = act(state, 1, { type: 'pass' })
+  assert.equal(state.players[1].units[0].damage, 2)
+})
+
+test('Harkonnen Infiltrator, defeated, deals 2 damage to a ground unit', () => {
+  let state = table({ units0: ['big'], units1: ['infiltrator', 'big'] })
+  state = act(state, 0, { type: 'attack', attacker: 'u00', target: 'u10' })
+  if (state.prompt) state = answer(state, 'u00')
+  assert.equal(state.players[0].units[0].damage, 2 + 2)
+})
+
+test('the AI puts a card with Plot in its resources while its leader is still to deploy', () => {
+  let state = createGame({
+    seed: 3,
+    defs,
+    decks: [
+      { name: 'One', leader: 'baron', base: 'arrakis', deck: Array(20).fill('big') },
+      { name: 'Two', leader: 'leader', base: 'plain', deck: Array(20).fill('big') },
+    ],
+  })
+  state = act(state, state.chooser, { type: 'first', goFirst: true })
+  state = act(state, state.initiative, { type: 'mulligan', take: false })
+  state = act(state, state.initiative === 0 ? 1 : 0, { type: 'mulligan', take: false })
+  state.players[0].hand = [
+    { id: 'a', def: 'trooper' },
+    { id: 'b', def: 'big' },
+    { id: 'c', def: 'plotter' },
+    { id: 'd', def: 'trooper' },
+    { id: 'e', def: 'big' },
+    { id: 'f', def: 'trooper' },
+  ]
+  const move = chooseAction(state, 0)
+  assert.equal(move?.type, 'resource')
+  assert.ok(move?.type === 'resource' && move.cards.includes('c'))
 })
 
 test('Personal Shield: only on a friendly unit, a Shield token again as the regroup phase starts', () => {

@@ -1,0 +1,20 @@
+{
+  "hp": 1,
+  "id": "2f1bc135-1309-498a-92bd-a297c1e3aaec",
+  "art": {
+    "x": 0,
+    "y": 0,
+    "src": "Harkonnen Infiltrator (art).webp",
+    "zoom": 1
+  },
+  "cost": 2,
+  "name": "Harkonnen Infiltrator",
+  "text": "[PLOT]\n[When Defeated:] Deal 2 damage to a unit.",
+  "power": 2,
+  "trait": "Harkonnen, Trooper",
+  "number": "118",
+  "rarity": "U",
+  "frameId": "unit-aggression-villainy",
+  "setCode": "DUNE",
+  "language": "EN"
+}

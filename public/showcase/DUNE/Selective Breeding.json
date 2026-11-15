@@ -10,7 +10,7 @@
   },
   "cost": 1,
   "name": "Selective Breeding",
-  "text": "Attach to a non-[{Vehicle}] unit.\n[When Played:] If attached unit is a [{Bene Gesserit}] unit, give a Weakness token to a non-[{Vehicle}] unit.",
+  "text": "[PLOT]\nAttach to a non-[{Vehicle}] unit.\n[When Played:] If attached unit is a [{Bene Gesserit}] unit, give a Weakness token to a non-[{Vehicle}] unit.",
   "power": 1,
   "trait": "Bene Gesserit",
   "number": "067",

@@ -9,7 +9,7 @@
   },
   "cost": 2,
   "name": "False Colors",
-  "text": "Play a [{Sardaukar}] unit from your hand. It costs [#2] less, ignores its additional costs, and gains [Ambush] and the [{Harkonnen}] trait for this phase.",
+  "text": "[PLOT]\nPlay a [{Sardaukar}] unit from your hand. It costs [#2] less, ignores its additional costs, and gains [Ambush] and the [{Harkonnen}] trait for this phase.",
   "trait": "Sardaukar, Tactic",
   "number": "026",
   "rarity": "R",

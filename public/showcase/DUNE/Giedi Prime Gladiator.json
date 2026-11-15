@@ -1,0 +1,20 @@
+{
+  "hp": 2,
+  "id": "f18679df-e43e-43b2-ab8b-b51c63ba8ec3",
+  "art": {
+    "x": 0,
+    "y": 0,
+    "src": "Giedi Prime Gladiator (art).webp",
+    "zoom": 1.2
+  },
+  "cost": 2,
+  "name": "Giedi Prime Gladiator",
+  "text": "[When Defeated:] Give an Experience token to a friendly [{Harkonnen}] unit.",
+  "power": 3,
+  "trait": "Harkonnen",
+  "number": "119",
+  "rarity": "C",
+  "frameId": "unit-aggression-villainy",
+  "setCode": "DUNE",
+  "language": "EN"
+}

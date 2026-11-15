@@ -798,5 +798,101 @@
         "count": 2
       }
     ]
+  },
+  {
+    "id": "bbbaf4ec-a48d-49d4-b1ab-daf974b6d01b",
+    "name": "Baron Blue",
+    "leader": "55476334-d6d4-4f4d-b19b-0d78e146f8b8",
+    "base": "fc7b410b-4957-431e-9fac-7bed7e75443c",
+    "cards": [
+      {
+        "id": "a50da882-75b5-4399-a035-e760c4f1aa23",
+        "count": 3
+      },
+      {
+        "id": "0259bc37-e0a4-4b2c-8b49-21bb04637b54",
+        "count": 1
+      },
+      {
+        "id": "f9d41a1c-ed50-4f7e-9f89-a8de4964c490",
+        "count": 1
+      },
+      {
+        "id": "605ba3e7-7ad7-429c-a50d-e590eac3727b",
+        "count": 3
+      },
+      {
+        "id": "2f1bc135-1309-498a-92bd-a297c1e3aaec",
+        "count": 3
+      },
+      {
+        "id": "f18679df-e43e-43b2-ab8b-b51c63ba8ec3",
+        "count": 3
+      },
+      {
+        "id": "cc12466c-56f5-4945-96c5-fca86df95a82",
+        "count": 2
+      },
+      {
+        "id": "eea02b47-ea14-405e-b123-33bccfd3c546",
+        "count": 1
+      },
+      {
+        "id": "10c9c976-6cb2-4091-84fb-7824c40da68e",
+        "count": 3
+      },
+      {
+        "id": "a2e50bfd-efeb-48fb-92af-1cb96ef98eca",
+        "count": 3
+      },
+      {
+        "id": "15b1004e-4a63-477f-bfb3-ecd3d64810e5",
+        "count": 2
+      },
+      {
+        "id": "3ce47676-fd6b-4731-a0ed-74d83cf9a6a0",
+        "count": 2
+      },
+      {
+        "id": "2c8983ce-812a-4ad1-a542-5a1a585a92a1",
+        "count": 2
+      },
+      {
+        "id": "f81a4036-4ca9-4ecc-bcc6-9a7a5a6487d2",
+        "count": 2
+      },
+      {
+        "id": "f0277cdc-6e40-432e-97ad-145ed74c3633",
+        "count": 1
+      },
+      {
+        "id": "87577ef3-b817-4ae7-8b97-3c6d88659254",
+        "count": 3
+      },
+      {
+        "id": "bde1d101-2de5-4f97-9932-6ace9c542dd0",
+        "count": 2
+      },
+      {
+        "id": "fb538d7b-bb48-4147-8aee-0f92e7febf53",
+        "count": 3
+      },
+      {
+        "id": "fcf32dbc-eb81-479e-9f1f-82de8524fcbb",
+        "count": 2
+      },
+      {
+        "id": "ce22f8b9-9afc-44de-9dd4-3fadf6b12acf",
+        "count": 2
+      },
+      {
+        "id": "5f1ad6ed-5d3a-4f25-84a9-3747ec075fd8",
+        "count": 3
+      },
+      {
+        "id": "85d7f7a4-81b3-4725-8132-ffe4d34b5c7b",
+        "count": 3
+      }
+    ]
   }
 ]

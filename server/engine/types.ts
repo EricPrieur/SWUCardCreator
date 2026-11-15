@@ -54,7 +54,7 @@ export type CardDef = {
   // A base's or leader's "You start the game with a [Spice Token]."
   startSpice?: number
   // An upgrade's "Attach to a friendly unit." or "Attach to a non-[{Vehicle}], non-leader unit."
-  attach?: { friendly?: boolean; not?: string[]; nonLeader?: boolean }
+  attach?: { friendly?: boolean; enemy?: boolean; not?: string[]; nonLeader?: boolean }
   // An upgrade's "Attached unit gains [Sentinel]."; a unit's, as it is attached as an upgrade
   attachedKeywords?: Keywords
   // A unit attached as an upgrade (a pilot frame's second box): its modifiers then

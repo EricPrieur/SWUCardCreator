@@ -75,7 +75,7 @@ const smuggleLine = /^\[Smuggle\]?\s*\[\[(\d+)[^\]]*\]\]\]?$/i
 const arrakisLine = /^While you control an \[\{?Arrakis\}?\] base, this unit gains (.+)\.$/i
 const spiceCostLine = /^As an additional cost to play this unit, defeat (a|\d+) friendly Spice tokens?\.$/i
 const startSpiceLine = /^You start the game with (a|\d+) \[?Spice Tokens?\]?\.$/i
-const attachLine = /^Attach to an? ((?:(?:friendly|non-leader|non-\[\{?[^}\]]+\}?\]),? )*)unit\.$/i
+const attachLine = /^Attach to an? ((?:(?:friendly|enemy|non-leader|non-\[\{?[^}\]]+\}?\]),? )*)unit\.$/i
 const attachedGainsLine = /^Attached unit gains ((?:\[[^\]]+\](?:,? and |, )?)+)\.$/i
 // "< >" and "<< >>" only box a line on the card
 const unboxed = (line: string) => line.trim().replace(/^<<?\s*(.*?)\s*>>?$/, '$1')
@@ -102,6 +102,7 @@ export function readText(text = '') {
       const not = [...words.matchAll(/non-\[\{?([^}\]]+)\}?\]/gi)].map((m) => m[1])
       read.attach = {
         ...(/friendly/i.test(words) && { friendly: true }),
+        ...(/enemy/i.test(words) && { enemy: true }),
         ...(not.length && { not }),
         ...(/non-leader/i.test(words) && { nonLeader: true }),
       }

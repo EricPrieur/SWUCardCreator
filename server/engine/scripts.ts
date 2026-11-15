@@ -1,4 +1,4 @@
-import type { Game } from './game.ts'
+import type { Game, PlayedFrom } from './game.ts'
 import { enginePlays } from './cards.ts'
 import type { CardDef, Keywords, PlayerId, UnitState } from './types.ts'
 import { communityScripts } from './community.ts'
@@ -96,7 +96,8 @@ export type Abilities = {
   // Whether a friendly unit can't be defeated by an enemy card's ability (`from`)
   cantBeDefeatedBy?: (g: Game, self: Self, from: Self) => boolean
   // How much less a card its controller plays costs
-  costsLess?: (g: Game, self: Self, card: CardDef) => number
+  // from: where it is played from ('plot': from the resources using Plot)
+  costsLess?: (g: Game, self: Self, card: CardDef, from: PlayedFrom) => number
   // "If you would create a Spice token, you may create 2 Spice tokens instead.": whether it does
   moreSpice?: (g: Game, self: Self) => boolean
   // "Opponents play with their hands revealed."; "You may look at the top card of your deck at
@@ -902,7 +903,7 @@ const dune: CardScript[] = [
   {
     name: 'Wensicia Corrino',
     subtitle: 'Schemer of the Throne',
-    text: '[When Played:] Deal damage to an enemy unit equal to the number of upgrades on friendly units.',
+    text: '[PLOT]\n[When Played:] Deal damage to an enemy unit equal to the number of upgrades on friendly units.',
     front: {
       whenPlayed: (g, self) => {
         const count = g.upgrades().filter((u) => u.controller === self.controller && u.unit).length
@@ -1005,7 +1006,7 @@ const dune: CardScript[] = [
   },
   {
     name: 'False Colors',
-    text: 'Play a [{Sardaukar}] unit from your hand. It costs [#2] less, ignores its additional costs, and gains [Ambush] and the [{Harkonnen}] trait for this phase.',
+    text: '[PLOT]\nPlay a [{Sardaukar}] unit from your hand. It costs [#2] less, ignores its additional costs, and gains [Ambush] and the [{Harkonnen}] trait for this phase.',
     front: {
       play: (g, self) => {
         const p = self.controller
@@ -1528,7 +1529,7 @@ const dune: CardScript[] = [
   {
     name: 'Feyd-Rautha Harkonnen',
     subtitle: 'na-Baron',
-    text: '[Sentinel]\n[When this unit attacks or is attacked:] Give a Weakness token to the other unit in the combat.',
+    text: '[Sentinel]\n[PLOT]\n[When this unit attacks or is attacked:] Give a Weakness token to the other unit in the combat.',
     front: {
       onAttack: (g, self) => {
         const target = self.attack?.target
@@ -1574,7 +1575,7 @@ const dune: CardScript[] = [
   },
   {
     name: 'Selective Breeding',
-    text: 'Attach to a non-[{Vehicle}] unit.\n[When Played:] If attached unit is a [{Bene Gesserit}] unit, give a Weakness token to a non-[{Vehicle}] unit.',
+    text: '[PLOT]\nAttach to a non-[{Vehicle}] unit.\n[When Played:] If attached unit is a [{Bene Gesserit}] unit, give a Weakness token to a non-[{Vehicle}] unit.',
     front: {
       whenPlayed: (g, self) => {
         const unit = g.unit(self.other ?? '')
@@ -1609,6 +1610,76 @@ const dune: CardScript[] = [
         if (!self.plot) return
         for (const unit of g.units((u) => g.controller(u) !== self.controller)) g.giveToken(unit.id, 'Weakness')
         g.defeat(self.id)
+      },
+    },
+  },
+
+  {
+    name: 'Harkonnen Infiltrator',
+    text: '[PLOT]\n[When Defeated:] Deal 2 damage to a unit.',
+    front: {
+      whenDefeated: (g, self) => {
+        const target = g.chooseOne(self.controller, 'Harkonnen Infiltrator: deal 2 damage to a unit', unitIds(g, () => true), {
+          ai: 'harm',
+          source: self.def.id,
+        })
+        if (target) g.damage(target, 2, self)
+      },
+    },
+  },
+  {
+    name: 'Giedi Prime Gladiator',
+    text: '[When Defeated:] Give an Experience token to a friendly [{Harkonnen}] unit.',
+    front: {
+      whenDefeated: (g, self) => {
+        const ids = friendlyIds(g, self, (u) => u.id !== self.id && g.hasTrait(u, 'Harkonnen'))
+        const pick = g.chooseOne(self.controller, 'Giedi Prime Gladiator: give an Experience token to a friendly Harkonnen unit', ids, {
+          ai: 'help',
+          source: self.def.id,
+        })
+        if (pick) g.giveToken(pick, 'Experience')
+      },
+    },
+  },
+  {
+    name: 'Harkonnen Siege Artillery',
+    text: '[PLOT]\n[When Played:] Deal 3 damage to a unit. If you played this unit using [Plot], deal 3 damage to another unit.',
+    front: {
+      whenPlayed: (g, self) => {
+        const units = (not?: string) => unitIds(g, (u) => u.id !== not)
+        const first = g.chooseOne(self.controller, 'Harkonnen Siege Artillery: deal 3 damage to a unit', units(), { ai: 'harm', source: self.def.id })
+        if (!first) return
+        g.damage(first, 3, self)
+        if (!self.plot) return
+        const second = g.chooseOne(self.controller, 'Harkonnen Siege Artillery: deal 3 damage to another unit', units(first), {
+          ai: 'harm',
+          source: self.def.id,
+        })
+        if (second) g.damage(second, 3, self)
+      },
+    },
+  },
+  {
+    name: 'Dr. Wellington Yueh',
+    subtitle: 'Broken Conditioning',
+    text: '[PLOT]\n[When Played:] Exhaust an enemy ground unit.\n[When Played using Plot:] Exhaust each enemy ground unit that costs [#4] or less. Then, defeat this unit.',
+    front: {
+      whenPlayed: (g, self) => {
+        const enemies = () => unitIds(g, (u) => g.controller(u) !== self.controller && u.arena === 'ground' && !u.exhausted)
+        const pick = g.chooseOne(self.controller, 'Dr. Wellington Yueh: exhaust an enemy ground unit', enemies(), { ai: 'harm', source: self.def.id })
+        if (pick) g.exhaust(pick)
+        if (!self.plot) return
+        for (const unit of g.units((u) => g.controller(u) !== self.controller && u.arena === 'ground' && g.cost(u) <= 4)) g.exhaust(unit.id)
+        g.defeat(self.id)
+      },
+    },
+  },
+  {
+    name: 'Residual Poison',
+    text: '[PLOT]\nAttach to an enemy non-[{Vehicle}] unit.\n[When the regroup phase starts:] Deal 2 damage to attached unit.',
+    front: {
+      regroupStart: (g, self) => {
+        if (self.attachedTo) g.damage(self.attachedTo, 2, self)
       },
     },
   },
@@ -1710,40 +1781,46 @@ const dune: CardScript[] = [
   {
     name: 'Baron Vladimir Harkonnen',
     subtitle: 'The Masterstroke',
-    text: '[Action [Arrow]:] Defeat a friendly Spice token. If you do, play a card from your resources as if it were played using [Plot]. It costs [1] less. Deal 1 damage to your base.',
-    backText: '[When Deployed:] Play up to 2 cards from your resources as if they were played using [Plot]. Each costs [1] less.\n[When Defeated:] Deal 2 damage to each unit.',
+    text: '[Action [Arrow]:] Defeat a friendly [{Harkonnen}] unit. If you do, create a Spice token and deal 1 damage to a unit or base.',
+    backText:
+      '[Overwhelm]\nCards you play using [Plot] cost [1] less.\n[On Attack:] You may defeat a friendly Spice token. If you do, play a card with [Plot] from your resources as if it were played using [Plot].',
     front: {
       actions: [
         {
-          label: 'play a card from your resources for 1 less',
+          label: 'defeat a Harkonnen unit for a Spice token and 1 damage',
           exhaust: true,
-          can: (g, self) => g.spice(self.controller) > 0 && plotPlays(g, self).length > 0,
+          can: (g, self) => pawns(g, self).length > 0,
           run: (g, self) => {
             const p = self.controller
-            if (!g.defeatSpice(p)) return
-            const pick = g.chooseOne(p, 'Baron Vladimir Harkonnen: play a card from your resources, for 1 less', plotPlays(g, self), {
-              ai: 'best',
+            const ids = pawns(g, self)
+            // The AI throws away its cheapest, the most damaged of those
+            const worth = (id: string) => g.cost(g.unit(id)!) * 10 - g.unit(id)!.damage
+            const ai = [...ids].sort((a, b) => worth(a) - worth(b))[0]
+            const pawn = g.chooseOne(p, 'Baron Vladimir Harkonnen: defeat a friendly Harkonnen unit', ids, { ai, source: self.def.id })
+            if (!pawn) return
+            g.defeat(pawn, self)
+            g.createSpice(p)
+            const target = g.chooseOne(p, 'Baron Vladimir Harkonnen: deal 1 damage to a unit or base', [...unitIds(g, () => true), 'base0', 'base1'], {
+              ai: 'harm',
               source: self.def.id,
             })
-            if (pick) g.playCard(p, pick, { discount: 1 })
-            g.damage(`base${p}`, 1, self)
+            if (target) g.damage(target, 1, self)
           },
         },
       ],
     },
     back: {
-      whenDeployed: (g, self) => {
-        for (let i = 0; i < 2; i++) {
-          const pick = g.chooseOne(self.controller, 'Baron Vladimir Harkonnen: you may play a card from your resources, for 1 less', plotPlays(g, self), {
-            optional: true,
-            ai: 'best',
-            source: self.def.id,
-          })
-          if (!pick || !g.playCard(self.controller, pick, { discount: 1 })) return
-        }
-      },
-      whenDefeated: (g, self) => {
-        for (const unit of g.units()) g.damage(unit.id, 2, self)
+      costsLess: (_g, _self, _card, from) => (from === 'plot' ? 1 : 0),
+      onAttack: (g, self) => {
+        const p = self.controller
+        if (!g.spice(p) || !plotPlays(g, self).length) return
+        if (!g.may(p, 'Baron Vladimir Harkonnen: defeat a Spice token to play a card with Plot from your resources?', { source: self.def.id })) return
+        if (!g.defeatSpice(p)) return
+        const pick = g.chooseOne(p, 'Baron Vladimir Harkonnen: play a card with Plot from your resources', plotPlays(g, self), {
+          ai: 'best',
+          source: self.def.id,
+        })
+        if (pick) g.playCard(p, pick)
       },
     },
   },
@@ -1932,7 +2009,7 @@ const dune: CardScript[] = [
   },
   {
     name: "Kynes's Dream",
-    text: 'Heal 3 damage from a unit or base. Then, you may defeat up to 2 friendly Spice tokens. Heal 3 damage from your base for each Spice token defeated this way.',
+    text: '[PLOT]\nHeal 3 damage from a unit or base. Then, you may defeat up to 2 friendly Spice tokens. Heal 3 damage from your base for each Spice token defeated this way.',
     front: {
       play: (g, self) => {
         const p = self.controller
@@ -2022,7 +2099,7 @@ const dune: CardScript[] = [
   },
   {
     name: 'Shigawire Snare',
-    text: "Exhaust up to 2 enemy units. You may defeat a friendly Spice token. If you do, choose one of those units. It can't ready this round (including during the regroup phase).",
+    text: "[PLOT]\nExhaust up to 2 enemy units. You may defeat a friendly Spice token. If you do, choose one of those units. It can't ready this round (including during the regroup phase).",
     front: {
       play: (g, self) => {
         const p = self.controller
@@ -2106,7 +2183,7 @@ const dune: CardScript[] = [
   {
     // Burn for Chani's deck: a Fremen card for 1 that also chips the base (2026-11-13)
     name: 'Sietch Ambush',
-    text: 'Deal 1 damage to a ground unit. Then, if you control a [{Fremen}] unit, deal 1 damage to an enemy base.',
+    text: '[PLOT]\nDeal 1 damage to a ground unit. Then, if you control a [{Fremen}] unit, deal 1 damage to an enemy base.',
     front: {
       play: (g, self) => {
         const pick = g.chooseOne(self.controller, 'Sietch Ambush: deal 1 damage to a ground unit', unitIds(g, (u) => u.arena === 'ground'), {
@@ -2608,7 +2685,7 @@ const dune: CardScript[] = [
   },
   {
     name: 'Frigate in Harkonnen Livery',
-    text: '[When Played:] Ready a friendly ground [{Trooper}] unit. It gets [+2/+0] for this phase.',
+    text: '[PLOT]\n[When Played:] Ready a friendly ground [{Trooper}] unit. It gets [+2/+0] for this phase.',
     front: {
       whenPlayed: (g, self) => {
         const troopers = friendlyIds(g, self, (u) => u.arena === 'ground' && g.hasTrait(u, 'Trooper'))
@@ -2845,7 +2922,7 @@ const dune: CardScript[] = [
   },
   {
     name: 'Hunter Seeker',
-    text: 'When an enemy ground unit attacks: Defeat this unit. If you do, deal 3 damage to the attacking unit.',
+    text: '[PLOT]\n[When an enemy ground unit attacks:] Defeat this unit. If you do, deal 3 damage to the attacking unit.',
     front: {
       whenEnemyAttacks: (g, self) => {
         const attacker = self.other ? g.unit(self.other) : undefined
@@ -2902,7 +2979,7 @@ const dune: CardScript[] = [
   },
   {
     name: 'The Baron\'s Wrath',
-    text: 'You may defeat any number of friendly Spice tokens and friendly [{Harkonnen}] units. Deal X damage divided as you choose among any number of units. X is the number of friendly [{Harkonnen}] units, plus 2 for each Spice token and unit defeated this way.',
+    text: '[PLOT]\nYou may defeat any number of friendly Spice tokens and friendly [{Harkonnen}] units. Deal X damage divided as you choose among any number of units. X is the number of friendly [{Harkonnen}] units, plus 2 for each Spice token and unit defeated this way.',
     front: {
       play: (g, self) => {
         const p = self.controller
@@ -2934,7 +3011,7 @@ const dune: CardScript[] = [
   // --- Hands and decks ---
   {
     name: 'Imperial Spy',
-    text: "[Hidden]\n[When Played/On Attack:] Look at the top card of an opponent's deck. You may put it on the bottom of their deck or discard it.",
+    text: "[Hidden]\n[PLOT]\n[When Played/On Attack:] Look at the top card of an opponent's deck. You may put it on the bottom of their deck or discard it.",
     front: {
       whenPlayed: (g, self) => imperialSpy(g, self),
       onAttack: (g, self) => imperialSpy(g, self),
@@ -3106,7 +3183,7 @@ const dune: CardScript[] = [
   },
   {
     name: 'Family Atomics',
-    text: 'Choose one:\n• Defeat an upgrade. If it was a Fortification, draw a card.\n• Pay [3]. If you do, defeat a non-leader unit and deal 3 damage to your base.',
+    text: '[PLOT]\nChoose one:\n• Defeat an upgrade. If it was a Fortification, draw a card.\n• Pay [3]. If you do, defeat a non-leader unit and deal 3 damage to your base.',
     front: {
       play: (g, self) => {
         const p = self.controller
@@ -3369,12 +3446,14 @@ const sardaukarInHand = (g: Game, self: Self) =>
     .hand.filter((c) => g.hasTrait(c, 'Sardaukar') && g.canPlay(self.controller, c.id, { ignoreAdditional: true }))
     .map((c) => c.id)
 
-// Baron Vladimir Harkonnen: the cards in his resources he can play as if using Plot, for 1 less
+// Baron Vladimir Harkonnen: the cards with Plot in his resources he can play now (his own
+// discount counted by the engine), and the Harkonnen units he may defeat
 const plotPlays = (g: Game, self: Self) =>
   g
     .player(self.controller)
     .resources.map((r) => r.card.id)
-    .filter((id) => g.canPlay(self.controller, id, { discount: 1 }))
+    .filter((id) => g.def(g.card(id)!).keywords.plot && g.canPlay(self.controller, id))
+const pawns = (g: Game, self: Self) => friendlyIds(g, self, (u) => g.hasTrait(u, 'Harkonnen'))
 
 // Gurney Halleck: "Play a card using Smuggle. It costs [2] less." or an Experience token
 function gurneyChoice(g: Game, self: Self) {

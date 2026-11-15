@@ -35,7 +35,9 @@ export function chooseAction(state: GameState, p: PlayerId, why?: Weighed[]): Ac
       const plan = deckPlan(state, p)
       const have = player.resources.length
       // Short of its leader's cost, any card goes; short of the plan, it keeps a card to play
-      const wanted = have < plan.leader ? player.hand.length >= 1 : have < plan.target && player.hand.length >= 2
+      const wanted =
+        (have < plan.leader ? player.hand.length >= 1 : have < plan.target && player.hand.length >= 2) ||
+        player.hand.some((c) => plotWanted(state, p, state.defs[c.def]))
       return { type: 'resource', cards: wanted ? resourcePicks(state, p, 1) : [] }
     }
   }
@@ -401,6 +403,16 @@ export function deckPlan(state: GameState, p: PlayerId): DeckPlan {
   return plan
 }
 
+// A card with Plot is worth putting in the resources while it can still be played from there:
+// its leader not yet deployed (Plot plays it then), or a deployed leader that plays cards with
+// Plot from the resources (the Baron's On Attack)
+const PLOT_FROM_RESOURCES = /card with \[Plot\] from your resources/i
+function plotWanted(state: GameState, p: PlayerId, card: CardDef) {
+  if (!card.keywords.plot) return false
+  const leader = state.players[p].leader
+  return !leader.deployed || PLOT_FROM_RESOURCES.test(state.defs[leader.def].backText ?? '')
+}
+
 // The cards it resources: first those it can't play before the plan's target, then those it
 // can't play soon unless they are its dearest (kept for later), then its cheapest, which matter
 // least once the game goes on
@@ -414,6 +426,9 @@ function resourcePicks(state: GameState, p: PlayerId, count: number) {
     // A card that ramps (CHOAM Dividend) once its leader is deployed: a resource and no more
     const d = state.defs[player.hand.find((c) => c.id === id)!.def]
     if (player.leader.deployed && /put this event into play as a resource/i.test(d.text ?? '')) return 4000
+    // A card with Plot, its leader still to deploy (or one that plays Plot cards from the
+    // resources, the Baron): a resource now, and played from there later, replaced from the deck
+    if (plotWanted(state, p, d)) return 3500 + cost
     if (cost > plan.target) return 3000 + cost
     if (cost > soon && cost < plan.target - 1) return 2000 + cost
     if (cost <= soon) return 1000 - cost
@@ -548,8 +563,11 @@ function side(state: GameState, p: PlayerId, own = false) {
   for (const unit of player.units) if (!borrowed.has(unit.id)) score += unitWorth(state, unit, blocked(state, p, unit))
   for (const unit of state.players[p === 0 ? 1 : 0].units) if (borrowed.has(unit.id) && unit.owner === p) score += unitWorth(state, unit, false)
   const kept = own ? Math.min(player.spice.length, spiceKept(state, p)) : 0
+  // Its cards with Plot in its resources, while they can still be played from there: cards in
+  // hand still to come, as well as resources (the opponent's resources it doesn't see)
+  const plots = own ? player.resources.filter((r) => plotWanted(state, p, state.defs[r.card.def])).length : 0
   score +=
-    player.hand.length * 1.5 +
+    (player.hand.length + plots) * 1.5 +
     player.resources.length +
     (own ? rampWorth(state, p) : 0) +
     kept * SPICE_KEPT_WORTH +

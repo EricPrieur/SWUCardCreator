@@ -1,0 +1,21 @@
+{
+  "hp": 0,
+  "id": "cc12466c-56f5-4945-96c5-fca86df95a82",
+  "art": {
+    "x": 0,
+    "y": 0,
+    "src": "Residual Poison (art).webp",
+    "zoom": 1,
+    "rotate": 0
+  },
+  "cost": 2,
+  "name": "Residual Poison",
+  "text": "[PLOT]\nAttach to an enemy non-[{Vehicle}] unit.\n[When the regroup phase starts:] Deal 2 damage to attached unit.",
+  "power": -2,
+  "trait": "Poison",
+  "number": "069",
+  "rarity": "U",
+  "frameId": "upgrade-vigilance",
+  "setCode": "DUNE",
+  "language": "EN"
+}

@@ -1026,7 +1026,7 @@ function startRegroup(state: GameState) {
 
 // Where a card is played from: the hand, the discard pile (when an ability says so), or the
 // resources using Smuggle or Plot
-type PlayedFrom = 'hand' | 'discard' | 'smuggle' | 'plot' | 'deck'
+export type PlayedFrom = 'hand' | 'discard' | 'smuggle' | 'plot' | 'deck'
 
 // What an ability changes in the cost of a card it plays: "It costs [1] less", "for free"
 // (which leaves additional costs to pay, 1.8), "ignoring its additional costs"
@@ -1040,15 +1040,15 @@ const discountsFor = (state: GameState, p: PlayerId, card: CardDef) =>
   state.discounts.filter((d) => d.player === p && card.traits.includes(d.trait))
 
 // "[Creature] cards you play cost [1] less.": what the cards on a player's side take off
-function costsLess(state: GameState, p: PlayerId, card: CardDef) {
+function costsLess(state: GameState, p: PlayerId, card: CardDef, from: PlayedFrom) {
   const g = new Game(state)
-  return holders(state, p).reduce((sum, { self, abilities }) => sum + (abilities.costsLess?.(g, self, card) ?? 0), 0)
+  return holders(state, p).reduce((sum, { self, abilities }) => sum + (abilities.costsLess?.(g, self, card, from) ?? 0), 0)
 }
 
 function priceOf(state: GameState, p: PlayerId, card: CardDef, from: PlayedFrom, options: PlayOptions = {}) {
   if (options.free || options.spiceInstead) return 0
   const cost = from === 'smuggle' ? smuggleCost(state, p, card) : playCost(state, p, card)
-  return Math.max(0, cost - (options.discount ?? 0) - discountsFor(state, p, card).reduce((sum, d) => sum + d.amount, 0) - costsLess(state, p, card))
+  return Math.max(0, cost - (options.discount ?? 0) - discountsFor(state, p, card).reduce((sum, d) => sum + d.amount, 0) - costsLess(state, p, card, from))
 }
 
 // What a card in a player's hand costs them to play now: its cost, aspects missing and
@@ -1088,6 +1088,7 @@ const isBanned = (state: GameState, p: PlayerId, card: CardDef) => state.banned.
 // An upgrade's "Attach to a friendly unit." or "Attach to a non-[{Vehicle}] unit."
 function canAttach(state: GameState, p: PlayerId, card: CardDef, unit: UnitState) {
   if (card.attach?.friendly && controllerOf(state, unit) !== p) return false
+  if (card.attach?.enemy && controllerOf(state, unit) === p) return false
   if (card.attach?.nonLeader && unit.leader) return false
   const traits = traitsOf(state, unit)
   if (card.attach?.not?.some((trait) => traits.includes(trait))) return false
@@ -1269,7 +1270,7 @@ function queuePlots(state: GameState, p: PlayerId) {
       const g = new Game(state)
       for (;;) {
         const ids = player.resources.map((r) => r.card.id).filter((id) => g.def(g.card(id)!).keywords.plot && g.canPlay(p, id))
-        const id = g.chooseOne(p, 'Plot: choose a card to play from your resources', ids, { optional: true, ai: ids[0] })
+        const id = g.chooseOne(p, 'Plot: choose a card to play from your resources', ids, { optional: true, ai: 'best' })
         if (!id || !g.playCard(p, id)) return
       }
     },

@@ -12,7 +12,7 @@
   "text": "[When Played:] Deal damage to an enemy ground unit equal to the number of friendly [{Fremen}] ground units.",
   "power": 4,
   "trait": "Fremen, Vehicle, Capital Ship",
-  "number": "138",
+  "number": "142",
   "rarity": "U",
   "frameId": "unit-aggression-heroism-space",
   "setCode": "DUNE",

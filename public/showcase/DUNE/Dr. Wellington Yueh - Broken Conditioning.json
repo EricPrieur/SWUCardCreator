@@ -1,0 +1,22 @@
+{
+  "hp": 4,
+  "id": "0895e4a0-a547-447c-8257-fc4f7bb953e3",
+  "art": {
+    "x": -9,
+    "y": 16,
+    "src": "Dr. Wellington Yueh - Broken Conditioning (art).webp",
+    "zoom": 1.2
+  },
+  "cost": 3,
+  "name": "Dr. Wellington Yueh",
+  "text": "[PLOT]\n[When Played:] Exhaust an enemy ground unit.\n[When Played using Plot:] Exhaust each enemy ground unit that costs [#4] or less. Then, defeat this unit.",
+  "power": 2,
+  "trait": "Atreides, Suk",
+  "number": "163",
+  "rarity": "R",
+  "unique": true,
+  "frameId": "unit-cunning-villainy",
+  "setCode": "DUNE",
+  "language": "EN",
+  "subtitle": "Broken Conditioning"
+}
