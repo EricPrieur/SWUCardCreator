@@ -2851,7 +2851,7 @@ function deckCardOfCommunity(card: CommunityCard): DeckCard[] {
       set,
       number: side.number,
       max: maxCopies(side.text ?? ''),
-      facts: { ...showcaseFacts(side), set },
+      facts: { ...showcaseFacts(side), set, creator: card.owner },
       face: <img className="showcase-image" src={src} alt={label} loading="lazy" />,
       prescientFace: prescientImage ? <img className="showcase-image" src={publicImage(prescientImage)} alt={label} loading="lazy" /> : undefined,
       backFace:
@@ -2924,7 +2924,7 @@ function CommunityDecks() {
           deck's Sets to build with DUNE's cards.
         </p>
       )}
-      <DeckBuilder
+      <DeckFormats
         cards={cards}
         prefix="community.decks"
         storageKey="dune-unlimited.decks.community"
@@ -5159,13 +5159,16 @@ function pickSome<T>(list: T[], count: number) {
 }
 
 // The cards a booster can give: of the set, with a rarity, not a token nor a base's second side
-const boosterCards = (cards: DeckCard[], set?: string) =>
-  cards.filter((card) => !card.back && card.type !== 'Token' && (!set || card.set === set) && ['C', 'U', 'R', 'L'].includes(card.rarity))
+// sets: those a booster is of; none, every card's
+const boosterCards = (cards: DeckCard[], sets?: string[]) =>
+  cards.filter(
+    (card) => !card.back && card.type !== 'Token' && (!sets?.length || sets.includes(card.set)) && ['C', 'U', 'R', 'L'].includes(card.rarity),
+  )
 
 // A Sealed pool's bases, one a booster: each common base once (the Arrakis base of each aspect),
 // two-sided rare ones in the boosters left, each a different one
-function plannedBases(cards: DeckCard[], set: string | undefined, boosters: number) {
-  const bases = boosterCards(cards, set).filter((card) => card.type === 'Base')
+function plannedBases(cards: DeckCard[], sets: string[] | undefined, boosters: number) {
+  const bases = boosterCards(cards, sets).filter((card) => card.type === 'Base')
   const rares = bases.filter((card) => card.rarity === 'R')
   const commons = bases.filter((card) => card.rarity === 'C')
   return playerBases(commons.length ? commons : rares, [...rares].sort(() => Math.random() - 0.5), boosters, Math.random).map(
@@ -5175,8 +5178,8 @@ function plannedBases(cards: DeckCard[], set: string | undefined, boosters: numb
 
 // base: the base this booster gives, planned for its pool (see plannedBases); without one, a base
 // rare one pack in 6
-function openBooster(cards: DeckCard[], set?: string, base?: DeckCard): PackCard[] {
-  const offered = boosterCards(cards, set)
+function openBooster(cards: DeckCard[], sets?: string[], base?: DeckCard): PackCard[] {
+  const offered = boosterCards(cards, sets)
   const of = (type: 'Leader' | 'Base' | 'Other', rarity: string) =>
     offered.filter(
       (card) => (type === 'Other' ? card.type !== 'Leader' && card.type !== 'Base' : card.type === type) && card.rarity === rarity,
@@ -5418,6 +5421,12 @@ function SealedPools(props: DeckBuilderProps) {
   const boosters = pool.boosters ?? BOOSTERS
   const opened = pool.opened ?? 0
   const poolSet = source === 'set' ? undefined : (pool.set ?? commonestSet)
+  // The Community Deck Builder's pools: of the sets ticked (all of them until some are), the others of one set
+  const multi = !!props.community
+  // Until some are ticked: all but those a deck leaves out by default (DUNE), unless that leaves none
+  const offByDefault = props.offByDefault ?? []
+  const startSets = sets.some((set) => !offByDefault.includes(set)) ? sets.filter((set) => !offByDefault.includes(set)) : sets
+  const poolSets = source === 'set' ? undefined : multi ? (pool.sets?.length ? pool.sets : startSets) : poolSet ? [poolSet] : undefined
 
   const storePools = (next: SealedPool[]) => {
     if (account && poolState !== 'ready') {
@@ -5467,13 +5476,14 @@ function SealedPools(props: DeckBuilderProps) {
   const openNext = () => {
     if (opened >= boosters) return
     // The pool's bases, chosen as its first booster is opened
-    const bases = pool.bases ?? (opened === 0 ? plannedBases(cards, poolSet, boosters) : undefined)
+    const bases = pool.bases ?? (opened === 0 ? plannedBases(cards, poolSets, boosters) : undefined)
     const base = bases?.[opened] ? cards.find((card) => card.id === bases[opened]) : undefined
-    const pack = openBooster(cards, poolSet, base)
+    const pack = openBooster(cards, poolSets, base)
     if (!pack.length) return setNote('There are no cards to open: no card has a rarity in this set.')
     let entries = pool.cards
     for (const each of pack) entries = withPrinting(entries, each.card.id, each.printing, 1)
-    if (changePool({ ...pool, set: poolSet, opened: opened + 1, cards: entries, ...(bases && { bases }) })) setOpening(pack)
+    const of = multi ? { sets: poolSets } : { set: poolSet }
+    if (changePool({ ...pool, ...of, opened: opened + 1, cards: entries, ...(bases && { bases }) })) setOpening(pack)
   }
 
   // The pool, card by card
@@ -5507,10 +5517,14 @@ function SealedPools(props: DeckBuilderProps) {
   const poolCards = cards.flatMap((card) => {
     const count = counts.get(card.id.replace(BACK_SIDE, ''))
     if (count) return [{ ...card, max: count, pooled: pooled.get(card.id.replace(BACK_SIDE, '')) }]
-    return card.type === 'Token' || (card.type === 'Base' && card.rarity === 'C' && (!poolSet || card.set === poolSet)) ? [card] : []
+    return card.type === 'Token' || (card.type === 'Base' && card.rarity === 'C' && (!poolSets || poolSets.includes(card.set))) ? [card] : []
   })
 
-  const label = poolSet ?? cards.find((card) => card.set !== NO_SET)?.set ?? 'DUNE'
+  // A community set's code, its maker's name left off the booster
+  const label = ((poolSets?.length === 1 ? poolSets[0] : multi ? 'Multi' : poolSet) ?? cards.find((card) => card.set !== NO_SET)?.set ?? 'DUNE').replace(
+    / \(.*\)$/,
+    '',
+  )
   const poolChoices = (kept ? pools : [...pools, pool]).map(({ id, name }) => ({ value: id, label: name || 'Unnamed pool' }))
   return (
     <div className="sealed">
@@ -5526,7 +5540,15 @@ function SealedPools(props: DeckBuilderProps) {
           }}
         />
         <input className="deck-name" aria-label="Pool name" value={pool.name} onChange={(event) => changePool({ ...pool, name: event.target.value })} />
-        {source !== 'set' && sets.length > 1 && (
+        {multi && sets.length > 1 && (
+          <CheckDropdown
+            label="Sets"
+            options={sets.map((set) => ({ value: set, label: set }))}
+            selected={pool.sets?.length ? pool.sets : startSets}
+            onChange={(chosen) => changePool({ ...pool, sets: chosen })}
+          />
+        )}
+        {!multi && source !== 'set' && sets.length > 1 && (
           <ChoiceDropdown
             label="Set"
             options={sets.map((set) => ({ value: set, label: set }))}

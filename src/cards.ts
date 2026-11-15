@@ -279,6 +279,8 @@ export type SealedPool = {
   boosters?: number
   opened?: number
   set?: string
+  // The Community Deck Builder's: the sets its boosters are of, any number of them
+  sets?: string[]
   // The base each booster gives, by card id, chosen as the first one is opened: each common base
   // once, two-sided rare ones in the boosters left (a pool opened before had none)
   bases?: string[]

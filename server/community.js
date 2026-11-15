@@ -4,7 +4,7 @@ import { verifyToken, requireAdmin } from './auth.js'
 import { notify } from './messages.js'
 import { cardDef } from './engine/cards.ts'
 import { scriptStatus, unplayedLines } from './engine/scripts.ts'
-import { STEP_CENTS } from './tiers.ts'
+import { playCardsFor, STEP_CENTS } from './tiers.ts'
 
 // Community cards: a public card its owner submits to be played. Each submission is a version, a
 // copy of the card as it is then, waiting in the Admin panel's queue until an admin supports it
@@ -88,7 +88,7 @@ router.post('/community/:cardId', verifyToken, async (req, res) => {
   if (!CARD_ID.test(cardId)) return res.status(400).json({ error: 'Bad card id' })
   try {
     const { rows: cards } = await query(
-      `SELECT c.data, c.is_public, c.public_entry, c.public_image, c.public_back_image, u.can_publish
+      `SELECT c.data, c.is_public, c.public_entry, c.public_image, c.public_back_image, u.can_publish, u.is_admin, u.donated_cents
        FROM ${SCHEMA}.cards c JOIN ${SCHEMA}.users u ON u.id = c.user_id
        WHERE c.user_id = $1 AND c.id = $2`,
       [req.user.id, cardId],
@@ -97,6 +97,23 @@ router.post('/community/:cardId', verifyToken, async (req, res) => {
     if (!card) return res.status(404).json({ error: 'Card not found' })
     if (!card.can_publish) return res.status(403).json({ error: 'An admin has turned off making cards public for this account.' })
     if (!card.is_public || !card.public_image) return res.status(400).json({ error: 'Make the card public first: its public image is what is played.' })
+    // So many cards in play, supported or waiting; a card already in play is brought up to date all the same
+    const limit = playCardsFor({ isAdmin: card.is_admin, donatedCents: card.donated_cents ?? 0 })
+    if (limit !== null) {
+      const { rows: inPlay } = await query(
+        `SELECT COUNT(DISTINCT card_id)::int AS n FROM ${SCHEMA}.community_cards
+         WHERE user_id = $1 AND card_id <> $2 AND status IN ('awaiting', 'supported')`,
+        [req.user.id, cardId],
+      )
+      const { rows: already } = await query(
+        `SELECT 1 FROM ${SCHEMA}.community_cards WHERE user_id = $1 AND card_id = $2 AND status IN ('awaiting', 'supported') LIMIT 1`,
+        [req.user.id, cardId],
+      )
+      if (!already.length && inPlay[0].n >= limit)
+        return res.status(403).json({
+          error: `You have ${inPlay[0].n} cards submitted for play, as many as your account may (${limit}). Each $5 tip adds 50 more; or withdraw one first.`,
+        })
+    }
     let prescient = req.body?.prescientImage ?? null
     if (prescient !== null) {
       if (!/^[0-9a-f]{64}$/.test(String(prescient))) return res.status(400).json({ error: 'Bad Prescient image' })
@@ -201,7 +218,23 @@ router.get('/admin/community', verifyToken, requireAdmin, async (req, res) => {
        WHERE cc.status <> 'replaced'
        ORDER BY (cc.status = 'awaiting') DESC, cc.submitted_at DESC`,
     )
+    // Each maker's cards in play: supported, and waiting, against their limit
+    const { rows: counts } = await query(
+      `SELECT u.id, u.username, u.is_admin, u.donated_cents,
+         COUNT(DISTINCT cc.card_id) FILTER (WHERE cc.status = 'supported')::int AS supported,
+         COUNT(DISTINCT cc.card_id) FILTER (WHERE cc.status IN ('awaiting', 'supported'))::int AS in_play
+       FROM ${SCHEMA}.community_cards cc JOIN ${SCHEMA}.users u ON u.id = cc.user_id
+       GROUP BY u.id
+       ORDER BY supported DESC, u.username`,
+    )
     res.json({
+      makers: counts.map((row) => ({
+        userId: row.id,
+        owner: row.username,
+        supported: row.supported,
+        inPlay: row.in_play,
+        limit: playCardsFor({ isAdmin: row.is_admin, donatedCents: row.donated_cents ?? 0 }),
+      })),
       cards: rows.map((row) => {
         const def = engineCard(row)
         return {

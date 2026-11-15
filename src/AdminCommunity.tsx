@@ -150,16 +150,21 @@ export function useAdminPending(session: Session | null) {
 export function CommunityTab(props: { session: Session; onReviewed?: () => void }) {
   const { session } = props
   const [list, setList] = useState<Submission[] | null>(null)
+  // Each maker's cards in play (supported, or waiting) against their limit; null: no limit
+  const [makers, setMakers] = useState<{ userId: number; owner: string; supported: number; inPlay: number; limit: number | null }[]>([])
   const [error, setError] = useState<string | null>(null)
   const [notes, setNotes] = useState<Record<string, string>>({})
   const [busy, setBusy] = useState<string | null>(null)
   const [view, setView] = useState<View>('review')
   const [copied, setCopied] = useState<string | null>(null)
   const load = () =>
-    api<{ cards: Submission[] }>('/api/admin/community', {
+    api<{ cards: Submission[]; makers?: typeof makers }>('/api/admin/community', {
       token: session.token,
     })
-      .then((data) => setList(data.cards))
+      .then((data) => {
+        setList(data.cards)
+        setMakers(data.makers ?? [])
+      })
       .catch((err) => setError(err.message))
   useEffect(() => {
     load()
@@ -189,6 +194,20 @@ export function CommunityTab(props: { session: Session; onReviewed?: () => void 
   return (
     <div className="community-queue">
       {error && <p className="account-error">{error}</p>}
+      <p className="account-note community-makers">
+        <b>{makers.reduce((sum, maker) => sum + maker.supported, 0)} supported cards</b>
+        {makers.map((maker) => (
+          <span
+            key={maker.userId}
+            title={`${maker.supported} supported, ${maker.inPlay - maker.supported} waiting; ${maker.limit === null ? 'no limit' : `${maker.limit} at most (50, and 50 more for each $5 tipped)`}`}
+          >
+            {' · '}
+            {maker.owner} {maker.supported}
+            {maker.inPlay > maker.supported && ` (+${maker.inPlay - maker.supported} waiting)`}
+            {maker.limit !== null && `/${maker.limit}`}
+          </span>
+        ))}
+      </p>
       <nav className="tabs community-views">
         {VIEWS.map(([value, label]) => {
           const n = list.filter((row) => viewOf(row) === value).length

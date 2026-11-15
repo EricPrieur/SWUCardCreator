@@ -168,9 +168,10 @@ const communitySources = [{ from: COMMUNITY_DECKS, scope: 'showcase:community', 
 // its pool's; the newest first, the pools and their decks being kept in the order they were made
 const SEALED = 'Sealed Decks'
 const sealedSources = [DECKS_KEY, `${DECKS_KEY}.${SET}`]
-async function loadSealedDecks(account: Session | null): Promise<SavedDeck[]> {
+const communitySealedSources = [`${DECKS_KEY}.community`]
+async function loadSealedDecks(account: Session | null, pool: SimPool = 'DUNE'): Promise<SavedDeck[]> {
   const lists = await Promise.all(
-    sealedSources.map(async (prefix) => {
+    (pool === 'DUNE' ? sealedSources : communitySealedSources).map(async (prefix) => {
       const load = <T,>(key: string) => (account ? loadAccountDecks<T>(account, deckScope(key)).catch(() => [] as T[]) : Promise.resolve(loadDecks<T>(key)))
       const pools = await load<SealedPool>(`${prefix}.sealed-pools`)
       const decks = await Promise.all(
@@ -210,7 +211,7 @@ async function loadSavedDecks(account: Session | null, set: SetCards, pool: SimP
   // The community's: its Deck Builder's decks, and DUNE's Featured Decks to play against
   const lists = await Promise.all([
     loadFeaturedDecks(pool),
-    pool === 'DUNE' ? loadSealedDecks(account) : Promise.resolve([]),
+    loadSealedDecks(account, pool),
     ...(pool === 'DUNE' ? deckSources : communitySources).map(async ({ from, scope, key }) => {
       const decks = account ? await loadAccountDecks(account, scope).catch(() => [] as Deck[]) : loadDecks(key)
       return decks.map((deck) => ({ ...deck, from }))
