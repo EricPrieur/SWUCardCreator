@@ -198,7 +198,6 @@ async function loadFeaturedDecks(pool: SimPool): Promise<SavedDeck[]> {
     ...community.map((deck) => ({
       ...deck,
       id: `featured-${deck.userId}-${deck.id}`,
-      name: `${deck.name} (${deck.owner})`,
       sets: [],
       sideboard: [],
       from: FEATURED,
@@ -222,6 +221,13 @@ async function loadSavedDecks(account: Session | null, set: SetCards, pool: SimP
     .flat()
     .filter((deck) => deck.leader && deck.base && known.has(deck.leader) && known.has(deck.base))
     .filter((deck) => deckList(deck, set).deck.length)
+    .map((deck) => (deck.from === FEATURED && set.setOf ? { ...deck, name: `${deck.name} (${setsOfDeck(deck, set)})` } : deck))
+}
+
+// The Community Simulator's Featured Decks say which set they are of: one set's name, or Multi
+function setsOfDeck(deck: Deck, set: SetCards) {
+  const names = new Set([deck.leader, deck.base, ...deck.cards.map((c) => c.id)].flatMap((id) => (id && set.setOf?.[id] ? [set.setOf[id]] : [])))
+  return names.size === 1 ? [...names][0] : 'Multi'
 }
 
 // A deck as the engine takes it; cards that aren't in the set are left out
