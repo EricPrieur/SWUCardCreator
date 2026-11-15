@@ -3876,32 +3876,13 @@ input.picker-button::placeholder {
   align-self: flex-start;
 }
 
-/* A card's image, larger beside it while hovered */
-.community-queue-thumb {
-  position: relative;
-  align-self: flex-start;
-}
-
+/* A card's image, larger over the page while hovered (drawn in document.body) */
 .community-queue-zoom {
-  display: none;
-  position: absolute;
-  top: 0;
-  left: calc(100% + 0.5rem);
-  z-index: 20;
-  width: min(24rem, 70vw);
+  position: fixed;
+  z-index: 1000;
   border-radius: 12px;
   box-shadow: 0 8px 32px rgb(0 0 0 / 0.6);
   pointer-events: none;
-}
-
-.community-queue-thumb:hover .community-queue-zoom {
-  display: block;
-}
-
-@media (hover: none) {
-  .community-queue-zoom {
-    display: none !important;
-  }
 }
 
 .community-views {
