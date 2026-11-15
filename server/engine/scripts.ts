@@ -26,6 +26,8 @@ export type Self = {
   upgrades?: string[]
   // A Spice token defeated: whose, and by whom
   spice?: { owner: PlayerId; by: PlayerId }
+  // When Attack Ends, When Defense Ends: whether this unit is still in play
+  survived?: boolean
 }
 
 // What a card gives a unit for as long as it is in play: "Other friendly [{Sardaukar}] units gain
@@ -73,8 +75,21 @@ export type Abilities = {
   whenEnemyAttacks?: Ability
   // When a friendly unit deals combat damage to an enemy base; self.other is that unit
   whenCombatDamageBase?: Ability
-  // "When this unit completes an attack:"
+  // "When this unit completes an attack:": it survived; self.attack is the attack
   afterAttack?: Ability
+  // "When Attack Ends:": once its attack is over, whether it survived or not (self.survived);
+  // self.other is the defending unit (none for a base)
+  whenAttackEnds?: Ability
+  // "When Defense Ends:": once an attack on this unit is over, whether it survived or not
+  // (self.survived); self.other is the attacker
+  afterDefending?: Ability
+  // "When this unit deals combat damage to an enemy unit:", attacking or defending; self.other is
+  // that unit
+  whenCombatDamageUnit?: Ability
+  // An upgrade's: when the unit it is on would take combat damage, how much it takes instead
+  // (Ink: "it takes that much damage plus 1 instead, then, defeat this upgrade"). self.attachedTo
+  // is that unit.
+  attachedCombatDamage?: (g: Game, self: Self, amount: number) => number
   // "When a Shield token on this unit is defeated:", by damage it prevented or otherwise
   whenShieldDefeated?: Ability
   // "If damage would be dealt to another friendly [Emperor] unit, you may defeat a Shield token
@@ -3574,7 +3589,7 @@ const keywordLabel = (card: { def: string }, g: Game) => (name: CombatKeyword) =
 }
 
 // "Search the top N cards of your deck for …, reveal it and draw it.": the rest go to the bottom
-function searchDeck(g: Game, self: Self, count: number, test: (card: CardDef) => boolean, what: string) {
+export function searchDeck(g: Game, self: Self, count: number, test: (card: CardDef) => boolean, what: string) {
   const p = self.controller
   const top = g.top(p, count)
   const found = top.filter((c) => test(g.def(c))).map((c) => c.id)

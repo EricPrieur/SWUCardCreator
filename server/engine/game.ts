@@ -341,13 +341,15 @@ function createUnitToken(state: GameState, p: PlayerId, name: string) {
 
 function giveToken(state: GameState, unit: UnitState, name: string) {
   const token = tokenDef(state, name)
+  // A community card's token (Ink) not in the game: its card isn't supported
+  if (!token) return
   unit.upgrades.push({ id: `k${state.nextId++}`, def: token.id, owner: controllerOf(state, unit) })
   log(state, `${nameOf(state, unit)} gets ${/^[AEIOU]/.test(name) ? 'an' : 'a'} ${name} token`, controllerOf(state, unit))
 }
 
 // Damage to a unit, unless a Shield token on it prevents it and is defeated instead, one Shield
 // for each time damage is dealt (3.7.6): the damage dealt
-function damageUnit(state: GameState, unit: UnitState, amount: number) {
+function damageUnit(state: GameState, unit: UnitState, amount: number, combat = false) {
   if (amount <= 0) return 0
   const shield = shieldOn(state, unit)
   if (shield) {
@@ -374,6 +376,14 @@ function damageUnit(state: GameState, unit: UnitState, amount: number) {
     shieldDefeated(state, guard)
     return 0
   }
+  // Combat damage an upgrade on it changes (Ink: plus 1, then the token is defeated)
+  if (combat)
+    for (const upgrade of [...unit.upgrades]) {
+      const change = scriptOf(state, upgrade).attachedCombatDamage
+      if (!change) continue
+      const owner = upgrade.owner
+      amount = change(new Game(state, owner), { id: upgrade.id, controller: owner, def: def(state, upgrade), attachedTo: unit.id }, amount)
+    }
   unit.damage += amount
   return amount
 }
@@ -1328,6 +1338,8 @@ function attack(state: GameState, p: PlayerId, attackerId: string, target: strin
   trigger(state, p, 'whenFriendlyAttacks', { other: attackerId, attack: self.attack }, attackerId)
   trigger(state, other(p), 'whenEnemyAttacks', { other: attackerId, attack: self.attack })
   const defending = target === 'base' ? undefined : findUnit(state, target)
+  // Its card, for When Defense Ends after it is defeated
+  const defendingDef = defending && def(state, defending)
   if (defending)
     queue(state, other(p), nameOf(state, defending), 'when defending', unitScript(state, defending).whenDefending, {
       id: defending.id,
@@ -1353,12 +1365,30 @@ function attack(state: GameState, p: PlayerId, attackerId: string, target: strin
     } else {
       const remaining = Math.max(0, hpOf(state, defender) - defender.damage)
       const back = powerOf(state, defender)
-      const dealt = damageUnit(state, defender, power)
+      const dealt = damageUnit(state, defender, power, true)
       // Dealing its combat damage first, a unit that defeats the defender takes none back
+      let taken = 0
       if (keywords.firstStrike) {
         checkDefeats(state)
-        if (findUnit(state, defender.id)) damageUnit(state, still, back)
-      } else damageUnit(state, still, back)
+        if (findUnit(state, defender.id)) taken = damageUnit(state, still, back, true)
+      } else taken = damageUnit(state, still, back, true)
+      // "When this unit deals combat damage to an enemy unit:", each that did
+      if (dealt > 0)
+        queue(state, p, nameOf(state, still), 'deals combat damage to a unit', unitScript(state, still).whenCombatDamageUnit, {
+          id: still.id,
+          controller: p,
+          def: def(state, still),
+          other: defender.id,
+          attack: { attacker: attackerId, target },
+        })
+      if (taken > 0)
+        queue(state, other(p), nameOf(state, defender), 'deals combat damage to a unit', unitScript(state, defender).whenCombatDamageUnit, {
+          id: defender.id,
+          controller: other(p),
+          def: def(state, defender),
+          other: still.id,
+          attack: { attacker: attackerId, target },
+        })
       // Overwhelm (7.5.7): damage beyond what defeats the defender goes to its controller's base,
       // unless a Shield token prevented it (7.5.7e)
       if (keywords.overwhelm && dealt && power > remaining) {
@@ -1368,12 +1398,40 @@ function attack(state: GameState, p: PlayerId, attackerId: string, target: strin
     }
     checkDefeats(state)
     resolveTriggers(state)
-    // "When this unit completes an attack:"
+    // "When this unit completes an attack:", only once it has, still in play
     const after = findUnit(state, attackerId)
     if (after && state.winner === null) {
-      queue(state, p, nameOf(state, after), 'after attacking', unitScript(state, after).afterAttack, { id: after.id, controller: p, def: def(state, after) })
+      queue(state, p, nameOf(state, after), 'after attacking', unitScript(state, after).afterAttack, {
+        id: after.id,
+        controller: p,
+        def: def(state, after),
+        attack: { attacker: attackerId, target },
+      })
       resolveTriggers(state)
     }
+  }
+  // "When Attack Ends:" and "When Defense Ends:", whether the unit survived or not (a card that
+  // asks says "If this unit survived": self.survived)
+  if (state.phase !== 'over' && state.winner === null) {
+    const attack = { attacker: attackerId, target }
+    queue(state, p, nameOf(state, attacker), 'when attack ends', unitScript(state, attacker).whenAttackEnds, {
+      id: attackerId,
+      controller: p,
+      def: self.def,
+      attack,
+      other: target === 'base' ? undefined : target,
+      survived: !!findUnit(state, attackerId),
+    })
+    if (defending)
+      queue(state, other(p), nameOf(state, defending), 'when defense ends', unitScript(state, defending).afterDefending, {
+        id: defending.id,
+        controller: other(p),
+        def: defendingDef!,
+        other: attackerId,
+        attack,
+        survived: !!findUnit(state, defending.id),
+      })
+    resolveTriggers(state)
   }
   state.effects = state.effects.filter((e) => !(e.until === 'attack' && e.unit === attackerId))
   state.attack = outer
