@@ -224,6 +224,20 @@
   margin: 0;
   text-align: center;
 }
+.sim-sets {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 0.4rem 1rem;
+}
+.sim-sets-label {
+  color: var(--sand);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
 .sim-pickers {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
@@ -973,6 +987,15 @@
 .sim-unit.exhausted img {
   transform: rotate(90deg);
   filter: brightness(0.75);
+}
+/* Its square slot is empty above and below the card as it lies: the pointer goes through there,
+   to the upgrade banners tucked under it, the card itself (and its badges) still taking it */
+.sim-unit.exhausted {
+  pointer-events: none;
+}
+.sim-unit.exhausted > img,
+.sim-unit.exhausted > .sim-damage {
+  pointer-events: auto;
 }
 .sim-unit.can-act {
   cursor: pointer;

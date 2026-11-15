@@ -990,6 +990,8 @@ type Facts = {
   arena?: Arena
   // The rarity's letter (C, U, R, S, L); empty when the card has none
   rarity: string
+  // Who made it, in the Community's cards: offers the Creator sort
+  creator?: string
 }
 
 // A saved card's facts. A leader, or a two-sided base, counts for what either of its sides says.
@@ -1046,6 +1048,7 @@ const sorts = [
   { value: 'cost', label: 'Cost' },
   { value: 'type', label: 'Type' },
   { value: 'number', label: 'Set number' },
+  { value: 'creator', label: 'Creator' },
 ] as const
 type SortKey = (typeof sorts)[number]['value']
 
@@ -1178,6 +1181,8 @@ function useCardFilters<T>(
       Number(!a.facts.number) - Number(!b.facts.number) ||
       a.facts.set.localeCompare(b.facts.set, undefined, { sensitivity: 'base' }) ||
       a.facts.number.localeCompare(b.facts.number, undefined, { numeric: true }),
+    // Maker by maker, each one's cards in the first sort's order (the Community's newest first)
+    creator: (a, b) => (a.facts.creator ?? '').localeCompare(b.facts.creator ?? '', undefined, { sensitivity: 'base' }),
   }
   const shown = [...found].sort((a, b) => compare[sort](a, b) || a.index - b.index)
   if (descending) shown.reverse()
@@ -1249,7 +1254,9 @@ function useCardFilters<T>(
         <span className="filter-label">Sort</span>
         <ChoiceDropdown
           label="Sort"
-          options={sorts.map(({ value, label }) => ({ value, label: value === 'saved' ? firstSort : label }))}
+          options={sorts
+            .filter(({ value }) => value !== 'creator' || items.some(({ facts }) => facts.creator))
+            .map(({ value, label }) => ({ value, label: value === 'saved' ? firstSort : label }))}
           selected={sort}
           onChange={setSort}
         />
@@ -2922,6 +2929,7 @@ function CommunityDecks() {
         prefix="community.decks"
         storageKey="dune-unlimited.decks.community"
         offByDefault={['DUNE']}
+        community
       />
     </>
   )
@@ -2978,6 +2986,29 @@ function Community(props: { session: Session | null; owner?: string | null }) {
   // The Showroom's page as its owner sees it while it isn't public yet
   const [ownerOnly, setOwnerOnly] = useState(false)
   const admin = !!session?.user.isAdmin
+  // The cards the Simulator plays (an admin supported them), by key; and which the list shows
+  const [supported, setSupported] = useState<Set<string> | null>(null)
+  const [playable, setPlayable] = useRemembered<'all' | 'supported' | 'unsupported'>(`${owner ? 'public-showroom' : 'community'}.playable`, 'all')
+  useEffect(() => {
+    api<{ cards: { key: string }[] }>('/api/community/cards')
+      .then(({ cards }) => setSupported(new Set(cards.map((card) => card.key))))
+      .catch(() => setSupported(null))
+  }, [])
+  const playableChoice = supported && (
+    <div className="filter-group">
+      <span className="filter-label">Simulator</span>
+      <ChoiceDropdown
+        label="Simulator"
+        options={[
+          { value: 'all', label: 'All cards' },
+          { value: 'supported', label: 'Supported' },
+          { value: 'unsupported', label: 'Unsupported' },
+        ]}
+        selected={playable}
+        onChange={setPlayable}
+      />
+    </div>
+  )
   useEffect(() => {
     setList(null)
     setError(null)
@@ -3001,15 +3032,20 @@ function Community(props: { session: Session | null; owner?: string | null }) {
   }, [session?.token, owner])
   const { bar, shown, grid, preview } = useCardFilters(
     owner ? 'public-showroom' : 'community',
-    (list ?? []).map((card) => ({
-      item: card,
-      // The maker's name is searched with the card's
-      facts: (() => {
-        const facts = showcaseFacts(card.entry)
-        return { ...facts, names: [...facts.names, card.owner.toLowerCase()] }
-      })(),
-    })),
+    (list ?? [])
+      .filter((card) => !supported || playable === 'all' || supported.has(card.key) === (playable === 'supported'))
+      .map((card) => ({
+        item: card,
+        // The maker's name is searched with the card's
+        facts: (() => {
+          const facts = showcaseFacts(card.entry)
+          return { ...facts, names: [...facts.names, card.owner.toLowerCase()], ...(!owner && { creator: card.owner }) }
+        })(),
+      })),
     owner ? undefined : 'Newest first',
+    undefined,
+    undefined,
+    playableChoice,
   )
 
   const hide = async (card: PublicCard, hidden: boolean) => {
@@ -4186,8 +4222,6 @@ function FeatureButton(props: { deck: Deck; onNote: (note: string) => void }) {
   }
   const there = featured.find((d) => d.id === deck.id)
   const same = there && JSON.stringify(there) === JSON.stringify(copy)
-  // A deck that can't be played isn't offered to everyone
-  const short = copy.cards.reduce((sum, { count }) => sum + count, 0) < 50
   const send = async (method: 'PUT' | 'DELETE') => {
     const response = await fetch(method === 'PUT' ? '/__featured' : `/__featured/${encodeURIComponent(deck.id)}`, {
       method,
@@ -4206,12 +4240,64 @@ function FeatureButton(props: { deck: Deck; onNote: (note: string) => void }) {
       <button
         className="button"
         type="button"
-        disabled={same || short}
-        title={
-          short
-            ? 'A Featured Deck needs at least 50 cards'
-            : "The Simulator's Featured Decks, which anyone may play: written in public/sim/featured-decks.json"
-        }
+        disabled={same}
+        title="The Simulator's Featured Decks, which anyone may play: written in public/sim/featured-decks.json"
+        onClick={() => send('PUT')}
+      >
+        {same ? 'Featured' : there ? 'Update Featured' : 'Feature'}
+      </button>
+      {there && (
+        <button className="button" type="button" onClick={() => send('DELETE')}>
+          Unfeature
+        </button>
+      )}
+    </>
+  )
+}
+
+// The Community Simulator's Featured Decks, kept on the server: a deck with community cards of its
+// own maker's (and DUNE's) may be featured by that maker, or any deck by an admin. Any number of cards.
+type CommunityFeatured = FeaturedDeck & { userId: number; owner: string }
+function CommunityFeatureButton(props: { deck: Deck; onNote: (note: string) => void }) {
+  const { deck, onNote } = props
+  const account = useAccount()
+  const [featured, setFeatured] = useState<CommunityFeatured[] | null>(null)
+  const load = () =>
+    api<{ decks: CommunityFeatured[] }>('/api/community/featured')
+      .then(({ decks }) => setFeatured(decks))
+      .catch(() => setFeatured([]))
+  useEffect(() => {
+    load()
+  }, [])
+  if (!account || !featured || !deck.leader || !deck.base) return null
+  const ids = [deck.leader, deck.base, ...deck.cards.map((c) => c.id)]
+  const mine = ids.some((id) => id.startsWith(`community:${account.user.id}/`))
+  const others = ids.some((id) => id.startsWith('community:') && !id.startsWith(`community:${account.user.id}/`))
+  const there = featured.find((d) => d.userId === account.user.id && d.id === deck.id)
+  // Only the maker of its community cards: a deck of DUNE's alone, or with another maker's, isn't theirs to feature
+  if (!account.user.isAdmin && (!mine || others) && !there) return null
+  const copy = { name: deck.name, leader: deck.leader, base: deck.base, cards: deck.cards.map(({ id, count }) => ({ id, count })) }
+  const same = there && JSON.stringify({ name: there.name, leader: there.leader, base: there.base, cards: there.cards }) === JSON.stringify(copy)
+  const send = async (method: 'PUT' | 'DELETE') => {
+    try {
+      await api(`/api/community/featured/${encodeURIComponent(deck.id)}`, { method, body: method === 'PUT' ? copy : undefined, token: account.token })
+      onNote(
+        method === 'DELETE'
+          ? `${deck.name} is out of the Community Simulator's Featured Decks.`
+          : `${deck.name} is ${there ? 'updated in' : 'in'} the Community Simulator's Featured Decks.`,
+      )
+      load()
+    } catch (err) {
+      onNote(`Could not change the Featured Decks: ${(err as Error).message}`)
+    }
+  }
+  return (
+    <>
+      <button
+        className="button"
+        type="button"
+        disabled={same}
+        title="The Community Simulator's Featured Decks, which anyone may play"
         onClick={() => send('PUT')}
       >
         {same ? 'Featured' : there ? 'Update Featured' : 'Feature'}
@@ -4238,6 +4324,8 @@ function DeckBuilder(props: {
   // Sets a deck leaves out until they are ticked: with no set ticked, every other set (the
   // Community Deck Builder's DUNE)
   offByDefault?: string[]
+  // The Community Deck Builder: its decks are featured in the Community Simulator
+  community?: boolean
 }) {
   const { cards, prefix = 'decks', storageKey, source = 'Showroom', sealed = false, offByDefault = [] } = props
   const fixedSet = source === 'set' || sealed
@@ -4369,7 +4457,9 @@ function DeckBuilder(props: {
     saveDecks(next)
     storeDrafts(Object.fromEntries(Object.entries(drafts).filter(([id]) => !ids.includes(id))))
   }
-  const unsavedDecks = allDecks.filter((d) => drafts[d.id])
+  // A deck never saved with nothing in it (only its sets chosen, say) isn't worth asking about
+  const emptyNew = (d: Deck) => !decks.some((saved) => saved.id === d.id) && !d.leader && !d.base && !d.cards.length && !d.sideboard.length
+  const unsavedDecks = allDecks.filter((d) => drafts[d.id] && !emptyNew(d))
   useEffect(() => {
     if (!unsavedDecks.length) return setLeaveGuard(null)
     setLeaveGuard({
@@ -4829,7 +4919,11 @@ function DeckBuilder(props: {
           <button className="button" type="button" onClick={() => importInput.current?.click()}>
             Import
           </button>
-          {import.meta.env.DEV && account?.user.isAdmin && <FeatureButton deck={deck} onNote={setNote} />}
+          {props.community ? (
+            <CommunityFeatureButton deck={deck} onNote={setNote} />
+          ) : (
+            import.meta.env.DEV && account?.user.isAdmin && <FeatureButton deck={deck} onNote={setNote} />
+          )}
           <input ref={importInput} type="file" accept=".json,application/json" hidden onChange={importDeck} />
           <button
             className="button"

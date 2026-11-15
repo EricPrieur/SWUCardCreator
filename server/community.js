@@ -297,4 +297,68 @@ router.patch('/admin/community/:userId/:cardId/:version', verifyToken, requireAd
   }
 })
 
+// The Community Simulator's Featured Decks, for anyone: those of the accounts that may still publish
+router.get('/community/featured', async (req, res) => {
+  try {
+    const { rows } = await query(
+      `SELECT f.user_id, f.id, f.deck, u.username
+       FROM ${SCHEMA}.featured_decks f JOIN ${SCHEMA}.users u ON u.id = f.user_id
+       WHERE u.can_publish
+       ORDER BY u.username, f.updated_at`,
+    )
+    res.json({ decks: rows.map((row) => ({ ...row.deck, id: row.id, userId: row.user_id, owner: row.username })) })
+  } catch (err) {
+    console.error('Featured decks error:', err)
+    res.status(500).json({ error: 'Server error' })
+  }
+})
+
+// Featuring a deck: its maker's cards are in it, and the other cards are DUNE's (or, for an admin,
+// anyone's). Any number of cards: a short deck is still worth trying.
+const DECK_ID = /^[\w-]{1,64}$/
+const CARD_REF = /^(community:(\d+)\/[\w-]{1,64}|[\w-]{1,80})(#back)?$/
+router.put('/community/featured/:id', verifyToken, async (req, res) => {
+  const { id } = req.params
+  const body = req.body ?? {}
+  if (!DECK_ID.test(id)) return res.status(400).json({ error: 'Bad deck id' })
+  const name = typeof body.name === 'string' ? body.name.trim().slice(0, 80) : ''
+  const cards = Array.isArray(body.cards) ? body.cards : []
+  const refs = [body.leader, body.base, ...cards.map((c) => c?.id)]
+  if (!name || !body.leader || !body.base) return res.status(400).json({ error: 'A Featured Deck needs a name, a leader and a base' })
+  if (cards.length > 200 || refs.some((ref) => typeof ref !== 'string' || !CARD_REF.test(ref)))
+    return res.status(400).json({ error: 'Bad cards' })
+  if (cards.some((c) => !Number.isInteger(c.count) || c.count < 1 || c.count > 50)) return res.status(400).json({ error: 'Bad card counts' })
+  const owners = refs.map((ref) => ref.match(CARD_REF)[2]).filter(Boolean).map(Number)
+  if (!req.user.isAdmin) {
+    if (!owners.includes(req.user.id)) return res.status(403).json({ error: 'Only a deck with your own community cards can be featured' })
+    if (owners.some((owner) => owner !== req.user.id))
+      return res.status(403).json({ error: "A Featured Deck may have your cards and DUNE's, not other makers' cards" })
+  }
+  const deck = { name, leader: body.leader, base: body.base, cards: cards.map(({ id, count }) => ({ id, count })) }
+  try {
+    const { rows } = await query(`SELECT can_publish FROM ${SCHEMA}.users WHERE id = $1`, [req.user.id])
+    if (!rows[0]?.can_publish) return res.status(403).json({ error: 'An admin has turned off making cards public for this account.' })
+    await query(
+      `INSERT INTO ${SCHEMA}.featured_decks (user_id, id, deck) VALUES ($1, $2, $3)
+       ON CONFLICT (user_id, id) DO UPDATE SET deck = EXCLUDED.deck, updated_at = NOW()`,
+      [req.user.id, id, deck],
+    )
+    res.json({ ok: true })
+  } catch (err) {
+    console.error('Feature deck error:', err)
+    res.status(500).json({ error: 'Server error' })
+  }
+})
+
+router.delete('/community/featured/:id', verifyToken, async (req, res) => {
+  if (!DECK_ID.test(req.params.id)) return res.status(400).json({ error: 'Bad deck id' })
+  try {
+    await query(`DELETE FROM ${SCHEMA}.featured_decks WHERE user_id = $1 AND id = $2`, [req.user.id, req.params.id])
+    res.json({ ok: true })
+  } catch (err) {
+    console.error('Unfeature deck error:', err)
+    res.status(500).json({ error: 'Server error' })
+  }
+})
+
 export default router

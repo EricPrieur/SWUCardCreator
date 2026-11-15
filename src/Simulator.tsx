@@ -69,6 +69,9 @@ type SetCards = {
   spiceArt?: string
   cards: Record<string, Card>
   prescient?: Record<string, string>
+  // The Community Simulator's: each card's set, as the Community Deck Builder names it (DUNE, or a
+  // maker's set code with their name), for the sets chosen to play
+  setOf?: Record<string, string>
 }
 // A card's Prescient image: a community card's, kept on the server; DUNE's, drawn from its card
 const hasPrescient = (set: SetCards, id: string) => !!(set.prescient?.[id] || set.cards[id])
@@ -109,7 +112,17 @@ export async function loadSet(): Promise<SetCards> {
 // The Community Simulator's cards: the community cards an admin supported, each its own card
 // (id community:<account>/<card>, its script found by that key), and DUNE's, which the Community
 // Deck Builder offers too. Their images are the public ones the server keeps.
-type CommunityCard = { key: string; data: SavedCard; image: string; backImage: string | null; prescientImage?: string | null }
+type CommunityCard = {
+  key: string
+  owner: string
+  entry: { set?: string }
+  data: SavedCard
+  image: string
+  backImage: string | null
+  prescientImage?: string | null
+}
+// A community card's set, as the Community Deck Builder names it: two makers' sets of a code stay apart
+const communitySetName = (card: CommunityCard) => `${card.entry.set?.toUpperCase() || 'NO SET'} (${card.owner})`
 export async function loadCommunitySet(): Promise<SetCards> {
   const [set, { cards }] = await Promise.all([
     loadSet().catch(() => ({ defs: [], images: {}, cards: {} }) as SetCards),
@@ -117,10 +130,13 @@ export async function loadCommunitySet(): Promise<SetCards> {
     api<{ cards: CommunityCard[] }>('/api/community/cards').catch(() => ({ cards: [] as CommunityCard[] })),
   ])
   const url = (id: string) => `${API_URL}/api/public/images/${id}`
+  const setOf: Record<string, string> = Object.fromEntries(set.defs.map((d) => [d.id, SET]))
+  set.setOf = setOf
   for (const card of cards) {
     const id = `community:${card.key}`
     const d = cardDef({ ...card.data, id })
     if (!d) continue
+    setOf[id] = setOf[id + BACK_SIDE] = communitySetName(card)
     set.defs.push({ ...d, community: card.key })
     set.images[id] = { image: url(card.image), back: d.type === 'leader' && card.backImage ? url(card.backImage) : undefined }
     if (card.prescientImage) (set.prescient ??= {})[id] = url(card.prescientImage)
@@ -168,17 +184,33 @@ async function loadSealedDecks(account: Session | null): Promise<SavedDeck[]> {
 
 // Decks anyone may try, signed in or not, which ship with the site
 const FEATURED = 'Featured Decks'
-async function loadFeaturedDecks(): Promise<SavedDeck[]> {
+type FeaturedDeck = Pick<Deck, 'id' | 'name' | 'leader' | 'base' | 'cards'>
+async function loadFeaturedDecks(pool: SimPool): Promise<SavedDeck[]> {
   const response = await fetch(asset('/sim/featured-decks.json'), { cache: 'no-cache' }).catch(() => undefined)
-  if (!response?.ok) return []
-  const decks: Pick<Deck, 'id' | 'name' | 'leader' | 'base' | 'cards'>[] = await response.json()
-  return decks.map((deck) => ({ ...deck, id: `featured-${deck.id}`, sets: [SET], sideboard: [], from: FEATURED }))
+  const decks: FeaturedDeck[] = response?.ok ? await response.json().catch(() => []) : []
+  const dune = decks.map((deck) => ({ ...deck, id: `featured-${deck.id}`, sets: [SET], sideboard: [], from: FEATURED }))
+  if (pool !== 'community') return dune
+  // The Community Simulator's: those their makers featured, kept on the server
+  const { decks: community } = await api<{ decks: (FeaturedDeck & { userId: number; owner: string })[] }>('/api/community/featured').catch(() => ({
+    decks: [],
+  }))
+  return [
+    ...community.map((deck) => ({
+      ...deck,
+      id: `featured-${deck.userId}-${deck.id}`,
+      name: `${deck.name} (${deck.owner})`,
+      sets: [],
+      sideboard: [],
+      from: FEATURED,
+    })),
+    ...dune,
+  ]
 }
 
 async function loadSavedDecks(account: Session | null, set: SetCards, pool: SimPool = 'DUNE'): Promise<SavedDeck[]> {
   // The community's: its Deck Builder's decks, and DUNE's Featured Decks to play against
   const lists = await Promise.all([
-    loadFeaturedDecks(),
+    loadFeaturedDecks(pool),
     pool === 'DUNE' ? loadSealedDecks(account) : Promise.resolve([]),
     ...(pool === 'DUNE' ? deckSources : communitySources).map(async ({ from, scope, key }) => {
       const decks = account ? await loadAccountDecks(account, scope).catch(() => [] as Deck[]) : loadDecks(key)
@@ -218,6 +250,28 @@ function resolveChoice(choice: Choice, set: SetCards, decks: SavedDeck[], not?: 
   else if (choice === 'random' && decks.length) deck = pick(decks)
   else if (choice === 'different-random' && decks.length) deck = pick(decks.length > 1 ? decks.filter((d) => d !== not) : decks)
   return { deck, list: deck ? deckList(deck, set) : randomDeck(set.defs), name: deck?.name ?? 'Random' }
+}
+
+// The Community Simulator's sets left out, remembered: each set is played until it is unticked, a
+// new one too. Decks with a card of a set left out aren't offered, and a random deck keeps to the others.
+const SETS_OFF_KEY = 'dune-unlimited.simulator.sets-off.community'
+function rememberedSetsOff(): string[] {
+  try {
+    const saved = JSON.parse(localStorage.getItem(SETS_OFF_KEY) ?? '[]')
+    return Array.isArray(saved) ? saved : []
+  } catch {
+    return []
+  }
+}
+// The cards of the sets played, and the decks that keep to them
+function keepToSets(set: SetCards, decks: SavedDeck[], off: string[]) {
+  const setOf = set.setOf
+  if (!setOf || !off.length) return { set, decks }
+  const played = (id: string) => !off.includes(setOf[id] ?? SET)
+  return {
+    set: { ...set, defs: set.defs.filter((d) => played(d.id)) },
+    decks: decks.filter((deck) => [deck.leader, deck.base, ...deck.cards.map((c) => c.id)].every((id) => !id || played(id))),
+  }
 }
 
 // What each side plays: a deck made at random, one of the saved decks at random (for the AI, a
@@ -391,8 +445,16 @@ function DeckPicker(props: {
   }))
   // The Community Simulator's cards: DUNE's and the community's playable ones
   const community = set.defs.some((d) => d.community)
+  // The sets ticked, in the Community Simulator
+  const played = set.setOf ? [...new Set(set.defs.map((d) => set.setOf![d.id] ?? SET))] : []
+  const from =
+    played.length && played.length <= 3
+      ? `of ${played.join(', ').replace(/, ([^,]*)$/, ' and $1')}`
+      : community
+        ? `of ${SET} and the community's playable cards`
+        : `of the ${SET} set`
   const about: Record<string, string> = {
-    'random-generated': `A random leader and base, with 50 cards ${community ? `of ${SET} and the community's playable cards` : `of the ${SET} set`} they can pay for.`,
+    'random-generated': `A random leader and base, with up to 50 cards ${from} they can pay for.`,
     random: decks.length ? 'One of the decks in this list, picked at random.' : 'There are no decks yet: a random deck is made instead.',
     'different-random':
       decks.length > 1 ? 'One of the decks in this list at random, not the one you play.' : 'One of the decks in this list, picked at random.',
@@ -477,6 +539,22 @@ export function Simulator(props: { drawCard?: (card: Card) => Promise<string>; p
   const [failed, setFailed] = useState('')
   const [decks, setDecks] = useState<SavedDeck[]>([])
   const [choices, setChoices] = useState<[Choice, Choice]>(() => rememberedChoices(pool))
+  const [setsOff, setSetsOff] = useState<string[]>(rememberedSetsOff)
+  const toggleSet = (name: string) => {
+    const next = setsOff.includes(name) ? setsOff.filter((s) => s !== name) : [...setsOff, name]
+    setSetsOff(next)
+    try {
+      localStorage.setItem(SETS_OFF_KEY, JSON.stringify(next))
+    } catch {
+      // Not remembered, then
+    }
+  }
+  // The sets there are, DUNE first; and what the deck menus offer, kept to those ticked
+  const setNames = useMemo(() => {
+    const names = [...new Set(Object.values(set?.setOf ?? {}))].filter((name) => name !== SET).sort()
+    return set?.setOf ? [SET, ...names] : []
+  }, [set])
+  const playing = useMemo(() => (set ? keepToSets(set, decks, setsOff) : null), [set, decks, setsOff])
   // Others may watch your games against the AI: they are in the Online Game tab's In Progress
   const [spectators, setSpectators] = useFlag(SPECTATORS_KEY, true)
   const [game, setGame] = useState<GameState | null>(null)
@@ -542,7 +620,7 @@ export function Simulator(props: { drawCard?: (card: Card) => Promise<string>; p
     let yours: Deck | undefined
     const deckNames: string[] = []
     const resolve = (choice: Choice, side: number) => {
-      const { deck, list, name } = resolveChoice(choice, set, decks, yours)
+      const { deck, list, name } = resolveChoice(choice, playing!.set, playing!.decks, yours)
       if (side === YOU) yours = deck
       deckNames[side] = name
       return list
@@ -589,7 +667,10 @@ export function Simulator(props: { drawCard?: (card: Card) => Promise<string>; p
     setGame(next)
   }
   const undo = () => {
-    const last = history.current.pop()
+    let last = history.current.pop()
+    // Back to the move itself, not to a question it asked you (which unit to keep, of two copies
+    // of a unique one): the answers go, and the move with them
+    while (last?.state.prompt?.player === YOU && history.current.length) last = history.current.pop()
     const played = record.current
     if (!last || !played) return
     // The record as if those moves were never made, the times taken back counted
@@ -680,7 +761,10 @@ export function Simulator(props: { drawCard?: (card: Card) => Promise<string>; p
           <p>{failed || `Loading the ${community ? 'community' : SET} cards…`}</p>
         </div>
       ) : view === 'online' ? (
-        <OnlineLobby account={account} set={set} decks={decks} invited={invited} onSeat={takeSeat} pool={pool} />
+        <>
+          {setNames.length > 1 && <SetChoice names={setNames} off={setsOff} onToggle={toggleSet} />}
+          <OnlineLobby account={account} set={playing!.set} decks={playing!.decks} invited={invited} onSeat={takeSeat} pool={pool} />
+        </>
       ) : (
         <div className="sim-menu-panel">
           {waiting && (
@@ -696,9 +780,10 @@ export function Simulator(props: { drawCard?: (card: Card) => Promise<string>; p
               </button>
             </div>
           )}
+          {setNames.length > 1 && <SetChoice names={setNames} off={setsOff} onToggle={toggleSet} />}
           <div className="sim-pickers">
-            <DeckPicker title="Your Deck" side="me" value={choices[0]} decks={decks} set={set} onChange={(c) => choose(0, c)} />
-            <DeckPicker title="AI Deck" side="opp" value={choices[1]} decks={decks} set={set} onChange={(c) => choose(1, c)} />
+            <DeckPicker title="Your Deck" side="me" value={choices[0]} decks={playing!.decks} set={playing!.set} onChange={(c) => choose(0, c)} />
+            <DeckPicker title="AI Deck" side="opp" value={choices[1]} decks={playing!.decks} set={playing!.set} onChange={(c) => choose(1, c)} />
           </div>
           <label className="sim-toggle" title="Others may watch this game: it is listed in the Online Game tab's In Progress">
             <input type="checkbox" checked={spectators} onChange={(event) => setSpectators(event.target.checked)} />
@@ -709,6 +794,26 @@ export function Simulator(props: { drawCard?: (card: Card) => Promise<string>; p
           </button>
         </div>
       )}
+    </div>
+  )
+}
+
+// The Community Simulator's sets, each ticked to be played; at least one stays ticked
+function SetChoice(props: { names: string[]; off: string[]; onToggle: (name: string) => void }) {
+  const { names, off } = props
+  return (
+    <div className="sim-sets" role="group" aria-label="Sets played">
+      <span className="sim-sets-label">Sets</span>
+      {names.map((name) => {
+        const on = !off.includes(name)
+        const last = on && names.filter((n) => !off.includes(n)).length === 1
+        return (
+          <label key={name} className="sim-toggle" title={last ? 'At least one set is played' : undefined}>
+            <input type="checkbox" checked={on} disabled={last} onChange={() => props.onToggle(name)} />
+            {name}
+          </label>
+        )
+      })}
     </div>
   )
 }

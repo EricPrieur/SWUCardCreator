@@ -97,7 +97,8 @@ function AdminImage(props: { session: Session; id: string }) {
       {zoom &&
         createPortal(
           <img className="community-queue-zoom" src={src} alt="" style={{ left: zoom.left, top: zoom.top, width: zoom.width }} />,
-          document.body,
+          // Inside the Admin window: a modal dialog is above everything else on the page
+          thumb.current?.closest('dialog') ?? document.body,
         )}
     </>
   )
