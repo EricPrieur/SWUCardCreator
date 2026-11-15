@@ -81,7 +81,8 @@ router.get('/community/mine', verifyToken, async (req, res) => {
 
 // Submits a public card to be played: a copy of it as it is now, its public images with it. A
 // version still waiting is brought up to date rather than a new one made. One the engine plays
-// already is supported at once (an admin may still decline it).
+// already is supported at once (an admin may still decline it). { prescientImage }: its Prescient
+// version, drawn by the browser and uploaded first, for the Deck Builder and the Simulator.
 router.post('/community/:cardId', verifyToken, async (req, res) => {
   const { cardId } = req.params
   if (!CARD_ID.test(cardId)) return res.status(400).json({ error: 'Bad card id' })
@@ -96,6 +97,12 @@ router.post('/community/:cardId', verifyToken, async (req, res) => {
     if (!card) return res.status(404).json({ error: 'Card not found' })
     if (!card.can_publish) return res.status(403).json({ error: 'An admin has turned off making cards public for this account.' })
     if (!card.is_public || !card.public_image) return res.status(400).json({ error: 'Make the card public first: its public image is what is played.' })
+    let prescient = req.body?.prescientImage ?? null
+    if (prescient !== null) {
+      if (!/^[0-9a-f]{64}$/.test(String(prescient))) return res.status(400).json({ error: 'Bad Prescient image' })
+      const { rows: own } = await query(`SELECT 1 FROM ${SCHEMA}.images WHERE user_id = $1 AND id = $2`, [req.user.id, prescient])
+      if (!own.length) prescient = null
+    }
     const { rows: latest } = await query(
       `SELECT version, status FROM ${SCHEMA}.community_cards WHERE user_id = $1 AND card_id = $2 ORDER BY version DESC LIMIT 1`,
       [req.user.id, cardId],
@@ -105,21 +112,21 @@ router.post('/community/:cardId', verifyToken, async (req, res) => {
     const def = engineCard({ data: card.data, user_id: req.user.id, card_id: cardId })
     const auto = !!def && ['scripted', 'blank'].includes(scriptStatus(def))
     const status = auto ? 'supported' : 'awaiting'
-    const values = [req.user.id, cardId, JSON.stringify(card.public_entry), JSON.stringify(card.data), card.public_image, card.public_back_image, status, auto]
+    const values = [req.user.id, cardId, JSON.stringify(card.public_entry), JSON.stringify(card.data), card.public_image, card.public_back_image, status, auto, prescient]
     let version
     if (latest[0]?.status === 'awaiting') {
       version = latest[0].version
       await query(
         `UPDATE ${SCHEMA}.community_cards SET entry = $3, data = $4, image = $5, back_image = $6, status = $7, auto = $8,
-           submitted_at = NOW(), reviewed_at = CASE WHEN $8 THEN NOW() END
-         WHERE user_id = $1 AND card_id = $2 AND version = $9`,
+           prescient_image = $9, submitted_at = NOW(), reviewed_at = CASE WHEN $8 THEN NOW() END
+         WHERE user_id = $1 AND card_id = $2 AND version = $10`,
         [...values, version],
       )
     } else {
       version = (latest[0]?.version ?? 0) + 1
       await query(
-        `INSERT INTO ${SCHEMA}.community_cards (user_id, card_id, version, entry, data, image, back_image, status, auto, reviewed_at)
-         VALUES ($1, $2, $9, $3, $4, $5, $6, $7, $8, CASE WHEN $8 THEN NOW() END)`,
+        `INSERT INTO ${SCHEMA}.community_cards (user_id, card_id, version, entry, data, image, back_image, status, auto, prescient_image, reviewed_at)
+         VALUES ($1, $2, $10, $3, $4, $5, $6, $7, $8, $9, CASE WHEN $8 THEN NOW() END)`,
         [...values, version],
       )
     }
@@ -152,7 +159,7 @@ router.delete('/community/:cardId', verifyToken, async (req, res) => {
 router.get('/community/cards', async (req, res) => {
   try {
     const { rows } = await query(
-      `SELECT cc.user_id, cc.card_id, cc.version, cc.entry, cc.data, cc.image, cc.back_image, u.username, (u.donated_cents >= ${STEP_CENTS}) AS supporter
+      `SELECT cc.user_id, cc.card_id, cc.version, cc.entry, cc.data, cc.image, cc.back_image, cc.prescient_image, u.username, (u.donated_cents >= ${STEP_CENTS}) AS supporter
        FROM ${SCHEMA}.community_cards cc
        JOIN ${SCHEMA}.cards c ON c.user_id = cc.user_id AND c.id = cc.card_id
        JOIN ${SCHEMA}.users u ON u.id = cc.user_id
@@ -172,6 +179,8 @@ router.get('/community/cards', async (req, res) => {
         data: row.data,
         image: row.image,
         backImage: row.back_image,
+        // Its Prescient (full art) version; null for one submitted before there was one
+        prescientImage: row.prescient_image ?? null,
       })),
     })
   } catch (err) {

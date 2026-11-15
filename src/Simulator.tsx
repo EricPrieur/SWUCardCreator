@@ -62,7 +62,18 @@ const statShift = (now: number, printed = now) => (now > printed ? ' up' : now <
 // base is two cards, its second side's id ending in BACK_SIDE, as the Deck Builder has it.
 // spiceArt: the Spice token's art, its pile of spice shown on the tokens on the board
 // cards: each card as saved, its art found in the Showcase, to draw its Prescient version
-type SetCards = { defs: CardDef[]; images: Record<string, { image: string; back?: string }>; spiceArt?: string; cards: Record<string, Card> }
+// prescient: a community card's Prescient image, drawn as it was submitted (DUNE's are drawn here)
+type SetCards = {
+  defs: CardDef[]
+  images: Record<string, { image: string; back?: string }>
+  spiceArt?: string
+  cards: Record<string, Card>
+  prescient?: Record<string, string>
+}
+// A card's Prescient image: a community card's, kept on the server; DUNE's, drawn from its card
+const hasPrescient = (set: SetCards, id: string) => !!(set.prescient?.[id] || set.cards[id])
+const prescientImage = (set: SetCards, id: string, drawCard: (card: Card) => Promise<string>) =>
+  set.prescient?.[id] ? Promise.resolve(set.prescient[id]) : drawCard(set.cards[id])
 const BACK_SIDE = '#back'
 
 export async function loadSet(): Promise<SetCards> {
@@ -98,7 +109,7 @@ export async function loadSet(): Promise<SetCards> {
 // The Community Simulator's cards: the community cards an admin supported, each its own card
 // (id community:<account>/<card>, its script found by that key), and DUNE's, which the Community
 // Deck Builder offers too. Their images are the public ones the server keeps.
-type CommunityCard = { key: string; data: SavedCard; image: string; backImage: string | null }
+type CommunityCard = { key: string; data: SavedCard; image: string; backImage: string | null; prescientImage?: string | null }
 export async function loadCommunitySet(): Promise<SetCards> {
   const [set, { cards }] = await Promise.all([
     loadSet().catch(() => ({ defs: [], images: {}, cards: {} }) as SetCards),
@@ -112,6 +123,7 @@ export async function loadCommunitySet(): Promise<SetCards> {
     if (!d) continue
     set.defs.push({ ...d, community: card.key })
     set.images[id] = { image: url(card.image), back: d.type === 'leader' && card.backImage ? url(card.backImage) : undefined }
+    if (card.prescientImage) (set.prescient ??= {})[id] = url(card.prescientImage)
     const second = d.type === 'base' && card.data.backFrameId && cardDef({ ...card.data, id: id + BACK_SIDE, frameId: card.data.backFrameId })
     if (second && card.backImage) {
       set.defs.push({ ...second, community: card.key })
@@ -490,13 +502,13 @@ export function Simulator(props: { drawCard?: (card: Card) => Promise<string>; p
     const { drawCard } = props
     if (!set || !decks || !drawCard) return
     const wanted = [...new Set(decks.flatMap((list) => list.deck.filter((_, i) => isPrescient(list.printings?.[i] ?? undefined))))]
-    const toDraw = wanted.filter((id) => set.cards[id] && !drawing.current.has(id))
+    const toDraw = wanted.filter((id) => hasPrescient(set, id) && !drawing.current.has(id))
     if (!toDraw.length) return
     for (const id of toDraw) drawing.current.add(id)
     ;(async () => {
       for (const id of toDraw) {
         try {
-          const url = await drawCard(set.cards[id])
+          const url = await prescientImage(set, id, drawCard)
           setPrescient((now) => ({ ...now, [id]: url }))
         } catch {
           // Shown plain, then
@@ -757,13 +769,13 @@ function OnlineGame(props: { seat: OnlineSeat; set: SetCards; drawCard?: (card: 
     }
     walk(view.players)
     const toDraw = [...new Set(seen.filter((c) => isPrescient(view.printings[c.id])).map((c) => c.def))].filter(
-      (def) => set.cards[def] && !drawing.current.has(def),
+      (def) => hasPrescient(set, def) && !drawing.current.has(def),
     )
     for (const def of toDraw) drawing.current.add(def)
     ;(async () => {
       for (const def of toDraw) {
         try {
-          const url = await props.drawCard!(set.cards[def])
+          const url = await prescientImage(set, def, props.drawCard!)
           setPrescient((now) => ({ ...now, [def]: url }))
         } catch {
           drawing.current.delete(def)

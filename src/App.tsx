@@ -65,8 +65,8 @@ import {
 
 const tabs = [
   { id: 'creator', label: 'Card Creator' },
+  // Its Cards and its Deck Builder (the Deck Builder had a tab of its own before)
   { id: 'showroom', label: 'Showroom' },
-  { id: 'decks', label: 'Deck Builder' },
   // Everyone's public cards; only where the accounts server answers
   { id: 'community', label: 'Community' },
   // The DUNE set's own page (#DuneSWU), with its Deck Builder and the game simulator
@@ -755,6 +755,8 @@ function tabFromHash(): TabId {
   const id = window.location.hash.slice(1)
   if (showroomOwnerFromHash()) return 'community'
   if (id === 'support') return 'support'
+  // #decks: the Deck Builder's tab before it moved under the Showroom
+  if (id === 'decks') return 'showroom'
   return tabs.find((tab) => tab.id === id)?.id ?? 'creator'
 }
 
@@ -2814,6 +2816,8 @@ type CommunityCard = {
   entry: ShowcaseCard
   image: string
   backImage: string | null
+  // Its Prescient (full art) version, drawn as it was submitted; null before there was one
+  prescientImage?: string | null
 }
 
 // Its set in the Community Deck Builder: the set code its maker gave it, with the maker's name, so
@@ -2823,7 +2827,7 @@ const communitySet = (card: CommunityCard) => `${card.entry.set?.toUpperCase() |
 function deckCardOfCommunity(card: CommunityCard): DeckCard[] {
   const entry = card.entry
   const set = communitySet(card)
-  const make = (side: ShowcaseCard, id: string, image: string, backImage?: string | null): DeckCard => {
+  const make = (side: ShowcaseCard, id: string, image: string, backImage?: string | null, prescientImage?: string | null): DeckCard => {
     const label = [side.name, side.subtitle].filter(Boolean).join(', ')
     const src = publicImage(image)
     const deckCard: DeckCard = {
@@ -2842,6 +2846,7 @@ function deckCardOfCommunity(card: CommunityCard): DeckCard[] {
       max: maxCopies(side.text ?? ''),
       facts: { ...showcaseFacts(side), set },
       face: <img className="showcase-image" src={src} alt={label} loading="lazy" />,
+      prescientFace: prescientImage ? <img className="showcase-image" src={publicImage(prescientImage)} alt={label} loading="lazy" /> : undefined,
       backFace:
         side.type === 'Leader' && backImage ? (
           <img className="showcase-image" src={publicImage(backImage)} alt={side.backName ?? label} loading="lazy" />
@@ -2862,14 +2867,14 @@ function deckCardOfCommunity(card: CommunityCard): DeckCard[] {
   // A two-sided base is two bases, one per side, as in a Showcase
   if (entry.type === 'Base' && card.backImage && entry.backAspects)
     return [
-      { ...make({ ...entry, back: undefined, backAspects: undefined }, id, card.image), label: sideLabel(entry.name, entry.aspects) },
+      { ...make({ ...entry, back: undefined, backAspects: undefined }, id, card.image, undefined, card.prescientImage), label: sideLabel(entry.name, entry.aspects) },
       {
         ...make({ ...entry, aspects: entry.backAspects }, id + BACK_SIDE, card.backImage),
         label: sideLabel(entry.name, entry.backAspects),
         back: true,
       },
     ]
-  return [make(entry, id, card.image, card.backImage)]
+  return [make(entry, id, card.image, card.backImage, card.prescientImage)]
 }
 
 // The Community Deck Builder: the supported community cards, each maker's set its own, and
@@ -6795,6 +6800,16 @@ function App() {
   // Going to another page with changes not saved: the page stays while the question is asked
   const [leaving, setLeaving] = useState<{ hash: string; what: string } | null>(null)
   const shownHash = useRef(window.location.hash)
+  // The Showroom's view: its cards, or the Deck Builder of them. An old #decks link opens the
+  // Deck Builder there, the address then #showroom.
+  const [showroomView, setShowroomView] = useRemembered<'cards' | 'decks'>('showroom.view', 'cards')
+  const oldDecksLink = () => {
+    if (window.location.hash !== '#decks') return
+    setShowroomView('decks')
+    history.replaceState(null, '', '#showroom')
+    shownHash.current = '#showroom'
+  }
+  useEffect(oldDecksLink, [])
   useEffect(() => {
     const onHashChange = () => {
       const guard = leaveGuard()
@@ -6807,6 +6822,7 @@ function App() {
       setTab(tabFromHash())
       setShowcase(showcaseFromHash())
       setViewing(showroomOwnerFromHash())
+      oldDecksLink()
     }
     window.addEventListener('hashchange', onHashChange)
     return () => window.removeEventListener('hashchange', onHashChange)
@@ -7005,12 +7021,29 @@ function App() {
     try {
       // Its last change saved and drawn first: what is submitted is the card as it is public
       await saving.current
-      await api(`/api/community/${encodeURIComponent(card.id)}`, { method: withdraw ? 'DELETE' : 'POST', token: account.token })
+      if (withdraw) await api(`/api/community/${encodeURIComponent(card.id)}`, { method: 'DELETE', token: account.token })
+      else await submitForPlay(account, card)
       await loadCommunity()
     } catch (err) {
       setSyncError(`Could not ${withdraw ? 'withdraw' : 'submit'} the card: ${(err as Error).message}`)
     }
     setCommunityBusy(null)
+  }
+  // Submitted for play: its Prescient (full art) version drawn and uploaded first, for the Deck
+  // Builder and the Simulator, then the card as it is public. Without it, should it fail to draw.
+  const submitForPlay = async (session: NonNullable<typeof account>, card: Card) => {
+    let prescientImage: string | null = null
+    if (canBePrescient(showcaseEntry(card).type)) {
+      try {
+        const blob = await drawer.draw(prescientOf(card), false)
+        prescientImage = (await api<{ id: string }>('/api/images', { method: 'POST', raw: blob, token: session.token })).id
+      } catch {
+        // Played plain, then
+      } finally {
+        drawer.done()
+      }
+    }
+    await api(`/api/community/${encodeURIComponent(card.id!)}`, { method: 'POST', body: { prescientImage }, token: session.token })
   }
   // Submit for play, every public card in one go: those never submitted, and those changed since
   const toSubmit = cards.filter((card) => {
@@ -7026,7 +7059,7 @@ function App() {
       await saving.current
       for (const [at, card] of todo.entries()) {
         setCommunityBusy(card.id!)
-        await api(`/api/community/${encodeURIComponent(card.id!)}`, { method: 'POST', token: account.token })
+        await submitForPlay(account, card)
         setSubmitProgress({ done: at + 1, of: todo.length })
       }
     } catch (err) {
@@ -7240,6 +7273,24 @@ function App() {
         </p>
       )}
       {tab === 'showroom' && (
+        <nav className="tabs showcase-views">
+          {(['cards', 'decks'] as const).map((value) => (
+            <a
+              key={value}
+              href="#showroom"
+              aria-current={showroomView === value ? 'page' : undefined}
+              onClick={(event) => {
+                event.preventDefault()
+                setShowroomView(value)
+              }}
+            >
+              {value === 'cards' ? 'Cards' : 'Deck Builder'}
+            </a>
+          ))}
+        </nav>
+      )}
+      {tab === 'showroom' && showroomView === 'decks' && <DeckFormats key={decksCopied} cards={cards.flatMap(deckCardOf)} />}
+      {tab === 'showroom' && showroomView === 'cards' && (
         <Showroom
           cards={cards}
           onEdit={editCard}
@@ -7266,7 +7317,6 @@ function App() {
       {askAllModal}
       {drawer.stage}
       {prescient.stage}
-      {tab === 'decks' && <DeckFormats key={decksCopied} cards={cards.flatMap(deckCardOf)} />}
       {tab === 'projects' && <Projects />}
       {tab === 'support' && <SupportPage />}
       {tab === 'creator' && (

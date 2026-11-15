@@ -93,7 +93,8 @@ router.get('/public/images/:id', async (req, res) => {
          AND ((c.is_public AND (c.public_image = $1 OR c.public_back_image = $1))
            -- A supported community card's copy, the card changed since or not
            OR EXISTS (SELECT 1 FROM ${SCHEMA}.community_cards cc
-             WHERE cc.user_id = c.user_id AND cc.card_id = c.id AND cc.status = 'supported' AND (cc.image = $1 OR cc.back_image = $1)))
+             WHERE cc.user_id = c.user_id AND cc.card_id = c.id AND cc.status = 'supported'
+               AND (cc.image = $1 OR cc.back_image = $1 OR cc.prescient_image = $1)))
        LIMIT 1`,
       [id],
     )

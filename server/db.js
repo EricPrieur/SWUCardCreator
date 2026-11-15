@@ -130,6 +130,8 @@ export async function initDB() {
   await query(`ALTER TABLE ${SCHEMA}.messages ADD COLUMN IF NOT EXISTS copy_of INTEGER`)
   // Supported as it was submitted: the engine played every line of it, so it needed no review
   await query(`ALTER TABLE ${SCHEMA}.community_cards ADD COLUMN IF NOT EXISTS auto BOOLEAN NOT NULL DEFAULT FALSE`)
+  // Its Prescient (full art) version, drawn by its owner's browser as it is submitted
+  await query(`ALTER TABLE ${SCHEMA}.community_cards ADD COLUMN IF NOT EXISTS prescient_image CHAR(64)`)
   // Art uploaded by an account: the file is on disk, named by the SHA-256 of its bytes
   await query(`
     CREATE TABLE IF NOT EXISTS ${SCHEMA}.images (

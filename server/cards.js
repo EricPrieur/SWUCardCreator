@@ -65,7 +65,7 @@ async function dropOrphanImages(userId) {
        AND NOT EXISTS (
          SELECT 1 FROM ${SCHEMA}.community_cards cc
          WHERE cc.user_id = i.user_id
-           AND (cc.data::TEXT LIKE '%account:' || i.id || '%' OR cc.image = i.id OR cc.back_image = i.id)
+           AND (cc.data::TEXT LIKE '%account:' || i.id || '%' OR cc.image = i.id OR cc.back_image = i.id OR cc.prescient_image = i.id)
        )
      RETURNING i.id`,
     [userId, ORPHAN_GRACE],
