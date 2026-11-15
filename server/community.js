@@ -220,12 +220,30 @@ router.get('/admin/community', verifyToken, requireAdmin, async (req, res) => {
           reviewedAt: row.reviewed_at,
           engine: def ? scriptStatus(def) : 'none',
           unplayed: def ? unplayedLines(def) : [],
-          text: def ? [def.text, def.backText].filter(Boolean).join('\n') : '',
+          // The card's text as saved, the engine's card or not (one on a frame it doesn't know)
+          text: [row.data?.text, row.data?.pilotText, row.data?.backText].filter(Boolean).join('\n'),
         }
       }),
     })
   } catch (err) {
     console.error('Community queue error:', err)
+    res.status(500).json({ error: 'Server error' })
+  }
+})
+
+// Admins: what waits for them, the count on the Admin button. Community cards waiting, and those
+// supported automatically not yet confirmed; mail written to the Admins they have not opened.
+router.get('/admin/pending', verifyToken, requireAdmin, async (req, res) => {
+  try {
+    const { rows } = await query(
+      `SELECT
+         (SELECT COUNT(*)::INT FROM ${SCHEMA}.community_cards WHERE status = 'awaiting' OR (status = 'supported' AND auto)) AS community,
+         (SELECT COUNT(*)::INT FROM ${SCHEMA}.messages WHERE user_id = $1 AND to_admins AND read_at IS NULL) AS mail`,
+      [req.user.id],
+    )
+    res.json(rows[0])
+  } catch (err) {
+    console.error('Admin pending error:', err)
     res.status(500).json({ error: 'Server error' })
   }
 })

@@ -32,6 +32,11 @@ const typeNames = { unit: 'unit', leader: 'leader', base: 'base', event: 'event'
 // for a unit that can be an upgrade too.
 function frameFacts(frameId: string) {
   const words = frameId.split('-')
+  // A token: the Spice and Credit tokens, and a token upgrade (Experience, Shield, or one a
+  // community card makes, as an Ink token), an upgrade like the built-in ones
+  if (frameId === 'spice-token' || frameId === 'credit-token')
+    return { type: 'token' as const, aspects: [] as Aspect[], arena: 'ground' as Arena, token: true }
+  if (frameId === 'token-upgrade') return { type: 'upgrade' as const, aspects: [] as Aspect[], arena: 'ground' as Arena, token: true }
   const type =
     words[0] === 'spice'
       ? ('token' as const)

@@ -48,7 +48,36 @@ function AdminImage(props: { session: Session; id: string }) {
   return src ? <img className="community-queue-image" src={src} alt="" /> : <div className="community-queue-image" />
 }
 
-export function CommunityTab(props: { session: Session }) {
+// What waits for an admin (server/community.js, /admin/pending): community cards waiting or
+// supported automatically and not yet confirmed, and mail written to the Admins not yet opened.
+// Asked as the page opens, every minute, and again after a review.
+export type AdminPending = { community: number; mail: number }
+const PENDING_EVERY = 60 * 1000
+export function useAdminPending(session: Session | null) {
+  const [pending, setPending] = useState<AdminPending>({ community: 0, mail: 0 })
+  const [asked, setAsked] = useState(0)
+  const isAdmin = !!session?.user.isAdmin
+  useEffect(() => {
+    if (!session || !isAdmin) {
+      setPending({ community: 0, mail: 0 })
+      return
+    }
+    let live = true
+    const ask = () =>
+      api<AdminPending>('/api/admin/pending', { token: session.token })
+        .then((found) => live && setPending(found))
+        .catch(() => undefined)
+    ask()
+    const timer = window.setInterval(ask, PENDING_EVERY)
+    return () => {
+      live = false
+      window.clearInterval(timer)
+    }
+  }, [session?.token, isAdmin, asked])
+  return { pending, refresh: () => setAsked((n) => n + 1) }
+}
+
+export function CommunityTab(props: { session: Session; onReviewed?: () => void }) {
   const { session } = props
   const [list, setList] = useState<Submission[] | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -72,6 +101,7 @@ export function CommunityTab(props: { session: Session }) {
         token: session.token,
       })
       await load()
+      props.onReviewed?.()
     } catch (err) {
       setError((err as Error).message)
     }
@@ -85,12 +115,15 @@ export function CommunityTab(props: { session: Session }) {
     <div className="community-queue">
       {error && <p className="account-error">{error}</p>}
       <p className="account-note">
-        A card the engine plays already (keywords only, or no text) is supported as it is submitted; you may still decline it. For
-        the others, write the script in <code>server/engine/community.ts</code> under its key, restart the server, then Support it here.
+        A card the engine plays already (keywords only, or no text) is supported as it is submitted: it is playable at once, and
+        waits here until you Confirm it (or Decline it). For the others, write the script in{' '}
+        <code>server/engine/community.ts</code> under its key, deploy the server, then Support it here.
       </p>
       {list.map((row) => {
         const id = `${row.key}/${row.version}`
         const playable = row.engine === 'scripted' || row.engine === 'blank'
+        // Supported automatically: playable already, waiting for an admin to confirm it
+        const toConfirm = row.status === 'supported' && row.auto
         return (
           <div key={id} className={`community-queue-row community-${row.status}`}>
             <AdminImage session={session} id={row.image} />
@@ -125,11 +158,17 @@ export function CommunityTab(props: { session: Session }) {
                 <button
                   className="button button-primary"
                   type="button"
-                  disabled={busy === id || row.status === 'supported'}
-                  title={playable ? 'Make this version playable in the Community Deck Builder' : 'The engine does not play all of it yet'}
+                  disabled={busy === id || (row.status === 'supported' && !toConfirm)}
+                  title={
+                    toConfirm
+                      ? 'It is playable already: confirm it, so it no longer waits here'
+                      : playable
+                        ? 'Make this version playable in the Community Deck Builder'
+                        : 'The engine does not play all of it yet'
+                  }
                   onClick={() => review(row, 'supported')}
                 >
-                  Support{playable ? '' : ' anyway'}
+                  {toConfirm ? 'Confirm' : `Support${playable ? '' : ' anyway'}`}
                 </button>
                 <button className="button" type="button" disabled={busy === id || row.status === 'declined'} onClick={() => review(row, 'declined')}>
                   Decline

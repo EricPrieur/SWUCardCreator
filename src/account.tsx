@@ -14,7 +14,7 @@ import {
   type User,
 } from './api'
 import { CardsTab, DecksTab, defaultFilter, FilterBar, GamesTab, StatsTab, type GameFilter } from './AdminGames'
-import { CommunityTab } from './AdminCommunity'
+import { CommunityTab, useAdminPending, type AdminPending } from './AdminCommunity'
 import { MailTab, NotificationsTab, useUnread, type Unread } from './Messages'
 import { KofiHover, SupporterMark } from './Support'
 import { isSupporter, STEP_CENTS, TIER_NAMES, tierOf } from '../server/tiers.ts'
@@ -485,8 +485,8 @@ const ADMIN_TABS = [
 ] as const
 type AdminTab = (typeof ADMIN_TABS)[number][0]
 
-function AdminModal(props: { session: Session; focus?: number; onClose: () => void }) {
-  const { session, focus, onClose } = props
+function AdminModal(props: { session: Session; focus?: number; pending: AdminPending; onPendingChange: () => void; onClose: () => void }) {
+  const { session, focus, pending, onClose } = props
   const [tab, setTab] = useState<AdminTab>('users')
   const [filter, setFilter] = useState<GameFilter>(defaultFilter)
   return (
@@ -503,6 +503,7 @@ function AdminModal(props: { session: Session; focus?: number; onClose: () => vo
             }}
           >
             {label}
+            {value === 'community' && pending.community > 0 && <span className="tab-count">{pending.community}</span>}
           </a>
         ))}
       </nav>
@@ -512,7 +513,7 @@ function AdminModal(props: { session: Session; focus?: number; onClose: () => vo
       {tab === 'games' && <GamesTab session={session} filter={filter} />}
       {tab === 'decks' && <DecksTab session={session} filter={filter} />}
       {tab === 'cards' && <CardsTab session={session} filter={filter} />}
-      {tab === 'community' && <CommunityTab session={session} />}
+      {tab === 'community' && <CommunityTab session={session} onReviewed={props.onPendingChange} />}
       <div className="account-buttons">
         <button className="button button-primary" type="button" onClick={onClose}>
           Close
@@ -689,6 +690,9 @@ export function AccountBar(props: { localCards: number; localDecks: number; onCo
   const [open, setOpen] = useState<'login' | 'register' | 'settings' | 'notification' | 'mail' | 'admin' | null>(null)
   const { unread, refresh } = useUnread(session, online)
   const unreadTotal = unread.notification + unread.mail
+  // An admin's count on Admin: community cards to review, mail to the Admins unread
+  const { pending, refresh: refreshPending } = useAdminPending(session)
+  const pendingTotal = pending.community + pending.mail
   // The account the Admin panel opens at, when asked from elsewhere on the page
   const [focus, setFocus] = useState<number | undefined>()
   const isAdmin = !!session?.user.isAdmin
@@ -747,12 +751,20 @@ export function AccountBar(props: { localCards: number; localDecks: number; onCo
                 <button
                   className="chip"
                   type="button"
+                  title={
+                    pendingTotal
+                      ? [pending.community && `${pending.community} community card${pending.community === 1 ? '' : 's'} to review`, pending.mail && `${pending.mail} mail to the Admins unread`]
+                          .filter(Boolean)
+                          .join(', ')
+                      : 'Open the Admin panel'
+                  }
                   onClick={() => {
                     setFocus(undefined)
                     setOpen('admin')
                   }}
                 >
                   Admin
+                  {pendingTotal > 0 && <span className="tab-count">{pendingTotal > 99 ? '99+' : pendingTotal}</span>}
                 </button>
               )}
             </>
@@ -804,10 +816,24 @@ export function AccountBar(props: { localCards: number; localDecks: number; onCo
             change(null)
             setOpen(null)
           }}
-          onClose={() => setOpen(null)}
+          onClose={() => {
+            setOpen(null)
+            refreshPending()
+          }}
         />
       )}
-      {open === 'admin' && session && <AdminModal session={session} focus={focus} onClose={() => setOpen(null)} />}
+      {open === 'admin' && session && (
+        <AdminModal
+          session={session}
+          focus={focus}
+          pending={pending}
+          onPendingChange={refreshPending}
+          onClose={() => {
+            setOpen(null)
+            refreshPending()
+          }}
+        />
+      )}
     </div>
   )
 }
