@@ -42,7 +42,10 @@ if (process.argv.includes('--json')) {
         (card.upgradePower !== undefined || card.upgradeHp !== undefined ? `, as an upgrade +${card.upgradePower ?? 0}/+${card.upgradeHp ?? 0}` : ''),
     )
     console.log(`traits: ${card.trait || '-'}`)
-    console.log(`text:\n${(c.text || '(none)').replace(/^/gm, '  ')}`)
+    if (card.text !== undefined) {
+      for (const [label, value] of [['text', card.text], ['pilotText', card.pilotText], ['backText', card.backText]] as const)
+        if (value) console.log(`${label}: ${JSON.stringify(value)}`)
+    } else console.log(`text:\n${(c.text || '(none)').replace(/^/gm, '  ')}`)
     if (c.unplayed?.length) console.log(`not played yet:\n${c.unplayed.map((l: string) => `  - ${l}`).join('\n')}`)
     console.log()
   }

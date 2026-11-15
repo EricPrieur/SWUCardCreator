@@ -1212,8 +1212,10 @@ function RecentGameItem(props: { game: RecentGame; set: SetCards; admin: boolean
 type Hover = { image: string; landscape: boolean; right: boolean; foil?: boolean; unit?: string } | null
 // What a click on the board means now: choosing a target for an attack, or a unit for an upgrade
 // How a card is played: using Smuggle, from the discard pile, for a Spice token instead of its cost
-type Way = { smuggle?: boolean; discard?: boolean; spice?: boolean }
-type Mode = { kind: 'attack'; attacker: string } | ({ kind: 'attach'; card: string } & Way) | null
+// pilot: as an upgrade on a Vehicle, using Piloting
+type Way = { smuggle?: boolean; discard?: boolean; spice?: boolean; pilot?: boolean }
+// deploy: a pilot leader to deploy as an upgrade, its Vehicle to choose
+type Mode = { kind: 'attack'; attacker: string } | ({ kind: 'attach'; card: string } & Way) | { kind: 'deploy' } | null
 
 const cardBack = asset('/sim/DuneCardBack01.jpg')
 
@@ -1521,7 +1523,8 @@ function Table(props: {
   }
   const can = (action: Action) => view.actions.some((a) => sameAction(a, action))
   // The play that attaches a card to a unit, played the way chosen, among those the engine allows
-  const sameWay = (a: Way, b: Way) => !!a.smuggle === !!b.smuggle && !!a.discard === !!b.discard && !!a.spice === !!b.spice
+  const sameWay = (a: Way, b: Way) =>
+    !!a.smuggle === !!b.smuggle && !!a.discard === !!b.discard && !!a.spice === !!b.spice && !!a.pilot === !!b.pilot
   const attachAction = (attach: { card: string } & Way, unit: string): Action =>
     view.actions.find((a) => a.type === 'play' && a.card === attach.card && a.attachTo === unit && sameWay(a, attach)) ?? {
       type: 'play',
@@ -1624,7 +1627,9 @@ function Table(props: {
       ? can({ type: 'attack', attacker: mode.attacker, target })
       : mode?.kind === 'attach'
         ? can(attachAction(mode, target))
-        : false
+        : mode?.kind === 'deploy'
+          ? can({ type: 'deploy', attachTo: target })
+          : false
 
   let prompt = ''
   let buttons: { label: string; kind?: string; onClick?: () => void; disabled?: boolean }[] = []
@@ -1721,7 +1726,12 @@ function Table(props: {
       } else if (attacker) {
         prompt = `Choose a target for ${defOf(attacker.def).name}`
       } else if (attachCard) {
-        prompt = `Choose ${defOf(attachCard.def).keywords.fortify ? 'your base' : 'a unit'} for ${defOf(attachCard.def).name}`
+        prompt =
+          mode?.kind === 'attach' && mode.pilot
+            ? `Choose a Vehicle for ${defOf(attachCard.def).name} to pilot`
+            : `Choose ${defOf(attachCard.def).keywords.fortify ? 'your base' : 'a unit'} for ${defOf(attachCard.def).name}`
+      } else if (mode?.kind === 'deploy') {
+        prompt = `Choose a Vehicle for ${defOf(me.leader.def).name} to pilot`
       } else {
         prompt = 'Your turn: play a card, attack or pass'
       }
@@ -1763,6 +1773,10 @@ function Table(props: {
   const leaderOptions = () => [
     ...abilitiesOf('leader'),
     ...(!mode && !asked && can({ type: 'deploy' }) ? [{ label: 'Deploy Leader', run: () => act(ME, { type: 'deploy' }) }] : []),
+    // A pilot leader: or as an upgrade on a Vehicle
+    ...(!mode && !asked && view.actions.some((a) => a.type === 'deploy' && a.attachTo)
+      ? [{ label: 'Deploy as a pilot', run: () => setMode({ kind: 'deploy' }) }]
+      : []),
   ]
   const unitOptions = (id: string) => [
     ...(!mode && !asked && attackActions.some((a) => a.type === 'attack' && a.attacker === id)
@@ -1781,14 +1795,30 @@ function Table(props: {
     const playWay = (way: Way) => {
       const plays = playsOf(id).filter((a) => a.type === 'play' && sameWay(a, way))
       if (plays.some((a) => a.type === 'play' && a.attachTo))
-        setMode({ kind: 'attach', card: id, ...(way.smuggle && { smuggle: true }), ...(way.discard && { discard: true }), ...(way.spice && { spice: true }) })
+        setMode({
+          kind: 'attach',
+          card: id,
+          ...(way.smuggle && { smuggle: true }),
+          ...(way.discard && { discard: true }),
+          ...(way.spice && { spice: true }),
+          ...(way.pilot && { pilot: true }),
+        })
       else act(ME, plays[0])
     }
     const card = [...(me.hand ?? []), ...me.discard, ...me.resources.flatMap((r) => (r.card ? [r.card] : []))].find((c) => c.id === id)
     if (ways.length > 1 && card)
       setMenu({
         card: card.def,
-        options: ways.map((way) => ({ label: way.spice ? 'Play it for a Spice token' : 'Pay for it', run: () => playWay(way) })),
+        options: ways.map((way) => ({
+          label: way.pilot
+            ? 'Play it as a pilot'
+            : way.spice
+              ? 'Play it for a Spice token'
+              : ways.some((w) => w.pilot)
+                ? 'Play it as a unit'
+                : 'Pay for it',
+          run: () => playWay(way),
+        })),
       })
     else if (ways.length) playWay(ways[0])
   }
@@ -1809,7 +1839,14 @@ function Table(props: {
     if (asked) {
       if (askedOn(id)) pickAnswer(id)
     } else if (mode && isTarget(id)) {
-      act(ME, mode.kind === 'attack' ? { type: 'attack', attacker: mode.attacker, target: id } : attachAction(mode, id))
+      act(
+        ME,
+        mode.kind === 'attack'
+          ? { type: 'attack', attacker: mode.attacker, target: id }
+          : mode.kind === 'deploy'
+            ? { type: 'deploy', attachTo: id }
+            : attachAction(mode, id),
+      )
     } else if (mode?.kind === 'attack' && mode.attacker === id) {
       setMode(null)
     } else if (!mode) {

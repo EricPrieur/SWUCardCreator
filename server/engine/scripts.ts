@@ -139,6 +139,10 @@ export type CardScript = {
   front: Abilities
   // A leader's unit side's
   back?: Abilities
+  // A pilot's Piloting box, as the card's (a pilot leader's on its unit side), and what it does
+  // while the card is attached as an upgrade (its On Attack is the attached unit's: attachedOnAttack)
+  pilotText?: string
+  pilot?: Abilities
 }
 
 // --- Helpers for the scripts ---
@@ -153,7 +157,7 @@ function discardOr(g: Game, self: Self, count: number, otherwise: (unitId: strin
   const target = g.chooseOne(
     self.controller,
     `${self.def.name}: choose an enemy non-leader unit`,
-    unitIds(g, (u) => g.controller(u) !== self.controller && !u.leader),
+    unitIds(g, (u) => g.controller(u) !== self.controller && !g.isLeader(u)),
     { ai: 'harm', source: self.def.id },
   )
   if (!target) return
@@ -236,7 +240,7 @@ const dune: CardScript[] = [
           label: 'pain or a card',
           resources: 1,
           exhaust: true,
-          can: (g, self) => g.units((u) => g.controller(u) !== self.controller && !u.leader).length > 0,
+          can: (g, self) => g.units((u) => g.controller(u) !== self.controller && !g.isLeader(u)).length > 0,
           run: (g, self) => discardOr(g, self, 1, (id) => g.damage(id, 2, self), 'Mohiam damage'),
         },
       ],
@@ -489,7 +493,7 @@ const dune: CardScript[] = [
         g.damage(target, 2, self)
         // A unit may be defeated even once the target is gone (for its When Defeated ability, say):
         // only the damage needs the target still in play
-        const friends = unitIds(g, (u) => g.controller(u) === self.controller && !u.leader)
+        const friends = unitIds(g, (u) => g.controller(u) === self.controller && !g.isLeader(u))
         const there = !!g.unit(target)
         const sacrifice = g.chooseOne(
           self.controller,
@@ -741,7 +745,7 @@ const dune: CardScript[] = [
     front: {
       whenPlayed: (g, self) => {
         if (!friendlyIds(g, self, (u) => u.id !== self.id && g.hasTrait(u, 'Fremen')).length) return
-        const targets = unitIds(g, (u) => g.controller(u) !== self.controller && !u.leader && g.cost(u) <= 3)
+        const targets = unitIds(g, (u) => g.controller(u) !== self.controller && !g.isLeader(u) && g.cost(u) <= 3)
         const pick = g.chooseOne(self.controller, "Fedaykin Night Raiders: return an enemy non-leader unit that costs 3 or less to its owner's hand", targets, {
           ai: 'harm',
           source: self.def.id,
@@ -784,7 +788,7 @@ const dune: CardScript[] = [
           // A Fremen unit played this phase: one that entered play this phase and is still there,
           // not a token (a unit played and already defeated is missed)
           can: (g, self) =>
-            friendlyIds(g, self, (u) => !u.leader && !g.def(u).token && g.hasTrait(u, 'Fremen') && u.entered === g.state.phaseCount).length > 0,
+            friendlyIds(g, self, (u) => !g.isLeader(u) && !g.def(u).token && g.hasTrait(u, 'Fremen') && u.entered === g.state.phaseCount).length > 0,
           run: (g, self) => {
             g.createToken(self.controller, 'Fremen')
           },
@@ -992,7 +996,7 @@ const dune: CardScript[] = [
     front: {
       onAttack: (g, self) => {
         const defender = self.attack?.target === 'base' ? undefined : g.unit(self.attack!.target)
-        if (defender?.damage && !defender.leader) g.defeat(defender.id, self)
+        if (defender?.damage && !g.isLeader(defender)) g.defeat(defender.id, self)
       },
     },
   },
@@ -1711,7 +1715,7 @@ const dune: CardScript[] = [
       whenYouPlay: (g, self) => {
         const p = self.controller
         if (!self.otherDef?.traits.includes('Bene Gesserit') || !g.leaderReady(p)) return
-        const targets = g.units((u) => g.controller(u) !== p && !u.leader && g.cost(u) <= 4 && !u.exhausted)
+        const targets = g.units((u) => g.controller(u) !== p && !g.isLeader(u) && g.cost(u) <= 4 && !u.exhausted)
         // Worth it only for a unit to exhaust
         if (!targets.length) return
         if (!g.may(p, 'Lady Jessica: exhaust this leader to exhaust an enemy unit that costs 4 or less?', { yes: 'Exhaust', no: 'Skip', source: self.def.id })) return
@@ -2303,12 +2307,12 @@ const dune: CardScript[] = [
     front: {
       play: (g, self) => {
         const p = self.controller
-        const leader = g.units((u) => !!u.leader && g.controller(u) !== p).length > 0
+        const leader = g.units((u) => g.isLeader(u) && g.controller(u) !== p).length > 0
         const paid =
           g.spice(p) >= 2 &&
           g.may(p, 'War of Assassins: defeat 2 Spice tokens to be able to defeat a leader unit?', { yes: 'Defeat 2 Spice tokens', no: 'Skip', ai: leader, source: self.def.id })
         if (paid) for (let i = 0; i < 2; i++) g.defeatSpice(p)
-        const pick = g.chooseOne(p, `War of Assassins: defeat a ${paid ? '' : 'non-leader '}unit`, unitIds(g, (u) => paid || !u.leader), {
+        const pick = g.chooseOne(p, `War of Assassins: defeat a ${paid ? '' : 'non-leader '}unit`, unitIds(g, (u) => paid || !g.isLeader(u)), {
           ai: 'harm',
           source: self.def.id,
         })
@@ -2322,12 +2326,12 @@ const dune: CardScript[] = [
     front: {
       play: (g, self) => {
         const p = self.controller
-        const big = g.units((u) => g.controller(u) !== p && !u.leader && g.cost(u) > 6).length > 0
+        const big = g.units((u) => g.controller(u) !== p && !g.isLeader(u) && g.cost(u) > 6).length > 0
         const paid =
           g.spice(p) > 0 &&
           g.may(p, "Coriolis Storm: defeat a Spice token to be able to return a unit that costs more than 6?", { yes: 'Defeat a Spice token', no: 'Skip', ai: big, source: self.def.id }) &&
           g.defeatSpice(p)
-        const pick = g.chooseOne(p, "Coriolis Storm: return a non-leader unit to its owner's hand", unitIds(g, (u) => !u.leader && (paid || g.cost(u) <= 6)), {
+        const pick = g.chooseOne(p, "Coriolis Storm: return a non-leader unit to its owner's hand", unitIds(g, (u) => !g.isLeader(u) && (paid || g.cost(u) <= 6)), {
           ai: 'harm',
           source: self.def.id,
         })
@@ -2341,7 +2345,7 @@ const dune: CardScript[] = [
     front: {
       play: (g, self) => {
         const p = self.controller
-        const vehicles = friendlyIds(g, self, (u) => u.arena === 'ground' && g.hasTrait(u, 'Vehicle') && !u.leader)
+        const vehicles = friendlyIds(g, self, (u) => u.arena === 'ground' && g.hasTrait(u, 'Vehicle') && !g.isLeader(u))
         const vehicle = g.chooseOne(p, "Earning the Fremen's respect: you may defeat a friendly ground Vehicle unit", vehicles, {
           optional: true,
           ai: 'none',
@@ -2885,7 +2889,7 @@ const dune: CardScript[] = [
     front: {
       whenPlayed: (g, self) => {
         const p = self.controller
-        const ids = friendlyIds(g, self, (u) => u.id !== self.id && !u.leader && g.cost(u) <= 2 && g.def(u).name !== 'Scout')
+        const ids = friendlyIds(g, self, (u) => u.id !== self.id && !g.isLeader(u) && g.cost(u) <= 2 && g.def(u).name !== 'Scout')
         const pick = g.chooseOne(p, "Scout: you may return another friendly unit that costs 2 or less to its owner's hand", ids, {
           optional: true,
           ai: 'none',
@@ -2965,7 +2969,7 @@ const dune: CardScript[] = [
     front: {
       whenPlayed: (g, self) => {
         if (!g.controlsArrakis(self.controller)) return
-        for (const id of unitIds(g, (u) => !u.leader && g.hasTrait(u, 'Fremen'))) g.returnToHand(id)
+        for (const id of unitIds(g, (u) => !g.isLeader(u) && g.hasTrait(u, 'Fremen'))) g.returnToHand(id)
         for (const id of unitIds(g, (u) => u.id !== self.id && u.arena === 'ground' && !g.hasTrait(u, 'Fremen'))) g.defeat(id, self)
       },
       afterAttack: (g, self) => g.toDeckBottom(self.id),
@@ -3139,7 +3143,7 @@ const dune: CardScript[] = [
     front: {
       play: (g, self) => {
         const p = self.controller
-        const target = g.chooseOne(p, 'Seduction: choose an enemy non-leader unit', unitIds(g, (u) => g.controller(u) !== p && !u.leader), {
+        const target = g.chooseOne(p, 'Seduction: choose an enemy non-leader unit', unitIds(g, (u) => g.controller(u) !== p && !g.isLeader(u)), {
           ai: 'harm',
           source: self.def.id,
         })
@@ -3159,7 +3163,7 @@ const dune: CardScript[] = [
     front: {
       play: (g, self) => {
         if (!g.controlsArrakis(self.controller)) return
-        const target = g.chooseOne(self.controller, 'Worm Signs: choose a non-Fremen non-leader ground unit', unitIds(g, (u) => u.arena === 'ground' && !u.leader && !g.hasTrait(u, 'Fremen')), {
+        const target = g.chooseOne(self.controller, 'Worm Signs: choose a non-Fremen non-leader ground unit', unitIds(g, (u) => u.arena === 'ground' && !g.isLeader(u) && !g.hasTrait(u, 'Fremen')), {
           ai: 'harm',
           source: self.def.id,
         })
@@ -3217,7 +3221,7 @@ const dune: CardScript[] = [
           return
         }
         if (!g.pay(p, 3)) return
-        const pick = g.chooseOne(p, 'Family Atomics: defeat a non-leader unit', unitIds(g, (u) => !u.leader), { ai: 'harm', source: self.def.id })
+        const pick = g.chooseOne(p, 'Family Atomics: defeat a non-leader unit', unitIds(g, (u) => !g.isLeader(u)), { ai: 'harm', source: self.def.id })
         if (pick) g.defeat(pick)
         g.damage(`base${p}`, 3, self)
       },
@@ -3729,7 +3733,7 @@ function fenringLook(g: Game, self: Self) {
 // Lady Margot Fenring: a card discarded takes a unit that costs 4 or less; otherwise it is exhausted
 function margot(g: Game, self: Self) {
   const p = self.controller
-  const target = g.chooseOne(p, 'Lady Margot Fenring: choose an enemy non-leader unit', unitIds(g, (u) => g.controller(u) !== p && !u.leader), {
+  const target = g.chooseOne(p, 'Lady Margot Fenring: choose an enemy non-leader unit', unitIds(g, (u) => g.controller(u) !== p && !g.isLeader(u)), {
     ai: 'harm',
     source: self.def.id,
   })
@@ -3790,6 +3794,8 @@ function findScript(card: CardDef): CardScript | undefined {
   let script = card.community ? communityScript(card.community) : byKey.get(keyOf(card.name, card.subtitle))
   if (script && normal(script.text) !== normal(card.text)) script = undefined
   if (script && card.type === 'leader' && normal(script.backText) !== normal(card.backText)) script = undefined
+  // A Piloting box the script plays must be the card's
+  if (script && (script.pilot || script.pilotText !== undefined) && normal(script.pilotText) !== normal(card.pilotText)) script = undefined
   found.set(lookup, script)
   return script
 }
@@ -3801,7 +3807,7 @@ function findScript(card: CardDef): CardScript | undefined {
 export function scriptStatus(card: CardDef): 'scripted' | 'outdated' | 'none' | 'blank' {
   if (scriptFor(card)) return 'scripted'
   if (card.community ? communityScript(card.community) : byKey.has(keyOf(card.name, card.subtitle))) return 'outdated'
-  const lines = [normal(card.text), normal(card.backText)].join('\n').split('\n').filter(Boolean)
+  const lines = [normal(card.text), normal(card.backText), normal(card.pilotText)].join('\n').split('\n').filter(Boolean)
   if (!lines.length) return 'blank'
   return lines.every(enginePlays) ? 'scripted' : 'none'
 }
@@ -3810,15 +3816,16 @@ export function scriptStatus(card: CardDef): 'scripted' | 'outdated' | 'none' | 
 // community card still needs a script for
 export function unplayedLines(card: CardDef): string[] {
   if (scriptFor(card)) return []
-  return [normal(card.text), normal(card.backText)].join('\n').split('\n').filter((line) => line && !enginePlays(line))
+  return [normal(card.text), normal(card.backText), normal(card.pilotText)].join('\n').split('\n').filter((line) => line && !enginePlays(line))
 }
 
 const nothing: Abilities = {}
 
-export function abilitiesOf(card: CardDef, side: 'front' | 'back'): Abilities {
+// side 'pilot': the card attached as an upgrade (a pilot, a pilot leader)
+export function abilitiesOf(card: CardDef, side: 'front' | 'back' | 'pilot'): Abilities {
   const script = scriptFor(card)
   if (!script) return nothing
-  return (side === 'back' ? script.back : script.front) ?? nothing
+  return (side === 'back' ? script.back : side === 'pilot' ? script.pilot : script.front) ?? nothing
 }
 
 // For the scripts' own test: every script, by name

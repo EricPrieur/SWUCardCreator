@@ -59,8 +59,15 @@ export type CardDef = {
   attachedKeywords?: Keywords
   // A unit attached as an upgrade (a pilot frame's second box): its modifiers then
   upgrade?: { power: number; hp: number }
-  // A leader's unit side
-  unit?: { power: number; hp: number; arena: Arena; keywords: Keywords; arrakisKeywords?: Keywords }
+  // Piloting [Y] (7.5.17): it may be played as an upgrade on a friendly Vehicle unit without a
+  // Pilot on it, for this cost
+  piloting?: number
+  // A pilot's (or pilot leader's) Piloting box: what it does attached as an upgrade
+  pilotText?: string
+  // "Attached unit is a leader unit." (3.4.7): attached, it makes its unit a leader unit
+  makesLeader?: boolean
+  // A leader's unit side; pilot: a pilot leader's, deployed as an upgrade, its modifiers
+  unit?: { power: number; hp: number; arena: Arena; keywords: Keywords; arrakisKeywords?: Keywords; pilot?: { power: number; hp: number } }
   text?: string
   // A leader's unit side's text
   backText?: string
@@ -230,9 +237,11 @@ export type Action =
   | { type: 'resource'; cards: string[] }
   // From the hand; from the resources using Smuggle; from the discard pile when the card says
   // so; for a Spice token instead of its cost when the card says so
-  | { type: 'play'; card: string; attachTo?: string; smuggle?: boolean; discard?: boolean; spice?: boolean; awakened?: boolean }
+  // pilot: as an upgrade, using Piloting (attachTo the Vehicle)
+  | { type: 'play'; card: string; attachTo?: string; smuggle?: boolean; discard?: boolean; spice?: boolean; awakened?: boolean; pilot?: boolean }
   | { type: 'attack'; attacker: string; target: string | 'base' }
-  | { type: 'deploy' }
+  // attachTo: a pilot leader deployed as an upgrade on that Vehicle
+  | { type: 'deploy'; attachTo?: string }
   // A leader's or unit's Action ability, by its number on the card
   | { type: 'ability'; source: string; index: number }
   | { type: 'answer'; picks: string[] }

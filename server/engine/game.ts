@@ -232,8 +232,24 @@ export function keywordsOf(state: GameState, unit: UnitState): Keywords {
 // its upgrade box
 const modifier = (state: GameState, upgrade: Inst, stat: 'power' | 'hp') => {
   const card = def(state, upgrade)
+  if (card.type === 'leader') return card.unit?.pilot?.[stat] ?? 0
   return card.type === 'upgrade' ? card[stat] : (card.upgrade?.[stat] ?? 0)
 }
+
+// --- Pilots (7.5.17, 3.4.4a) ---
+
+// A unit or leader card attached as an upgrade: a pilot. Its Piloting box's abilities are its own then.
+const isCardAsUpgrade = (card: CardDef) => card.type === 'unit' || card.type === 'leader'
+const upgradeScript = (state: GameState, upgrade: Inst) => scriptOf(state, upgrade, isCardAsUpgrade(def(state, upgrade)) ? 'pilot' : 'front')
+// A Pilot on it: a card attached using Piloting, or an upgrade with the Pilot trait
+const hasPilot = (state: GameState, unit: UnitState) =>
+  unit.upgrades.some((u) => isCardAsUpgrade(def(state, u)) || def(state, u).traits.includes('Pilot'))
+// Where a pilot may go: a friendly Vehicle unit without a Pilot on it
+export const canPilot = (state: GameState, p: PlayerId, unit: UnitState) =>
+  controllerOf(state, unit) === p && traitsOf(state, unit).includes('Vehicle') && !hasPilot(state, unit)
+// A leader unit for every "leader" and "non-leader" (3.4.7): the leader's own, or one a pilot
+// leader is attached to ("Attached unit is a leader unit.")
+export const isLeaderUnit = (state: GameState, unit: UnitState) => !!unit.leader || unit.upgrades.some((u) => !!def(state, u).makesLeader)
 
 export function hpOf(state: GameState, unit: UnitState) {
   const card = def(state, unit)
@@ -379,7 +395,7 @@ function damageUnit(state: GameState, unit: UnitState, amount: number, combat = 
   // Combat damage an upgrade on it changes (Ink: plus 1, then the token is defeated)
   if (combat)
     for (const upgrade of [...unit.upgrades]) {
-      const change = scriptOf(state, upgrade).attachedCombatDamage
+      const change = upgradeScript(state, upgrade).attachedCombatDamage
       if (!change) continue
       const owner = upgrade.owner
       amount = change(new Game(state, owner), { id: upgrade.id, controller: owner, def: def(state, upgrade), attachedTo: unit.id }, amount)
@@ -399,6 +415,13 @@ function shieldDefeated(state: GameState, unit: UnitState) {
 // An upgrade leaving play: to its owner's discard pile, a token set aside (3.7.3)
 function discardUpgrade(state: GameState, upgrade: Inst & { owner: PlayerId }) {
   state.effects = state.effects.filter((e) => e.source !== upgrade.id)
+  // A pilot leader: back to its base zone, exhausted (3.4.5)
+  if (def(state, upgrade).type === 'leader') {
+    const leader = state.players[upgrade.owner].leader
+    leader.deployed = false
+    leader.exhausted = true
+    return
+  }
   if (!def(state, upgrade).token) state.players[upgrade.owner].discard.push({ id: upgrade.id, def: upgrade.def })
 }
 
@@ -408,7 +431,7 @@ function exhaustUnit(state: GameState, unit: UnitState) {
   unit.exhausted = true
   const p = controllerOf(state, unit)
   for (const upgrade of unit.upgrades)
-    queue(state, p, nameOf(state, upgrade), 'attached unit exhausted', scriptOf(state, upgrade).whenAttachedExhausted, {
+    queue(state, p, nameOf(state, upgrade), 'attached unit exhausted', upgradeScript(state, upgrade).whenAttachedExhausted, {
       id: upgrade.id,
       controller: p,
       def: def(state, upgrade),
@@ -456,7 +479,7 @@ function queue(state: GameState, player: PlayerId, source: string, what: string,
 
 // The abilities a card has where it is: a unit's, a leader's unit side's once deployed, a
 // leader side's
-function scriptOf(state: GameState, inst: { def: string }, side: 'front' | 'back' = 'front'): Abilities {
+function scriptOf(state: GameState, inst: { def: string }, side: 'front' | 'back' | 'pilot' = 'front'): Abilities {
   return abilitiesOf(def(state, inst), side)
 }
 const unitScript = (state: GameState, unit: UnitState) => scriptOf(state, unit, unit.leader ? 'back' : 'front')
@@ -472,7 +495,7 @@ function holders(state: GameState, p: PlayerId): Holder[] {
   for (const unit of player.units) {
     list.push({ self: { id: unit.id, controller: p, def: def(state, unit) }, abilities: unitScript(state, unit) })
     for (const upgrade of unit.upgrades)
-      list.push({ self: { id: upgrade.id, controller: p, def: def(state, upgrade), attachedTo: unit.id }, abilities: scriptOf(state, upgrade) })
+      list.push({ self: { id: upgrade.id, controller: p, def: def(state, upgrade), attachedTo: unit.id }, abilities: upgradeScript(state, upgrade) })
   }
   for (const upgrade of player.base.upgrades ?? [])
     list.push({ self: { id: upgrade.id, controller: p, def: def(state, upgrade), attachedTo: baseId(p) }, abilities: scriptOf(state, upgrade) })
@@ -600,7 +623,7 @@ function defeatUnit(state: GameState, unit: UnitState) {
   state.effects = state.effects.filter((e) => e.unit !== unit.id)
   // What an upgrade gives the unit it is on: "Attached unit gains: [When Defeated:] …"
   for (const upgrade of unit.upgrades)
-    queue(state, p, nameOf(state, upgrade), 'When Defeated', scriptOf(state, upgrade).attachedWhenDefeated, {
+    queue(state, p, nameOf(state, upgrade), 'When Defeated', upgradeScript(state, upgrade).attachedWhenDefeated, {
       id: upgrade.id,
       controller: p,
       def: def(state, upgrade),
@@ -756,6 +779,13 @@ export function legalActions(state: GameState, p: PlayerId): Action[] {
     } else if (!fromDiscard || fromDiscard(g, self)) {
       actions.push({ type: 'play', card: card.id, ...extra })
     }
+    // Piloting (7.5.17): as an upgrade on a friendly Vehicle unit without a Pilot, for its
+    // Piloting cost (not for a Spice token, nor using Smuggle)
+    if (d.type === 'unit' && d.piloting !== undefined && !spice && from !== 'smuggle' && !fromDiscard) {
+      const affordable = priceOf(state, p, d, from, { free: awakened, pilot: true }) - spiceRoom(state, p, d) <= ready && canPayAdditional(state, p, d)
+      if (affordable)
+        for (const unit of player.units) if (canPilot(state, p, unit)) actions.push({ type: 'play', card: card.id, attachTo: unit.id, pilot: true, ...extra })
+    }
   }
   for (const card of player.hand) {
     plays(card, 'hand')
@@ -779,8 +809,11 @@ export function legalActions(state: GameState, p: PlayerId): Action[] {
   }
   // 3.4.4: the Epic Action deploys the leader once you control enough resources
   const leader = def(state, player.leader)
-  if (!player.leader.deployed && !player.leader.epicUsed && player.resources.length >= leader.cost)
+  if (!player.leader.deployed && !player.leader.epicUsed && player.resources.length >= leader.cost) {
     actions.push({ type: 'deploy' })
+    // A pilot leader: or as an upgrade on a friendly Vehicle unit without a Pilot on it
+    if (leader.unit?.pilot) for (const unit of player.units) if (canPilot(state, p, unit)) actions.push({ type: 'deploy', attachTo: unit.id })
+  }
   for (const { source, index } of actionAbilities(state, p)) actions.push({ type: 'ability', source, index })
   if (!state.initiativeTaken) actions.push({ type: 'initiative' })
   return actions
@@ -894,6 +927,7 @@ function perform(state: GameState, p: PlayerId, action: Action) {
         spiceInstead: action.spice,
         free: awakened,
         awakened,
+        pilot: action.pilot,
       })
       state.passes = 0
       break
@@ -903,7 +937,7 @@ function perform(state: GameState, p: PlayerId, action: Action) {
       state.passes = 0
       break
     case 'deploy':
-      deploy(state, p)
+      deploy(state, p, action.attachTo)
       state.passes = 0
       break
     case 'ability':
@@ -1042,7 +1076,8 @@ export type PlayedFrom = 'hand' | 'discard' | 'smuggle' | 'plot' | 'deck'
 // (which leaves additional costs to pay, 1.8), "ignoring its additional costs"
 // spiceInstead: "for free by defeating a friendly Spice token"
 // awakened: it gains "[When Played:] Ready this unit." (The Sleeper Has Awakened)
-type PlayOptions = { discount?: number; free?: boolean; ignoreAdditional?: boolean; spiceInstead?: boolean; awakened?: boolean }
+// pilot: using Piloting, its Piloting cost
+type PlayOptions = { discount?: number; free?: boolean; ignoreAdditional?: boolean; spiceInstead?: boolean; awakened?: boolean; pilot?: boolean }
 
 // The next card of a trait a player plays this phase costs less (Bene Gesserit Sister); each
 // such discount waiting applies to that card
@@ -1057,7 +1092,12 @@ function costsLess(state: GameState, p: PlayerId, card: CardDef, from: PlayedFro
 
 function priceOf(state: GameState, p: PlayerId, card: CardDef, from: PlayedFrom, options: PlayOptions = {}) {
   if (options.free || options.spiceInstead) return 0
-  const cost = from === 'smuggle' ? smuggleCost(state, p, card) : playCost(state, p, card)
+  const cost =
+    from === 'smuggle'
+      ? smuggleCost(state, p, card)
+      : options.pilot && card.piloting !== undefined
+        ? card.piloting + aspectPenalty(state, p, card)
+        : playCost(state, p, card)
   return Math.max(0, cost - (options.discount ?? 0) - discountsFor(state, p, card).reduce((sum, d) => sum + d.amount, 0) - costsLess(state, p, card, from))
 }
 
@@ -1099,7 +1139,7 @@ const isBanned = (state: GameState, p: PlayerId, card: CardDef) => state.banned.
 function canAttach(state: GameState, p: PlayerId, card: CardDef, unit: UnitState) {
   if (card.attach?.friendly && controllerOf(state, unit) !== p) return false
   if (card.attach?.enemy && controllerOf(state, unit) === p) return false
-  if (card.attach?.nonLeader && unit.leader) return false
+  if (card.attach?.nonLeader && isLeaderUnit(state, unit)) return false
   const traits = traitsOf(state, unit)
   if (card.attach?.not?.some((trait) => traits.includes(trait))) return false
   return true
@@ -1164,7 +1204,15 @@ function playCard(state: GameState, p: PlayerId, id: string, attachTo?: string, 
   const how = { hand: '', discard: ' from the discard pile', smuggle: ' using Smuggle', plot: ' using Plot', deck: ' from the deck' }[from]
   const using = how + (options.spiceInstead ? ' by defeating a Spice token' : options.free ? ' for free' : '')
   const self: Self = { id: card.id, controller: p, def: d, smuggled: from === 'smuggle', plot: from === 'plot' }
-  if (d.type === 'unit') {
+  if (d.type === 'unit' && options.pilot && attachTo) {
+    // Using Piloting: attached as an upgrade, its Piloting box what it does. Its When Played
+    // abilities resolve as it is played, whichever way (3.13.3: all its text is still its own).
+    const unit = findUnit(state, attachTo) as UnitState
+    unit.upgrades.push({ ...card, owner: p })
+    log(state, `${player.name} plays ${d.name} as a pilot on ${nameOf(state, unit)}${using}`, p)
+    const attached = { ...self, other: unit.id, attachedTo: unit.id }
+    queue(state, p, d.name, 'When Played', scriptOf(state, card, 'pilot').whenPlayed, attached)
+  } else if (d.type === 'unit') {
     // 3.5.3: a unit enters play exhausted
     const unit: UnitState = { ...card, owner: p, arena: d.arena ?? 'ground', damage: 0, exhausted: true, upgrades: [], entered: state.phaseCount }
     player.units.push(unit)
@@ -1332,7 +1380,7 @@ function attack(state: GameState, p: PlayerId, attackerId: string, target: strin
   if (options.onAttack) queue(state, p, nameOf(state, attacker), 'On Attack', options.onAttack, self)
   // An On Attack its upgrades give it (Maula Pistol): the unit's own, as it attacks
   for (const upgrade of attacker.upgrades)
-    queue(state, p, nameOf(state, attacker), 'On Attack', scriptOf(state, upgrade).attachedOnAttack, { ...self, attachedTo: attackerId })
+    queue(state, p, nameOf(state, attacker), 'On Attack', upgradeScript(state, upgrade).attachedOnAttack, { ...self, attachedTo: attackerId })
   // Saboteur's second ability (7.5.10a): "On Attack: Defeat all Shield tokens attached to the defending unit."
   if (keywordsOf(state, attacker).saboteur && target !== 'base') queue(state, p, nameOf(state, attacker), 'Saboteur', sabotage, self)
   trigger(state, p, 'whenFriendlyAttacks', { other: attackerId, attack: self.attack }, attackerId)
@@ -1453,10 +1501,24 @@ export const handRevealed = (state: GameState, p: PlayerId) => holders(state, ot
 export const seesTopCard = (state: GameState, p: PlayerId) => holders(state, p).some(({ abilities }) => abilities.seesTopCard)
 
 // 3.4.4: flip to the unit side, in its arena, ready; deployed, not played
-function deploy(state: GameState, p: PlayerId) {
+function deploy(state: GameState, p: PlayerId, attachTo?: string) {
   const player = state.players[p]
   player.leader.deployed = true
   player.leader.epicUsed = true
+  // A pilot leader deployed as an upgrade (3.4.4a): its unit side attached to the Vehicle
+  const vehicle = attachTo ? findUnit(state, attachTo) : undefined
+  if (vehicle) {
+    const id = `L${p}`
+    vehicle.upgrades.push({ id, def: player.leader.def, owner: p })
+    log(state, `${player.name} deploys ${nameOf(state, player.leader)} as a pilot on ${nameOf(state, vehicle)}`, p)
+    const self = { id, controller: p, def: def(state, player.leader), other: vehicle.id, attachedTo: vehicle.id }
+    queue(state, p, nameOf(state, player.leader), 'When Deployed', scriptOf(state, player.leader, 'back').whenDeployed, self)
+    queue(state, p, nameOf(state, player.leader), 'When Deployed', scriptOf(state, player.leader, 'pilot').whenDeployed, self)
+    checkUnique(state, p)
+    queuePlots(state, p)
+    resolveTriggers(state)
+    return
+  }
   const unit: UnitState = {
     id: `L${p}`,
     def: player.leader.def,
@@ -1570,6 +1632,10 @@ export class Game {
   }
   cost(unit: UnitState) {
     return this.def(unit).cost
+  }
+  // A leader unit, for "leader" and "non-leader": the leader's own, or one a pilot leader made one
+  isLeader(unit: UnitState) {
+    return isLeaderUnit(this.state, unit)
   }
   // A unit in play's traits include those it gains
   hasTrait(card: { def: string }, trait: string) {

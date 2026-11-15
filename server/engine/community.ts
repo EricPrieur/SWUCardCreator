@@ -28,14 +28,10 @@ function inkEach(g: Game, self: Self) {
   const enemies = enemyUnits(g, self)
   const n = Math.min(friendlyUnits(g, self).length, enemies.length)
   if (!n) return
-  const ai = [...enemies]
-    .sort((a, b) => g.power(b) - g.power(a))
-    .slice(0, n)
-    .map((u) => u.id)
   const picks = g.choose(self.controller, `${self.def.name}: give 1 Ink token to each of ${n} different enemy units`, enemies.map((u) => u.id), {
     min: n,
     max: n,
-    ai,
+    ai: 'harm',
     source: self.def.id,
   })
   for (const id of picks) ink(g, id)
@@ -180,12 +176,14 @@ export const communityScripts: (CardScript & { card: string })[] = [
     },
   },
   {
-    // A pilot leader. Its Piloting box ("Attached unit is a leader unit." and an On Attack) isn't
-    // played yet: the engine deploys a leader as a unit only, so he deploys as one.
+    // A pilot leader: deployed as a unit, or as an upgrade on a friendly Vehicle, which then is a
+    // leader unit and inks with each attack
     card: '5/ef5317d1-f494-4946-842d-6f820763e767',
     name: 'DJ Octavio',
     text: '[Action [[Arrow]]:] For each friendly unit, give 1 Ink token to an enemy unit.',
     backText: '[When Deployed:] Each friendly unit gives 1 Ink token to a different enemy unit.',
+    pilotText: 'Attached unit is a leader unit.\n[On Attack:] Each friendly unit gives 1 Ink token to a different enemy unit.',
+    pilot: { attachedOnAttack: inkEach },
     front: {
       actions: [
         {

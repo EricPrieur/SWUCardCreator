@@ -222,9 +222,12 @@ router.get('/admin/community', verifyToken, requireAdmin, async (req, res) => {
           unplayed: def ? unplayedLines(def) : [],
           // The card's text as saved, the engine's card or not (one on a frame it doesn't know)
           text: [row.data?.text, row.data?.pilotText, row.data?.backText].filter(Boolean).join('\n'),
-          // What a script needs besides the text
+          // What a script needs besides the text; each text apart, as a script quotes it
           card: {
             frameId: row.data?.frameId,
+            text: row.data?.text ?? '',
+            pilotText: row.data?.pilotText ?? '',
+            backText: row.data?.backText ?? '',
             cost: row.data?.cost,
             power: row.data?.power,
             hp: row.data?.hp,

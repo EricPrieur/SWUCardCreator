@@ -82,6 +82,18 @@ const spiceCostLine = /^As an additional cost to play this unit, defeat (a|\d+) 
 const startSpiceLine = /^You start the game with (a|\d+) \[?Spice Tokens?\]?\.$/i
 const attachLine = /^Attach to an? ((?:(?:friendly|enemy|non-leader|non-\[\{?[^}\]]+\}?\]),? )*)unit\.$/i
 const attachedGainsLine = /^Attached unit gains ((?:\[[^\]]+\](?:,? and |, )?)+)\.$/i
+// A pilot's Piloting box: "[Piloting] [[2 Command Villainy]]", its cost and aspects;
+// "Attached unit is a leader unit."
+const pilotingLine = /^\[Piloting\]\s*\[\[(\d+)[^\]]*\]\]$/i
+const makesLeaderLine = /^Attached unit is a leader unit\.$/i
+const cannotPilotLine = /^Can only be played as a unit\.$/i
+export function pilotingCost(pilotText = '') {
+  for (const line of pilotText.split('\n')) {
+    const found = unboxed(line).match(pilotingLine)
+    if (found) return Number(found[1])
+  }
+  return undefined
+}
 // "< >" and "<< >>" only box a line on the card
 const unboxed = (line: string) => line.trim().replace(/^<<?\s*(.*?)\s*>>?$/, '$1')
 const count = (word: string) => (/^\d+$/.test(word) ? Number(word) : 1)
@@ -126,7 +138,7 @@ export function enginePlays(line: string) {
   if (keywordLine.test(text)) return addKeyword({}, text.slice(1, -1))
   const gains = text.match(arrakisLine) ?? text.match(attachedGainsLine)
   if (gains) return [...gains[1].matchAll(/\[([^\]]+)\]/g)].every(([, word]) => addKeyword({}, word))
-  return [smuggleLine, spiceCostLine, startSpiceLine, attachLine].some((pattern) => pattern.test(text))
+  return [smuggleLine, spiceCostLine, startSpiceLine, attachLine, pilotingLine, makesLeaderLine, cannotPilotLine].some((pattern) => pattern.test(text))
 }
 
 // The keywords printed on a side: each stands on a line of its own, as "[Sentinel]" or
@@ -166,8 +178,16 @@ export function cardDef(card: SavedCard): CardDef | undefined {
   // Attached as an upgrade: its modifiers, and what it gives ("Attached unit gains [Restore 2].")
   if (card.frameId.startsWith('pilot-')) {
     def.upgrade = { power: card.upgradePower ?? 0, hp: card.upgradeHp ?? 0 }
+    const piloting = pilotingCost(card.pilotText)
+    if (piloting !== undefined) def.piloting = piloting
+  }
+  // A pilot, or a pilot leader: what its Piloting box does attached
+  const pilot = card.frameId.startsWith('pilot-') || /^leader-.*-pilot$/.test(card.frameId)
+  if (pilot && card.pilotText) {
+    def.pilotText = card.pilotText
     const attached = readText(card.pilotText).attachedKeywords
     if (attached) def.attachedKeywords = attached
+    if (card.pilotText.split('\n').some((line) => makesLeaderLine.test(unboxed(line)))) def.makesLeader = true
   }
   if (front.type === 'leader') {
     const back = readText(card.backText)
@@ -179,6 +199,8 @@ export function cardDef(card: SavedCard): CardDef | undefined {
       ...(back.arrakisKeywords && { arrakisKeywords: back.arrakisKeywords }),
     }
     def.backText = card.backText
+    // A pilot leader: deployed as an upgrade, what it gives
+    if (pilot) def.unit.pilot = { power: card.upgradePower ?? 0, hp: card.upgradeHp ?? 0 }
   }
   return def
 }
