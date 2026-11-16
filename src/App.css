@@ -4258,3 +4258,29 @@ input.picker-button::placeholder {
   border-radius: 0.5rem;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
 }
+
+/* Print files: copies, two-sided tokens; a Showroom set's print buttons */
+.print-copies {
+  width: 3.5rem;
+}
+.token-backs {
+  display: grid;
+  gap: 0.6rem;
+  margin: 1rem 0;
+  padding: 0;
+  list-style: none;
+}
+.token-backs li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.set-print {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 0.4rem;
+}

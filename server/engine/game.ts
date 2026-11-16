@@ -511,6 +511,7 @@ type Hook =
   | 'whenEnemyAttacks'
   | 'whenCombatDamageBase'
   | 'regroupStart'
+  | 'actionStart'
 
 // The trigger as the card words it, "[When you play a [{Bene Gesserit}] card:]" read as "when you
 // play a Bene Gesserit card"; a deployed leader's from its unit side
@@ -528,6 +529,7 @@ const hookNames: Record<Hook, string> = {
   whenEnemyAttacks: 'when an enemy unit attacks',
   whenCombatDamageBase: 'when combat damage is dealt to a base',
   regroupStart: 'start of the regroup phase',
+  actionStart: 'start of the action phase',
 }
 
 // An event on a player's side, which the abilities there that wait for it resolve after
@@ -628,6 +630,7 @@ function defeatUnit(state: GameState, unit: UnitState) {
       controller: p,
       def: def(state, upgrade),
       attachedTo: unit.id,
+      otherDef: def(state, unit),
     })
   for (const upgrade of unit.upgrades) discardUpgrade(state, upgrade)
   if (unit.leader) {
@@ -761,7 +764,13 @@ export function legalActions(state: GameState, p: PlayerId): Action[] {
     if (isBanned(state, p, d)) return
     if (spice) {
       if (!player.spice.length) return
-    } else if (priceOf(state, p, d, from, { free: awakened }) - spiceRoom(state, p, d) > ready || !canPayAdditional(state, p, d)) return
+    } else if (
+      (d.type === 'upgrade' && !d.keywords.fortify ? upgradePrice(state, p, d, from, { free: awakened }) : priceOf(state, p, d, from, { free: awakened })) -
+        spiceRoom(state, p, d) >
+        ready ||
+      !canPayAdditional(state, p, d)
+    )
+      return
     const extra = {
       ...(from === 'smuggle' && { smuggle: true }),
       ...(from === 'discard' && { discard: true }),
@@ -774,7 +783,11 @@ export function legalActions(state: GameState, p: PlayerId): Action[] {
       if (!fromDiscard || fromDiscard(g, self)) actions.push({ type: 'play', card: card.id, attachTo: baseId(p), ...extra })
     } else if (d.type === 'upgrade') {
       for (const unit of units)
-        if (canAttach(state, p, d, unit) && (!fromDiscard || fromDiscard(g, self, unit)))
+        if (
+          canAttach(state, p, d, unit) &&
+          (!fromDiscard || fromDiscard(g, self, unit)) &&
+          (spice || priceOf(state, p, d, from, { free: awakened, target: unit.id }) - spiceRoom(state, p, d) <= ready)
+        )
           actions.push({ type: 'play', card: card.id, attachTo: unit.id, ...extra })
     } else if (!fromDiscard || fromDiscard(g, self)) {
       actions.push({ type: 'play', card: card.id, ...extra })
@@ -1027,6 +1040,16 @@ function startActionPhase(state: GameState) {
   state.passes = 0
   for (const pl of state.players) pl.passedForPhase = false
   log(state, `Round ${state.round}: action phase`)
+  // "At the start of the action phase, …"; then what waited for the next action phase
+  for (const p of [state.active, other(state.active)]) trigger(state, p, 'actionStart')
+  const later = state.later ?? []
+  state.later = []
+  for (const wait of later) {
+    const d = state.defs[wait.def]
+    const ability = abilitiesOf(d, 'front').later
+    if (ability) queue(state, wait.player, d.name, 'start of the action phase', (g, self) => ability(g, self, wait.data), { id: wait.id, controller: wait.player, def: d })
+  }
+  resolveTriggers(state)
 }
 
 // 5.4.1b: turns alternate; a player who took the initiative passes on each turn they get.
@@ -1077,17 +1100,27 @@ export type PlayedFrom = 'hand' | 'discard' | 'smuggle' | 'plot' | 'deck'
 // spiceInstead: "for free by defeating a friendly Spice token"
 // awakened: it gains "[When Played:] Ready this unit." (The Sleeper Has Awakened)
 // pilot: using Piloting, its Piloting cost
-type PlayOptions = { discount?: number; free?: boolean; ignoreAdditional?: boolean; spiceInstead?: boolean; awakened?: boolean; pilot?: boolean }
+// target: the unit an upgrade goes on, which may change its cost
+type PlayOptions = { discount?: number; free?: boolean; ignoreAdditional?: boolean; spiceInstead?: boolean; awakened?: boolean; pilot?: boolean; target?: string }
 
 // The next card of a trait a player plays this phase costs less (Bene Gesserit Sister); each
 // such discount waiting applies to that card
 const discountsFor = (state: GameState, p: PlayerId, card: CardDef) =>
   state.discounts.filter((d) => d.player === p && card.traits.includes(d.trait))
 
-// "[Creature] cards you play cost [1] less.": what the cards on a player's side take off
-function costsLess(state: GameState, p: PlayerId, card: CardDef, from: PlayedFrom) {
+// "[Creature] cards you play cost [1] less.": what the cards on a player's side take off, and
+// the card's own, onto the unit it goes on
+function costsLess(state: GameState, p: PlayerId, card: CardDef, from: PlayedFrom, target?: string) {
   const g = new Game(state)
-  return holders(state, p).reduce((sum, { self, abilities }) => sum + (abilities.costsLess?.(g, self, card, from) ?? 0), 0)
+  const onto = target ? findUnit(state, target) : undefined
+  const own = onto ? (abilitiesOf(card, 'front').costsLessOnto?.(g, p, onto) ?? 0) : 0
+  return own + holders(state, p).reduce((sum, { self, abilities }) => sum + (abilities.costsLess?.(g, self, card, from, onto) ?? 0), 0)
+}
+// The cards on a player's side that make this card cost less, as it is played
+function discounters(state: GameState, p: PlayerId, card: CardDef, from: PlayedFrom, target?: string) {
+  const g = new Game(state)
+  const onto = target ? findUnit(state, target) : undefined
+  return holders(state, p).filter(({ self, abilities }) => (abilities.costsLess?.(g, self, card, from, onto) ?? 0) > 0)
 }
 
 function priceOf(state: GameState, p: PlayerId, card: CardDef, from: PlayedFrom, options: PlayOptions = {}) {
@@ -1098,12 +1131,22 @@ function priceOf(state: GameState, p: PlayerId, card: CardDef, from: PlayedFrom,
       : options.pilot && card.piloting !== undefined
         ? card.piloting + aspectPenalty(state, p, card)
         : playCost(state, p, card)
-  return Math.max(0, cost - (options.discount ?? 0) - discountsFor(state, p, card).reduce((sum, d) => sum + d.amount, 0) - costsLess(state, p, card, from))
+  return Math.max(
+    0,
+    cost - (options.discount ?? 0) - discountsFor(state, p, card).reduce((sum, d) => sum + d.amount, 0) - costsLess(state, p, card, from, options.target),
+  )
+}
+// An upgrade's price onto its cheapest unit, among these if given
+function upgradePrice(state: GameState, p: PlayerId, card: CardDef, from: PlayedFrom, options: PlayOptions = {}, onto?: string[]) {
+  const units = [...state.players[0].units, ...state.players[1].units].filter((u) => canAttach(state, p, card, u) && (!onto || onto.includes(u.id)))
+  const prices = units.map((u) => priceOf(state, p, card, from, { ...options, target: u.id }))
+  return prices.length ? Math.min(...prices) : priceOf(state, p, card, from, options)
 }
 
 // What a card in a player's hand costs them to play now: its cost, aspects missing and
 // discounts counted
-export const handPrice = (state: GameState, p: PlayerId, card: CardDef) => priceOf(state, p, card, 'hand')
+export const handPrice = (state: GameState, p: PlayerId, card: CardDef) =>
+  card.type === 'upgrade' && !card.keywords.fortify ? upgradePrice(state, p, card, 'hand') : priceOf(state, p, card, 'hand')
 
 // How much less a card may cost for the Spice tokens defeated as it is played (CHOAM Dividend,
 // Guild Heighliner), never below none when they are all needed for its additional cost
@@ -1157,11 +1200,13 @@ const canPayAdditional = (state: GameState, p: PlayerId, card: CardDef) =>
 
 function playCard(state: GameState, p: PlayerId, id: string, attachTo?: string, from: PlayedFrom = 'hand', options: PlayOptions = {}) {
   const player = state.players[p]
+  const playing = [...player.hand, ...player.discard, ...player.deck, ...player.resources.map((r) => r.card)].find((c) => c.id === id)
+  const cheaper = playing && !options.free && !options.spiceInstead ? discounters(state, p, def(state, playing), from, attachTo) : []
   let card: Inst
   if (from === 'hand' || from === 'discard' || from === 'deck') {
     const zones = { hand: player.hand, discard: player.discard, deck: player.deck }
     card = zones[from].find((c) => c.id === id) as Inst
-    payFor(state, p, def(state, card), priceOf(state, p, def(state, card), from, options))
+    payFor(state, p, def(state, card), priceOf(state, p, def(state, card), from, { ...options, target: attachTo }))
     if (from === 'hand') player.hand = player.hand.filter((c) => c !== card)
     else if (from === 'discard') player.discard = player.discard.filter((c) => c !== card)
     else player.deck = player.deck.filter((c) => c !== card)
@@ -1170,7 +1215,7 @@ function playCard(state: GameState, p: PlayerId, id: string, attachTo?: string, 
     // place, exhausted (none when the deck is empty)
     const slot = player.resources.find((r) => r.card.id === id) as PlayerState['resources'][number]
     card = slot.card
-    let cost = priceOf(state, p, def(state, card), from, options)
+    let cost = priceOf(state, p, def(state, card), from, { ...options, target: attachTo })
     if (cost > 0 && !slot.exhausted) {
       slot.exhausted = true
       cost--
@@ -1181,6 +1226,7 @@ function playCard(state: GameState, p: PlayerId, id: string, attachTo?: string, 
     else player.resources = player.resources.filter((r) => r !== slot)
   }
   const d = def(state, card)
+  for (const { self: by, abilities } of cheaper) abilities.costedLess?.(new Game(state, p), by)
   const used = discountsFor(state, p, d)
   if (!options.free && !options.spiceInstead) state.discounts = state.discounts.filter((x) => !used.includes(x))
   if (options.spiceInstead) defeatSpice(state, p)
@@ -1956,6 +2002,19 @@ export class Game {
     return unit ? unit.upgrades.filter((u) => this.def(u).token && this.def(u).name === name).length : 0
   }
 
+  // "At the start of the next action phase, …": the card's later ability then, with data
+  later(self: Self, data?: number) {
+    this.state.later = [...(this.state.later ?? []), { player: self.controller, id: self.id, def: self.def.id, data }]
+  }
+  // A unit moving to the other arena ("You may move this unit to the ground arena")
+  moveToArena(unitId: string, arena: 'ground' | 'space') {
+    const unit = this.unit(unitId)
+    if (!unit || unit.arena === arena) return false
+    unit.arena = arena
+    this.log(`${nameOf(this.state, unit)} moves to the ${arena} arena`, controllerOf(this.state, unit))
+    return true
+  }
+
   // "Use this ability only once each round": whether it was, and using it
   used(self: Self, name = '') {
     return this.state.usedThisRound.includes(onceKey(self, name))
@@ -2122,7 +2181,9 @@ export class Game {
     if (isBanned(this.state, p, d)) return false
     const slot = this.state.players[p].resources.find((r) => r.card.id === cardId)
     const ready = readyResources(this.state.players[p])
-    const price = priceOf(this.state, p, d, from, options) - spiceRoom(this.state, p, d)
+    const price =
+      (d.type === 'upgrade' && !d.keywords.fortify ? upgradePrice(this.state, p, d, from, options, options.onto) : priceOf(this.state, p, d, from, options)) -
+      spiceRoom(this.state, p, d)
     if (price > ready) return false
     if (!options.ignoreAdditional && !canPayAdditional(this.state, p, d)) return false
     // 7.5.21b: a Fortification needs no unit to attach to
@@ -2136,7 +2197,10 @@ export class Game {
     let attachTo: string | undefined
     if (d.keywords.fortify) attachTo = baseId(p)
     else if (d.type === 'upgrade') {
-      attachTo = this.chooseOne(p, `Choose a unit for ${d.name}`, this.attachable(p, d, options.onto), { ai: 'help', source: d.id }) ?? undefined
+      // Onto a unit it can be paid for on (its cost may depend on the unit)
+      const room = readyResources(this.state.players[p]) + spiceRoom(this.state, p, d)
+      const units = this.attachable(p, d, options.onto).filter((u) => priceOf(this.state, p, d, from, { ...options, target: u }) <= room)
+      attachTo = this.chooseOne(p, `Choose a unit for ${d.name}`, units, { ai: 'help', source: d.id }) ?? undefined
       if (!attachTo) return false
     }
     playCard(this.state, p, cardId, attachTo, from, options)

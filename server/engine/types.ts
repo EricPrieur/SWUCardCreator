@@ -216,6 +216,10 @@ export type GameState = {
   borrowed: Borrowed[]
   // Units to defeat when the next regroup phase starts (Worm Signs)
   doomed: string[]
+  // Abilities waiting for the next action phase to start ("at the start of the next action
+  // phase, …"): the card's script's later ability, with what it noted; a game saved before it
+  // had none
+  later?: { player: PlayerId; id: string; def: string; data?: number }[]
   // Units that can't ready this round, the regroup phase included (Shigawire Snare); a game
   // saved before it had none
   held?: string[]

@@ -2193,8 +2193,11 @@ const EVENT_MAX_PLAYERS = 8
 // MakePlayingCards' biggest deck
 const PRINT_DECK_MAX = 612
 
-function PrintFiles(props: { folder: string; cards: ShowcaseCard[] }) {
+// load: the cards' own, for a set of the Showroom's (the folder then only names it, "showroom/PROMO"):
+// printed from this browser, never published, a number of copies each, and no Sealed event
+function PrintFiles(props: { folder: string; cards: ShowcaseCard[]; load?: (entry: ShowcaseCard) => Promise<Card | null> }) {
   const { folder, cards } = props
+  const own = !!props.load
   const { draw, stage, done: doneDrawing } = useCardDrawer()
   const [status, setStatus] = useState<string | null>(null)
   const [progress, setProgress] = useState<{ at: number; of: number; name: string } | null>(null)
@@ -2214,17 +2217,33 @@ function PrintFiles(props: { folder: string; cards: ShowcaseCard[] }) {
   const stopping = useRef(false)
   const set = folder.split('/').pop() ?? 'Cards'
   const sorted = [...cards].sort((a, b) => (a.number ?? '').localeCompare(b.number ?? '', undefined, { numeric: true }))
-  const behind = tokensBehindBases(sorted)
+  // A Showroom set's bases keep the card back
+  const behind = own ? new Map<ShowcaseCard, ShowcaseCard>() : tokensBehindBases(sorted)
+  // Two-sided tokens, chosen as they are printed: each token's back, another token (by image
+  // name), or the card back. A token on another's back isn't printed alone.
+  const [tokenBacks, setTokenBacks] = useRemembered<Record<string, string>>(`showcase.${folder}.token-backs`, {})
+  const [pairing, setPairing] = useState(false)
+  const tokens = behind.size > 0 ? [] : sorted.filter((card) => card.type === 'Token')
+  const pairs = new Map<ShowcaseCard, ShowcaseCard>()
+  for (const token of tokens) {
+    const back = tokens.find((other) => other !== token && other.image === tokenBacks[token.image])
+    const taken = new Set([...pairs.keys(), ...pairs.values()])
+    if (back && !taken.has(token) && !taken.has(back)) pairs.set(token, back)
+  }
+  const onBacks = new Set(pairs.values())
   // Tokens all on the backs of bases aren't printed again alone
-  const printable = behind.size > 0 ? sorted.filter((card) => card.type !== 'Token') : sorted
+  const printable = behind.size > 0 ? sorted.filter((card) => card.type !== 'Token') : sorted.filter((card) => !onBacks.has(card))
+  const [copiesText, setCopies] = useRemembered(`showcase.${folder}.copies`, '1')
+  const copies = own ? Math.min(99, Math.max(1, Math.floor(Number(copiesText)) || 1)) : 1
   // Spare tokens for a Sealed event: Fremen on one side, Spice on the other
   const tokenNamed = (name: string) => sorted.find((card) => card.type === 'Token' && card.name === name)
   const spareFront = tokenNamed('Fremen')
   const spareBack = tokenNamed('Spice')
   const spareTokens = spareFront && spareBack ? { front: spareFront, back: spareBack } : undefined
-  const tokenNote = [...new Set(behind.values())]
-    .map((token) => `${token.name} behind ${[...behind].filter(([, t]) => t === token).map(([base]) => base.name).join(', ')}`)
-    .join('; ')
+  const tokenNote = [
+    ...[...new Set(behind.values())].map((token) => `${token.name} behind ${[...behind].filter(([, t]) => t === token).map(([base]) => base.name).join(', ')}`),
+    ...[...pairs].map(([front, back]) => `${back.name} behind the ${front.name} token`),
+  ].join('; ')
   const label = (entry: ShowcaseCard) => [entry.name, entry.subtitle].filter(Boolean).join(', ')
   const layoutNote = (count: number, deckCounts: number[], spares = 0) => {
     const decks = deckCounts.length
@@ -2255,9 +2274,14 @@ function PrintFiles(props: { folder: string; cards: ShowcaseCard[] }) {
 
   const setJob = (): PrintJob => ({
     name: `${set} print files.zip`,
-    cards: printable.map((entry) => ({ entry })),
+    cards: printable.flatMap((entry) => Array.from({ length: copies }, () => ({ entry }))),
     deckSize: PRINT_DECK_MAX,
-    notes: (decks) => ({ 'README.txt': [`${set}: ${printable.length} cards, one of each, in set order.`, ...layoutNote(printable.length, decks)].join('\n') }),
+    notes: (decks) => ({
+      'README.txt': [
+        `${set}: ${printable.length * copies} cards, ${copies === 1 ? 'one of each' : `${copies} of each`}, in set order.`,
+        ...layoutNote(printable.length * copies, decks),
+      ].join('\n'),
+    }),
   })
 
   const eventJob = (count: number, run: string, deal: number, { packs, copies, prescient }: EventPlan<ShowcaseCard>): PrintJob => {
@@ -2335,9 +2359,10 @@ function PrintFiles(props: { folder: string; cards: ShowcaseCard[] }) {
     try {
       const loaded = new Map<string, Card>()
       const cardOf = async (entry: ShowcaseCard) => {
-        const found = loaded.get(entry.image) ?? (await loadShowcaseCard(folder, entry.image))
+        const key = entry.id ?? entry.image
+        const found = loaded.get(key) ?? (await (props.load ? props.load(entry) : loadShowcaseCard(folder, entry.image)))
         if (!found) throw new Error(`${entry.image}.json could not be loaded`)
-        loaded.set(entry.image, found)
+        loaded.set(key, found)
         return found
       }
       const drawn = async (card: Card, back: boolean) => new Uint8Array(await (await uprightJpg(await draw(card, back, 'print', 2))).arrayBuffer())
@@ -2373,12 +2398,13 @@ function PrintFiles(props: { folder: string; cards: ShowcaseCard[] }) {
         // A wild card: its Prescient version, with the shared card back. A Prescient base: its token
         // on the back is Prescient too. A Prescient leader: both its sides
         const face = prescient && canBePrescient(entry.type) ? prescientOf(full) : full
-        const frontKey = `${entry.image}${prescient ? '|prescient' : ''}`
+        const frontKey = `${entry.id ?? entry.image}${prescient ? '|prescient' : ''}`
         const front = code ? await drawn({ ...face, code }, false) : (fronts.get(frontKey) ?? (await drawn(face, false)))
         if (!code && plan.cards.filter((each) => each.entry === entry && !!each.prescient === !!prescient).length > 1) fronts.set(frontKey, front)
-        const token = behind.get(entry)
+        // A common base's token, or the token chosen for a token's back
+        const token = behind.get(entry) ?? pairs.get(entry)
         if (prescient && !token && !entry.back) return { front, back: cardBack }
-        const backKey = `${entry.image}${prescient ? '|prescient' : ''}`
+        const backKey = `${entry.id ?? entry.image}${prescient ? '|prescient' : ''}`
         if (!backs.has(backKey)) {
           const tokenCard = token && (await cardOf(token))
           backs.set(
@@ -2453,15 +2479,71 @@ function PrintFiles(props: { folder: string; cards: ShowcaseCard[] }) {
           >
             Print files
           </button>
-          <button
-            className="chip"
-            type="button"
-            title="The packs of a Sealed event for up to 8 players, and the cards to print for them"
-            onClick={openEvent}
-          >
-            Sealed event
-          </button>
+          {own && (
+            <label className="event-players" title="How many of each card to print">
+              Copies{' '}
+              <input className="print-copies" type="number" min={1} max={99} value={copiesText} onChange={(event) => setCopies(event.target.value)} />
+            </label>
+          )}
+          {tokens.length > 1 && (
+            <button
+              className="chip"
+              type="button"
+              title="Print tokens two-sided: another token on a token's back"
+              onClick={() => setPairing(true)}
+            >
+              Token backs{pairs.size ? ` (${pairs.size})` : ''}
+            </button>
+          )}
+          {!own && (
+            <button
+              className="chip"
+              type="button"
+              title="The packs of a Sealed event for up to 8 players, and the cards to print for them"
+              onClick={openEvent}
+            >
+              Sealed event
+            </button>
+          )}
         </>
+      )}
+      {pairing && (
+        <Modal title="Token backs" onClose={() => setPairing(false)}>
+          <p className="account-note">
+            Each token can print with another token on its back, as one two-sided card (a Shield token with an Experience token behind, say).
+            Each side is still its own token. A token on another's back isn't printed alone.
+          </p>
+          <ul className="token-backs">
+            {tokens
+              .filter((token) => !onBacks.has(token))
+              .map((token) => (
+                <li key={token.id ?? token.image}>
+                  <strong>{label(token)}</strong>
+                  <label>
+                    Back{' '}
+                    <select
+                      value={pairs.get(token)?.image ?? ''}
+                      onChange={(event) => setTokenBacks({ ...tokenBacks, [token.image]: event.target.value })}
+                    >
+                      <option value="">The card back</option>
+                      {tokens
+                        .filter((other) => other !== token && !pairs.has(other) && (!onBacks.has(other) || pairs.get(token) === other))
+                        .map((other) => (
+                          <option key={other.id ?? other.image} value={other.image}>
+                            {label(other)}
+                          </option>
+                        ))}
+                    </select>
+                  </label>
+                </li>
+              ))}
+          </ul>
+          <div className="leave-buttons">
+            <button className="button button-primary" type="button" onClick={() => setPairing(false)}>
+              Done
+            </button>
+          </div>
+        </Modal>
       )}
       {status && !progress && <span className="filter-label print-status">{status}</span>}
       {asking && plan && (
@@ -2944,6 +3026,19 @@ function CommunityDecks() {
   )
 }
 
+// A Showroom set's print files: its cards from this browser, to print at home or order (goodies,
+// proxies), never published
+function SetPrint(props: { code: string; cards: Card[] }) {
+  const list = props.cards.filter((card) => cardFacts(card).set.trim().toUpperCase() === props.code)
+  return (
+    <PrintFiles
+      folder={`showroom/${props.code}`}
+      cards={list.map(showcaseEntry)}
+      load={async (entry) => list.find((card) => card.id === entry.id) ?? null}
+    />
+  )
+}
+
 // Your sets (the set codes on your cards) and each one's card back: shown in the Community
 // Simulator on a deck mostly of that set (a Supporter's own back first). Without one, DUNE's.
 function SetBacks(props: { session: Session; cards: Card[] }) {
@@ -2995,7 +3090,8 @@ function SetBacks(props: { session: Session; cards: Card[] }) {
     <section className="set-backs">
       <p className="account-note">
         Each of your sets can have its own card back. In the Community Simulator, a deck shows the back of the set most of its cards are of
-        (DUNE's when it ties). A Supporter's own card back comes first.
+        (DUNE's when it ties). A Supporter's own card back comes first. Print files makes a set's cards ready to print (MakePlayingCards and
+        the like), from this browser: nothing is published.
       </p>
       {error && <p className="account-error">{error}</p>}
       {codes.length === 0 ? (
@@ -3030,6 +3126,9 @@ function SetBacks(props: { session: Session; cards: Card[] }) {
                   Use DUNE's
                 </button>
               )}
+              <div className="set-print">
+                <SetPrint code={code} cards={props.cards} />
+              </div>
             </li>
           ))}
         </ul>

@@ -69,8 +69,12 @@ export type Abilities = {
   whenSpiceDefeated?: Ability
   // When another friendly unit is defeated; self.otherDef is that unit
   whenFriendlyDefeated?: Ability
-  // When the regroup phase starts
+  // When the regroup phase starts; when the action phase starts
   regroupStart?: Ability
+  actionStart?: Ability
+  // What a card noted with g.later resolves at the start of the next action phase ("Reveal a
+  // unit from your hand, at the start of the next action phase, deal damage …"): data, as noted
+  later?: (g: Game, self: Self, data?: number) => void
   // When an enemy unit attacks; self.other is the attacker
   whenEnemyAttacks?: Ability
   // When a friendly unit deals combat damage to an enemy base; self.other is that unit
@@ -111,8 +115,15 @@ export type Abilities = {
   // Whether a friendly unit can't be defeated by an enemy card's ability (`from`)
   cantBeDefeatedBy?: (g: Game, self: Self, from: Self) => boolean
   // How much less a card its controller plays costs
-  // from: where it is played from ('plot': from the resources using Plot)
-  costsLess?: (g: Game, self: Self, card: CardDef, from: PlayedFrom) => number
+  // from: where it is played from ('plot': from the resources using Plot); onto: the unit an
+  // upgrade is played on
+  costsLess?: (g: Game, self: Self, card: CardDef, from: PlayedFrom, onto?: UnitState) => number
+  // Once a card costs less because of this one, as it is played ("The first upgrade you play on
+  // another friendly unit each phase costs [1] less.")
+  costedLess?: Ability
+  // The card's own: how much less it costs to play onto a unit ("This upgrade costs [1] less
+  // to play on an [{Octarian}] unit.")
+  costsLessOnto?: (g: Game, p: PlayerId, unit: UnitState) => number
   // "If you would create a Spice token, you may create 2 Spice tokens instead.": whether it does
   moreSpice?: (g: Game, self: Self) => boolean
   // "Opponents play with their hands revealed."; "You may look at the top card of your deck at
