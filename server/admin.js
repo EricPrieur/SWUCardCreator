@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { query, SCHEMA } from './db.js'
 import { verifyToken, requireAdmin, enforcePermanentAdmins, userPublic, PERMANENT_ADMINS } from './auth.js'
-import { storageFor } from './tiers.ts'
+import { playCardsFor, storageFor } from './tiers.ts'
 
 const router = Router()
 router.use(verifyToken, requireAdmin)
@@ -17,6 +17,8 @@ router.get('/users', async (req, res) => {
        + COALESCE((SELECT SUM(bytes) FROM ${SCHEMA}.images i WHERE i.user_id = u.id), 0)
        + COALESCE((SELECT SUM(bytes) FROM ${SCHEMA}.decks d WHERE d.user_id = u.id), 0) AS used_bytes,
          (SELECT COUNT(*) FROM ${SCHEMA}.cards c WHERE c.user_id = u.id)::INT AS card_count,
+         (SELECT COUNT(DISTINCT cc.card_id) FROM ${SCHEMA}.community_cards cc WHERE cc.user_id = u.id AND cc.status = 'supported')::INT AS supported_count,
+         (SELECT COUNT(DISTINCT cc.card_id) FROM ${SCHEMA}.community_cards cc WHERE cc.user_id = u.id AND cc.status = 'awaiting')::INT AS awaiting_count,
          (SELECT COUNT(*) FROM ${SCHEMA}.games g WHERE g.user_id = u.id)::INT AS game_count,
          (SELECT MAX(started_at) FROM ${SCHEMA}.games g WHERE g.user_id = u.id) AS last_game_at
        FROM ${SCHEMA}.users u ORDER BY u.created_at DESC`,
@@ -27,6 +29,10 @@ router.get('/users', async (req, res) => {
         lastLoginAt: row.last_login_at,
         usedBytes: Number(row.used_bytes),
         cardCount: row.card_count,
+        // Cards in play: supported, and waiting in the Community queue, against the account's limit
+        supportedCount: row.supported_count,
+        awaitingCount: row.awaiting_count,
+        playLimit: playCardsFor({ isAdmin: row.is_admin, donatedCents: row.donated_cents ?? 0 }),
         gameCount: row.game_count,
         lastGameAt: row.last_game_at,
         permanent: PERMANENT_ADMINS.has(row.username.toLowerCase()),

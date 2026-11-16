@@ -23,6 +23,10 @@ type AdminUser = User & {
   lastLoginAt: string | null
   usedBytes: number
   cardCount: number
+  // Cards in play in the Community Deck Builder and Simulator; playLimit null: no limit
+  supportedCount?: number
+  awaitingCount?: number
+  playLimit?: number | null
   gameCount: number
   lastGameAt: string | null
   permanent: boolean
@@ -567,6 +571,9 @@ function UsersTab(props: { session: Session; focus?: number }) {
                 <th>Admin</th>
                 <th title="May make cards public">Public?</th>
                 <th>Cards</th>
+                <th title="Cards supported for play in the Community Deck Builder and Simulator, and waiting, against the account's limit (50, and 50 more for each $5)">
+                  In play
+                </th>
                 <th title="Games played in the Simulator">Games</th>
                 <th>Storage</th>
                 <th title="Tips given on Ko-fi, in dollars: $5 makes a Supporter, and each $5 adds 50 MB of storage">Tips</th>
@@ -602,6 +609,15 @@ function UsersTab(props: { session: Session; focus?: number }) {
                     />
                   </td>
                   <td>{user.cardCount}</td>
+                  <td
+                    title={`${user.supportedCount ?? 0} supported, ${user.awaitingCount ?? 0} waiting; ${
+                      user.playLimit == null ? 'no limit' : `${user.playLimit} at most`
+                    }`}
+                  >
+                    {user.supportedCount ?? 0}
+                    {!!user.awaitingCount && ` (+${user.awaitingCount})`}
+                    {user.playLimit != null && ` / ${user.playLimit}`}
+                  </td>
                   <td title={user.lastGameAt ? `Last game ${formatDate(user.lastGameAt)}` : undefined}>{user.gameCount}</td>
                   <td>
                     {formatBytes(user.usedBytes)} of{' '}
