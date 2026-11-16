@@ -4,6 +4,7 @@ import { applyAction, createGame, hpOf, isLeaderUnit, keywordsOf, legalActions, 
 import { readText } from './cards.ts'
 import { communityScripts } from './community.ts'
 import { scriptStatus } from './scripts.ts'
+import { chooseAction } from './ai.ts'
 import type { Action, CardDef, GameState, PlayerId, UnitState } from './types.ts'
 
 // zverev20's Splatoon cards: the Ink token and the cards that give it, each a community card
@@ -447,3 +448,13 @@ test('Octobot King may move to the ground arena with an Experience token; with D
   assert.equal(keywordsOf(state, king).overwhelm, true)
   assert.equal(keywordsOf(state, king).restore, 2)
 })
+
+test("the AI uses DJ Octavio's Action: an Ink token on an enemy unit is worth something to it", () => {
+  const state = table({ leader0: 'octavio', units0: ['small', 'small'], units1: ['big', 'whirl'] })
+  for (const u of state.players[0].units) u.exhausted = true
+  state.players[0].hand = []
+  // Turn 1: 2 resources, too few to deploy him
+  state.players[0].resources = state.players[0].resources.slice(0, 2)
+  assert.deepEqual(chooseAction(state, 0), { type: 'ability', source: 'leader', index: 0 })
+})
+

@@ -2978,9 +2978,12 @@ function deckCardOfCommunity(card: CommunityCard): DeckCard[] {
 // The Community Deck Builder: the supported community cards, each maker's set its own, and
 // DUNE's, left out of a deck until it is ticked in its Sets. Should the community's cards not
 // load, DUNE's are still there.
-function CommunityDecks() {
+// allPublic: every public card too, not only those in play, to build decks and open Sealed packs
+// with cards still being worked on (the Simulator plays only the cards in play)
+function CommunityDecks(props: { session: Session | null }) {
   const [cards, setCards] = useState<DeckCard[] | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [allPublic, setAllPublic] = useRemembered('community.decks.all-public', false)
   useEffect(() => {
     let live = true
     Promise.all([
@@ -2991,11 +2994,20 @@ function CommunityDecks() {
       fetch(asset('/showcase/DUNE/showcase.json'), { cache: 'no-cache' })
         .then((response) => (response.ok ? (response.json() as Promise<ShowcaseList>) : null))
         .catch(() => null),
+      allPublic
+        ? api<{ cards: PublicCard[] }>('/api/public/cards', { token: props.session?.token }).catch(() => ({ cards: [] as PublicCard[] }))
+        : Promise.resolve({ cards: [] as PublicCard[] }),
     ])
-      .then(([community, dune]) => {
+      .then(([community, dune, everyone]) => {
         if (!live) return
+        // A public card not in play, as the Deck Builder shows it: its public images
+        const inPlay = new Set(community.cards.map((card) => card.key))
+        const others: CommunityCard[] = everyone.cards
+          .filter((card) => showable(card) && !card.hidden && !card.ownerBlocked && !inPlay.has(card.key))
+          .map((card) => ({ ...card, version: 0 }))
         setCards([
           ...community.cards.filter((card) => showable({ entry: card.entry } as PublicCard)).flatMap(deckCardOfCommunity),
+          ...others.flatMap(deckCardOfCommunity),
           ...(dune?.cards ?? []).flatMap((card) => deckCardOfShowcase('/showcase/DUNE', card)),
         ])
       })
@@ -3003,12 +3015,23 @@ function CommunityDecks() {
     return () => {
       live = false
     }
-  }, [])
+  }, [allPublic, props.session?.token])
   if (!cards) return <p className="empty-note">{error ?? "Loading the community's cards…"}</p>
   const anyCommunity = cards.some((card) => card.id.startsWith('community:'))
   return (
     <>
       {error && <p className="account-note community-intro">Could not load the community's cards ({error}): DUNE's are here.</p>}
+      <div className="community-intro community-all">
+        <label title="Build decks and open Sealed packs with every public card, those still being worked on too. The Simulator plays only the cards in play: it leaves the others out of a deck.">
+          <input type="checkbox" checked={allPublic} onChange={(event) => setAllPublic(event.target.checked)} /> All public cards, not only those in play
+        </label>
+        {allPublic && (
+          <span className="account-note">
+            {' '}
+            To try out sets and rarities: the Simulator leaves the cards not in play out of a deck.
+          </span>
+        )}
+      </div>
       {!error && !anyCommunity && (
         <p className="account-note community-intro">
           No community card is playable yet: make a card public in your Showroom, then Submit for play. Meanwhile, tick DUNE in a
@@ -3168,7 +3191,7 @@ function CommunityPage(props: { session: Session | null }) {
     <>
       {views}
       {view === 'cards' && <Community session={props.session} />}
-      {view === 'decks' && <CommunityDecks />}
+      {view === 'decks' && <CommunityDecks session={props.session} />}
       {view === 'play' && (
         <>
           <Simulator pool="community" drawCard={prescient.drawCard} />

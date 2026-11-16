@@ -4284,3 +4284,11 @@ input.picker-button::placeholder {
   align-items: center;
   gap: 0.4rem;
 }
+
+/* Community Deck Builder: every public card, or only those in play */
+.community-all {
+  margin-bottom: 0.6rem;
+}
+.community-all label {
+  cursor: pointer;
+}

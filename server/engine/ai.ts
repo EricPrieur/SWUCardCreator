@@ -643,6 +643,7 @@ function blocked(state: GameState, p: PlayerId, unit: UnitState) {
 // A unit by its power (less while a Sentinel blocks it), the health it has left, its keywords
 // and what it cost; less when it will soon be gone (defeated, or back to its owner, at the
 // regroup phase)
+const INK_WORTH = 0.5
 function unitWorth(state: GameState, unit: UnitState, isBlocked = false) {
   const keywords = keywordsOf(state, unit)
   const card = state.defs[unit.def]
@@ -655,7 +656,10 @@ function unitWorth(state: GameState, unit: UnitState, isBlocked = false) {
     (keywords.overwhelm || keywords.saboteur || keywords.grit ? 0.5 : 0) +
     0.3 * (keywords.raid ?? 0) +
     0.5 * (keywords.restore ?? 0) +
-    unit.upgrades.filter((u) => state.defs[u.def].name === 'Shield').length * 1.5 +
+    unit.upgrades.filter((u) => state.defs[u.def].name === 'Shield').length * 1.5 -
+    // An Ink token (a community card's): 1 more damage the next time it takes combat damage, as
+    // good as 1 health less
+    unit.upgrades.filter((u) => state.defs[u.def].token && state.defs[u.def].name === 'Ink').length * INK_WORTH +
     (unit.leader ? 2 : 0)
   // Ready, it may still attack this phase
   if (unit.exhausted) worth -= 0.2
