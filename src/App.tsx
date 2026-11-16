@@ -1100,6 +1100,8 @@ function useCardFilters<T>(
   const [costs, setCosts] = useRemembered<number[]>(`${name}.costs`, [])
   // Set codes ticked; NO_SET stands for the cards with none
   const [sets, setSets] = useRemembered<string[]>(`${name}.sets`, [])
+  // Makers ticked, in the Community's cards
+  const [creators, setCreators] = useRemembered<string[]>(`${name}.creators`, [])
   const [picked, setPicked] = useRemembered<Aspect[]>(`${name}.aspects`, [])
   // Only the cards with no aspect at all; picking an aspect turns it off, and the other way round
   const [neutral, setNeutral] = useRemembered(`${name}.neutral`, false)
@@ -1146,6 +1148,9 @@ function useCardFilters<T>(
       .map(([value, label]) => ({ value, label: label.toUpperCase() })),
     ...(listed.some(({ facts }) => !facts.set) ? [{ value: NO_SET, label: 'No set' }] : []),
   ]
+  const creatorOptions = [...new Set(listed.flatMap(({ facts }) => (facts.creator ? [facts.creator] : [])))]
+    .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }))
+    .map((creator) => ({ value: creator, label: creator }))
   // In the order of the Card Creator's picker, then the cards with none; only offered
   // once some card has a rarity
   const rarityOptions = [
@@ -1163,6 +1168,7 @@ function useCardFilters<T>(
       (traits.length === 0 || traits.some((trait) => facts.traits.includes(trait))) &&
       (costs.length === 0 || (facts.cost !== undefined && costs.includes(facts.cost))) &&
       (sets.length === 0 || sets.includes(facts.set ? facts.set.toUpperCase() : NO_SET)) &&
+      (creators.length === 0 || creatorOptions.length === 0 || (facts.creator !== undefined && creators.includes(facts.creator))) &&
       (arenas.length === 0 || (facts.arena !== undefined && arenas.includes(facts.arena))) &&
       (rarityPicks.length === 0 || rarityPicks.includes(facts.rarity || NO_RARITY)) &&
       (!neutral || facts.aspects.length === 0) &&
@@ -1197,7 +1203,8 @@ function useCardFilters<T>(
     search !== '' ||
     neutral ||
     (onlyNoImage && !!noImage) ||
-    types.length + traits.length + costs.length + sets.length + arenas.length + rarityPicks.length + picked.length > 0
+    types.length + traits.length + costs.length + sets.length + arenas.length + rarityPicks.length + picked.length > 0 ||
+    (creators.length > 0 && creatorOptions.length > 0)
 
   const bar = (
     <div className="filters showroom-filters">
@@ -1217,6 +1224,7 @@ function useCardFilters<T>(
           <CheckDropdown label="Rarity" options={rarityOptions} selected={rarityPicks} onChange={setRarityPicks} />
         )}
         <CheckDropdown label="Set" options={setOptions} selected={sets} onChange={setSets} />
+        {creatorOptions.length > 0 && <CheckDropdown label="Creator" options={creatorOptions} selected={creators} onChange={setCreators} />}
         {arenaOptions.length > 0 && <CheckDropdown label="Arena" options={arenaOptions} selected={arenas} onChange={setArenas} />}
       </div>
       <div className="filter-group">
@@ -1299,6 +1307,7 @@ function useCardFilters<T>(
               setTraits([])
               setCosts([])
               setSets([])
+              setCreators([])
               setArenas([])
               setRarityPicks([])
               setNeutral(false)
