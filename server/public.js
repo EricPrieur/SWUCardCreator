@@ -107,6 +107,16 @@ router.get('/public/images/:id', async (req, res) => {
       )
       rows.push(...backs)
     }
+    // A set's card back
+    if (!rows.length) {
+      const { rows: backs } = await query(
+        `SELECT i.content_type FROM ${SCHEMA}.set_backs b JOIN ${SCHEMA}.images i ON i.user_id = b.user_id AND i.id = b.image
+         JOIN ${SCHEMA}.users u ON u.id = b.user_id
+         WHERE b.image = $1 AND u.can_publish LIMIT 1`,
+        [id],
+      )
+      rows.push(...backs)
+    }
     if (!rows.length) return res.status(404).json({ error: 'Not found' })
     const bytes = await readFile(join(imageDir(), id))
     res.set('Content-Type', rows[0].content_type)

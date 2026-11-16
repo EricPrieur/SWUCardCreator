@@ -132,6 +132,16 @@ export async function initDB() {
   await query(`ALTER TABLE ${SCHEMA}.community_cards ADD COLUMN IF NOT EXISTS auto BOOLEAN NOT NULL DEFAULT FALSE`)
   // Its Prescient (full art) version, drawn by its owner's browser as it is submitted
   await query(`ALTER TABLE ${SCHEMA}.community_cards ADD COLUMN IF NOT EXISTS prescient_image CHAR(64)`)
+  // A set's card back, which its maker uploads (Showroom, Sets): shown on decks mostly of that set
+  // in the Community Simulator. set_code: as typed on the cards, in capitals.
+  await query(`
+    CREATE TABLE IF NOT EXISTS ${SCHEMA}.set_backs (
+      user_id INTEGER NOT NULL REFERENCES ${SCHEMA}.users(id) ON DELETE CASCADE,
+      set_code VARCHAR(32) NOT NULL,
+      image CHAR(64) NOT NULL,
+      PRIMARY KEY (user_id, set_code)
+    )
+  `)
   // A Featured Deck of the Community Simulator, which anyone may play there: set by the maker of
   // its community cards (or an admin). deck: its name, leader, base and cards.
   await query(`

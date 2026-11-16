@@ -5,6 +5,7 @@ import { notify } from './messages.js'
 import { cardDef } from './engine/cards.ts'
 import { scriptStatus, unplayedLines } from './engine/scripts.ts'
 import { playCardsFor, STEP_CENTS } from './tiers.ts'
+import { deckBack, setCode } from './cardBacks.ts'
 
 // Community cards: a public card its owner submits to be played. Each submission is a version, a
 // copy of the card as it is then, waiting in the Admin panel's queue until an admin supports it
@@ -393,5 +394,73 @@ router.delete('/community/featured/:id', verifyToken, async (req, res) => {
     res.status(500).json({ error: 'Server error' })
   }
 })
+
+// The sets' card backs, for anyone: what the Community Simulator shows on a deck mostly of a set
+router.get('/community/set-backs', async (req, res) => {
+  try {
+    const { rows } = await query(
+      `SELECT b.user_id, b.set_code, b.image, u.username
+       FROM ${SCHEMA}.set_backs b JOIN ${SCHEMA}.users u ON u.id = b.user_id
+       WHERE u.can_publish
+       ORDER BY u.username, b.set_code`,
+    )
+    res.json({ backs: rows.map((row) => ({ userId: row.user_id, owner: row.username, set: row.set_code, image: row.image })) })
+  } catch (err) {
+    console.error('Set backs error:', err)
+    res.status(500).json({ error: 'Server error' })
+  }
+})
+
+// A set's card back, set by its maker: { image } one of their images, or null for DUNE's
+router.put('/community/set-backs/:code', verifyToken, async (req, res) => {
+  const code = setCode(req.params.code)
+  if (!code) return res.status(400).json({ error: 'Bad set code' })
+  const image = req.body?.image ?? null
+  try {
+    if (image === null) {
+      await query(`DELETE FROM ${SCHEMA}.set_backs WHERE user_id = $1 AND set_code = $2`, [req.user.id, code])
+    } else {
+      if (!/^[0-9a-f]{64}$/.test(String(image))) return res.status(400).json({ error: 'Bad image' })
+      const { rows: own } = await query(`SELECT 1 FROM ${SCHEMA}.images WHERE user_id = $1 AND id = $2`, [req.user.id, image])
+      if (!own.length) return res.status(404).json({ error: 'Image not found' })
+      await query(
+        `INSERT INTO ${SCHEMA}.set_backs (user_id, set_code, image) VALUES ($1, $2, $3)
+         ON CONFLICT (user_id, set_code) DO UPDATE SET image = EXCLUDED.image`,
+        [req.user.id, code, image],
+      )
+    }
+    keptBacks = null
+    res.json({ ok: true })
+  } catch (err) {
+    console.error('Set back error:', err)
+    res.status(500).json({ error: 'Server error' })
+  }
+})
+
+// A deck's card back in the server's games: its set's, the set most of its cards are of (see
+// cardBacks.ts); null for DUNE's. Each community card's set and the sets' backs read again after
+// a little while.
+let keptBacks = null
+async function backsByCard() {
+  if (keptBacks && Date.now() - keptBacks.at < DEFS_KEPT) return keptBacks.byCard
+  const { rows } = await query(
+    `SELECT cc.user_id, cc.card_id, b.image
+     FROM ${SCHEMA}.community_cards cc
+     JOIN ${SCHEMA}.set_backs b ON b.user_id = cc.user_id AND b.set_code = UPPER(TRIM(cc.entry->>'set'))
+     WHERE cc.status = 'supported'`,
+  )
+  const byCard = new Map(rows.map((row) => [`community:${row.user_id}/${row.card_id}`, row.image]))
+  keptBacks = { byCard, at: Date.now() }
+  return byCard
+}
+export async function deckSetBack(deck) {
+  try {
+    const byCard = await backsByCard()
+    if (!byCard.size) return null
+    return deckBack([deck.leader, deck.base, ...deck.deck], (id) => byCard.get(id.replace(/#back$/, '')))
+  } catch {
+    return null
+  }
+}
 
 export default router

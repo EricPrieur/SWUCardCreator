@@ -1,5 +1,6 @@
 import { SupporterMark } from './Support'
 import { isSupporter } from '../server/tiers.ts'
+import { deckBack, setCode } from '../server/cardBacks.ts'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { asset } from './asset'
 import { api, API_URL, useAccount, type Session } from './api'
@@ -72,6 +73,8 @@ type SetCards = {
   // The Community Simulator's: each card's set, as the Community Deck Builder names it (DUNE, or a
   // maker's set code with their name), for the sets chosen to play
   setOf?: Record<string, string>
+  // A community card's set's card back, an image id, when its maker gave the set one
+  backOf?: Record<string, string>
 }
 // A card's Prescient image: a community card's, kept on the server; DUNE's, drawn from its card
 const hasPrescient = (set: SetCards, id: string) => !!(set.prescient?.[id] || set.cards[id])
@@ -124,11 +127,16 @@ type CommunityCard = {
 // A community card's set, as the Community Deck Builder names it: two makers' sets of a code stay apart
 const communitySetName = (card: CommunityCard) => `${card.entry.set?.toUpperCase() || 'NO SET'} (${card.owner})`
 export async function loadCommunitySet(): Promise<SetCards> {
-  const [set, { cards }] = await Promise.all([
+  const [set, { cards }, { backs }] = await Promise.all([
     loadSet().catch(() => ({ defs: [], images: {}, cards: {} }) as SetCards),
     // DUNE's alone, should the community's not load
     api<{ cards: CommunityCard[] }>('/api/community/cards').catch(() => ({ cards: [] as CommunityCard[] })),
+    api<{ backs: { userId: number; set: string; image: string }[] }>('/api/community/set-backs').catch(() => ({ backs: [] })),
   ])
+  // The sets' card backs, by maker and set code
+  const setBacks = new Map(backs.map((back) => [`${back.userId}:${back.set}`, back.image]))
+  const backOf: Record<string, string> = {}
+  set.backOf = backOf
   const url = (id: string) => `${API_URL}/api/public/images/${id}`
   const setOf: Record<string, string> = Object.fromEntries(set.defs.map((d) => [d.id, SET]))
   set.setOf = setOf
@@ -137,6 +145,8 @@ export async function loadCommunitySet(): Promise<SetCards> {
     const d = cardDef({ ...card.data, id })
     if (!d) continue
     setOf[id] = setOf[id + BACK_SIDE] = communitySetName(card)
+    const back = setBacks.get(`${card.key.split('/')[0]}:${setCode(card.entry.set)}`)
+    if (back) backOf[id] = backOf[id + BACK_SIDE] = back
     set.defs.push({ ...d, community: card.key })
     set.images[id] = { image: url(card.image), back: d.type === 'leader' && card.backImage ? url(card.backImage) : undefined }
     if (card.prescientImage) (set.prescient ??= {})[id] = url(card.prescientImage)
@@ -743,6 +753,10 @@ export function Simulator(props: { drawCard?: (card: Card) => Promise<string>; p
           key={gameNumber}
           set={set}
           game={game}
+          deckBacks={record.current?.decks.map((list) => deckBack([list.leader, list.base, ...list.deck], (id) => set.backOf?.[id])) as [
+            string | null,
+            string | null,
+          ]}
           prescient={prescient}
           onAct={(p, action, why) => act(game, p, action, why)}
           onUndo={history.current.length ? undo : undefined}
@@ -1445,6 +1459,8 @@ function Table(props: {
   // The game against the AI, in full; online, the game is the server's and only `online` shows it
   game?: GameState
   online?: OnlineTable
+  // Against the AI: each deck's set's card back (null for DUNE's), a Supporter's own put first
+  deckBacks?: [string | null, string | null]
   // The Prescient copies' images, by card
   prescient: Record<string, string>
   onAct: (p: PlayerId, action: Action, why?: Weighed[]) => void
@@ -1461,7 +1477,8 @@ function Table(props: {
   // Each side's card back: online, as the server says; against the AI, yours (a Supporter's)
   const account = useAccount()
   const myBack = isSupporter(account?.user) ? (account?.user.cardBack ?? null) : null
-  const backs: [string | null, string | null] = online?.backs ?? (YOU === 0 ? [myBack, null] : [null, myBack])
+  const deckBacks = props.deckBacks ?? [null, null]
+  const backs: [string | null, string | null] = online?.backs ?? [0, 1].map((p) => (p === YOU ? (myBack ?? deckBacks[p]) : deckBacks[p])) as [string | null, string | null]
   const backOf = (who: 'me' | 'opp') => backs[who === 'me' ? ME : THEM]
   const watching = !!online?.watching
   const [mode, setMode] = useState<Mode>(null)

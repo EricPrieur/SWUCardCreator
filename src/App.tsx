@@ -7,7 +7,7 @@ import { asset } from './asset'
 import { DeckGlance, type GlanceCard, type GlanceKind } from './DeckGlance'
 import './App.css'
 import { CardView, partBoxes } from './CardView'
-import { AccountBar, Modal } from './account'
+import { AccountBar, cardBackImage, Modal } from './account'
 import { leaveGuard, setLeaveGuard } from './leaveGuard'
 import { EVENT_PACK_SIZE, EVENT_PACKS, planSealedEvent, playerBases, seededRandom, type EventPlan } from './sealedEvent'
 import { playClick, Simulator } from './Simulator'
@@ -2935,6 +2935,100 @@ function CommunityDecks() {
   )
 }
 
+// Your sets (the set codes on your cards) and each one's card back: shown in the Community
+// Simulator on a deck mostly of that set (a Supporter's own back first). Without one, DUNE's.
+function SetBacks(props: { session: Session; cards: Card[] }) {
+  const { session } = props
+  const codes = [...new Set(props.cards.map((card) => cardFacts(card).set.trim().toUpperCase()).filter(Boolean))].sort()
+  const [backs, setBacks] = useState<Record<string, string> | null>(null)
+  const [busy, setBusy] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const load = () =>
+    api<{ backs: { userId: number; set: string; image: string }[] }>('/api/community/set-backs')
+      .then(({ backs }) => setBacks(Object.fromEntries(backs.filter((back) => back.userId === session.user.id).map((back) => [back.set, back.image]))))
+      .catch((err: Error) => {
+        setBacks({})
+        setError(err.message)
+      })
+  useEffect(() => {
+    load()
+  }, [session.token])
+  const choose = async (code: string, image: string | null) => {
+    await api(`/api/community/set-backs/${encodeURIComponent(code)}`, { method: 'PUT', body: { image }, token: session.token })
+    await load()
+  }
+  const upload = async (code: string, file: File) => {
+    setBusy(code)
+    setError(null)
+    try {
+      const blob = await cardBackImage(file)
+      const res = await fetch(`${API_URL}/api/images`, { method: 'POST', headers: { Authorization: `Bearer ${session.token}` }, body: blob })
+      const data = await res.json().catch(() => null)
+      if (!res.ok) throw new Error(data?.error ?? 'Could not upload the image')
+      await choose(code, data.id)
+    } catch (err) {
+      setError((err as Error).message)
+    }
+    setBusy(null)
+  }
+  const reset = async (code: string) => {
+    setBusy(code)
+    setError(null)
+    try {
+      await choose(code, null)
+    } catch (err) {
+      setError((err as Error).message)
+    }
+    setBusy(null)
+  }
+  if (!backs) return <p className="empty-note">Loading…</p>
+  return (
+    <section className="set-backs">
+      <p className="account-note">
+        Each of your sets can have its own card back. In the Community Simulator, a deck shows the back of the set most of its cards are of
+        (DUNE's when it ties). A Supporter's own card back comes first.
+      </p>
+      {error && <p className="account-error">{error}</p>}
+      {codes.length === 0 ? (
+        <p className="empty-note">None of your cards has a set code yet: give them one on the card line, in the Card Creator.</p>
+      ) : (
+        <ul className="set-backs-list">
+          {codes.map((code) => (
+            <li key={code}>
+              <img
+                className="set-back-image"
+                src={backs[code] ? `${API_URL}/api/public/images/${backs[code]}` : asset('/sim/DuneCardBack01.jpg')}
+                alt={`${code}'s card back`}
+              />
+              <strong>{code}</strong>
+              <span className="account-note">{backs[code] ? 'Its own card back' : "DUNE's card back"}</span>
+              <label className="button">
+                {busy === code ? 'Uploading…' : backs[code] ? 'Change' : 'Upload'}
+                <input
+                  type="file"
+                  accept="image/*"
+                  hidden
+                  disabled={busy !== null}
+                  onChange={(event) => {
+                    const file = event.target.files?.[0]
+                    event.target.value = ''
+                    if (file) upload(code, file)
+                  }}
+                />
+              </label>
+              {backs[code] && (
+                <button className="button" type="button" disabled={busy !== null} onClick={() => reset(code)}>
+                  Use DUNE's
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  )
+}
+
 // The Community tab: everyone's public cards, a Deck Builder of the cards made playable, and a
 // Simulator that plays them against the AI, as the DUNE page's does
 function CommunityPage(props: { session: Session | null }) {
@@ -3273,6 +3367,8 @@ type DeckCard = {
   backFace?: ReactNode
   // The card as a booster's Prescient card shows it, for the cards that can be one
   prescientFace?: ReactNode
+  // A Prescient leader's unit side, in full art too
+  prescientBackFace?: ReactNode
   // Sealed: the pool's copies of it, and how many of each printing
   pooled?: DeckEntry
   // The same card drawn lighter, for the deck image; its Prescient face too when asked
@@ -3315,6 +3411,7 @@ function deckCardOf(card: Card): DeckCard[] {
     face: <CardFace card={card} />,
     backFace: facts.type === 'Leader' ? <CardFace card={card} back /> : undefined,
     prescientFace: canBePrescient(facts.type) ? <CardFace card={prescientOf(card)} /> : undefined,
+    prescientBackFace: facts.type === 'Leader' ? <CardFace card={prescientOf(card)} back /> : undefined,
   }
   const second = isTwoSidedBase(card) ? backFrameOf(card) : undefined
   if (!second)
@@ -3381,6 +3478,10 @@ function deckCardOfShowcase(folder: string, card: ShowcaseCard): DeckCard[] {
         <img className="showcase-image" src={asset(`${folder}/${encodeURIComponent(card.back)}.jpg`)} alt={card.backName ?? label} loading="lazy" />
       ) : undefined,
     prescientFace: canBePrescient(card.type) ? <ShowcasePrescient folder={folder} image={card.image} fallback={src} /> : undefined,
+    prescientBackFace:
+      card.type === 'Leader' && card.back ? (
+        <ShowcaseDrawn folder={folder} image={card.image} fallback={asset(`${folder}/${encodeURIComponent(card.back)}.jpg`)} prescient back />
+      ) : undefined,
   }
   // The deck image is laid out out of sight, where a lazy image never loads: loaded first
   return [
@@ -3623,15 +3724,17 @@ type DeckStep = 'Leader' | 'Base'
 
 // A leader's preview shows both its sides side by side, as tall as each other: the leader side
 // (landscape) takes about two thirds of the width, the unit side the rest
-function withBack(card: DeckCard, face: ReactNode) {
+// prescient: a Prescient copy, its unit side in full art as well
+function withBack(card: DeckCard, face: ReactNode, prescient = false) {
   if (!card.backFace) return face
   return (
     <div className="preview-sides">
       <div className="preview-side-leader">{face}</div>
-      <div className="preview-side-unit">{card.backFace}</div>
+      <div className="preview-side-unit">{(prescient && card.prescientBackFace) || card.backFace}</div>
     </div>
   )
 }
+const isPrescientPrinting = (printing: Printing) => printing === 'prescient' || printing === 'prescient-foil'
 const previewWidth = (card: DeckCard) => (card.backFace ? PREVIEW_WIDTH * 2 : undefined)
 
 function DeckChoice(props: { label: DeckStep; card?: DeckCard; active: boolean; onPick: () => void }) {
@@ -3685,7 +3788,7 @@ function DeckPoolCard(props: {
       {/* Drawn large, the card needs no preview, but a leader's other side still shows */}
       <HoverPreview
         enabled={preview || !!card.backFace}
-        preview={preview ? withBack(card, face) : card.backFace}
+        preview={preview ? withBack(card, face, isPrescientPrinting(printing)) : (isPrescientPrinting(printing) && card.prescientBackFace) || card.backFace}
         width={preview ? previewWidth(card) : undefined}
       >
         <button
@@ -5322,7 +5425,7 @@ function BoosterOpening(props: { pack: PackCard[]; label: string; fast: boolean;
             <HoverPreview
               key={i}
               enabled
-              preview={withBack(each.card, printingFace(each.card, each.printing))}
+              preview={withBack(each.card, printingFace(each.card, each.printing), isPrescientPrinting(each.printing))}
               width={
                 each.card.backFace
                   ? previewWidth(each.card)
@@ -5654,7 +5757,11 @@ function SealedPools(props: DeckBuilderProps) {
                         <li key={card.id} className="deck-pool-card">
                           <HoverPreview
                             enabled={poolFilters.preview}
-                            preview={withBack(card, foilCount(card.id) ? <div className="foil">{poolFace(card)}</div> : poolFace(card))}
+                            preview={withBack(
+                              card,
+                              foilCount(card.id) ? <div className="foil">{poolFace(card)}</div> : poolFace(card),
+                              prescientCount(card.id) > 0,
+                            )}
                             width={previewWidth(card)}
                           >
                             <div className={`deck-pool-image${foilCount(card.id) ? ' foil' : ''}`} title={kinds(card) || undefined}>
@@ -5687,7 +5794,7 @@ function SealedPools(props: DeckBuilderProps) {
                           {rows.map(({ card, count }) => (
                             <li key={card.id} className="deck-row">
                               <span className="deck-row-count">{count}×</span>
-                              <HoverPreview enabled preview={withBack(card, poolFace(card))} width={previewWidth(card)}>
+                              <HoverPreview enabled preview={withBack(card, poolFace(card), prescientCount(card.id) > 0)} width={previewWidth(card)}>
                                 <span className="deck-row-name" title={kinds(card) || undefined}>
                                   {prescientCount(card.id) > 0 && <span className="pool-prescient">◈ </span>}
                                   {foilCount(card.id) > 0 && <span className="pool-foil">✦ </span>}
@@ -6918,7 +7025,7 @@ function App() {
   const shownHash = useRef(window.location.hash)
   // The Showroom's view: its cards, or the Deck Builder of them. An old #decks link opens the
   // Deck Builder there, the address then #showroom.
-  const [showroomView, setShowroomView] = useRemembered<'cards' | 'decks'>('showroom.view', 'cards')
+  const [showroomView, setShowroomView] = useRemembered<'cards' | 'decks' | 'sets'>('showroom.view', 'cards')
   const oldDecksLink = () => {
     if (window.location.hash !== '#decks') return
     setShowroomView('decks')
@@ -7390,7 +7497,7 @@ function App() {
       )}
       {tab === 'showroom' && (
         <nav className="tabs showcase-views">
-          {(['cards', 'decks'] as const).map((value) => (
+          {(account ? (['cards', 'decks', 'sets'] as const) : (['cards', 'decks'] as const)).map((value) => (
             <a
               key={value}
               href="#showroom"
@@ -7400,12 +7507,13 @@ function App() {
                 setShowroomView(value)
               }}
             >
-              {value === 'cards' ? 'Cards' : 'Deck Builder'}
+              {value === 'cards' ? 'Cards' : value === 'decks' ? 'Deck Builder' : 'Sets'}
             </a>
           ))}
         </nav>
       )}
       {tab === 'showroom' && showroomView === 'decks' && <DeckFormats key={decksCopied} cards={cards.flatMap(deckCardOf)} />}
+      {tab === 'showroom' && showroomView === 'sets' && account && <SetBacks session={account} cards={cards} />}
       {tab === 'showroom' && showroomView === 'cards' && (
         <Showroom
           cards={cards}

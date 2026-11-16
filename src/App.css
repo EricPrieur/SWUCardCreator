@@ -4230,3 +4230,31 @@ input.picker-button::placeholder {
   text-shadow: 0 0 6px rgb(255 94 91 / 0.45);
   cursor: help;
 }
+
+/* Showroom, Sets: each set's card back */
+.set-backs {
+  max-width: 60rem;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+.set-backs-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  gap: 1.2rem;
+  margin: 1rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+.set-backs-list li {
+  display: grid;
+  justify-items: center;
+  gap: 0.4rem;
+  text-align: center;
+}
+.set-back-image {
+  width: 9rem;
+  aspect-ratio: 600 / 840;
+  object-fit: cover;
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+}

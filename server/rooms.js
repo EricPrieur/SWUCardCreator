@@ -7,6 +7,7 @@ import { createGame } from './engine/game.ts'
 import { recordAction, startRecord, summarize } from './engine/record.ts'
 import { viewFor } from './engine/view.ts'
 import { isSupporter } from './tiers.ts'
+import { deckSetBack } from './community.js'
 
 // Online games, as on The Chrome Grid: a player opens a room with a deck, another joins it with
 // theirs, and the server plays the game between them, the engine checking every move. Rooms
@@ -70,6 +71,8 @@ async function cardBackOf(user) {
     return null
   }
 }
+// A seat's card back: the player's own (a Supporter's), else their deck's set's
+const backOf = async (user, deck) => (await cardBackOf(user)) ?? (await deckSetBack(deck))
 const seatOf = (room, key) => (key ? room.seats.findIndex((seat) => seat?.key === key) : -1)
 
 // What a room says of itself in the lists
@@ -184,7 +187,7 @@ router.post('/rooms', optionalUser, async (req, res) => {
     pool,
     defs,
     seats: [
-      { key: newKey(), userId: req.user?.id ?? null, name: req.user?.username ?? 'Guest', back: await cardBackOf(req.user), deck, deckName: deckName(req.body), streams: 0, goneAt: now },
+      { key: newKey(), userId: req.user?.id ?? null, name: req.user?.username ?? 'Guest', back: await backOf(req.user, deck), deck, deckName: deckName(req.body), streams: 0, goneAt: now },
       null,
     ],
     state: null,
@@ -209,7 +212,7 @@ router.post('/rooms/:id/join', optionalUser, async (req, res) => {
   if (room.state || room.seats[1]) return res.status(409).json({ error: 'Someone joined this game first' })
   const deck = checkDeck(req.body?.deck, room.defs)
   if (deck.error) return res.status(400).json({ error: deck.error })
-  const back = await cardBackOf(req.user)
+  const back = await backOf(req.user, deck)
   if (room.state || room.seats[1]) return res.status(409).json({ error: 'Someone joined this game first' })
   const host = room.seats[0]
   let name = req.user?.username ?? 'Guest'

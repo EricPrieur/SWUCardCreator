@@ -377,7 +377,7 @@ function SettingsModal(props: {
 const MB = 1024 * 1024
 
 // A card back, as the Simulator draws it: made 600 x 840 (a card's shape) as a JPEG
-async function cardBackImage(file: File) {
+export async function cardBackImage(file: File) {
   const bitmap = await createImageBitmap(file)
   const canvas = document.createElement('canvas')
   canvas.width = 600
