@@ -25,6 +25,9 @@ export type Frame = {
   arena?: Arena
   // A token unit: listed with the tokens as well as the units
   token?: boolean
+  // Where the power and HP icons sit against a unit frame's, when that is not where their
+  // numbers' spots say: what the Prescient look cuts them out by, [dx, dy] each
+  statShift?: { power: [number, number]; hp: [number, number] }
   src: string
   // A small copy of the frame image, for the frame picker
   thumb?: string
@@ -321,6 +324,8 @@ const tokenUnitFrames: Frame[] = [
         cost: { x: 74.5, y: 75.5, h: 57 },
         power: { x: 73.5, y: 878, h: 52 },
         hp: { x: 637.5, y: 878, h: 52 },
+        // The icons are 239 px lower than a unit frame's, the power icon 2 px right, the HP 1 px left
+        statShift: { power: [2, 239], hp: [-1, 239] },
         arena,
         notes: 'No game text box.',
       }),
@@ -346,6 +351,8 @@ const tokenUnitFrames: Frame[] = [
         ],
         power: { x: 73.5, y: 718, h: 52 },
         hp: { x: 636.5, y: 718, h: 52 },
+        // The icons are 78 px lower than a unit frame's, not the 80 their numbers are
+        statShift: { power: [0, 78], hp: [0, 78] },
       }),
     ),
   ),

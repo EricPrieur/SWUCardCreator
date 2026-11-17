@@ -117,10 +117,13 @@ export type Card = {
   hp?: number
   art?: Art
   look?: Look
-  // Where the boxes were moved to on each side, from where the frame has them: the Prescient
-  // version's, put here by prescientOf to draw it. Never saved on the card itself.
+  // Where the boxes were moved to on each side, from where the frame has them. The Prescient
+  // version has its own (prescient.layout), put here by prescientOf to draw it.
   layout?: Layout
   backLayout?: Layout
+  // Shown as its Prescient version wherever the card is shown: the Showroom, its public image,
+  // the Deck Builder, Export and Print files (see shownOf)
+  showPrescient?: boolean
   // The Prescient version, a booster's full-art card: its own art or placing of the art,
   // and its own look. Left out, it is the card's art with prescientLook (see prescientOf).
   prescient?: Prescient
@@ -171,6 +174,11 @@ export function prescientOf<
     layout: card.prescient?.layout,
     backLayout: card.prescient?.backLayout,
   }
+}
+
+// The card as it is shown: its Prescient version when it asks for that
+export function shownOf<T extends Parameters<typeof prescientOf>[0] & { showPrescient?: boolean }>(card: T): T {
+  return card.showPrescient ? prescientOf(card) : card
 }
 
 // Leader Unit sides were once cards of their own. Such a card becomes a leader

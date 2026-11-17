@@ -690,12 +690,15 @@ function solidAreas(frame: Frame, text: boolean, icons: boolean): { clip: string
     // 118 px higher, a token unit's lower, the icons the same), and an upgrade's modifiers (a
     // pilot's too, where they print the same).
     // Any other, to the shapes below
-    const traced = (spot: { y: number }, outlines: [number, number[]][]) => {
+    const traced = (spot: { y: number }, outlines: [number, number[]][], shift?: [number, number]) => {
       for (const [y, outline] of outlines) {
-        const dy = spot.y - y
+        let dx = 0
+        let dy = spot.y - y
         if (dy !== 0 && !(y === UNIT_STATS_Y && (dy === -118 || frame.token))) continue
+        // A token's icons, where they really are (see Frame.statShift)
+        if (shift && y === UNIT_STATS_Y) [dx, dy] = shift
         const points: [number, number][] = []
-        for (let i = 0; i < outline.length; i += 2) points.push([outline[i], outline[i + 1] + dy])
+        for (let i = 0; i < outline.length; i += 2) points.push([outline[i] + dx, outline[i + 1] + dy])
         add(polygon(points))
         return true
       }
@@ -711,7 +714,7 @@ function solidAreas(frame: Frame, text: boolean, icons: boolean): { clip: string
     ]
     part = 'power'
     for (const spot of [frame.power, frame.upgradePower]) {
-      if (spot && !traced(spot, powerOutlines)) add(gem(spot.x, spot.y))
+      if (spot && !traced(spot, powerOutlines, frame.statShift?.power)) add(gem(spot.x, spot.y))
     }
     // Its left edge stops short of the notch in the gem, where the frame's border (its
     // aspect's color on a Heroism frame) shows through
@@ -719,7 +722,7 @@ function solidAreas(frame: Frame, text: boolean, icons: boolean): { clip: string
     part = 'hp'
     if (frame.type !== 'Base') {
       for (const spot of [frame.hp, frame.upgradeHp]) {
-        if (spot && !traced(spot, hpOutlines)) add(round(spot.x - 41, spot.y - 48, spot.x + 45, spot.y + 49))
+        if (spot && !traced(spot, hpOutlines, frame.statShift?.hp)) add(round(spot.x - 41, spot.y - 48, spot.x + 45, spot.y + 49))
       }
     }
     // The aspect icons: under the cost on most cards, one under another; down the

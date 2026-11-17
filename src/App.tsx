@@ -39,6 +39,7 @@ import {
   canBePrescient,
   cardVersions,
   prescientOf,
+  shownOf,
   type CardVersion,
   type SealedPool,
   type CardLine,
@@ -161,6 +162,7 @@ function forFrame(card: Draft): Draft {
     delete kept.backTrait
     delete kept.backFrameId
     delete kept.backArena
+    delete kept.backLayout
   }
   if (!front.epicBox) delete kept.epic
   if (!canBePrescient(front.type)) delete kept.prescient
@@ -195,7 +197,8 @@ const isTwoSidedBase = (card: Draft) => findFrame(card.frameId).type === 'Base' 
 
 // A leader is one card with two sides, which share everything but the frame, the
 // game text and where the art sits. A two-sided base's sides share everything but the
-// aspect; the second side shows the first side's art until it is given its own.
+// aspect, the art and the name: the second side shows the first side's art and name until
+// it is given its own.
 // Every other card only has a front. "mirrors" is true on a side whose name, trait
 // and text are the other side's.
 function cardSide(card: Draft, back: boolean) {
@@ -204,7 +207,7 @@ function cardSide(card: Draft, back: boolean) {
   if (front.type === 'Base') {
     const second = back ? backFrameOf(card) : undefined
     if (!second) return { ...shared, frame: front, text: card.text, art: card.art, isBack: false }
-    return { ...shared, frame: second, text: card.text, art: card.backArt ?? card.art, isBack: true, mirrors: true }
+    return { ...shared, name: card.backName?.trim() ? card.backName : card.name, frame: second, text: card.text, art: card.backArt ?? card.art, isBack: true, mirrors: true }
   }
   if (!front.backId) return { ...shared, frame: front, text: card.text, art: card.art, isBack: false }
   // A side with no art of its own shows the other side's image, not yet placed
@@ -618,7 +621,8 @@ function ShowroomCard(props: {
   // Signed in, a public card: submitting it to be played, and where it stands
   community?: { state?: CommunityState; busy: boolean; onSubmit: () => void; onWithdraw: () => void }
 }) {
-  const { card, preview, format, onFormat, onEdit, onRemove, published, publishing, blocked, onPublic, community } = props
+  const { preview, format, onFormat, onEdit, onRemove, published, publishing, blocked, onPublic, community } = props
+  const card = shownOf(props.card)
   const [back, setBack] = useState(false)
   // Remove asks once more before it does anything
   const [removing, setRemoving] = useState(false)
@@ -1752,7 +1756,7 @@ function CardFiles(props: { cards: Card[]; onImport: (cards: Card[]) => string; 
           setStatus(`Exporting ${set}: card ${done + 1} of ${list.length}…`)
           const names = cards.find((entry) => entry.id === card.id)!
           const sides = backFrameOf(card) ? [false, true] : [false]
-          for (const back of sides) await target.write(set, `${back ? names.back : names.image}.jpg`, await draw(card, back))
+          for (const back of sides) await target.write(set, `${back ? names.back : names.image}.jpg`, await draw(shownOf(card), back))
           const portable = await portableCard(card, names)
           for (const { name, body } of portable.files) await target.write(set, name, body)
           await target.write(set, `${names.image}.json`, JSON.stringify(portable.card, null, 2))
@@ -2165,7 +2169,8 @@ function tokensBehindBases(cards: ShowcaseCard[]) {
 // (for a Sealed event, pack after pack), and text files beside. tag: put before the card's name,
 // "P1-2" for player 1's pack 2. prescient: drawn as its full-art Prescient version. code: printed
 // in place of the artist (see printCode).
-type PrintCard = { entry: ShowcaseCard; prescient?: boolean; tag?: string; code?: string }
+// promo: one of your own cards (your Showroom's), printed two-sided with another on its back
+type PrintCard = { entry: ShowcaseCard; prescient?: boolean; tag?: string; code?: string; promo?: { front: Card; back?: Card } }
 
 // A Sealed print run's code on each card, to put the packs back together and reprint one:
 // "A07-12" is run A, pack 07 of the event, its 12th card. The next event is run B.
@@ -2194,10 +2199,49 @@ const EVENT_MAX_PLAYERS = 8
 const PRINT_DECK_MAX = 612
 
 // load: the cards' own, for a set of the Showroom's (the folder then only names it, "showroom/PROMO"):
-// printed from this browser, never published, a number of copies each, and no Sealed event
-function PrintFiles(props: { folder: string; cards: ShowcaseCard[]; load?: (entry: ShowcaseCard) => Promise<Card | null> }) {
+// printed from this browser, never published, a number of copies each, and no Sealed event.
+// promos: your PROMO set's cards, that a Sealed event can hand out to each player, two-sided
+function PrintFiles(props: { folder: string; cards: ShowcaseCard[]; load?: (entry: ShowcaseCard) => Promise<Card | null>; promos?: Card[] }) {
   const { folder, cards } = props
   const own = !!props.load
+  // Promos for a Sealed event, so many to each player, printed after the packs, in set order:
+  // tokens first (Spy, then Mandalorian), then the bases. A one-sided card is paired with another
+  // on its back (or the card back); a two-sided base prints its own second side
+  const promoCards = [...(props.promos ?? [])].sort(
+    (a, b) =>
+      Number(cardFacts(b).type === 'Token') - Number(cardFacts(a).type === 'Token') ||
+      cardFacts(a).number.localeCompare(cardFacts(b).number, undefined, { numeric: true }),
+  )
+  const [promo, setPromo] = useRemembered<{ on: boolean; perPlayer: string; front?: string; back?: string; counts?: Record<string, string> }>(
+    `showcase.${folder}.promos`,
+    { on: false, perPlayer: '2' },
+  )
+  const pairable = promoCards.filter((card) => !backFrameOf(card))
+  const twoSided = promoCards.filter((card) => !!backFrameOf(card))
+  const promoFront = pairable.find((card) => card.id === promo.front) ?? pairable[0]
+  // Unset: the next card; '': the card back
+  const promoBack =
+    promo.back === ''
+      ? undefined
+      : (pairable.find((card) => card.id === promo.back && card !== promoFront) ?? pairable.find((card) => card !== promoFront))
+  // 0 to 20 of each for every player; left empty, none
+  const howMany = (value: string | undefined, unset: number) => {
+    const n = value === undefined ? unset : Math.floor(Number(value))
+    return Number.isFinite(n) ? Math.min(20, Math.max(0, n)) : unset
+  }
+  const promoEach = promoFront ? howMany(promo.perPlayer, 2) : 0
+  const eachOf = (card: Card) => howMany(promo.counts?.[card.id], 1)
+  const promoName = (card: Card) => card.name.trim() || 'Untitled'
+  const sidesName = (card: Card) => {
+    const back = cardSide(card, true).name.trim()
+    return back && back !== card.name.trim() ? `${promoName(card)} / ${back}` : promoName(card)
+  }
+  // What each player gets: the pair first, then each two-sided card
+  const promoSet: { front: Card; back?: Card }[] = [
+    ...(promoFront ? Array.from({ length: promoEach }, () => ({ front: promoFront, back: promoBack })) : []),
+    ...twoSided.flatMap((card) => Array.from({ length: eachOf(card) }, () => ({ front: card }))),
+  ]
+  const promosOn = !own && promo.on && promoSet.length > 0
   const { draw, stage, done: doneDrawing } = useCardDrawer()
   const [status, setStatus] = useState<string | null>(null)
   const [progress, setProgress] = useState<{ at: number; of: number; name: string } | null>(null)
@@ -2310,19 +2354,36 @@ function PrintFiles(props: { folder: string; cards: ShowcaseCard[]; load?: (entr
       'number,name,type,rarity,printing,copies',
       ...runRows.map(({ entry, n, printing }) => [entry.number ?? '', label(entry), entry.type, entry.rarity ?? '', printing, String(n)].map(csv).join(',')),
     ].join('\n')
+    // The promos, after the packs, player by player
+    const promoCount = promosOn ? count * promoSet.length : 0
+    const promoList = [
+      ...(promoFront && promoEach ? [`${promoEach} ${promoName(promoFront)} / ${promoBack ? promoName(promoBack) : 'card back'}`] : []),
+      ...twoSided.filter((card) => eachOf(card) > 0).map((card) => `${eachOf(card)} ${sidesName(card)}`),
+    ]
+    const promoText = promosOn
+      ? `${promoCount} promos, ${promoSet.length} for each player: ${promoList.join(', ')}. They come after the packs, "PROMO P3" in a file name for player 3's.`
+      : ''
+    const promoPrints: PrintCard[] = promosOn
+      ? Array.from({ length: count }, (_, i) =>
+          promoSet.map(({ front, back }) => ({ entry: showcaseEntry(front), tag: `PROMO P${i + 1}`, promo: { front, back } })),
+        ).flat()
+      : []
     return {
       name: `${set} Sealed event ${run} deal ${deal} ${count} player${count === 1 ? '' : 's'}.zip`,
-      cards: packs.flatMap((pack, p) =>
-        pack.cards.map(({ card, prescient }, c) => {
-          const code = printCode(run, p + 1, c + 1)
-          return { entry: card, prescient: !!prescient, tag: `${code} P${pack.player}-${pack.pack}`, code }
-        }),
-      ),
+      cards: [
+        ...packs.flatMap((pack, p) =>
+          pack.cards.map(({ card, prescient }, c) => {
+            const code = printCode(run, p + 1, c + 1)
+            return { entry: card, prescient: !!prescient, tag: `${code} P${pack.player}-${pack.pack}`, code }
+          }),
+        ),
+        ...promoPrints,
+      ],
       // A deck ends with a whole pack
       deckSize: Math.floor(PRINT_DECK_MAX / EVENT_PACK_SIZE) * EVENT_PACK_SIZE,
       spares: spareTokens && { ...spareTokens, max: PRINT_SPARE_TOKENS },
       notes: (decks, spares) => ({
-        'packs.txt': packsText,
+        'packs.txt': promoText ? `${packsText}\n${promoText}\n` : packsText,
         'print run.csv': runCsv + '\n',
         'README.txt': [
           `${set} Sealed event for ${count} player${count === 1 ? '' : 's'}: ${packs.length} packs of ${EVENT_PACK_SIZE}, ${total} cards, ${different} different.`,
@@ -2333,10 +2394,11 @@ function PrintFiles(props: { folder: string; cards: ShowcaseCard[]; load?: (entr
           `Each card carries its code where the artist goes: ${printCode(run, 7, 12)} is print run ${run}, pack 07, its 12th card. Sort a`,
           'mixed pile by code to put the packs back together; to reprint a pack, print its 15 files again.',
           'packs.txt lists each pack, print run.csv how many of each card.',
+          ...(promoText ? [promoText] : []),
           `These are print run ${run}, deal ${deal}. The Sealed event window deals the same packs again for run ${run}, deal ${deal} and`,
           `${count} player${count === 1 ? '' : 's'}, as long as the set's cards have not changed since; packs.txt is the record either way.`,
           '',
-          ...layoutNote(total + spares, decks, spares),
+          ...layoutNote(total + promoCount + spares, decks, spares),
         ].join('\n'),
       }),
     }
@@ -2393,11 +2455,21 @@ function PrintFiles(props: { folder: string; cards: ShowcaseCard[]; load?: (entr
         return backs.get(key)!
       }
       const sidesOf = async (card: PrintCard) => {
+        // A promo: your card, and the one on its back (or its own second side, or the card back)
+        if (card.promo) {
+          const { front, back } = card.promo
+          const key = `promo|${front.id}|${back?.id ?? ''}`
+          if (!fronts.has(key)) {
+            fronts.set(key, await drawn(shownOf(front), false))
+            backs.set(key, back ? await drawn(shownOf(back), false) : card.entry.back ? await drawn(shownOf(front), true) : cardBack)
+          }
+          return { front: fronts.get(key)!, back: backs.get(key)! }
+        }
         const { entry, prescient, code } = card
         const full = await cardOf(entry)
         // A wild card: its Prescient version, with the shared card back. A Prescient base: its token
         // on the back is Prescient too. A Prescient leader: both its sides
-        const face = prescient && canBePrescient(entry.type) ? prescientOf(full) : full
+        const face = prescient && canBePrescient(entry.type) ? prescientOf(full) : shownOf(full)
         const frontKey = `${entry.id ?? entry.image}${prescient ? '|prescient' : ''}`
         const front = code ? await drawn({ ...face, code }, false) : (fronts.get(frontKey) ?? (await drawn(face, false)))
         if (!code && plan.cards.filter((each) => each.entry === entry && !!each.prescient === !!prescient).length > 1) fronts.set(frontKey, front)
@@ -2409,7 +2481,7 @@ function PrintFiles(props: { folder: string; cards: ShowcaseCard[]; load?: (entr
           const tokenCard = token && (await cardOf(token))
           backs.set(
             backKey,
-            tokenCard ? await drawn(prescient ? prescientOf(tokenCard) : tokenCard, false) : entry.back ? await drawn(face, true) : cardBack,
+            tokenCard ? await drawn(prescient ? prescientOf(tokenCard) : shownOf(tokenCard), false) : entry.back ? await drawn(face, true) : cardBack,
           )
         }
         return { front, back: backs.get(backKey)! }
@@ -2449,7 +2521,7 @@ function PrintFiles(props: { folder: string; cards: ShowcaseCard[]; load?: (entr
   }
 
   const count = Math.min(EVENT_MAX_PLAYERS, Math.max(1, Number(players) || 8))
-  const eventCards = count * EVENT_PACKS * EVENT_PACK_SIZE
+  const eventCards = count * EVENT_PACKS * EVENT_PACK_SIZE + (promosOn ? count * promoSet.length : 0)
   const dealFor = (players: number, run = runLetter, deal = deals[run] ?? 0) => {
     setPlan(planSealedEvent(printable, players, seededRandom(`${folder}|${run}|${players}|${deal}`)))
     setViewed((was) => Math.min(was, players))
@@ -2603,6 +2675,71 @@ function PrintFiles(props: { folder: string; cards: ShowcaseCard[]; load?: (entr
                 Deal again
               </button>
             </div>
+            {promoCards.length > 0 && (
+              <div className="event-bar">
+                <label className="event-players" title="Print promos from your Showroom's PROMO set for each player, two-sided, after the packs">
+                  <input type="checkbox" checked={promo.on} onChange={(event) => setPromo({ ...promo, on: event.target.checked })} /> Include promos
+                </label>
+                {promo.on && (
+                  <>
+                    {promoFront && (
+                      <>
+                        <label className="event-players" title="How many of this pair each player gets">
+                          Per player{' '}
+                          <input
+                            className="print-copies"
+                            type="number"
+                            min={0}
+                            max={20}
+                            value={promo.perPlayer}
+                            onChange={(event) => setPromo({ ...promo, perPlayer: event.target.value })}
+                          />
+                        </label>
+                        <label className="event-players">
+                          Front{' '}
+                          <select value={promoFront.id} onChange={(event) => setPromo({ ...promo, front: event.target.value })}>
+                            {pairable.map((card) => (
+                              <option key={card.id} value={card.id}>
+                                {promoName(card)}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <label className="event-players">
+                          Back{' '}
+                          <select value={promoBack?.id ?? ''} onChange={(event) => setPromo({ ...promo, back: event.target.value })}>
+                            <option value="">The card back</option>
+                            {pairable
+                              .filter((card) => card !== promoFront)
+                              .map((card) => (
+                                <option key={card.id} value={card.id}>
+                                  {promoName(card)}
+                                </option>
+                              ))}
+                          </select>
+                        </label>
+                      </>
+                    )}
+                    {twoSided.map((card) => (
+                      <label key={card.id} className="event-players" title={`${sidesName(card)}: how many each player gets, with its own second side on the back`}>
+                        {promoName(card)}{' '}
+                        <input
+                          className="print-copies"
+                          type="number"
+                          min={0}
+                          max={20}
+                          value={promo.counts?.[card.id] ?? '1'}
+                          onChange={(event) => setPromo({ ...promo, counts: { ...promo.counts, [card.id]: event.target.value } })}
+                        />
+                      </label>
+                    ))}
+                    <span className="account-note">
+                      {promoSet.length} for each player, {count * promoSet.length} promos after the packs
+                    </span>
+                  </>
+                )}
+              </div>
+            )}
             <div className="deck-tabs" role="tablist" aria-label="Player">
               {Array.from({ length: count }, (_, i) => i + 1).map((player) => (
                 <button key={player} type="button" role="tab" aria-selected={viewed === player} onClick={() => setViewed(player)}>
@@ -2670,7 +2807,7 @@ function PrintFiles(props: { folder: string; cards: ShowcaseCard[]; load?: (entr
 }
 
 // #showcase/<folder>, the folder being public/showcase/<folder> with showcase.json in it
-function Showcase(props: { folder: string }) {
+function Showcase(props: { folder: string; promos?: Card[] }) {
   const folder = `/showcase/${props.folder}`
   const [list, setList] = useState<ShowcaseList | null>(null)
   const [missing, setMissing] = useState(false)
@@ -2700,7 +2837,7 @@ function Showcase(props: { folder: string }) {
     undefined,
     list && (
       <>
-        <PrintFiles folder={folder} cards={list.cards} />
+        <PrintFiles folder={folder} cards={list.cards} promos={props.promos} />
         <button
           className="chip"
           type="button"
@@ -2978,12 +3115,11 @@ function deckCardOfCommunity(card: CommunityCard): DeckCard[] {
 // The Community Deck Builder: the supported community cards, each maker's set its own, and
 // DUNE's, left out of a deck until it is ticked in its Sets. Should the community's cards not
 // load, DUNE's are still there.
-// allPublic: every public card too, not only those in play, to build decks and open Sealed packs
-// with cards still being worked on (the Simulator plays only the cards in play)
+// Every public card is there, those not in play too (marked notInPlay), to build decks and open
+// Sealed packs with cards still being worked on: the Simulator plays only the cards in play
 function CommunityDecks(props: { session: Session | null }) {
   const [cards, setCards] = useState<DeckCard[] | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [allPublic, setAllPublic] = useRemembered('community.decks.all-public', false)
   useEffect(() => {
     let live = true
     Promise.all([
@@ -2994,9 +3130,7 @@ function CommunityDecks(props: { session: Session | null }) {
       fetch(asset('/showcase/DUNE/showcase.json'), { cache: 'no-cache' })
         .then((response) => (response.ok ? (response.json() as Promise<ShowcaseList>) : null))
         .catch(() => null),
-      allPublic
-        ? api<{ cards: PublicCard[] }>('/api/public/cards', { token: props.session?.token }).catch(() => ({ cards: [] as PublicCard[] }))
-        : Promise.resolve({ cards: [] as PublicCard[] }),
+      api<{ cards: PublicCard[] }>('/api/public/cards', { token: props.session?.token }).catch(() => ({ cards: [] as PublicCard[] })),
     ])
       .then(([community, dune, everyone]) => {
         if (!live) return
@@ -3007,7 +3141,7 @@ function CommunityDecks(props: { session: Session | null }) {
           .map((card) => ({ ...card, version: 0 }))
         setCards([
           ...community.cards.filter((card) => showable({ entry: card.entry } as PublicCard)).flatMap(deckCardOfCommunity),
-          ...others.flatMap(deckCardOfCommunity),
+          ...others.flatMap(deckCardOfCommunity).map((card) => ({ ...card, notInPlay: true })),
           ...(dune?.cards ?? []).flatMap((card) => deckCardOfShowcase('/showcase/DUNE', card)),
         ])
       })
@@ -3015,23 +3149,12 @@ function CommunityDecks(props: { session: Session | null }) {
     return () => {
       live = false
     }
-  }, [allPublic, props.session?.token])
+  }, [props.session?.token])
   if (!cards) return <p className="empty-note">{error ?? "Loading the community's cards…"}</p>
   const anyCommunity = cards.some((card) => card.id.startsWith('community:'))
   return (
     <>
       {error && <p className="account-note community-intro">Could not load the community's cards ({error}): DUNE's are here.</p>}
-      <div className="community-intro community-all">
-        <label title="Build decks and open Sealed packs with every public card, those still being worked on too. The Simulator plays only the cards in play: it leaves the others out of a deck.">
-          <input type="checkbox" checked={allPublic} onChange={(event) => setAllPublic(event.target.checked)} /> All public cards, not only those in play
-        </label>
-        {allPublic && (
-          <span className="account-note">
-            {' '}
-            To try out sets and rarities: the Simulator leaves the cards not in play out of a deck.
-          </span>
-        )}
-      </div>
       {!error && !anyCommunity && (
         <p className="account-note community-intro">
           No community card is playable yet: make a card public in your Showroom, then Submit for play. Meanwhile, tick DUNE in a
@@ -3502,6 +3625,8 @@ type DeckCard = {
   prescientBackFace?: ReactNode
   // Sealed: the pool's copies of it, and how many of each printing
   pooled?: DeckEntry
+  // The Community Deck Builder: a public card the Simulator doesn't play yet (not supported)
+  notInPlay?: boolean
   // The same card drawn lighter, for the deck image; its Prescient face too when asked
   forImage?: (prescient?: boolean) => Promise<DeckCard>
 }
@@ -3539,8 +3664,8 @@ function deckCardOf(card: Card): DeckCard[] {
     number: facts.number || undefined,
     max: maxCopies(card.text),
     facts,
-    face: <CardFace card={card} />,
-    backFace: facts.type === 'Leader' ? <CardFace card={card} back /> : undefined,
+    face: <CardFace card={shownOf(card)} />,
+    backFace: facts.type === 'Leader' ? <CardFace card={shownOf(card)} back /> : undefined,
     prescientFace: canBePrescient(facts.type) ? <CardFace card={prescientOf(card)} /> : undefined,
     prescientBackFace: facts.type === 'Leader' ? <CardFace card={prescientOf(card)} back /> : undefined,
   }
@@ -3551,7 +3676,7 @@ function deckCardOf(card: Card): DeckCard[] {
         ...deckCard,
         forImage: async (prescient) => {
           const small = await withSmallArt(card)
-          return { ...deckCard, face: <CardFace card={small} />, prescientFace: prescient ? <CardFace card={prescientOf(small)} /> : undefined }
+          return { ...deckCard, face: <CardFace card={shownOf(small)} />, prescientFace: prescient ? <CardFace card={prescientOf(small)} /> : undefined }
         },
       },
     ]
@@ -3564,7 +3689,7 @@ function deckCardOf(card: Card): DeckCard[] {
       icons,
       back: back || undefined,
       facts: { ...facts, aspects: icons },
-      face: <CardFace card={card} back={back} />,
+      face: <CardFace card={shownOf(card)} back={back} />,
     }
     return { ...each, forImage: async () => ({ ...each, face: <CardFace card={await withSmallArt(card)} back={back} /> }) }
   }
@@ -4738,7 +4863,26 @@ function DeckBuilder(props: {
 
   // A deck starts with its leader, then its base, then the cards
   const step: DeckStep | null = changing ?? (!leader ? 'Leader' : !base ? 'Base' : null)
-  const inPool = (card: DeckCard) => card.type !== 'Token' && inSets(card)
+  // The Community Deck Builder's Simulator filter: all cards, those it plays, or those it doesn't yet
+  const [playable, setPlayable] = useRemembered<'all' | 'supported' | 'unsupported'>(`${prefix}.playable`, 'all')
+  const playableOn = !!props.community && !sealed
+  const playableChoice = playableOn && (
+    <div className="filter-group">
+      <span className="filter-label">Simulator</span>
+      <ChoiceDropdown
+        label="Simulator"
+        options={[
+          { value: 'all', label: 'All cards' },
+          { value: 'supported', label: 'Supported' },
+          { value: 'unsupported', label: 'Unsupported' },
+        ]}
+        selected={playable}
+        onChange={setPlayable}
+      />
+    </div>
+  )
+  const inPlayable = (card: DeckCard) => !playableOn || playable === 'all' || !!card.notInPlay === (playable === 'unsupported')
+  const inPool = (card: DeckCard) => card.type !== 'Token' && inSets(card) && inPlayable(card)
   // Each list keeps its own filters: a Type filter for the cards is no use for leaders
   const choosing = useCardFilters(
     `${prefix}.choose`,
@@ -4746,6 +4890,7 @@ function DeckBuilder(props: {
     'Order saved',
     'number',
     (card) => card.id.replace(BACK_SIDE, ''),
+    playableChoice || undefined,
   )
   const picking = useCardFilters(
     prefix,
@@ -4754,6 +4899,8 @@ function DeckBuilder(props: {
       .map((card) => ({ item: card, facts: card.facts })),
     'Order saved',
     'cost',
+    undefined,
+    playableChoice || undefined,
   )
   const { bar, shown, grid, preview } = step ? choosing : picking
 
@@ -6050,15 +6197,17 @@ function CardCreator(props: {
           : { ...draft, art },
     )
   const setLook = (look: Look) => onChange(onPrescient ? { ...draft, prescient: { ...draft.prescient, look } } : { ...draft, look })
-  // On the Prescient tab, the boxes can be moved about over the art in place of the art itself,
-  // each side's on its own
+  // The boxes can be moved about over the art in place of the art itself, each side's on its
+  // own: the card's on the Card tab, the Prescient version's on the Prescient tab
   const [movingBoxes, setMovingBoxes] = useState(false)
-  const moveBoxes = onPrescient && movingBoxes
+  const moveBoxes = movingBoxes
   const layoutKey = side.isBack ? 'backLayout' : 'layout'
-  const layout = draft.prescient?.[layoutKey]
+  const layout = onPrescient ? draft.prescient?.[layoutKey] : draft[layoutKey]
   const setLayout = (next?: Layout) => {
     const moved = next && Object.fromEntries(Object.entries(next).filter(([, at]) => at && (at.x || at.y)))
-    const prescient = { ...draft.prescient, [layoutKey]: moved && Object.keys(moved).length ? moved : undefined }
+    const kept = moved && Object.keys(moved).length ? moved : undefined
+    if (!onPrescient) return onChange({ ...draft, [layoutKey]: kept })
+    const prescient = { ...draft.prescient, [layoutKey]: kept }
     // Nothing of its own left, the Prescient version is the card's again
     onChange({ ...draft, prescient: Object.values(prescient).some((value) => value !== undefined) ? prescient : undefined })
   }
@@ -6071,7 +6220,8 @@ function CardCreator(props: {
     !front.backId ? false : side.isBack ? !draft[key]?.trim() : draft[backKeys[key]]?.trim() === ''
   const setShared = (key: SharedKey, value: string) => {
     if (bothWays.current.has(key)) return onChange({ ...draft, [key]: value, [backKeys[key]]: undefined })
-    if (!side.isBack || side.mirrors) return onChange({ ...draft, [key]: value })
+    // A two-sided base's second side shares all but its name
+    if (!side.isBack || (side.mirrors && key !== 'name')) return onChange({ ...draft, [key]: value })
     onChange({ ...draft, [backKeys[key]]: value === (draft[key] ?? '') ? undefined : value })
   }
   // What the shared fields' inputs need: their value, and noting when typing begins and ends
@@ -6156,29 +6306,40 @@ function CardCreator(props: {
             </p>
           )}
           {onPrescient && (
-            <div className="move-boxes">
-              <button
-                className="chip"
-                type="button"
-                aria-pressed={movingBoxes}
-                title="Hold the art where it is and drag the name, text, icons and other boxes over it instead"
-                onClick={() => setMovingBoxes(!movingBoxes)}
-              >
-                Move boxes
-              </button>
-              {layout && (
-                <button className="button" type="button" onClick={() => setLayout(undefined)}>
-                  Put the boxes back
-                </button>
-              )}
-              {moveBoxes && (
-                <p className="empty-note">
-                  Drag a box on the card to move it; double-click it to put it back. The art stays where it is
-                  {backFrameOf(draft) ? ', and each side has its own layout' : ''}.
-                </p>
-              )}
-            </div>
+            <label
+              className="prescient-default"
+              title="Show the card as its Prescient version in your Showroom, its public image, the Deck Builder, Export and Print files"
+            >
+              <input
+                type="checkbox"
+                checked={!!draft.showPrescient}
+                onChange={(event) => onChange({ ...draft, showPrescient: event.target.checked || undefined })}
+              />{' '}
+              Show the Prescient version by default
+            </label>
           )}
+          <div className="move-boxes">
+            <button
+              className="chip"
+              type="button"
+              aria-pressed={movingBoxes}
+              title="Hold the art where it is and drag the name, text, icons and other boxes over it instead"
+              onClick={() => setMovingBoxes(!movingBoxes)}
+            >
+              Move boxes
+            </button>
+            {layout && (
+              <button className="button" type="button" onClick={() => setLayout(undefined)}>
+                Put the boxes back
+              </button>
+            )}
+            {moveBoxes && (
+              <p className="empty-note">
+                Drag a box on the card to move it; double-click it to put it back. The art stays where it is
+                {backFrameOf(draft) ? ', and each side has its own layout' : ''}.
+              </p>
+            )}
+          </div>
           <h2>Art</h2>
           <ArtControls art={side.art} onChange={setArt} />
           <h2>Frame &amp; text</h2>
@@ -6321,8 +6482,8 @@ function CardCreator(props: {
           )}
           {side.isBack && side.mirrors && (
             <p className="empty-note">
-              Both sides share the name, location, HP and game text: changed here, they change on both. The art is
-              the first side's until you give this side its own.
+              Both sides share the location, HP and game text: changed here, they change on both. The name and art
+              are the first side's until you give this side its own.
             </p>
           )}
           {side.isBack && !side.mirrors && (
@@ -7295,7 +7456,7 @@ function App() {
   const showPublic = async (session: NonNullable<typeof account>, card: Card) => {
     const sides: Blob[] = []
     try {
-      for (const back of backFrameOf(card) ? [false, true] : [false]) sides.push(await drawer.draw(card, back))
+      for (const back of backFrameOf(card) ? [false, true] : [false]) sides.push(await drawer.draw(shownOf(card), back))
     } finally {
       drawer.done()
     }
@@ -7607,7 +7768,7 @@ function App() {
           <h1>{showcase === 'DUNE' ? 'Dune SWU' : showcase}</h1>
           {mainTabs}
         </header>
-        <Showcase folder={showcase} />
+        <Showcase folder={showcase} promos={cards.filter((card) => cardFacts(card).set.trim().toUpperCase() === 'PROMO')} />
         {leaveModal}
       </main>
     )

@@ -4285,10 +4285,9 @@ input.picker-button::placeholder {
   gap: 0.4rem;
 }
 
-/* Community Deck Builder: every public card, or only those in play */
-.community-all {
-  margin-bottom: 0.6rem;
-}
-.community-all label {
+/* The editor's Prescient tab: show the card as its Prescient version everywhere */
+.prescient-default {
+  display: block;
+  margin: 0.4rem 0 0.6rem;
   cursor: pointer;
 }
