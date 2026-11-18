@@ -1,5 +1,5 @@
 import { useAccount } from './api'
-import { STEP_CENTS, TIER_NAMES, tierOf } from '../server/tiers.ts'
+import { BASE_PLAY_CARDS, PLAY_CARDS_PER_STEP, STEP_CENTS, TIER_NAMES, tierOf } from '../server/tiers.ts'
 
 export const KOFI = 'https://ko-fi.com/ericprieur'
 
@@ -18,7 +18,7 @@ export const TIERS = [
     perks: [
       'Your cards, their art and your decks saved to your account: 50 MB, on any computer',
       'Share your cards on the Community tab and your own Showroom page',
-      'Submit up to 50 of your cards to be played in the Community Deck Builder and Simulator',
+      `Submit up to ${BASE_PLAY_CARDS} of your cards to be played in the Community Deck Builder and Simulator`,
       'Notifications and mail',
     ],
   },
@@ -26,7 +26,7 @@ export const TIERS = [
     id: 'supporter',
     price: `${dollars(STEP_CENTS)} or more in tips`,
     perks: [
-      `50 MB more storage and 50 more cards in play for each ${dollars(STEP_CENTS)}`,
+      `50 MB more storage and ${PLAY_CARDS_PER_STEP} more cards in play for each ${dollars(STEP_CENTS)}`,
       "The Deck Builder's Prescient (full art) and Foil copies",
       'A card back of your own, shown to both players in the Simulator',
       'My thanks: you keep the server running',
@@ -97,7 +97,9 @@ export function KofiHover() {
         <b>Supporter</b>, from {dollars(STEP_CENTS)}:
       </p>
       <ul>
-        <li>50 MB more storage and 50 more cards in play for each {dollars(STEP_CENTS)}</li>
+        <li>
+          50 MB more storage and {PLAY_CARDS_PER_STEP} more cards in play for each {dollars(STEP_CENTS)}
+        </li>
         <li>Prescient and Foil copies in the Deck Builder</li>
         <li>A card back of your own in the Simulator</li>
       </ul>

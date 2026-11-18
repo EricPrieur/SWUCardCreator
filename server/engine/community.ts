@@ -19,8 +19,19 @@ import type { CardDef, UnitState } from './types.ts'
 const hasTraitCi = (d: CardDef, trait: string) => d.traits.some((t) => t.toLowerCase() === trait.toLowerCase())
 const enemyUnits = (g: Game, self: Self) => g.units((u) => g.controller(u) !== self.controller)
 const friendlyUnits = (g: Game, self: Self) => g.units((u) => g.controller(u) === self.controller)
-const ink = (g: Game, unitId: string) => g.giveToken(unitId, 'Ink')
-const ink2 = (g: Game, unitId: string) => g.giveToken(unitId, 'Ink', 2)
+// Callie, Hey, DJ!: "Whenever a friendly unit would give an enemy unit any number of Ink tokens,
+// it gives that many Ink tokens plus 1 instead." A unit gives them: not an event, nor a leader
+// before it is deployed
+const CALLIE = '5/94c0b21b-8466-4ffd-8d8c-d57ada4ff96f'
+const givenByUnit = (g: Game, self: Self) => self.def.type === 'unit' || !!g.unit(self.id) || !!self.attachedTo
+function ink(g: Game, self: Self, unitId: string, count = 1) {
+  const target = g.unit(unitId)
+  if (!target) return
+  const p = self.controller
+  const callie = g.controller(target) !== p && givenByUnit(g, self) && g.units((u) => g.controller(u) === p && g.def(u).community === CALLIE).length > 0
+  if (callie) g.log(`Callie: 1 more Ink token for ${g.name(unitId)}`, p)
+  g.giveToken(unitId, 'Ink', count + (callie ? 1 : 0))
+}
 // The AI inks the enemy unit that can hurt it most: the strongest
 const strongest = (g: Game, units: UnitState[]) => [...units].sort((a, b) => g.power(b) - g.power(a))[0]?.id
 
@@ -35,7 +46,7 @@ function inkEach(g: Game, self: Self) {
     ai: 'harm',
     source: self.def.id,
   })
-  for (const id of picks) ink(g, id)
+  for (const id of picks) ink(g, self, id)
 }
 
 // Up to (or exactly) so many Ink tokens, one at a time, among enemy units
@@ -48,7 +59,7 @@ function inkAmong(g: Game, self: Self, count: number, optional: boolean) {
       source: self.def.id,
     })
     if (!pick) return
-    ink(g, pick)
+    ink(g, self, pick)
   }
 }
 
@@ -58,7 +69,7 @@ const inkInPlay = (g: Game) => g.units(() => true).reduce((sum, u) => sum + inkO
 // "Give the defending unit N Ink tokens", while it is still in play
 const inkDefender = (g: Game, self: Self, count: number) => {
   const target = self.attack?.target
-  if (target && target !== 'base' && g.unit(target)) g.giveToken(target, 'Ink', count)
+  if (target && target !== 'base' && g.unit(target)) ink(g, self, target, count)
 }
 const isOctarianTrooper = (g: Game, u: UnitState) =>
   g.traits(u).some((t) => t.toLowerCase() === 'octarian') && g.traits(u).some((t) => t.toLowerCase() === 'trooper')
@@ -82,7 +93,7 @@ export const communityScripts: (CardScript & { card: string })[] = [
     text: '[When Played:] Give each enemy unit an Ink token.\n[On Attack:] You may deal 1 damage to each enemy unit with an Ink token.',
     front: {
       whenPlayed: (g, self) => {
-        for (const u of enemyUnits(g, self)) ink(g, u.id)
+        for (const u of enemyUnits(g, self)) ink(g, self, u.id)
       },
       onAttack: (g, self) => {
         const inked = enemyUnits(g, self).filter((u) => g.tokens(u.id, 'Ink') > 0)
@@ -103,7 +114,7 @@ export const communityScripts: (CardScript & { card: string })[] = [
       afterDefending: (g, self) => {
         const attacker = self.other ? g.unit(self.other) : undefined
         if (!attacker) return
-        if (g.may(self.controller, `Octonozzle: give an Ink token to ${g.name(attacker.id)}?`, { ai: true, source: self.def.id })) ink(g, attacker.id)
+        if (g.may(self.controller, `Octonozzle: give an Ink token to ${g.name(attacker.id)}?`, { ai: true, source: self.def.id })) ink(g, self, attacker.id)
       },
     },
   },
@@ -135,7 +146,7 @@ export const communityScripts: (CardScript & { card: string })[] = [
     front: {
       whenAttackEnds: (g, self) => {
         const target = self.attack?.target
-        if (target && target !== 'base' && g.unit(target)) ink(g, target)
+        if (target && target !== 'base' && g.unit(target)) ink(g, self, target)
       },
     },
   },
@@ -147,7 +158,7 @@ export const communityScripts: (CardScript & { card: string })[] = [
       whenAttackEnds: (g, self) => {
         const target = self.attack?.target
         if (!target || target === 'base' || !g.unit(target)) return
-        if (g.may(self.controller, `Octotrooper: give an Ink token to ${g.name(target)}?`, { ai: true, source: self.def.id })) ink(g, target)
+        if (g.may(self.controller, `Octotrooper: give an Ink token to ${g.name(target)}?`, { ai: true, source: self.def.id })) ink(g, self, target)
       },
     },
   },
@@ -260,13 +271,13 @@ export const communityScripts: (CardScript & { card: string })[] = [
       whenAttackEnds: (g, self) => {
         const target = self.attack?.target
         if (!target || target === 'base' || !g.unit(target)) return
-        if (g.may(self.controller, `Shielded Twintacle Octotrooper: give ${g.name(target)} 2 Ink tokens?`, { ai: true, source: self.def.id })) ink2(g, target)
+        if (g.may(self.controller, `Shielded Twintacle Octotrooper: give ${g.name(target)} 2 Ink tokens?`, { ai: true, source: self.def.id })) ink(g, self, target, 2)
       },
       afterDefending: (g, self) => {
         const attacker = self.other ? g.unit(self.other) : undefined
         if (!attacker) return
         if (g.may(self.controller, `Shielded Twintacle Octotrooper: give ${g.name(attacker.id)} 2 Ink tokens?`, { ai: true, source: self.def.id }))
-          ink2(g, attacker.id)
+          ink(g, self, attacker.id, 2)
       },
     },
   },
@@ -348,7 +359,7 @@ export const communityScripts: (CardScript & { card: string })[] = [
         let given = 0
         for (const u of units) {
           const before = inkOn(g, u.id)
-          ink(g, u.id)
+          ink(g, self, u.id)
           given += inkOn(g, u.id) - before
         }
         g.heal(`base${self.controller}`, given, self)
@@ -363,7 +374,7 @@ export const communityScripts: (CardScript & { card: string })[] = [
       afterDefending: (g, self) => {
         const attacker = self.other ? g.unit(self.other) : undefined
         if (!attacker) return
-        if (g.may(self.controller, `Shielded Octotrooper: give an Ink token to ${g.name(attacker.id)}?`, { ai: true, source: self.def.id })) ink(g, attacker.id)
+        if (g.may(self.controller, `Shielded Octotrooper: give an Ink token to ${g.name(attacker.id)}?`, { ai: true, source: self.def.id })) ink(g, self, attacker.id)
       },
     },
   },
@@ -413,6 +424,179 @@ export const communityScripts: (CardScript & { card: string })[] = [
         if (!self.survived || !g.unit(self.id)) return
         g.defeat(self.id, self)
         if (!g.unit(self.id)) inkDefender(g, self, 3)
+      },
+    },
+  },
+  // --- zverev20's second batch (2026-11-18) ---
+  {
+    card: CALLIE,
+    name: 'Callie',
+    text: '[Sentinel]\n\nWhenever a friendly unit would give an enemy unit any number of Ink tokens, it gives that many Ink tokens plus 1 instead.',
+    // In ink() above, for every Ink token a friendly unit gives
+    front: {},
+  },
+  {
+    card: '5/e9124e68-1697-43e5-b6cc-276b19f28fc4',
+    name: 'Uncover the Hideout',
+    text: "Look at an opponent's hand and discard a unit that costs [#3] or more from it.",
+    front: {
+      play: (g, self) => {
+        const foe = g.player(self.controller === 0 ? 1 : 0)
+        g.log(`${g.player(self.controller).name} looks at ${foe.name}'s hand`, self.controller)
+        const units = foe.hand.filter((c) => g.def(c).type === 'unit' && g.def(c).cost >= 3)
+        // The AI takes the dearest
+        const best = [...units].sort((a, b) => g.def(b).cost - g.def(a).cost)[0]
+        const pick = g.chooseOne(self.controller, 'Uncover the Hideout: discard a unit that costs 3 or more from their hand', units.map((c) => c.id), {
+          ai: best?.id,
+          source: self.def.id,
+          seen: foe.hand.map((c) => c.id),
+        })
+        if (pick) g.discard(self.controller === 0 ? 1 : 0, pick)
+      },
+    },
+  },
+  {
+    card: '5/dd675c1d-aec9-4e8e-b913-c63a7ae8b123',
+    name: 'Amped Octostamp',
+    text: '[When Defeated:] Give a unit an Experience token and another unit 3 Ink tokens.',
+    front: {
+      whenDefeated: (g, self) => {
+        const all = g.units(() => true)
+        if (!all.length) return
+        // The AI: the Experience token to its strongest unit, the Ink tokens to the strongest enemy
+        const friends = friendlyUnits(g, self)
+        const xp = g.chooseOne(self.controller, 'Amped Octostamp: give a unit an Experience token', all.map((u) => u.id), {
+          ai: strongest(g, friends) ?? strongest(g, all),
+          source: self.def.id,
+        })
+        if (xp) g.giveToken(xp, 'Experience')
+        const others = g.units((u) => u.id !== xp)
+        if (!others.length) return
+        const enemies = others.filter((u) => g.controller(u) !== self.controller)
+        const pick = g.chooseOne(self.controller, 'Amped Octostamp: give another unit 3 Ink tokens', others.map((u) => u.id), {
+          ai: strongest(g, enemies) ?? strongest(g, others),
+          source: self.def.id,
+        })
+        if (pick) ink(g, self, pick, 3)
+      },
+    },
+  },
+  {
+    card: '5/8c2e244a-dc70-45b6-affb-be9fd1fe5d19',
+    name: 'Versatile Inkling',
+    text: '[Raid 1]\n\nWhile this unit has 1 or more Ink tokens, its [Raid] is doubled.',
+    // Its Raid 1 doubled: Raid 1 more
+    front: {
+      gives: (g, self, unit) => (unit.id === self.id && inkOn(g, self.id) > 0 ? { keywords: { raid: 1 } } : undefined),
+    },
+  },
+  {
+    card: '5/366b04f5-7fe7-4d0d-9255-7456f4e29be9',
+    name: 'Sprinkler',
+    text: 'Give each enemy unit an Ink token, then put this event into play as a resource.',
+    front: {
+      toResources: true,
+      play: (g, self) => {
+        for (const u of enemyUnits(g, self)) ink(g, self, u.id)
+      },
+    },
+  },
+  {
+    card: '5/7460b99b-d382-49fb-a80f-1fcd50ecaf86',
+    name: 'Octoseeker',
+    text: 'Enemy units lose [Hidden].\n\n[When Played:] Give a Shield token to a friendly unit.',
+    front: {
+      gives: (g, self, unit) => (g.controller(unit) !== self.controller ? { loses: ['hidden'] } : undefined),
+      whenPlayed: (g, self) => {
+        const friends = friendlyUnits(g, self)
+        const pick = g.chooseOne(self.controller, 'Octoseeker: give a Shield token to a friendly unit', friends.map((u) => u.id), {
+          ai: strongest(g, friends),
+          source: self.def.id,
+        })
+        if (pick) g.giveToken(pick, 'Shield')
+      },
+    },
+  },
+  {
+    card: '5/de157739-4fbc-454c-b375-f9da3fcdd6b9',
+    name: 'Toxic Mist',
+    text: 'Choose 2 units and defeat each Ink token on them, then give each of them a Weakness token for each Ink token they had attached.',
+    front: {
+      play: (g, self) => {
+        const all = g.units(() => true)
+        if (!all.length) return
+        const n = Math.min(2, all.length)
+        // The AI picks enemy units, its most valuable targets first; inked ones are offered first
+        const order = [...all].sort((a, b) => inkOn(g, b.id) - inkOn(g, a.id))
+        const picks = g.choose(self.controller, 'Toxic Mist: choose 2 units', order.map((u) => u.id), { min: n, max: n, ai: 'harm', source: self.def.id })
+        for (const id of picks) {
+          const unit = g.unit(id)
+          if (!unit) continue
+          const inks = unit.upgrades.filter((up) => g.def(up).token && g.def(up).name === 'Ink')
+          for (const up of inks) g.defeatUpgrade(up.id)
+          if (inks.length && g.unit(id)) g.giveToken(id, 'Weakness', inks.length)
+        }
+      },
+    },
+  },
+  {
+    card: '5/5019276c-4ef4-4a52-a420-aee33d3e01db',
+    name: 'Splash Wall',
+    text: 'Give a Shield token to a unit.',
+    front: {
+      play: (g, self) => {
+        const all = g.units(() => true)
+        const pick = g.chooseOne(self.controller, 'Splash Wall: give a Shield token to a unit', all.map((u) => u.id), {
+          ai: strongest(g, friendlyUnits(g, self)) ?? 'help',
+          source: self.def.id,
+        })
+        if (pick) g.giveToken(pick, 'Shield')
+      },
+    },
+  },
+  {
+    card: '5/49d1dfab-cdec-4c24-ae91-0484184be0b2',
+    name: 'Squid Beakon Jump',
+    text: 'Play a unit from your hand {(paying its cost)}, then give it an Experience token.',
+    front: {
+      play: (g, self) => {
+        const p = self.controller
+        const units = g.player(p).hand.filter((c) => g.def(c).type === 'unit' && g.canPlay(p, c.id)).map((c) => c.id)
+        const pick = g.chooseOne(p, 'Squid Beakon Jump: play a unit from your hand, paying its cost', units, { ai: 'best', source: self.def.id })
+        if (!pick) return
+        g.playCard(p, pick)
+        if (g.unit(pick)) g.giveToken(pick, 'Experience')
+      },
+    },
+  },
+  {
+    card: '5/02e192c2-89b5-406e-a101-cefec21b68ce',
+    name: 'Oversized Octopod',
+    text: '[Raid 2]\n\n[When Attack Ends:] You may defeat this unit, if you do, give the defending unit 6 Ink tokens.',
+    front: {
+      whenAttackEnds: (g, self) => {
+        if (!self.survived || !g.unit(self.id)) return
+        const target = self.attack?.target
+        const onUnit = !!target && target !== 'base' && !!g.unit(target)
+        if (!g.may(self.controller, 'Oversized Octopod: defeat this unit to give the defending unit 6 Ink tokens?', { ai: onUnit, source: self.def.id })) return
+        g.defeat(self.id, self)
+        if (!g.unit(self.id)) inkDefender(g, self, 6)
+      },
+    },
+  },
+  {
+    card: '5/aa4f5990-ae62-4d36-9364-1752cd493029',
+    name: 'Octozeppelin',
+    text: 'At the start of each action phase, give an Ink token to a unit.',
+    front: {
+      actionStart: (g, self) => {
+        const all = g.units(() => true)
+        if (!all.length) return
+        const pick = g.chooseOne(self.controller, 'Octozeppelin: give an Ink token to a unit', all.map((u) => u.id), {
+          ai: strongest(g, enemyUnits(g, self)) ?? strongest(g, all),
+          source: self.def.id,
+        })
+        if (pick) ink(g, self, pick)
       },
     },
   },

@@ -28,6 +28,12 @@ const community = (name: string) => {
   return { name, community: script.card, ...readText(script.text), text: script.text, backText: script.backText, pilotText: script.pilotText }
 }
 
+// By its key: two community cards may share a name (two Octozeppelins)
+const communityKey = (key: string) => {
+  const script = communityScripts.find((s) => s.card === key)!
+  return { name: script.name, community: script.card, ...readText(script.text), text: script.text, backText: script.backText, pilotText: script.pilotText }
+}
+
 const defs: CardDef[] = [
   card('leader', { type: 'leader', cost: 4, unit: { power: 3, hp: 6, arena: 'ground', keywords: {} } }),
   card('octavio', {
@@ -80,6 +86,18 @@ const defs: CardDef[] = [
   card('king', { ...community('Octobot King'), cost: 6, power: 5, hp: 6, arena: 'space', unique: true, traits: ['Octarian', 'Octoweapon', 'Vehicle'] }),
   card('pod', { ...community('Octopod'), cost: 1, power: 0, hp: 3 }),
   card('cheap', { type: 'upgrade', cost: 2, power: 1, hp: 1, arena: undefined }),
+  card('callie', { ...community('Callie'), subtitle: 'Hey, DJ!', cost: 7, power: 4, hp: 9, unique: true, traits: ['Inkling', 'Octarian'] }),
+  card('uncover', { ...community('Uncover the Hideout'), type: 'event', cost: 1, arena: undefined }),
+  card('amped', { ...community('Amped Octostamp'), cost: 4, power: 4, hp: 4 }),
+  card('inkling', { ...community('Versatile Inkling'), cost: 2, power: 1, hp: 3 }),
+  card('sprinkler', { ...community('Sprinkler'), type: 'event', cost: 4, arena: undefined }),
+  card('seeker', { ...community('Octoseeker'), cost: 4, power: 3, hp: 3, arena: 'space' }),
+  card('mist', { ...community('Toxic Mist'), type: 'event', cost: 3, arena: undefined }),
+  card('wall', { ...community('Splash Wall'), type: 'event', cost: 1, arena: undefined }),
+  card('beakon', { ...community('Squid Beakon Jump'), type: 'event', cost: 1, arena: undefined }),
+  card('octopodXL', { ...community('Oversized Octopod'), cost: 3, power: 0, hp: 6 }),
+  card('zeppelin2', { ...communityKey('5/aa4f5990-ae62-4d36-9364-1752cd493029'), cost: 5, power: 4, hp: 5, arena: 'space' }),
+  card('hidden', { cost: 2, power: 2, hp: 2, text: '[Hidden]' }),
 ]
 
 const act = (state: GameState, p: PlayerId, action: Action) => applyAction(state, p, action)
@@ -458,3 +476,104 @@ test("the AI uses DJ Octavio's Action: an Ink token on an enemy unit is worth so
   assert.deepEqual(chooseAction(state, 0), { type: 'ability', source: 'leader', index: 0 })
 })
 
+
+// --- The second batch (2026-11-18) ---
+const tokensOn = (state: GameState, id: string, name: string) => unit(state, id)!.upgrades.filter((u) => state.defs[u.def].name === name).length
+
+test('Callie: a friendly unit gives an enemy unit 1 more Ink token; an event does not', () => {
+  let state = table({ units0: ['callie', 'copter'], units1: ['big'] })
+  assert.equal(keywordsOf(state, unit(state, 'u00')!).sentinel, true)
+  state = act(state, 0, { type: 'attack', attacker: 'u01', target: 'u10' })
+  assert.equal(inkOn(state, 'u10'), 2, 'the Octocopter gives 1, plus 1')
+  let event = table({ units0: ['callie'], units1: ['big'], hand0: ['sprinkler'] })
+  event = act(event, 0, { type: 'play', card: 'h0' })
+  assert.equal(inkOn(event, 'u10'), 1, 'an event is not a unit')
+})
+
+test('Uncover the Hideout: a unit that costs 3 or more discarded from their hand', () => {
+  let state = table({ hand0: ['uncover'] })
+  state.players[1].hand = [{ id: 'e0', def: 'small' }, { id: 'e1', def: 'big' }, { id: 'e2', def: 'wall' }]
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  assert.deepEqual(state.prompt!.options.map((o) => o.id), ['e1'], 'the 5-cost unit only')
+  state = answer(state, 'e1')
+  assert.deepEqual(state.players[1].hand.map((c) => c.id), ['e0', 'e2'])
+})
+
+test('Amped Octostamp: when defeated, an Experience token to a unit and 3 Ink tokens to another', () => {
+  let state = table({ units0: ['amped', 'small'], units1: ['big'] })
+  state = act(state, 0, { type: 'attack', attacker: 'u00', target: 'u10' })
+  // A 4/4 into a 5/5: defeated
+  assert.equal(unit(state, 'u00'), undefined)
+  state = answer(state, 'u01')
+  assert.ok(state.prompt!.options.every((o) => o.id !== 'u01'), 'another unit')
+  state = answer(state, 'u10')
+  assert.equal(tokensOn(state, 'u01', 'Experience'), 1)
+  assert.equal(inkOn(state, 'u10'), 3)
+})
+
+test('Versatile Inkling: Raid 2 while it has an Ink token', () => {
+  const state = table({ units0: ['inkling'] })
+  const inkling = state.players[0].units[0]
+  assert.equal(keywordsOf(state, inkling).raid, 1)
+  inkling.upgrades.push({ id: 'k1', def: 'ink', owner: 1 })
+  assert.equal(keywordsOf(state, inkling).raid, 2)
+})
+
+test('Sprinkler: an Ink token on each enemy unit, then a resource', () => {
+  let state = table({ units1: ['big', 'small'], hand0: ['sprinkler'] })
+  const resources = state.players[0].resources.length
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  assert.equal(inkOn(state, 'u10'), 1)
+  assert.equal(inkOn(state, 'u11'), 1)
+  assert.equal(state.players[0].resources.length, resources + 1)
+})
+
+test('Octoseeker: enemy units lose Hidden; a Shield token to a friendly unit when played', () => {
+  let state = table({ hand0: ['seeker'], units0: ['big'], units1: ['hidden'] })
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  if (state.prompt) state = answer(state, 'u00')
+  assert.equal(tokensOn(state, 'u00', 'Shield'), 1)
+  assert.ok(!keywordsOf(state, unit(state, 'u10')!).hidden)
+})
+
+test('Toxic Mist: the Ink tokens on 2 units become as many Weakness tokens', () => {
+  let state = table({ hand0: ['mist'], units1: ['big', 'small'] })
+  state.players[1].units[0].upgrades.push({ id: 'k1', def: 'ink', owner: 0 }, { id: 'k2', def: 'ink', owner: 0 })
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  state = answer(state, 'u10', 'u11')
+  assert.equal(inkOn(state, 'u10'), 0)
+  assert.equal(tokensOn(state, 'u10', 'Weakness'), 2)
+  assert.equal(tokensOn(state, 'u11', 'Weakness'), 0)
+})
+
+test('Splash Wall: a Shield token to a unit', () => {
+  let state = table({ hand0: ['wall'], units0: ['big'] })
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  if (state.prompt) state = answer(state, 'u00')
+  assert.equal(tokensOn(state, 'u00', 'Shield'), 1)
+})
+
+test('Squid Beakon Jump: a unit played from hand, paying its cost, with an Experience token', () => {
+  let state = table({ hand0: ['beakon', 'big'] })
+  const ready = state.players[0].resources.filter((r) => !r.exhausted).length
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  if (state.prompt) state = answer(state, 'h1')
+  assert.equal(tokensOn(state, 'h1', 'Experience'), 1)
+  assert.equal(ready - state.players[0].resources.filter((r) => !r.exhausted).length, 6, '1 for the event, 5 for the unit')
+})
+
+test('Oversized Octopod: Raid 2; may defeat itself after attacking for 6 Ink tokens on the defender', () => {
+  let state = table({ units0: ['octopodXL'], units1: ['big'] })
+  assert.equal(keywordsOf(state, state.players[0].units[0]).raid, 2)
+  state = act(state, 0, { type: 'attack', attacker: 'u00', target: 'u10' })
+  state = yes(state)
+  assert.equal(unit(state, 'u00'), undefined)
+  assert.equal(inkOn(state, 'u10'), 6)
+})
+
+test('Octozeppelin (the one for any unit): its own script, apart from the first Octozeppelin', () => {
+  const zeppelin = defs.find((d) => d.id === 'zeppelin2')!
+  assert.equal(scriptStatus(zeppelin), 'scripted')
+  const script = communityScripts.find((s) => s.card === '5/aa4f5990-ae62-4d36-9364-1752cd493029')!
+  assert.ok(script.front?.actionStart)
+})

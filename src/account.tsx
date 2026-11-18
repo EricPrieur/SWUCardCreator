@@ -17,7 +17,7 @@ import { CardsTab, DecksTab, defaultFilter, FilterBar, GamesTab, StatsTab, type 
 import { CommunityTab, useAdminPending, type AdminPending } from './AdminCommunity'
 import { MailTab, NotificationsTab, useUnread, type Unread } from './Messages'
 import { KofiHover, SupporterMark } from './Support'
-import { isSupporter, STEP_CENTS, TIER_NAMES, tierOf } from '../server/tiers.ts'
+import { BASE_PLAY_CARDS, isSupporter, PLAY_CARDS_PER_STEP, STEP_CENTS, TIER_NAMES, tierOf } from '../server/tiers.ts'
 
 type AdminUser = User & {
   lastLoginAt: string | null
@@ -571,7 +571,9 @@ function UsersTab(props: { session: Session; focus?: number }) {
                 <th>Admin</th>
                 <th title="May make cards public">Public?</th>
                 <th>Cards</th>
-                <th title="Cards supported for play in the Community Deck Builder and Simulator, and waiting, against the account's limit (50, and 50 more for each $5)">
+                <th
+                  title={`Cards supported for play in the Community Deck Builder and Simulator, and waiting, against the account's limit (${BASE_PLAY_CARDS}, and ${PLAY_CARDS_PER_STEP} more for each $5)`}
+                >
                   In play
                 </th>
                 <th title="Games played in the Simulator">Games</th>

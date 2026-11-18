@@ -1,3 +1,4 @@
+import { BASE_PLAY_CARDS, PLAY_CARDS_PER_STEP } from '../server/tiers.ts'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { api, API_URL, type Session } from './api'
@@ -199,7 +200,7 @@ export function CommunityTab(props: { session: Session; onReviewed?: () => void 
         {makers.map((maker) => (
           <span
             key={maker.userId}
-            title={`${maker.supported} supported, ${maker.inPlay - maker.supported} waiting; ${maker.limit === null ? 'no limit' : `${maker.limit} at most (50, and 50 more for each $5 tipped)`}`}
+            title={`${maker.supported} supported, ${maker.inPlay - maker.supported} waiting; ${maker.limit === null ? 'no limit' : `${maker.limit} at most (${BASE_PLAY_CARDS}, and ${PLAY_CARDS_PER_STEP} more for each $5 tipped)`}`}
           >
             {' · '}
             {maker.owner} {maker.supported}

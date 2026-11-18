@@ -4,7 +4,7 @@ import { verifyToken, requireAdmin } from './auth.js'
 import { notify } from './messages.js'
 import { cardDef } from './engine/cards.ts'
 import { scriptStatus, unplayedLines } from './engine/scripts.ts'
-import { playCardsFor, STEP_CENTS } from './tiers.ts'
+import { PLAY_CARDS_PER_STEP, playCardsFor, STEP_CENTS } from './tiers.ts'
 import { deckBack, setCode } from './cardBacks.ts'
 
 // Community cards: a public card its owner submits to be played. Each submission is a version, a
@@ -112,7 +112,7 @@ router.post('/community/:cardId', verifyToken, async (req, res) => {
       )
       if (!already.length && inPlay[0].n >= limit)
         return res.status(403).json({
-          error: `You have ${inPlay[0].n} cards submitted for play, as many as your account may (${limit}). Each $5 tip adds 50 more; or withdraw one first.`,
+          error: `You have ${inPlay[0].n} cards submitted for play, as many as your account may (${limit}). Each $5 tip adds ${PLAY_CARDS_PER_STEP} more; or withdraw one first.`,
         })
     }
     let prescient = req.body?.prescientImage ?? null
