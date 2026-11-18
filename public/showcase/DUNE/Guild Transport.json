@@ -1,0 +1,20 @@
+{
+  "hp": 5,
+  "id": "99c2cc89-e664-4965-92ab-5ed9410351f1",
+  "art": {
+    "x": 1,
+    "y": -20,
+    "src": "Guild Transport (art).webp",
+    "zoom": 0.9
+  },
+  "cost": 4,
+  "name": "Guild Transport",
+  "text": "[When Played:] Return a friendly non-leader ground unit that costs [#3] or less to its owner's hand. Then, you may play that unit for free.",
+  "power": 2,
+  "trait": "Spacing Guild, Vehicle, Transport",
+  "number": "222",
+  "rarity": "U",
+  "frameId": "unit-cunning-vigilance-space",
+  "setCode": "DUNE",
+  "language": "EN"
+}

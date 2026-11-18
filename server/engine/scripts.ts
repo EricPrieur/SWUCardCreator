@@ -124,6 +124,8 @@ export type Abilities = {
   // The card's own: how much less it costs to play onto a unit ("This upgrade costs [1] less
   // to play on an [{Octarian}] unit.")
   costsLessOnto?: (g: Game, p: PlayerId, unit: UnitState) => number
+  // What the card takes off its own cost as it is played (Sealed Pass, with an Underworld unit)
+  costsLessSelf?: (g: Game, p: PlayerId) => number
   // "If you would create a Spice token, you may create 2 Spice tokens instead.": whether it does
   moreSpice?: (g: Game, self: Self) => boolean
   // "Opponents play with their hands revealed."; "You may look at the top card of your deck at
@@ -969,9 +971,19 @@ const dune: CardScript[] = [
     },
   },
   {
-    name: 'Harkonnen Spice Hoarder',
-    text: "[When Played/On Attack:] If you don't control an [{Arrakis}] base, create a Spice token.",
-    front: { whenPlayed: offArrakisSpice, onAttack: offArrakisSpice },
+    name: 'Harkonnen Sleeper Agent',
+    // Was Harkonnen Spice Hoarder, a Spice token off Arrakis only (2026-11-18)
+    // Then a Spy token on attack too, on Arrakis: too much for a 2-cost 1/3 (user, 2026-11-18)
+    text: "[When Played:] If you control an [{Arrakis}] base, create a Spy token.\n[When Played/On Attack:] If you don't control an [{Arrakis}] base, create a Spice token.",
+    front: {
+      whenPlayed: (g, self) => {
+        if (g.controlsArrakis(self.controller)) g.createToken(self.controller, 'Spy')
+        else g.createSpice(self.controller)
+      },
+      onAttack: (g, self) => {
+        if (!g.controlsArrakis(self.controller)) g.createSpice(self.controller)
+      },
+    },
   },
   {
     name: 'Sardaukar Levenbrech',
@@ -1396,7 +1408,7 @@ const dune: CardScript[] = [
   {
     name: 'Ramallo',
     subtitle: 'Reverend Mother of Sietch Tabr',
-    text: '[When Played:] Heal 2 damage from a unit or base. You may defeat a friendly Spice token. If you do, heal 3 damage from it.\n[When Defeated:] Attach this card as an upgrade to a friendly non-[{Vehicle}] [{Fremen}] or [{Bene Gesserit}] unit.',
+    text: '[When Played:] You may heal 2 damage from a unit or base. If you do, you may defeat a friendly Spice token. If you do, heal 3 damage from it.\n[When Defeated:] Attach this card as an upgrade to a friendly non-[{Vehicle}] [{Fremen}] or [{Bene Gesserit}] unit.',
     front: {
       whenPlayed: (g, self) => {
         const p = self.controller
@@ -1404,7 +1416,7 @@ const dune: CardScript[] = [
           ...g.units((u) => u.damage > 0).map((u) => u.id),
           ...([0, 1] as PlayerId[]).filter((q) => g.player(q).base.damage > 0).map((q) => `base${q}`),
         ]
-        const pick = g.chooseOne(p, 'Ramallo: heal 2 damage from a unit or base', damaged, { ai: 'help', source: self.def.id })
+        const pick = g.chooseOne(p, 'Ramallo: you may heal 2 damage from a unit or base', damaged, { ai: 'help', source: self.def.id, optional: true })
         if (!pick) return
         g.heal(pick, 2, self)
         const left = pick.startsWith('base') ? g.player(Number(pick.slice(4)) as PlayerId).base.damage : (g.unit(pick)?.damage ?? 0)
@@ -1523,7 +1535,7 @@ const dune: CardScript[] = [
   },
   {
     name: 'Tleilaxu Face Dancer',
-    text: "[Sentinel]\n[When Played:] Choose another unit. Give this unit Experience tokens equal to half the total of that unit's power and HP, rounded down.",
+    text: "[Sentinel]\n[When Played:] Choose another unit. Give this unit Experience tokens equal to half the total of that unit's power and HP, rounded down. This unit gains that unit's traits.",
     front: {
       whenPlayed: (g, self) => {
         const others = g.units((u) => u.id !== self.id)
@@ -1534,7 +1546,14 @@ const dune: CardScript[] = [
           source: self.def.id,
         })
         const copied = pick ? g.unit(pick) : undefined
-        if (copied) g.giveToken(self.id, 'Experience', Math.floor(total(copied) / 2))
+        if (!copied) return
+        // Its traits, as they are now, for as long as the Face Dancer stays in play
+        const traits = g.traits(copied).filter((t) => !g.traits(g.unit(self.id)!).includes(t))
+        g.giveToken(self.id, 'Experience', Math.floor(total(copied) / 2))
+        if (traits.length && g.unit(self.id)) {
+          g.grant(self.id, {}, 'source', self.id, traits)
+          g.log(`Tleilaxu Face Dancer becomes ${traits.join(', ')}`, self.controller)
+        }
       },
     },
   },
@@ -1857,29 +1876,27 @@ const dune: CardScript[] = [
   {
     name: 'Gurney Halleck',
     subtitle: 'Smuggler of Arrakis',
-    text: '[Action [Arrow]:] Defeat a friendly Spice token. If you do, choose one:\n• Play a card using Smuggle. It costs [2] less.\n• Give an Experience token to a friendly [{Underworld}] unit.',
-    backText:
-      '[On Attack:] You may defeat a friendly Spice token. If you do, choose one:\n• Play a card using Smuggle. It costs [2] less.\n• Give an Experience token to a friendly [{Underworld}] unit.',
+    // Was "…choose one: • Play a card using Smuggle. It costs [2] less. • Give an Experience token
+    // to a friendly Underworld unit.", a 4/5 unit side with the same On Attack: 62-64% against the
+    // Featured Decks once the AI resourced Smuggle cards (2026-11-17). A 3/5 Saboteur unit side
+    // smuggling a card for 2 less when deployed, the Action still 2 less: 62%; the Action 1 less:
+    // 48%, Smugglers' Raid's Spice token refuelling it (2026-11-18)
+    text: '[Action [Arrow]:] Defeat a friendly Spice token. If you do, play a card using Smuggle. It costs [2] less.',
+    backText: '[Saboteur]\n[When Deployed:] You may play a card using Smuggle. It costs [2] less.',
     front: {
       actions: [
         {
-          label: 'smuggle a card for 2 less, or an Experience token',
+          label: 'smuggle a card for 2 less',
           exhaust: true,
-          can: (g, self) => g.spice(self.controller) > 0,
+          can: (g, self) => g.spice(self.controller) > 0 && smuggleable(g, self, 2).length > 0,
           run: (g, self) => {
-            if (g.defeatSpice(self.controller)) gurneyChoice(g, self)
+            if (g.defeatSpice(self.controller)) smuggleFor(g, self, 2)
           },
         },
       ],
     },
     back: {
-      onAttack: (g, self) => {
-        const p = self.controller
-        if (!g.spice(p)) return
-        if (!g.may(p, 'Gurney Halleck: defeat a Spice token to smuggle a card for 2 less, or give an Experience token?', { yes: 'Defeat a Spice token', no: 'Skip', source: self.def.id }))
-          return
-        if (g.defeatSpice(p)) gurneyChoice(g, self)
-      },
+      whenDeployed: (g, self) => smuggleFor(g, self, 2, true),
     },
   },
   {
@@ -2117,7 +2134,7 @@ const dune: CardScript[] = [
   },
   {
     name: "Smugglers' Raid",
-    text: 'Attack with a unit. It gets [+2/+0] for this attack.\n[Smuggle] [[3 Cunning]]\n[When played using Smuggle:] Create a Spice token.',
+    text: 'Attack with a unit. It gets [+2/+0] for this attack.\n[Smuggle] [[4 Cunning]]\n[When played using Smuggle:] Create a Spice token.',
     front: {
       play: (g, self) => {
         const p = self.controller
@@ -2408,15 +2425,15 @@ const dune: CardScript[] = [
   {
     name: 'Stilgar',
     subtitle: 'Desert Commander',
-    text: '[Sentinel]\n[When Played:] If you control an [{Arrakis}] base, create a Fremen token.\nWhen a friendly [{Fremen}] unit is defeated: Heal 2 damage from a unit or base.',
+    text: '[Sentinel]\n[When Played:] If you control an [{Arrakis}] base, create a Fremen token.\nWhen a friendly [{Fremen}] unit is defeated: You may heal 2 damage from a unit or base.',
     front: {
       whenPlayed: (g, self) => {
         if (g.controlsArrakis(self.controller)) g.createToken(self.controller, 'Fremen')
       },
       // Another Fremen unit, or Stilgar himself: gone from play, he heals as he's defeated
       triggersIf: { whenFriendlyDefeated: (_g, self) => !!self.otherDef?.traits.includes('Fremen') },
-      whenFriendlyDefeated: (g, self) => healOne(g, self, 2),
-      whenDefeated: (g, self) => healOne(g, self, 2),
+      whenFriendlyDefeated: (g, self) => healOne(g, self, 2, true),
+      whenDefeated: (g, self) => healOne(g, self, 2, true),
     },
   },
   {
@@ -2441,8 +2458,9 @@ const dune: CardScript[] = [
   {
     name: 'Count Hasimir Fenring',
     subtitle: "The Emperor's Blade",
-    text: "[Ambush]\nWhile attacking, this unit deals combat damage before the defender.\nThis unit can't attack units named Paul Atreides.",
+    text: "[Ambush]\nWhile attacking, this unit deals combat damage before the defender.\nThis unit can't attack units named Paul Atreides.\n[When Played:] Create a Spy token.",
     front: {
+      whenPlayed: (g, self) => g.createToken(self.controller, 'Spy'),
       gives: (_g, self, unit) => (unit.id === self.id ? { keywords: { firstStrike: true } } : undefined),
       cantAttack: (g, _self, target) => g.def(target).name === 'Paul Atreides',
     },
@@ -3239,6 +3257,205 @@ const dune: CardScript[] = [
     },
   },
 
+  // --- Gurney's smugglers, Cunning and Vigilance (2026-11-17) ---
+  {
+    name: 'Water Seller',
+    text: '[When Played:] You may defeat a friendly Spice token. If you do, heal 3 damage from your base.',
+    front: {
+      whenPlayed: (g, self) => {
+        const p = self.controller
+        if (!g.spice(p)) return
+        const hurt = g.player(p).base.damage >= 3
+        if (!g.may(p, 'Water Seller: defeat a friendly Spice token to heal 3 damage from your base?', { yes: 'Defeat a Spice token', no: 'Skip', ai: hurt, source: self.def.id })) return
+        if (g.defeatSpice(p)) g.heal(`base${p}`, 3, self)
+      },
+    },
+  },
+  {
+    name: "Smuggler's Lookout",
+    text: '[Sentinel]\n[Smuggle] [[3 Vigilance]]\n[When played using Smuggle:] Create a Spice token.',
+    front: {
+      whenPlayed: (g, self) => {
+        if (self.smuggled) g.createSpice(self.controller)
+      },
+    },
+  },
+  {
+    name: 'Guild Bribe',
+    text: "Exhaust an enemy unit. It loses [Sentinel] for this phase.\nThen, you may defeat a friendly Spice token. If you do, look at an opponent's hand. You may choose a card in it. If you do, they discard that card, then draw a card.",
+    front: {
+      play: (g, self) => {
+        const p = self.controller
+        const foe = enemy(g, self)
+        const targets = unitIds(g, (u) => g.controller(u) !== p)
+        const pick = g.chooseOne(p, 'Guild Bribe: exhaust an enemy unit; it loses Sentinel for this phase', targets, { ai: 'harm', source: self.def.id })
+        if (pick) {
+          g.exhaust(pick)
+          g.strip(pick, ['sentinel'], 'phase')
+        }
+        const hand = g.player(foe).hand.map((c) => c.id)
+        if (!g.spice(p) || !hand.length) return
+        if (!g.may(p, "Guild Bribe: defeat a friendly Spice token to look at their hand?", { yes: 'Defeat a Spice token', no: 'Skip', source: self.def.id })) return
+        if (!g.defeatSpice(p)) return
+        g.log(`${self.def.name} looks at ${g.player(foe).name}'s hand`, p)
+        const card = g.chooseOne(p, 'Guild Bribe: you may choose a card in their hand; they discard it, then draw a card', hand, {
+          optional: true,
+          ai: 'best',
+          source: self.def.id,
+          seen: hand,
+        })
+        if (!card) return
+        g.discard(foe, card)
+        g.draw(foe, 1)
+      },
+    },
+  },
+  {
+    name: 'Sealed Pass',
+    text: 'If you control an [{Underworld}] unit, this event costs [1] less.\nDefeat a non-leader ground unit that costs [#3] or less.',
+    front: {
+      costsLessSelf: (g, p) => (g.units((u) => g.controller(u) === p && g.hasTrait(u, 'Underworld')).length ? 1 : 0),
+      play: (g, self) => {
+        const targets = unitIds(g, (u) => u.arena === 'ground' && !g.isLeader(u) && g.cost(u) <= 3)
+        const pick = g.chooseOne(self.controller, 'Sealed Pass: defeat a non-leader ground unit that costs 3 or less', targets, { ai: 'harm', source: self.def.id })
+        if (pick) g.defeat(pick, self)
+      },
+    },
+  },
+  {
+    name: 'Slip-Tip',
+    text: 'Attach to a non-[{Vehicle}] unit.\nAttached unit gains: "[On Attack:] Give a Weakness token to the defender."\n[Smuggle] [[3 Cunning]]\n[When played using Smuggle:] Give a Weakness token to a ground unit.',
+    front: {
+      attachedOnAttack: (g, self) => {
+        const target = self.attack?.target
+        if (target && target !== 'base' && g.unit(target)) g.giveToken(target, 'Weakness')
+      },
+      whenPlayed: (g, self) => {
+        if (!self.smuggled) return
+        const pick = g.chooseOne(self.controller, 'Slip-Tip: give a Weakness token to a ground unit', unitIds(g, (u) => u.arena === 'ground'), { ai: 'harm', source: self.def.id })
+        if (pick) g.giveToken(pick, 'Weakness')
+      },
+    },
+  },
+  {
+    name: 'The Spice Hoard',
+    text: '[Fortify]\n[When Played:] Create a Spice token.\nWhenever you defeat a friendly Spice token, heal 1 damage from your base.\n[Smuggle] [[3 Cunning Vigilance]]',
+    front: {
+      whenPlayed: (g, self) => g.createSpice(self.controller),
+      triggersIf: { whenSpiceDefeated: (g, self) => youDefeatSpice(self) && g.player(self.controller).base.damage > 0 },
+      whenSpiceDefeated: (g, self) => {
+        if (youDefeatSpice(self)) g.heal(`base${self.controller}`, 1, self)
+      },
+    },
+  },
+  {
+    name: 'Guild Transport',
+    text: "[When Played:] Return a friendly non-leader ground unit that costs [#3] or less to its owner's hand. Then, you may play that unit for free.",
+    front: {
+      whenPlayed: (g, self) => {
+        const p = self.controller
+        const ids = friendlyIds(g, self, (u) => u.arena === 'ground' && !g.isLeader(u) && g.cost(u) <= 3)
+        const pick = g.chooseOne(p, "Guild Transport: return a friendly non-leader ground unit that costs 3 or less to its owner's hand", ids, { ai: 'help', source: self.def.id })
+        if (!pick) return
+        const owner = g.unit(pick)!.owner
+        g.returnToHand(pick)
+        // Played again from your own hand only: a unit you took goes back to its owner
+        const back = owner === p ? g.player(p).hand.find((c) => c.id === pick) : undefined
+        if (!back || !g.canPlay(p, back.id, { free: true })) return
+        if (g.may(p, `Guild Transport: play ${g.name(back.id)} for free?`, { yes: 'Play it', no: 'Skip', source: self.def.id })) g.playCard(p, back.id, { free: true })
+      },
+    },
+  },
+
+  // --- Fenring's agents, Cunning and Villainy (2026-11-18) ---
+  {
+    name: 'Residency Informant',
+    text: 'While you control a Spice token, this unit gains [Saboteur].',
+    front: {
+      gives: (g, self, unit) => (unit.id === self.id && g.spice(self.controller) > 0 ? { keywords: { saboteur: true } } : undefined),
+    },
+  },
+  // Command's plain 4-drop (2026-11-18): the green decks had no solid 4-cost unit but Sardaukar
+  {
+    name: 'Imperial Herald',
+    text: '[When Played:] Give an Experience token to another friendly unit.',
+    front: {
+      whenPlayed: (g, self) => {
+        const others = friendlyIds(g, self, (u) => u.id !== self.id)
+        const pick = g.chooseOne(self.controller, 'Imperial Herald: give an Experience token to another friendly unit', others, { ai: 'help', source: self.def.id })
+        if (pick) g.giveToken(pick, 'Experience')
+      },
+    },
+  },
+  // The Spy deck's 4-drop: two bodies, and one more Spy for A Web of Spies
+  {
+    name: 'Landsraad Double Agent',
+    text: '[Saboteur]\n[When Played:] Create a Spy token.',
+    front: {
+      whenPlayed: (g, self) => g.createToken(self.controller, 'Spy'),
+    },
+  },
+  // Villainy's 2-drop in space (2026-11-18): it answers the 'Thopters
+  {
+    name: 'Imperial Picket Ship',
+    text: '[Sentinel]\n[When Played:] Exhaust an enemy space unit.',
+    front: {
+      whenPlayed: (g, self) => {
+        const ready = unitIds(g, (u) => g.controller(u) !== self.controller && u.arena === 'space' && !u.exhausted)
+        const pick = g.chooseOne(self.controller, 'Imperial Picket Ship: exhaust an enemy space unit', ready, { ai: 'harm', source: self.def.id })
+        if (pick) g.exhaust(pick)
+      },
+    },
+  },
+  // A Spy in space
+  {
+    name: 'Ixian Probe Drone',
+    text: '[Hidden]\n[On Attack:] Create a Spy token.',
+    front: {
+      onAttack: (g, self) => g.createToken(self.controller, 'Spy'),
+    },
+  },
+  // The Spy deck's 6-drop (2026-11-18)
+  {
+    name: 'Spymaster of Kaitain',
+    text: 'Other friendly [{Spy}] units get [+1/+0] and gain [Saboteur].\n[When Played:] Create 2 Spy tokens. Then, you may attack with another friendly [{Spy}] unit.',
+    front: spymaster(true),
+  },
+  {
+    name: 'Scytale',
+    subtitle: 'Tleilaxu Master',
+    text: '[When Played:] Defeat an enemy non-leader unit with 4 or less remaining HP.',
+    front: {
+      whenPlayed: (g, self) => {
+        const small = unitIds(g, (u) => g.controller(u) !== self.controller && !u.leader && g.hp(u) - u.damage <= 4)
+        const pick = g.chooseOne(self.controller, 'Scytale: defeat an enemy non-leader unit with 4 or less remaining HP', small, { ai: 'harm', source: self.def.id })
+        if (pick) g.defeat(pick, self)
+      },
+    },
+  },
+  {
+    name: 'A Web of Spies',
+    text: 'Create a Spy token for each friendly non-token [{Spy}] unit. Ready them.',
+    front: {
+      play: (g, self) => {
+        const p = self.controller
+        const spies = g.units((u) => g.controller(u) === p && !g.def(u).token && g.hasTrait(u, 'Spy')).length
+        for (let i = 0; i < spies; i++) g.createToken(p, 'Spy', { ready: true })
+      },
+    },
+  },
+  {
+    name: 'Forged Imperial Writ',
+    text: 'Attach to a non-[{Vehicle}] unit.\nAttached unit gains [Saboteur].\n[When Played:] If attached unit is a [{Spy}], create a Spy token.',
+    front: {
+      gives: (_g, self, unit) => (unit.id === self.attachedTo ? { keywords: { saboteur: true } } : undefined),
+      whenPlayed: (g, self) => {
+        // An upgrade's When Played names its unit as other
+        const unit = self.other ? g.unit(self.other) : undefined
+        if (unit && g.hasTrait(unit, 'Spy')) g.createToken(self.controller, 'Spy')
+      },
+    },
+  },
   // --- Fortifications (Fortify: on your base) ---
   {
     name: 'Thumper',
@@ -3283,38 +3500,25 @@ const dune: CardScript[] = [
   {
     name: 'Count Hasimir Fenring',
     subtitle: "The Emperor's Shadow",
-    text: "[When a friendly unit deals combat damage to an enemy base:] You may exhaust this leader and defeat a friendly Spice token. If you do, look at that player's hand. You may discard a card from it. If you do, that player draws a card.",
-    backText:
-      "[Saboteur]\n[When Deployed:] Look at an opponent's hand and discard a card from it.\nOnce each round, when a friendly unit deals combat damage to an enemy base: You may defeat a friendly Spice token. If you do, look at that player's hand. You may discard a card from it. If you do, that player draws a card.",
+    // Was a look at the hand and a discard when a friendly unit hit an enemy base (the AI never used
+    // it while they drew a card back: 24%; without the draw 30%), and a When Deployed discard
+    // (2026-11-18). Discard is the Bene Gesserit's; Fenring makes Spy tokens.
+    text: '[Action [Arrow]:] Defeat a friendly Spice token. If you do, create a Spy token.',
+    backText: '[Saboteur]\n[On Attack:] Create a Spy token.',
     front: {
-      whenCombatDamageBase: (g, self) => {
-        const p = self.controller
-        if (!g.leaderReady(p) || !g.spice(p)) return
-        if (!g.may(p, "Count Hasimir Fenring: exhaust this leader and defeat a Spice token to look at their hand?", { yes: 'Do it', no: 'Skip', source: self.def.id }))
-          return
-        g.exhaustLeader(p)
-        g.defeatSpice(p)
-        fenringLook(g, self)
-      },
+      actions: [
+        {
+          label: 'a Spy token for a Spice token',
+          exhaust: true,
+          can: (g, self) => g.spice(self.controller) > 0,
+          run: (g, self) => {
+            if (g.defeatSpice(self.controller)) g.createToken(self.controller, 'Spy')
+          },
+        },
+      ],
     },
     back: {
-      whenDeployed: (g, self) => {
-        const foe = enemy(g, self)
-        g.log(`Count Hasimir Fenring looks at ${g.player(foe).name}'s hand`, self.controller)
-        const pick = g.chooseOne(self.controller, "Count Hasimir Fenring: discard a card from their hand", g.player(foe).hand.map((c) => c.id), {
-          ai: 'best',
-          source: self.def.id,
-        })
-        if (pick) g.discard(foe, pick)
-      },
-      whenCombatDamageBase: (g, self) => {
-        const p = self.controller
-        if (g.used(self) || !g.spice(p)) return
-        if (!g.may(p, 'Count Hasimir Fenring: defeat a Spice token to look at their hand?', { yes: 'Defeat a Spice token', no: 'Skip', source: self.def.id })) return
-        g.use(self)
-        g.defeatSpice(p)
-        fenringLook(g, self)
-      },
+      onAttack: (g, self) => g.createToken(self.controller, 'Spy'),
     },
   },
   {
@@ -3392,12 +3596,13 @@ const friendlyIds = (g: Game, self: Self, test: (u: UnitState) => boolean = () =
   unitIds(g, (u) => g.controller(u) === self.controller && test(u))
 
 // "Heal N damage from a unit or base": the AI heals its own
-function healOne(g: Game, self: Self, amount: number) {
+// optional: "you may heal", which can be passed (there may be only an enemy's damage to heal)
+function healOne(g: Game, self: Self, amount: number, optional = false) {
   const damaged = [
     ...g.units((u) => u.damage > 0).map((u) => u.id),
     ...([0, 1] as PlayerId[]).filter((p) => g.player(p).base.damage > 0).map((p) => `base${p}`),
   ]
-  const pick = g.chooseOne(self.controller, `${self.def.name}: heal ${amount} damage from a unit or base`, damaged, { ai: 'help', source: self.def.id })
+  const pick = g.chooseOne(self.controller, `${self.def.name}: heal ${amount} damage from a unit or base`, damaged, { ai: 'help', source: self.def.id, optional })
   if (pick) g.heal(pick, amount, self)
 }
 
@@ -3486,22 +3691,18 @@ const plotPlays = (g: Game, self: Self) =>
 const pawns = (g: Game, self: Self) => friendlyIds(g, self, (u) => g.hasTrait(u, 'Harkonnen'))
 
 // Gurney Halleck: "Play a card using Smuggle. It costs [2] less." or an Experience token
-function gurneyChoice(g: Game, self: Self) {
+// Gurney Halleck: the cards in the resources that can be played using Smuggle for that much less
+function smuggleable(g: Game, self: Self, discount: number) {
   const p = self.controller
-  const smuggled = g
+  return g
     .player(p)
     .resources.map((r) => r.card.id)
-    .filter((id) => g.canPlay(p, id, { smuggle: true, discount: 2 }))
-  const choice = g.option(p, 'Gurney Halleck: choose one', ['Play a card using Smuggle, for 2 less', 'Give an Experience token to a friendly Underworld unit'], {
-    ai: smuggled.length ? 0 : 1,
-    source: self.def.id,
-  })
-  if (choice === 1) {
-    experienceTo(g, self, friendlyIds(g, self, (u) => g.hasTrait(u, 'Underworld')), 'Gurney Halleck: give an Experience token to a friendly Underworld unit')
-    return
-  }
-  const pick = g.chooseOne(p, 'Gurney Halleck: play a card using Smuggle, for 2 less', smuggled, { ai: 'best', source: self.def.id })
-  if (pick) g.playCard(p, pick, { smuggle: true, discount: 2 })
+    .filter((id) => g.canPlay(p, id, { smuggle: true, discount }))
+}
+function smuggleFor(g: Game, self: Self, discount: number, optional = false) {
+  const p = self.controller
+  const pick = g.chooseOne(p, `Gurney Halleck: play a card using Smuggle, for ${discount} less`, smuggleable(g, self, discount), { ai: 'best', source: self.def.id, optional })
+  if (pick) g.playCard(p, pick, { smuggle: true, discount })
 }
 
 // Imperial Tithe Collector: an opponent's Spice token for one of yours and an Experience token
@@ -3543,13 +3744,9 @@ function arrakisSpice(g: Game, self: Self) {
   if (g.controlsArrakis(self.controller)) g.createSpice(self.controller)
 }
 
-// Off Arrakis, the Houses' Holtzman shields (on Arrakis they draw the worms), and Spice from
-// off-world hoards
+// Off Arrakis, the Houses' Holtzman shields (on Arrakis they draw the worms)
 function offArrakisShield(g: Game, self: Self) {
   if (!g.controlsArrakis(self.controller)) g.giveToken(self.id, 'Shield')
-}
-function offArrakisSpice(g: Game, self: Self) {
-  if (!g.controlsArrakis(self.controller)) g.createSpice(self.controller)
 }
 
 // Harkonnen Harvester: Spice, and more Spice for hurting your own. The AI hurts the unit with
@@ -3694,8 +3891,10 @@ function imperialSpy(g: Game, self: Self) {
   const foe = enemy(g, self)
   const [top] = g.top(foe, 1)
   if (!top) return
+  // The AI leaves a weak draw on top: a card that costs 2 or less once they have 4 resources or more
+  const weak = (g.def(top).cost ?? 0) <= 2 && g.player(foe).resources.length >= 4
   const where = g.option(self.controller, `Imperial Spy: the top card of their deck is ${g.def(top).name}`, ['Leave it on top', 'Put it on the bottom', 'Discard it'], {
-    ai: 2,
+    ai: weak ? 0 : 2,
     source: self.def.id,
     card: top.def,
   })
@@ -3728,19 +3927,6 @@ function nameACard(g: Game, self: Self) {
 
 // Count Hasimir Fenring: a look at the hand of the player whose base was hit, a card discarded
 // from it for one drawn
-function fenringLook(g: Game, self: Self) {
-  const foe = enemy(g, self)
-  g.log(`Count Hasimir Fenring looks at ${g.player(foe).name}'s hand`, self.controller)
-  const pick = g.chooseOne(self.controller, 'Count Hasimir Fenring: you may discard a card from their hand; they draw a card', g.player(foe).hand.map((c) => c.id), {
-    optional: true,
-    ai: 'best',
-    source: self.def.id,
-  })
-  if (!pick) return
-  g.discard(foe, pick)
-  g.draw(foe, 1)
-}
-
 // Lady Margot Fenring: a card discarded takes a unit that costs 4 or less; otherwise it is exhausted
 function margot(g: Game, self: Self) {
   const p = self.controller
@@ -3853,6 +4039,26 @@ function noShipLanding(g: Game, self: Self) {
   // Ambush before it enters play, so it may attack as it does
   g.grant(pick, { ambush: true }, 'phase')
   g.playCard(p, pick)
+}
+
+// Spymaster of Kaitain: other friendly Spies +1/+0 (and Saboteur, in the version tested); 2 Spy
+// tokens, then another ready Spy may attack
+function spymaster(saboteur: boolean): Abilities {
+  return {
+    gives: (g, self, unit) =>
+      unit.id !== self.id && g.controller(unit) === self.controller && g.hasTrait(unit, 'Spy')
+        ? { power: 1, ...(saboteur && { keywords: { saboteur: true } }) }
+        : undefined,
+    whenPlayed: (g, self) => {
+      const p = self.controller
+      g.createToken(p, 'Spy')
+      g.createToken(p, 'Spy')
+      // The new tokens enter exhausted: a Spy already ready attacks
+      const spies = friendlyIds(g, self, (u) => u.id !== self.id && g.hasTrait(u, 'Spy') && g.canAttack(u.id))
+      const pick = g.chooseOne(p, 'Spymaster of Kaitain: you may attack with another friendly Spy unit', spies, { optional: true, ai: 'help', source: self.def.id })
+      if (pick) g.attackWith(pick, {})
+    },
+  }
 }
 
 export const scripts = dune

@@ -12,7 +12,7 @@
   "text": "You may look at the top card of your deck at any time.\n[Action [Arrow]:] Discard the top card of your deck. Then, attack with a unit. If it has the same cost as the discarded card, it gets [+2/+0] for this attack. If it costs more, it gets [+1/+0] instead.",
   "power": 2,
   "trait": "Atreides",
-  "number": "007",
+  "number": "008",
   "rarity": "R",
   "unique": true,
   "backArt": {

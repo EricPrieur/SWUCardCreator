@@ -1,4 +1,4 @@
-import { applyAction, hpOf, keywordsOf, legalActions, playCost, powerOf, waitingFor } from './game.ts'
+import { applyAction, hpOf, keywordsOf, legalActions, playCost, powerOf, traitsOf, waitingFor } from './game.ts'
 import type { Action, CardDef, GameState, PlayerId, Prompt, UnitState } from './types.ts'
 
 // The opponent to play against. Before the action phase it follows a few rules of thumb. In it,
@@ -37,7 +37,7 @@ export function chooseAction(state: GameState, p: PlayerId, why?: Weighed[]): Ac
       // Short of its leader's cost, any card goes; short of the plan, it keeps a card to play
       const wanted =
         (have < plan.leader ? player.hand.length >= 1 : have < plan.target && player.hand.length >= 2) ||
-        player.hand.some((c) => plotWanted(state, p, state.defs[c.def]))
+        player.hand.some((c) => plotWanted(state, p, state.defs[c.def]) || smuggleWanted(state, p, state.defs[c.def]))
       return { type: 'resource', cards: wanted ? resourcePicks(state, p, 1) : [] }
     }
   }
@@ -53,7 +53,10 @@ export function chooseAction(state: GameState, p: PlayerId, why?: Weighed[]): Ac
   // AI does once done (below). In danger itself, it plays its cards first: while it has resources
   // ready, the opponent can't count on the first attack next round (a bluff, too).
   const moves = actions.filter(
-    (a) => a.type !== 'pass' && a.type !== 'initiative' && !(a.type === 'ability' && spice.has(a.source) && player.spice.length <= needed),
+    (a) =>
+      a.type !== 'pass' &&
+      a.type !== 'initiative' &&
+      !(a.type === 'ability' && spice.has(a.source) && player.spice.length <= needed),
   )
   // But it claims at once when a single attack next round defeats the opponent's base: only the
   // first action of a round is sure to be its own. (Lethal that takes the whole board, the
@@ -79,7 +82,7 @@ export function chooseAction(state: GameState, p: PlayerId, why?: Weighed[]): Ac
       move,
       after,
       single,
-      best: Math.max(single, deep ? combo(state, p, move) : -Infinity, after ? awakened(after, p) : -Infinity) + leaderPlays(state, p, move, after) + searchPlays(state, p, move),
+      best: Math.max(single, deep ? combo(state, p, move) : -Infinity, after ? awakened(after, p) : -Infinity) + leaderPlays(state, p, move, after) + searchPlays(state, p, move) - uniqueSpent(state, p, move),
       // Kept apart, so a reason to wait (a negative) isn't lost below
       extra: timing(state, p, move, actions),
     }
@@ -138,6 +141,21 @@ export function chooseAction(state: GameState, p: PlayerId, why?: Weighed[]): Ac
 // A leader's action that plays a card (Shaddam IV's): it comes back each round, so a card played
 // with it costs little more than the resources it takes. Worth this much more than the board shows.
 const LEADER_PLAY = 1.5
+// A unique card it already controls a copy of (8.30.3), as a unit or as an upgrade (Ramallo, attached
+// when defeated): played, one copy is defeated at once. The board played out shows that, but not
+// the resources and the card spent for no body: worth playing only for a strong When Played (Ramallo
+// healing a base under pressure, which the race weighs: more in a long game than a short one)
+const UNIQUE_SPENT = 2.5
+const uniqueSpent = (state: GameState, p: PlayerId, move: Action) => (move.type === 'play' && uniqueHeld(state, p, move.card) ? UNIQUE_SPENT : 0)
+function uniqueHeld(state: GameState, p: PlayerId, card: string) {
+  const player = state.players[p]
+  const held = [...player.hand, ...player.discard, ...player.resources.map((r) => r.card)].find((c) => c.id === card)
+  const d = held && state.defs[held.def]
+  if (!d?.unique || d.token) return false
+  const same = (def: string) => state.defs[def].name === d.name && (state.defs[def].subtitle ?? '') === (d.subtitle ?? '')
+  return [...player.units, ...player.units.flatMap((u) => u.upgrades), ...(player.base.upgrades ?? [])].some((c) => same(c.def))
+}
+
 function leaderPlays(state: GameState, p: PlayerId, move: Action, after: GameState | undefined) {
   if (move.type !== 'ability' || move.source !== 'leader' || !after) return 0
   return after.players[p].hand.length < state.players[p].hand.length ? LEADER_PLAY : 0
@@ -174,6 +192,23 @@ const UPGRADE_ON_LEADER = 1
 const PROTECT_PER_COST = 0.2
 const UPGRADE_PER_HP = 0.1
 const UPGRADE_AT_RISK = 1.5
+// An upgrade that makes its unit stronger (Slip-Tip's +1/+0), put on an enemy unit to get its When
+// Played: the enemy keeps the bonus, and what the upgrade gives on attack
+const BUFF_ON_ENEMY = 3
+// An event that makes a token for each friendly unit of a kind (A Web of Spies: a Spy token for
+// each friendly non-token Spy) waits for at least 2 of them, unless its hand holds nothing else
+const TOKENS_PER_KIND = /^Create an? (\w+) token for each friendly (non-token )?\[\{(\w+)\}\] unit/
+const TOKENS_AT_LEAST = 2
+const HOLD_FOR_TOKENS = 3
+// An event that only makes Spice tokens (The Spice Must Flow) puts nothing on the board: against
+// a board that outpowers its own, with a unit it could play instead, each Spice token is worth
+// this much less (Spice doesn't block a rush)
+const SPICE_ONLY = /^Create (\d+) Spice tokens?\./
+const SPICE_UNDER_PRESSURE = 0.75
+// An upgrade that makes a token when it goes on a unit of a kind (Forged Imperial Writ: a Spy
+// token on a Spy) goes on one of that kind, worth about a token more
+const TOKEN_ON_KIND = /If attached unit is an? \[\{(\w+)\}\], create/
+const ATTACH_FOR_TOKEN = 1.5
 // A leader that discards the top card of its deck for a unit side that uses units from the
 // discard pile (Paul Atreides): a unit on top is fuel, worth discarding, unless it's the card the
 // AI wants to draw (one it can play next round, near the top of its curve); but not at the cost
@@ -196,13 +231,32 @@ function fuel(state: GameState, p: PlayerId, move: Action, actions: Action[]) {
 function timing(state: GameState, p: PlayerId, move: Action, actions: Action[]) {
   if (move.type === 'ability') return fuel(state, p, move, actions)
   if (move.type !== 'play') return 0
-  const card = state.players[p].hand.find((c) => c.id === move.card)
+  const card = state.players[p].hand.find((c) => c.id === move.card) ?? state.players[p].resources.find((r) => r.card.id === move.card)?.card
   if (!card) return 0
   const d = state.defs[card.def]
   let worth = 0
+  const foeUnits = state.players[p === 0 ? 1 : 0].units
+  if (d.type === 'upgrade' && move.attachTo && ((d.power ?? 0) > 0 || (d.hp ?? 0) > 0) && foeUnits.some((u) => u.id === move.attachTo))
+    worth -= BUFF_ON_ENEMY + (d.power ?? 0) + (d.hp ?? 0)
   if (/for each time an enemy base was dealt damage this phase/.test(d.text ?? '') && actions.some((a) => a.type === 'attack')) worth -= HOLD_FOR_HITS
+  const spiceOnly = d.type === 'event' ? (d.text ?? '').match(SPICE_ONLY) : null
+  if (spiceOnly) {
+    const board = (q: PlayerId) => state.players[q].units.reduce((sum, u) => sum + powerOf(state, u, true), 0)
+    const unitInstead = actions.some(
+      (a) => a.type === 'play' && a.card !== card.id && state.defs[state.players[p].hand.find((c) => c.id === a.card)?.def ?? '']?.type === 'unit',
+    )
+    if (unitInstead && board(p === 0 ? 1 : 0) > board(p)) worth -= SPICE_UNDER_PRESSURE * Number(spiceOnly[1])
+  }
+  const perKind = d.type === 'event' ? (d.text ?? '').match(TOKENS_PER_KIND) : null
+  if (perKind) {
+    const count = state.players[p].units.filter((u) => (!perKind[2] || !state.defs[u.def].token) && state.defs[u.def].traits?.includes(perKind[3])).length
+    const others = state.players[p].hand.some((c) => c.id !== card.id)
+    if (count < TOKENS_AT_LEAST && others) worth -= HOLD_FOR_TOKENS
+  }
   const unit = d.type === 'upgrade' && move.attachTo ? state.players[p].units.find((u) => u.id === move.attachTo) : undefined
   if (unit) {
+    const kind = (d.text ?? '').match(TOKEN_ON_KIND)?.[1]
+    if (kind && traitsOf(state, unit).includes(kind)) worth += ATTACH_FOR_TOKEN
     if (unit.leader) worth += UPGRADE_ON_LEADER
     if (/can't be defeated by enemy card abilities/.test(d.text ?? '')) worth += PROTECT_PER_COST * (state.defs[unit.def].cost ?? 0)
     const left = hpOf(state, unit) - unit.damage + (d.hp ?? 0)
@@ -289,11 +343,11 @@ const BUDGET = 250
 // aspects it lacks counted), their average, and the resources it aims for: enough to deploy its
 // leader and to play its dearest card when it comes
 // spiceReserve: the Spice tokens it keeps for the cards in its deck that spend them
-export type DeckPlan = { curve: number[]; average: number; leader: number; top: number; target: number; spiceReserve: number }
+export type DeckPlan = { curve: number[]; average: number; leader: number; top: number; target: number; spiceReserve: number; smugglers: number }
 const plans = new WeakMap<object, [DeckPlan?, DeckPlan?]>()
 // Costs from 0 to this, the dearer ones counted with it
 // Which AI this is, kept with each game it plays, to tell its versions apart in the stats
-export const AI_VERSION = '2026-11-13 race'
+export const AI_VERSION = '2026-11-18 spies, spice under pressure'
 
 export const CURVE_TOP = 8
 
@@ -397,6 +451,7 @@ export function deckPlan(state: GameState, p: PlayerId): DeckPlan {
     top,
     target: Math.min(9, Math.max(leader, top)),
     spiceReserve: spenders >= SPICE_SPENDERS ? 1 : 0,
+    smugglers: cards.filter((d) => d.keywords.smuggle).length,
   }
   known[p] = plan
   plans.set(state.defs, known)
@@ -407,8 +462,31 @@ export function deckPlan(state: GameState, p: PlayerId): DeckPlan {
 // its leader not yet deployed (Plot plays it then), or a deployed leader that plays cards with
 // Plot from the resources (the Baron's On Attack)
 const PLOT_FROM_RESOURCES = /card with \[Plot\] from your resources/i
+// A card with Smuggle is worth putting in the resources on purpose, to play from there later (a
+// card more, the deck's top card taking its place): with a leader that plays cards using Smuggle
+// (Gurney Halleck, for 2 less), or in a deck with many of them. Its Smuggle cost within the
+// plan's reach; with the leader's help, the cheapest first, played soonest.
+const SMUGGLE_LEADER = /using Smuggle/i
+const SMUGGLERS = 8
+function smuggleHelped(state: GameState, p: PlayerId) {
+  const leader = state.defs[state.players[p].leader.def]
+  return SMUGGLE_LEADER.test(`${leader.text ?? ''}\n${leader.backText ?? ''}`)
+}
+function smuggleWanted(state: GameState, p: PlayerId, card: CardDef) {
+  const smuggle = card.keywords.smuggle
+  if (!smuggle) return false
+  const plan = deckPlan(state, p)
+  const helped = smuggleHelped(state, p)
+  if (!helped && plan.smugglers < SMUGGLERS) return false
+  return smuggle - (helped ? 2 : 0) <= plan.target
+}
+
+// A unit whose Plot play defeats it (Yueh, Broken Conditioning) is worth more as a unit played
+// from the hand: it keeps it for that, and plays it with Plot only if it is in the resources anyway
+const PLOT_DEFEATS_ITSELF = /\[When Played using Plot:\][^\n]*defeat this unit/i
 function plotWanted(state: GameState, p: PlayerId, card: CardDef) {
   if (!card.keywords.plot) return false
+  if (card.type === 'unit' && PLOT_DEFEATS_ITSELF.test(card.text ?? '')) return false
   const leader = state.players[p].leader
   return !leader.deployed || PLOT_FROM_RESOURCES.test(state.defs[leader.def].backText ?? '')
 }
@@ -416,7 +494,7 @@ function plotWanted(state: GameState, p: PlayerId, card: CardDef) {
 // The cards it resources: first those it can't play before the plan's target, then those it
 // can't play soon unless they are its dearest (kept for later), then its cheapest, which matter
 // least once the game goes on
-function resourcePicks(state: GameState, p: PlayerId, count: number) {
+export function resourcePicks(state: GameState, p: PlayerId, count: number) {
   const player = state.players[p]
   const plan = deckPlan(state, p)
   const soon = player.resources.length + 2
@@ -429,6 +507,7 @@ function resourcePicks(state: GameState, p: PlayerId, count: number) {
     // A card with Plot, its leader still to deploy (or one that plays Plot cards from the
     // resources, the Baron): a resource now, and played from there later, replaced from the deck
     if (plotWanted(state, p, d)) return 3500 + cost
+    if (smuggleWanted(state, p, d)) return 3300 - (d.keywords.smuggle ?? 0)
     if (cost > plan.target) return 3000 + cost
     if (cost > soon && cost < plan.target - 1) return 2000 + cost
     if (cost <= soon) return 1000 - cost

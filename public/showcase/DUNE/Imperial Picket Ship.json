@@ -1,0 +1,14 @@
+{
+  "hp": 4,
+  "id": "f052344d-ceae-48d0-8645-83a789016d62",
+  "cost": 2,
+  "name": "Imperial Picket Ship",
+  "text": "[Sentinel]\n[When Played:] Exhaust an enemy space unit.",
+  "power": 1,
+  "trait": "Emperor, Vehicle, Fighter",
+  "number": "228",
+  "rarity": "C",
+  "frameId": "unit-villainy-space",
+  "setCode": "DUNE",
+  "language": "EN"
+}

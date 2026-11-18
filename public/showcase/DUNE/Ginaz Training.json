@@ -12,7 +12,7 @@
   "text": "Attach to a friendly unit.\n[When Played:] Give a Shield token to attached unit.",
   "power": 1,
   "trait": "Learned",
-  "number": "024",
+  "number": "025",
   "rarity": "C",
   "frameId": "upgrade-vigilance-command",
   "setCode": "DUNE",

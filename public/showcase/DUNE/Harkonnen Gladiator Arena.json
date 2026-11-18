@@ -11,7 +11,7 @@
   "name": "Harkonnen Gladiator Arena",
   "text": "[When you defeat a friendly Spice token:] A friendly unit gains [Raid 1] for this phase.",
   "trait": "Giedi Prime",
-  "number": "021",
+  "number": "022",
   "rarity": "R",
   "frameId": "base-aggression-text",
   "setCode": "DUNE",

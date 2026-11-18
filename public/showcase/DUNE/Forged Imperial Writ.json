@@ -1,0 +1,14 @@
+{
+  "hp": 1,
+  "id": "f65c73a6-8c8d-49e7-9f81-4d15cf1e60ec",
+  "cost": 1,
+  "name": "Forged Imperial Writ",
+  "text": "Attach to a non-[{Vehicle}] unit.\nAttached unit gains [Saboteur].\n[When Played:] If attached unit is a [{Spy}], create a Spy token.",
+  "power": 1,
+  "trait": "Item",
+  "number": "225",
+  "rarity": "U",
+  "frameId": "upgrade-cunning-villainy",
+  "setCode": "DUNE",
+  "language": "EN"
+}

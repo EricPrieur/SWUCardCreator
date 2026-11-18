@@ -2154,14 +2154,18 @@ async function printBack() {
   return canvasBlob(printImage(card, false))
 }
 
-// Which token goes on the back of a common base: Sietch Tabr's is the Fremen token, the others' Spice
+// Which token goes on the back of a common base: Sietch Tabr's is the Fremen token, Arrakeen's the
+// Spy token (the Residency's spies), the others' Spice
 function tokensBehindBases(cards: ShowcaseCard[]) {
   const tokens = cards.filter((card) => card.type === 'Token')
   const behind = new Map<ShowcaseCard, ShowcaseCard>()
   if (tokens.length === 0) return behind
   const named = (name: string) => tokens.find((token) => token.name === name)
   for (const base of cards.filter((card) => card.type === 'Base' && !card.back))
-    behind.set(base, (base.name === 'Sietch Tabr' && named('Fremen')) || named('Spice') || tokens[0])
+    behind.set(
+      base,
+      (base.name === 'Sietch Tabr' && named('Fremen')) || (base.name === 'Arrakeen' && named('Spy')) || named('Spice') || tokens[0],
+    )
   return behind
 }
 
@@ -2183,15 +2187,15 @@ type PrintJob = {
   // Cards in a deck at most (MakePlayingCards' biggest holds 612); more go into a second deck
   deckSize: number
   // Spare two-sided tokens filling each deck's free slots up to the size it is priced at
-  // (see PRINT_DECK_SIZES), at most `max` in all
-  spares?: { front: ShowcaseCard; back: ShowcaseCard; max: number }
+  // (see PRINT_DECK_SIZES), at most `max` in all, each kind in turn
+  spares?: { kinds: { front: ShowcaseCard; back: ShowcaseCard }[]; max: number }
   notes: (decks: number[], spares: number) => Record<string, string>
 }
 
 // The deck sizes MakePlayingCards prices Custom Game Cards at: a deck costs what the next size up
 // from its count does, so the slots left to that size are free
 const PRINT_DECK_SIZES = [18, 36, 55, 72, 90, 108, 126, 144, 162, 180, 198, 216, 234, 396, 504, 612]
-// Spare Fremen / Spice tokens a Sealed event's decks are filled with, at most
+// Spare tokens (Fremen or Spy, Spice behind) a Sealed event's decks are filled with, at most
 const PRINT_SPARE_TOKENS = 20
 
 const EVENT_MAX_PLAYERS = 8
@@ -2279,11 +2283,17 @@ function PrintFiles(props: { folder: string; cards: ShowcaseCard[]; load?: (entr
   const printable = behind.size > 0 ? sorted.filter((card) => card.type !== 'Token') : sorted.filter((card) => !onBacks.has(card))
   const [copiesText, setCopies] = useRemembered(`showcase.${folder}.copies`, '1')
   const copies = own ? Math.min(99, Math.max(1, Math.floor(Number(copiesText)) || 1)) : 1
-  // Spare tokens for a Sealed event: Fremen on one side, Spice on the other
+  // Spare tokens for a Sealed event, Spice on one side: Fremen on the other, and Spy (Fenring's
+  // Spy decks make several at once, more than Arrakeen's backs give)
   const tokenNamed = (name: string) => sorted.find((card) => card.type === 'Token' && card.name === name)
-  const spareFront = tokenNamed('Fremen')
   const spareBack = tokenNamed('Spice')
-  const spareTokens = spareFront && spareBack ? { front: spareFront, back: spareBack } : undefined
+  const spareKinds = spareBack
+    ? ['Fremen', 'Spy'].flatMap((name) => {
+        const front = tokenNamed(name)
+        return front ? [{ front, back: spareBack }] : []
+      })
+    : []
+  const spareTokens = spareKinds.length ? { kinds: spareKinds } : undefined
   const tokenNote = [
     ...[...new Set(behind.values())].map((token) => `${token.name} behind ${[...behind].filter(([, t]) => t === token).map(([base]) => base.name).join(', ')}`),
     ...[...pairs].map(([front, back]) => `${back.name} behind the ${front.name} token`),
@@ -2430,7 +2440,7 @@ function PrintFiles(props: { folder: string; cards: ShowcaseCard[]; load?: (entr
       const drawn = async (card: Card, back: boolean) => new Uint8Array(await (await uprightJpg(await draw(card, back, 'print', 2))).arrayBuffer())
       // The cards deck by deck, then each deck's free slots up to the size it is priced at filled
       // with spare tokens, as many as the job allows
-      type Slot = { card?: PrintCard; label: string }
+      type Slot = { card?: PrintCard; spare?: number; label: string }
       const decks: Slot[][] = []
       for (const [index, card] of plan.cards.entries()) {
         if (index % plan.deckSize === 0) decks.push([])
@@ -2441,17 +2451,21 @@ function PrintFiles(props: { folder: string; cards: ShowcaseCard[]; load?: (entr
       if (plan.spares) {
         const room = decks.map((deck) => (PRINT_DECK_SIZES.find((size) => size >= deck.length) ?? deck.length) - deck.length)
         const total = Math.min(plan.spares.max, room.reduce((sum, n) => sum + n, 0))
-        const label = `TOKEN ${plan.spares.front.name} - ${plan.spares.back.name}`
-        for (const [d, free] of room.entries()) for (let i = 0; i < free && spares < total; i++, spares++) decks[d].push({ label })
+        const kinds = plan.spares.kinds
+        for (const [d, free] of room.entries())
+          for (let i = 0; i < free && spares < total; i++, spares++) {
+            const kind = spares % kinds.length
+            decks[d].push({ spare: kind, label: `TOKEN ${kinds[kind].front.name} - ${kinds[kind].back.name}` })
+          }
       }
       // Each card is written as soon as it is drawn, so only a few are ever held: the backs, which
       // are few and shared, and a front drawn for several cards (one with a print run's code is its own)
       const fronts = new Map<string, Uint8Array>()
       const backs = new Map<string, Uint8Array>()
       const cardBack = new Uint8Array(await (await printBack()).arrayBuffer())
-      const spareSide = async (which: 'front' | 'back') => {
-        const key = `spare|${which}`
-        if (!backs.has(key)) backs.set(key, await drawn(await cardOf(plan.spares![which]), false))
+      const spareSide = async (kind: number, which: 'front' | 'back') => {
+        const key = `spare|${kind}|${which}`
+        if (!backs.has(key)) backs.set(key, await drawn(await cardOf(plan.spares!.kinds[kind][which]), false))
         return backs.get(key)!
       }
       const sidesOf = async (card: PrintCard) => {
@@ -2503,7 +2517,7 @@ function PrintFiles(props: { folder: string; cards: ShowcaseCard[]; load?: (entr
             resumed++
             continue
           }
-          const sides = slot.card ? await sidesOf(slot.card) : { front: await spareSide('front'), back: await spareSide('back') }
+          const sides = slot.card ? await sidesOf(slot.card) : { front: await spareSide(slot.spare ?? 0, 'front'), back: await spareSide(slot.spare ?? 0, 'back') }
           await sink.put(`${dir}fronts/${name}`, sides.front)
           await sink.put(`${dir}backs/${name}`, sides.back)
           written++
@@ -4597,7 +4611,7 @@ function FeatureButton(props: { deck: Deck; onNote: (note: string) => void }) {
   return (
     <>
       <button
-        className="button"
+        className={`button${there && !same ? ' button-primary' : ''}`}
         type="button"
         disabled={same}
         title="The Simulator's Featured Decks, which anyone may play: written in public/sim/featured-decks.json"
@@ -4653,7 +4667,7 @@ function CommunityFeatureButton(props: { deck: Deck; onNote: (note: string) => v
   return (
     <>
       <button
-        className="button"
+        className={`button${there && !same ? ' button-primary' : ''}`}
         type="button"
         disabled={same}
         title="The Community Simulator's Featured Decks, which anyone may play"

@@ -12,7 +12,7 @@
   "text": "[When Played:] Give a Shield token to a friendly [{Emperor}] unit.",
   "power": 2,
   "trait": "Emperor, Trooper",
-  "number": "052",
+  "number": "053",
   "rarity": "C",
   "frameId": "unit-vigilance",
   "setCode": "DUNE",

@@ -11,7 +11,7 @@
   "name": "Castle Caladan",
   "text": "[When you defeat a friendly Spice token:] Heal 1 damage from a unit or base.",
   "trait": "Caladan",
-  "number": "019",
+  "number": "020",
   "rarity": "R",
   "frameId": "base-vigilance-text",
   "setCode": "DUNE",

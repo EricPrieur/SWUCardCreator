@@ -1,0 +1,14 @@
+{
+  "hp": 5,
+  "id": "aeb9b01c-c6b7-46ff-9eba-0e4e4c69937f",
+  "cost": 4,
+  "name": "Imperial Herald",
+  "text": "[When Played:] Give an Experience token to another friendly unit.",
+  "power": 4,
+  "trait": "Emperor, Official",
+  "number": "226",
+  "rarity": "C",
+  "frameId": "unit-command",
+  "setCode": "DUNE",
+  "language": "EN"
+}

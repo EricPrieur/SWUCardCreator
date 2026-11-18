@@ -12,7 +12,7 @@
   "text": "[When you play a [{Bene Gesserit}] card:] You may exhaust this leader. If you do, exhaust an enemy non-leader unit that costs [#4] or less.",
   "power": 3,
   "trait": "Bene Gesserit, Atreides",
-  "number": "005",
+  "number": "006",
   "rarity": "R",
   "backArt": {
     "x": -2,

@@ -1,0 +1,14 @@
+{
+  "hp": 6,
+  "id": "5dda201f-c988-4496-afcd-1bcca4f83f88",
+  "cost": 6,
+  "name": "Spymaster of Kaitain",
+  "text": "Other friendly [{Spy}] units get [+1/+0] and gain [Saboteur].\n[When Played:] Create 2 Spy tokens. Then, you may attack with another friendly [{Spy}] unit.",
+  "power": 4,
+  "trait": "Emperor, Spy",
+  "number": "230",
+  "rarity": "R",
+  "frameId": "unit-cunning-villainy",
+  "setCode": "DUNE",
+  "language": "EN"
+}

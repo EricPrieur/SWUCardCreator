@@ -1,5 +1,5 @@
 {
-  "hp": 4,
+  "hp": 3,
   "id": "ea4afbda-5e49-4a0c-8d15-1dede4a6fd49",
   "art": {
     "x": 0,
@@ -9,10 +9,10 @@
   },
   "cost": 5,
   "name": "Count Hasimir Fenring",
-  "text": "[Ambush]\nWhile attacking, this unit deals combat damage before the defender.\nThis unit can't attack units named Paul Atreides.",
-  "power": 4,
+  "text": "[Ambush]\nWhile attacking, this unit deals combat damage before the defender.\nThis unit can't attack units named Paul Atreides.\n[When Played:] Create a Spy token.",
+  "power": 5,
   "trait": "Emperor, Spy",
-  "number": "166",
+  "number": "167",
   "rarity": "R",
   "unique": true,
   "frameId": "unit-cunning-villainy",

@@ -10,7 +10,7 @@
   "name": "Imperial Basin",
   "text": "You start the game with a [Spice Token].",
   "trait": "Arrakis",
-  "number": "018",
+  "number": "019",
   "rarity": "C",
   "frameId": "base-cunning-text",
   "setCode": "DUNE",

@@ -12,7 +12,7 @@
   "text": "[When Played:] Deal 1 damage to an enemy base for each time an enemy base was dealt damage this phase. If it was 3 or more times, ready this unit.",
   "power": 5,
   "trait": "Fremen, Fedaykin",
-  "number": "141",
+  "number": "142",
   "rarity": "U",
   "frameId": "unit-aggression-heroism",
   "setCode": "DUNE",

@@ -225,6 +225,8 @@ export function keywordsOf(state: GameState, unit: UnitState): Keywords {
   for (const grant of grants) addKeywords(keywords, grant.keywords)
   // Lost, whatever gives them (Captain Aramsham)
   for (const grant of grants) for (const name of grant.loses ?? []) delete keywords[name]
+  // Lost for a while (Guild Bribe's Sentinel)
+  for (const effect of effectsOn(state, unit)) for (const name of effect.loses ?? []) delete keywords[name]
   return keywords
 }
 
@@ -1113,7 +1115,7 @@ const discountsFor = (state: GameState, p: PlayerId, card: CardDef) =>
 function costsLess(state: GameState, p: PlayerId, card: CardDef, from: PlayedFrom, target?: string) {
   const g = new Game(state)
   const onto = target ? findUnit(state, target) : undefined
-  const own = onto ? (abilitiesOf(card, 'front').costsLessOnto?.(g, p, onto) ?? 0) : 0
+  const own = (onto ? (abilitiesOf(card, 'front').costsLessOnto?.(g, p, onto) ?? 0) : 0) + (abilitiesOf(card, 'front').costsLessSelf?.(g, p) ?? 0)
   return own + holders(state, p).reduce((sum, { self, abilities }) => sum + (abilities.costsLess?.(g, self, card, from, onto) ?? 0), 0)
 }
 // The cards on a player's side that make this card cost less, as it is played
@@ -2034,6 +2036,10 @@ export class Game {
     else player.leader.exhausted = true
   }
   // A keyword for a while: "gains [Raid 1] for this phase", or while a card stays in play
+  // Keywords a unit loses for a while ("It loses [Sentinel] for this phase")
+  strip(unitId: string, loses: (keyof Keywords)[], until: Effect['until']) {
+    this.state.effects.push({ unit: unitId, power: 0, hp: 0, loses, until })
+  }
   grant(unitId: string, keywords: Keywords, until: Effect['until'], source?: string, traits?: string[]) {
     this.state.effects.push({ unit: unitId, power: 0, hp: 0, keywords, until, ...(source && { source }), ...(traits && { traits }) })
   }
@@ -2104,6 +2110,8 @@ export class Game {
     player.discard = player.discard.filter((c) => c !== card)
     unit.upgrades.push({ ...card, owner: p })
     this.log(`${nameOf(this.state, card)} is attached to ${nameOf(this.state, unit)}`, p)
+    // A unique card attached beside a copy already in play (a second Ramallo): one is defeated
+    checkUnique(this.state, p)
   }
   // Whether a unit of a player's like this was defeated this phase ("If a friendly [{Fremen}]
   // unit was defeated this phase"), a token too

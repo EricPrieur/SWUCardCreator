@@ -2496,8 +2496,12 @@ function Table(props: {
   // of a deck): hovered, they are shown
   const asker = asked?.source ? defOf(asked.source) : undefined
   const about = asked?.card ? defOf(asked.card) : undefined
+  // A deployed leader asks as the unit it is (an On Attack, a When Defeated): its unit side, upright
+  const unitSideOf = (card: CardDef) => card.type === 'leader' && [me, opp].some((p) => p.leader.def === card.id && p.leader.deployed)
+  const sideImage = (card: CardDef) => imageOf(card.id, unitSideOf(card))
+  const sideLandscape = (card: CardDef) => card.type === 'base' || (card.type === 'leader' && !unitSideOf(card))
   const named = (card: CardDef) => (
-    <b className="sim-asker" onMouseEnter={look(imageOf(card.id), card.type === 'leader' || card.type === 'base')} onMouseLeave={leave}>
+    <b className="sim-asker" onMouseEnter={look(sideImage(card), sideLandscape(card))} onMouseLeave={leave}>
       {card.name}
     </b>
   )
@@ -2735,7 +2739,7 @@ function Table(props: {
             )}
             {/* A pick on the board: the card that asks, and what to click */}
             {!apart && asker && (
-              <img src={img(imageOf(asker.id) ?? '')} alt={asker.name} onMouseEnter={look(imageOf(asker.id), asker.type === 'leader' || asker.type === 'base')} onMouseLeave={leave} />
+              <img className={sideLandscape(asker) ? 'landscape' : undefined} src={img(sideImage(asker) ?? '')} alt={asker.name} onMouseEnter={look(sideImage(asker), sideLandscape(asker))} onMouseLeave={leave} />
             )}
             {shown.map((o) => {
               const image = o.def ? faceOf({ id: o.id, def: o.def }) : undefined

@@ -1,0 +1,19 @@
+{
+  "id": "ab9c7673-7e6e-4644-9dbe-0eeb7c8df113",
+  "art": {
+    "x": 0,
+    "y": 0,
+    "src": "Guild Bribe (art).webp",
+    "zoom": 1,
+    "rotate": 0
+  },
+  "cost": 1,
+  "name": "Guild Bribe",
+  "text": "Exhaust an enemy unit. It loses [Sentinel] for this phase.\nThen, you may defeat a friendly Spice token. If you do, look at an opponent's hand. You may choose a card in it. If you do, they discard that card, then draw a card.",
+  "trait": "Trick",
+  "number": "218",
+  "rarity": "U",
+  "frameId": "event-cunning",
+  "setCode": "DUNE",
+  "language": "EN"
+}

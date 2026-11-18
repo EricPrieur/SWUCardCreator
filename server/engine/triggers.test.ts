@@ -43,7 +43,7 @@ const defs: CardDef[] = [
   card('big', { cost: 5, power: 5, hp: 5 }),
   card('plotter', { cost: 3, power: 3, hp: 3, text: '[PLOT]' }),
   card('artillery', { ...scripted('Harkonnen Siege Artillery'), cost: 6, power: 5, hp: 6, traits: ['Harkonnen', 'Vehicle'] }),
-  card('yueh', { ...scripted('Dr. Wellington Yueh', 'Broken Conditioning'), cost: 3, power: 2, hp: 4, traits: ['Atreides', 'Suk'] }),
+  card('yueh', { ...scripted('Dr. Wellington Yueh', 'Broken Conditioning'), cost: 3, power: 3, hp: 5, traits: ['Atreides', 'Suk', 'Spy'] }),
   card('poison', { ...scripted('Residual Poison'), type: 'upgrade', cost: 2, power: -2, hp: 0, arena: undefined }),
   card('infiltrator', { ...scripted('Harkonnen Infiltrator'), cost: 2, power: 2, hp: 1, traits: ['Harkonnen', 'Trooper'] }),
   card('staban', { ...scripted('Staban Tuek'), cost: 5, power: 4, hp: 5 }),

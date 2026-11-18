@@ -10,7 +10,7 @@
   "name": "Weapons Practice",
   "text": "Give an Experience token to each of up to 3 friendly [{Trooper}] units.",
   "trait": "Atreides",
-  "number": "097",
+  "number": "098",
   "rarity": "C",
   "frameId": "event-command-heroism",
   "setCode": "DUNE",

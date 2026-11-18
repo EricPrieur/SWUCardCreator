@@ -1,0 +1,20 @@
+{
+  "hp": 2,
+  "id": "9877f422-88d9-422a-8c2f-65c4deccaba0",
+  "cost": 0,
+  "name": "Spy",
+  "text": "[Raid 2]",
+  "power": 0,
+  "trait": "Spy",
+  "number": "003",
+  "rarity": "",
+  "frameId": "unit-token-text-neutral",
+  "setCode": "DUNE",
+  "language": "EN",
+  "art": {
+    "src": "Spy (art).webp",
+    "zoom": 1,
+    "x": 0,
+    "y": 7
+  }
+}

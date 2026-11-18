@@ -1,0 +1,20 @@
+{
+  "hp": 3,
+  "id": "36cf6bad-32cc-4ce4-92d6-de95c6ebccd0",
+  "art": {
+    "x": 0,
+    "y": 0,
+    "src": "Smuggler's Lookout (art).webp",
+    "zoom": 1
+  },
+  "cost": 2,
+  "name": "Smuggler's Lookout",
+  "text": "[Sentinel]\n[Smuggle] [[3 Vigilance]]\n[When played using Smuggle:] Create a Spice token.",
+  "power": 2,
+  "trait": "Underworld",
+  "number": "217",
+  "rarity": "C",
+  "frameId": "unit-vigilance",
+  "setCode": "DUNE",
+  "language": "EN"
+}

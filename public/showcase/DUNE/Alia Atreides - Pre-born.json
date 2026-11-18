@@ -21,7 +21,7 @@
   "text": "This unit gains each keyword printed on [{Fremen}] and [{Bene Gesserit}] units in your discard pile.",
   "power": 2,
   "trait": "Atreides, Fremen",
-  "number": "030",
+  "number": "031",
   "rarity": "L",
   "unique": true,
   "frameId": "unit-cunning-vigilance-heroism",

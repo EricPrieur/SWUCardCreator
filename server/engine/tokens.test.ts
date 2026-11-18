@@ -2,7 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { applyAction, createGame, Game, hpOf, keywordsOf, legalActions, powerOf, traitsOf } from './game.ts'
 import { readText } from './cards.ts'
-import { chooseAction } from './ai.ts'
+import { chooseAction, resourcePicks } from './ai.ts'
 import { scripts, scriptStatus } from './scripts.ts'
 import { IllegalAction, type Action, type CardDef, type GameState, type PlayerId, type UnitState } from './types.ts'
 
@@ -74,7 +74,7 @@ const defs: CardDef[] = [
   card('duelist', { ...scripted('Ginaz Shield Duelist'), cost: 3, power: 3, hp: 2 }),
   card('houseFrigate', { ...scripted('Great House Frigate'), cost: 5, power: 4, hp: 5, arena: 'space' }),
   card('proctor', { ...scripted('Bene Gesserit Proctor'), cost: 5, power: 4, hp: 6, traits: ['Bene Gesserit'] }),
-  card('hoarder', { ...scripted('Harkonnen Spice Hoarder'), cost: 2, power: 1, hp: 3 }),
+  card('hoarder', { ...scripted('Harkonnen Sleeper Agent'), cost: 2, power: 1, hp: 3, traits: ['Harkonnen', 'Spy'] }),
   card('siridar', { ...scriptedBy('Baron Vladimir Harkonnen', 'Siridar-Baron'), cost: 8, power: 8, hp: 8, unique: true, traits: ['Harkonnen', 'Official'] }),
   card('harkonnen', { cost: 2, power: 2, hp: 2, traits: ['Harkonnen', 'Trooper'] }),
   card('muaddib', { ...scriptedBy('Paul Atreides', "Muad'Dib"), cost: 9, power: 8, hp: 8, unique: true, traits: ['Atreides', 'Fremen'] }),
@@ -102,6 +102,23 @@ const defs: CardDef[] = [
   card('litany', { ...scripted('Litany Against Fear'), type: 'upgrade', cost: 2, power: 2, hp: 2, traits: ['Bene Gesserit', 'Learned'] }),
   card('sixer', { cost: 6, power: 6, hp: 6 }),
   card('strikeLeader', { ...scripted('Fedaykin Strike Leader'), cost: 5, power: 5, hp: 4, traits: ['Fremen', 'Fedaykin'] }),
+  card('yuehPlot', { ...scriptedBy('Dr. Wellington Yueh', 'Broken Conditioning'), type: 'unit', cost: 3, power: 3, hp: 5, arena: 'ground', unique: true, traits: ['Atreides', 'Suk', 'Spy'] }),
+  card('faceDancer', { ...scripted('Tleilaxu Face Dancer'), type: 'unit', cost: 4, power: 0, hp: 1, arena: 'ground', traits: ['Tleilaxu'] }),
+  card('spiceFlow', { ...scripted('The Spice Must Flow'), type: 'event', cost: 3, arena: undefined }),
+  card('picket', { ...scripted('Imperial Picket Ship'), type: 'unit', cost: 2, power: 1, hp: 4, arena: 'space', traits: ['Emperor', 'Vehicle', 'Fighter'] }),
+  card('probe', { ...scripted('Ixian Probe Drone'), type: 'unit', cost: 2, power: 2, hp: 2, arena: 'space', traits: ['Ixian', 'Vehicle', 'Drone', 'Spy'] }),
+  card('enemyThopter', { cost: 2, power: 3, hp: 1, arena: 'space', traits: ['Vehicle', 'Fighter'] }),
+  card('spymaster', { ...scripted('Spymaster of Kaitain'), type: 'unit', cost: 6, power: 4, hp: 6, arena: 'ground', traits: ['Emperor', 'Spy'] }),
+  card('scytale', { ...scriptedBy('Scytale', 'Tleilaxu Master'), type: 'unit', cost: 6, power: 5, hp: 6, arena: 'ground', unique: true, traits: ['Tleilaxu', 'Spy'] }),
+  card('herald', { ...scripted('Imperial Herald'), type: 'unit', cost: 4, power: 4, hp: 5, arena: 'ground', traits: ['Emperor', 'Official'] }),
+  card('doubleAgent', { ...scripted('Landsraad Double Agent'), type: 'unit', cost: 4, power: 5, hp: 4, arena: 'ground', traits: ['Spy', 'Official'] }),
+  card('informant', { ...scripted('Residency Informant'), type: 'unit', cost: 2, power: 2, hp: 4, arena: 'ground', traits: ['Emperor', 'Spy'] }),
+  card('fenringLeader', { ...scriptedBy('Count Hasimir Fenring', "The Emperor's Shadow"), type: 'leader', cost: 6, unit: { power: 4, hp: 6, arena: 'ground', keywords: { saboteur: true } } }),
+  card('imperialSpy', { ...scripted('Imperial Spy'), type: 'unit', cost: 2, power: 2, hp: 4, arena: 'ground', traits: ['Emperor', 'Spy'] }),
+  card('blade', { ...scriptedBy('Count Hasimir Fenring', "The Emperor's Blade"), type: 'unit', cost: 5, power: 5, hp: 3, arena: 'ground', traits: ['Emperor', 'Spy'] }),
+  card('webOfSpies', { ...scripted('A Web of Spies'), type: 'event', cost: 3, arena: undefined, traits: ['Trick'] }),
+  card('writ', { ...scripted('Forged Imperial Writ'), type: 'upgrade', cost: 1, power: 1, hp: 1, arena: undefined, traits: ['Item'] }),
+  card('gurneyLeader', { ...scriptedBy('Gurney Halleck', 'Smuggler of Arrakis'), type: 'leader', cost: 5, aspects: ['Cunning', 'Heroism'], traits: ['Atreides', 'Underworld'], unit: { power: 3, hp: 5, arena: 'ground', keywords: { saboteur: true } } }),
   card('chaniLeader', { ...scriptedBy('Chani', 'Sihaya'), type: 'leader', cost: 4, traits: ['Fremen'], unit: { power: 3, hp: 5, arena: 'ground', keywords: {} } }),
   card('letoLeader', { ...scriptedBy('Duke Leto Atreides', 'Duke of House Atreides'), type: 'leader', cost: 6, traits: ['Atreides'], unit: { power: 4, hp: 7, arena: 'ground', keywords: {} } }),
   card('lighter', { ...scripted("Tuek's Lighter"), subtitle: "Smuggler's Run", cost: 3, power: 2, hp: 3, arena: 'space', traits: ['Underworld', 'Vehicle'] }),
@@ -138,7 +155,7 @@ const defs: CardDef[] = [
   card('harvester', { cost: 4, power: 2, hp: 7, traits: ['Vehicle', 'Harvester'] }),
   card('rocketSquad', { ...scripted('Fremen Rocket Squad'), cost: 3, power: 3, hp: 3, aspects: ['Aggression', 'Heroism'], traits: ['Fremen', 'Trooper'] }),
   card('dustStorm', { ...scripted('Dust Storm'), type: 'event', cost: 3, arena: undefined, aspects: ['Cunning'], traits: ['Disaster'] }),
-  card('noShip', { ...scripted('Ixian No-Ship'), cost: 4, power: 2, hp: 4, arena: 'space', unique: true, traits: ['Ixian', 'Vehicle', 'Transport'] }),
+  card('noShip', { ...scripted('Ixian No-Ship'), cost: 3, power: 2, hp: 3, arena: 'space', unique: true, traits: ['Ixian', 'Vehicle', 'Transport'] }),
   card('freighter', { ...scripted('CHOAM Spice Freighter'), cost: 6, power: 3, hp: 7, arena: 'space', traits: ['Vehicle', 'Transport'] }),
   card('livery', { ...scripted('Frigate in Harkonnen Livery'), cost: 5, power: 4, hp: 5, arena: 'space', traits: ['Emperor', 'Harkonnen', 'Vehicle', 'Capital Ship'] }),
   card('atreidesFrigate', { ...scriptedBy('Atreides Frigate', 'Ducal Flagship'), cost: 6, power: 4, hp: 6, arena: 'space', unique: true, traits: ['Atreides', 'Vehicle', 'Capital Ship'] }),
@@ -147,6 +164,13 @@ const defs: CardDef[] = [
   card('courier', { ...scripted('Weapons Courier'), cost: 1, power: 1, hp: 1, arena: 'space', traits: ['Vehicle', 'Transport'] }),
   card('surveyCraft', { ...scripted("Planetologist's Survey Craft"), cost: 3, power: 2, hp: 4, arena: 'space', traits: ['Emperor', 'Vehicle', 'Transport'] }),
   card('korba', { ...scripted('Korba'), cost: 6, power: 5, hp: 6, unique: true, traits: ['Fremen', 'Fedaykin', 'Official'] }),
+  card('waterSeller', { ...scripted('Water Seller'), cost: 1, power: 1, hp: 4, aspects: ['Cunning', 'Vigilance'], traits: ['Underworld'] }),
+  card('lookout', { ...scripted("Smuggler's Lookout"), cost: 2, power: 2, hp: 3, aspects: ['Vigilance'], traits: ['Underworld'] }),
+  card('guildBribe', { ...scripted('Guild Bribe'), type: 'event', cost: 1, arena: undefined, aspects: ['Cunning'], traits: ['Trick'] }),
+  card('sealedPass', { ...scripted('Sealed Pass'), type: 'event', cost: 2, arena: undefined, aspects: ['Vigilance'], traits: ['Tactic'] }),
+  card('slipTip', { ...scripted('Slip-Tip'), type: 'upgrade', cost: 1, power: 1, hp: 1, arena: undefined, traits: ['Item', 'Weapon', 'Poison'] }),
+  card('spiceHoard', { ...scripted('The Spice Hoard'), type: 'upgrade', cost: 2, arena: undefined, unique: true, traits: ['Fortification'] }),
+  card('guildTransport', { ...scripted('Guild Transport'), cost: 4, power: 2, hp: 5, arena: 'space', traits: ['Spacing Guild', 'Vehicle', 'Transport'] }),
 ]
 
 const act = (state: GameState, p: PlayerId, action: Action) => applyAction(state, p, action)
@@ -256,7 +280,7 @@ test('Ambush, gained with an Arrakis base: it attacks an enemy unit as it is pla
 test('Smuggle plays a card from the resources, the top card of the deck taking its place', () => {
   let state = table({ deck0: ['big', 'trooper'] })
   state.players[0].resources[0].card = { id: 'sm', def: 'smuggler' }
-  // Smuggle 3, Cunning off-aspect: 3 + 2
+  // Smuggle 4, Cunning off-aspect: 4 + 2
   state.players[0].resources.slice(4).forEach((r) => (r.exhausted = true))
   assert.ok(!legalActions(state, 0).some((a) => a.type === 'play' && a.smuggle), '4 ready, 5 to pay')
   state.players[0].resources[4].exhausted = false
@@ -653,6 +677,61 @@ test('Bene Gesserit Proctor: a Shield token to one Bene Gesserit unit, to each o
   assert.deepEqual(shields(off, 0), [1, 1, 0, 1])
 })
 
+test('Harkonnen Sleeper Agent: on Arrakis a Spy token when played; off Arrakis a Spice token when played and on attack', () => {
+  const spies = (st: GameState) => st.players[0].units.filter((u) => st.defs[u.def].name === 'Spy')
+  let state = table({ hand0: ['hoarder'], units0: ['hoarder'] })
+  const spice = state.players[0].spice.length
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  assert.equal(spies(state).length, 1)
+  assert.equal(state.players[0].spice.length, spice, 'no Spice token on Arrakis')
+  const spy = spies(state)[0]
+  assert.equal(powerOf(state, spy), 0)
+  assert.equal(keywordsOf(state, spy).raid, 2, 'a 0/2 with Raid 2')
+  state.active = 0
+  state = act(state, 0, { type: 'attack', attacker: 'u00', target: 'base' })
+  assert.equal(spies(state).length, 1, 'no Spy token on attack')
+  let off = table({ base0: 'caladan', hand0: ['hoarder'], units0: ['hoarder'] })
+  off = act(off, 0, { type: 'play', card: 'h0' })
+  assert.equal(off.players[0].spice.length, 1)
+  assert.equal(spies(off).length, 0)
+  off.active = 0
+  off = act(off, 0, { type: 'attack', attacker: 'u00', target: 'base' })
+  assert.equal(off.players[0].spice.length, 2, 'off Arrakis, Spice on attack as before')
+})
+
+test('Ginaz Shield Duelist: shielded off Arrakis before its Ambush attack, which it survives', () => {
+  let state = table({ base0: 'caladan', hand0: ['duelist'], units1: ['big'] })
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  while (state.prompt) state = answer(state, state.prompt.options.find((o) => o.id === 'u10' || o.id === 'yes')?.id ?? state.prompt.options[0].id)
+  assert.equal(state.players[1].units[0].damage, 3)
+  assert.deepEqual(shields(state, 0), [0], 'the shield took the damage')
+  assert.equal(state.players[0].units[0].damage, 0)
+})
+
+test('Great House Frigate: off Arrakis, Shield tokens to up to 2 other friendly units', () => {
+  let state = table({ base0: 'caladan', hand0: ['houseFrigate', 'houseFrigate'], units0: ['trooper', 'trooper', 'big'] })
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  assert.equal(state.prompt!.max, 2)
+  assert.ok(!state.prompt!.options.some((o) => state.defs[o.def ?? '']?.name === 'Great House Frigate'), 'other units only')
+  state = answer(state, 'u00', 'u02')
+  assert.deepEqual(shields(state, 0), [1, 0, 1, 0])
+  let arrakis = table({ hand0: ['houseFrigate'], units0: ['trooper'] })
+  arrakis = act(arrakis, 0, { type: 'play', card: 'h0' })
+  assert.equal(arrakis.prompt, null)
+  assert.deepEqual(shields(arrakis, 0), [0, 0])
+})
+
+test('Bene Gesserit Proctor: a Shield token to one Bene Gesserit unit, to each off Arrakis', () => {
+  let state = table({ hand0: ['proctor'], units0: ['sister', 'sister', 'trooper'] })
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  assert.equal(state.prompt!.options.length, 3, 'the sisters and the Proctor')
+  state = answer(state, 'u01')
+  assert.deepEqual(shields(state, 0), [0, 1, 0, 0])
+  let off = table({ base0: 'caladan', hand0: ['proctor'], units0: ['sister', 'sister', 'trooper'] })
+  off = act(off, 0, { type: 'play', card: 'h0' })
+  assert.deepEqual(shields(off, 0), [1, 1, 0, 1])
+})
+
 test('Harkonnen Spice Hoarder: a Spice token when played and on attack, off Arrakis only', () => {
   let state = table({ base0: 'caladan', hand0: ['hoarder'], units0: ['hoarder'] })
   state = act(state, 0, { type: 'play', card: 'h0' })
@@ -887,6 +966,38 @@ test('Ramallo: defeated, she is attached to a Fremen or Bene Gesserit unit, +2/+
   assert.ok(state.players[0].discard.some((c) => c.def === 'ramallo'))
 })
 
+test('Ramallo: her first heal may be passed, and then no Spice token is asked for', () => {
+  let state = table({ hand0: ['ramallo'], units1: ['crusher'] })
+  state.players[1].units[0].damage = 2
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  assert.equal(state.prompt?.min, 0, 'only an enemy unit to heal: she may pass')
+  state = answer(state)
+  assert.equal(state.players[1].units[0].damage, 2)
+  assert.equal(state.prompt, null)
+})
+
+test('the AI plays a unique card it already controls (Ramallo attached) only for what her When Played is worth', () => {
+  const setup = (damage: number) => {
+    let state = table({ base0: 'caladan', units0: ['ramallo', 'fremen'], units1: ['crusher'], hand0: ['ramallo'] })
+    state = act(state, 0, { type: 'attack', attacker: 'u00', target: 'u10' })
+    state = answer(state, 'u01')
+    state = act(state, 1, { type: 'pass' })
+    state.players[0].base.damage = damage
+    return { state, hand: state.players[0].hand.find((c) => c.def === 'ramallo')!.id }
+  }
+  // What the AI makes of playing her, among its moves
+  const gainOf = (damage: number) => {
+    const { state, hand } = setup(damage)
+    const why: { action: Action; gain: number }[] = []
+    chooseAction(state, 0, why)
+    return why.find((w) => w.action.type === 'play' && w.action.card === hand)?.gain ?? -Infinity
+  }
+  // Nothing to heal: a card and resources spent for nothing
+  assert.ok(gainOf(0) <= 0, 'not for no heal')
+  // Her base in reach of the enemy's 6-power unit: healing it is worth her body
+  assert.ok(gainOf(22) > 0, 'worth it to heal a base under pressure')
+})
+
 test('Iakin Nefud: other Harkonnen Troopers get +1/+0; a Spice token readies him', () => {
   let state = table({ hand0: ['nefud'], units0: ['harkonnen', 'trooper'], units1: ['trooper'] })
   state = act(state, 0, { type: 'play', card: 'h0' })
@@ -952,7 +1063,7 @@ test("Smugglers' Raid: an attack with +2/+0, and a Spice token when played using
   state = settle(act(state, 0, { type: 'play', card: 'h0' }))
   assert.equal(state.players[1].base.damage, 4, 'the Trooper attacks the base with 2 + 2')
   assert.equal(state.players[0].spice.length, spice, 'no Spice from the hand')
-  // Smuggle 3, Cunning off-aspect: 3 + 2
+  // Smuggle 4, Cunning off-aspect: 4 + 2
   state = table({ units0: ['trooper'] })
   state.players[0].resources[0].card = { id: 'rr', def: 'raid' }
   state = settle(act(state, 0, { type: 'play', card: 'rr', smuggle: true }))
@@ -1152,7 +1263,7 @@ test('Ixian No-Ship: plays a ground unit costing 3 or less from the hand, paid f
   state = settle(state)
   const trooper = state.players[0].units.find((u) => u.def === 'trooper')!
   assert.ok(trooper, 'the Trooper is in play')
-  assert.equal(before - ready(), 4 + 1, 'the No-Ship and the Trooper both paid for')
+  assert.equal(before - ready(), 3 + 1, 'the No-Ship and the Trooper both paid for')
   assert.equal(trooper.exhausted, true, 'it attacked with Ambush')
   assert.equal(state.players[1].units[0].damage, 2)
 })
@@ -1623,3 +1734,384 @@ test('He Who Can Destroy a Thing: every Spice token defeated, both sides, each a
   assert.equal(state.players[1].spice.length, 1, 'next round it is over')
 })
 
+// --- Gurney's smugglers (2026-11-17) ---
+test('Water Seller: a Spice token for 3 damage healed from your base', () => {
+  let state = table({ hand0: ['waterSeller'] })
+  state.players[0].base.damage = 5
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  state = answer(state, 'yes')
+  assert.equal(state.players[0].base.damage, 2)
+  assert.equal(state.players[0].spice.length, 0)
+})
+
+test("Smuggler's Lookout: a Sentinel, and a Spice token when played using Smuggle", () => {
+  assert.equal(defs.find((d) => d.id === 'lookout')!.keywords.sentinel, true)
+  let state = table({ deck0: ['big'] })
+  state.players[0].resources[0].card = { id: 'lo', def: 'lookout' }
+  state = settle(act(state, 0, { type: 'play', card: 'lo', smuggle: true }))
+  assert.ok(state.players[0].units.some((u) => u.id === 'lo'))
+  assert.equal(state.players[0].spice.length, 2, 'the Arrakis one and the Smuggle bonus')
+})
+
+test('Guild Bribe: an enemy unit exhausted, without Sentinel this phase; a Spice token to take a card from their hand, which they replace', () => {
+  let state = table({ hand0: ['guildBribe'], units0: ['trooper'], units1: ['guard', 'trooper'] })
+  state.players[1].hand = [{ id: 'e0', def: 'big' }, { id: 'e1', def: 'trooper' }]
+  state.players[1].deck = [{ id: 'e2', def: 'guard' }, ...state.players[1].deck]
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  state = answer(state, 'u10')
+  const guard = state.players[1].units.find((u) => u.id === 'u10')!
+  assert.equal(guard.exhausted, true)
+  assert.ok(!keywordsOf(state, guard).sentinel, 'no Sentinel this phase')
+  state = answer(state, 'yes')
+  assert.deepEqual(state.prompt?.options.map((o) => o.id), ['e0', 'e1'])
+  state = answer(state, 'e0')
+  assert.deepEqual(state.players[1].hand.map((c) => c.id), ['e1', 'e2'], 'the big one gone, a card drawn')
+  assert.deepEqual(state.players[1].discard.map((c) => c.id), ['e0'])
+  assert.equal(state.players[0].spice.length, 0)
+  // The phase over, Sentinel again
+  state.effects = state.effects.filter((e) => e.until !== 'phase')
+  assert.equal(keywordsOf(state, guard).sentinel, true)
+})
+
+test('Sealed Pass: a ground unit costing 3 or less; 1 less to play with an Underworld unit', () => {
+  const plain = table({ hand0: ['sealedPass'], units1: ['trooper', 'guard', 'big'] })
+  plain.defs = { ...plain.defs, threeCost: { ...plain.defs.trooper, id: 'threeCost', cost: 3 } }
+  plain.players[1].units.push({ id: 'u19', def: 'threeCost', owner: 1, arena: 'ground', damage: 0, exhausted: false, upgrades: [] })
+  let state = act(plain, 0, { type: 'play', card: 'h0' })
+  assert.deepEqual(state.prompt?.options.map((o) => o.id), ['u10', 'u11', 'u19'], '3 or less, not the 5-cost')
+  const price = (s0: GameState) => {
+    const before = s0.players[0].resources.filter((r) => !r.exhausted).length
+    const after = act(s0, 0, { type: 'play', card: 'h0' })
+    return before - after.players[0].resources.filter((r) => !r.exhausted).length
+  }
+  const without = price(table({ hand0: ['sealedPass'], units1: ['trooper'] }))
+  const withUnderworld = price(table({ hand0: ['sealedPass'], units0: ['waterSeller'], units1: ['trooper'] }))
+  assert.equal(without - withUnderworld, 1, 'an Underworld unit takes 1 off')
+})
+
+test('Slip-Tip: the attached unit gives the defender a Weakness token on attack; using Smuggle, a Weakness token too', () => {
+  let state = table({ hand0: ['slipTip'], units0: ['big'], units1: ['big'] })
+  state = settle(act(state, 0, { type: 'play', card: 'h0', attachTo: 'u00' }))
+  assert.equal(powerOf(state, state.players[0].units[0]), 6)
+  state = act(state, 1, { type: 'pass' })
+  state = settle(act(state, 0, { type: 'attack', attacker: 'u00', target: 'u10' }))
+  // 5/5 with a Weakness token (4/4) takes 6: defeated; it dealt 4
+  assert.equal(state.players[1].units.length, 0)
+  assert.equal(state.players[0].units[0].damage, 4)
+  let smuggled = table({ deck0: ['big'], units0: ['big'], units1: ['big'] })
+  smuggled.players[0].resources[0].card = { id: 'st', def: 'slipTip' }
+  smuggled = act(smuggled, 0, { type: 'play', card: 'st', smuggle: true, attachTo: 'u00' })
+  smuggled = settle(answer(smuggled, 'u10'))
+  assert.equal(powerOf(smuggled, smuggled.players[1].units[0]), 4, 'a Weakness token on the enemy unit')
+})
+
+test('The Spice Hoard: a Spice token, and 1 damage healed from your base each time you defeat one', () => {
+  let state = table({ hand0: ['spiceHoard'], deck0: ['big', 'guard', 'trooper', 'trooper'] })
+  state = settle(act(state, 0, { type: 'play', card: 'h0', attachTo: 'base0' }))
+  assert.equal(state.players[0].spice.length, 2)
+  assert.ok(state.players[0].base.upgrades?.some((u) => u.def === 'spiceHoard'))
+  state.players[0].base.damage = 4
+  state.active = 0
+  state = act(state, 0, { type: 'ability', source: state.players[0].spice[0].id, index: 0 })
+  state = settle(state)
+  assert.equal(state.players[0].base.damage, 3)
+})
+
+test('Guild Transport: a ground unit costing 3 or less back to hand, and played again for free', () => {
+  let state = table({ hand0: ['guildTransport'], units0: ['waterSeller', 'big'] })
+  state.players[0].base.damage = 6
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  assert.deepEqual(state.prompt?.options.map((o) => o.id), ['u00'], 'not the 5-cost')
+  state = answer(state, 'u00')
+  const ready = state.players[0].resources.filter((r) => !r.exhausted).length
+  state = answer(state, 'yes')
+  assert.ok(state.players[0].units.some((u) => u.id === 'u00'), 'played again')
+  // Its When Played again: the Arrakis Spice token for 3 healed
+  state = answer(state, 'yes')
+  assert.equal(state.players[0].base.damage, 3)
+  assert.equal(state.players[0].resources.filter((r) => !r.exhausted).length, ready, 'for free')
+})
+
+test('The Spice Hoard may be played using Smuggle, onto your base', () => {
+  let state = table({ deck0: ['big'] })
+  state.players[0].resources[0].card = { id: 'sh', def: 'spiceHoard' }
+  assert.ok(legalActions(state, 0).some((a) => a.type === 'play' && a.card === 'sh' && a.smuggle))
+  state = settle(act(state, 0, { type: 'play', card: 'sh', smuggle: true, attachTo: 'base0' }))
+  assert.ok(state.players[0].base.upgrades?.some((u) => u.id === 'sh'))
+})
+
+test('the AI puts Smuggle cards in its resources when its leader plays cards using Smuggle', () => {
+  const state = table({ hand0: ['smuggler', 'big', 'trooper'] })
+  // A leader that doesn't: the dearest card it can't play soon goes first, as before
+  assert.notDeepEqual(resourcePicks(state, 0, 1), ['h0'])
+  const gurney = { ...state, defs: { ...state.defs, leader: { ...state.defs.leader, text: '[Action [Arrow]:] Play a card using Smuggle. It costs [2] less.' } } }
+  assert.deepEqual(resourcePicks(gurney, 0, 1), ['h0'], 'Spice Smuggler, to play from there')
+})
+
+test('the AI puts Slip-Tip on its own unit, not on an enemy one for its Smuggle Weakness token', () => {
+  // Its only unit exhausted, in reach of a bigger enemy one: the upgrade at risk there
+  const state = table({ units0: ['trooper'], units1: ['big'] })
+  state.players[0].units[0].exhausted = true
+  state.players[0].resources[0].card = { id: 'st', def: 'slipTip' }
+  const why: { action: Action; gain: number }[] = []
+  chooseAction(state, 0, why)
+  const gain = (onto: string) => why.find((w) => w.action.type === 'play' && w.action.card === 'st' && w.action.attachTo === onto)?.gain ?? -Infinity
+  assert.ok(gain('u00') > gain('u10'), 'its own unit before the enemy one')
+  assert.ok(gain('u10') <= 0, 'never on the enemy one')
+})
+
+test('Gurney Halleck: a Spice token to smuggle a card for 2 less; deployed, one card smuggled for 2 less', () => {
+  const ready = (st: GameState) => st.players[0].resources.filter((r) => !r.exhausted).length
+  const setup = () => {
+    const st = table({ units0: ['trooper'], deck0: ['big', 'big'] })
+    st.players[0].leader.def = 'gurneyLeader'
+    st.players[0].resources[0].card = { id: 'rr', def: 'raid' }
+    return st
+  }
+  // What smuggling it costs without him
+  const plain = setup()
+  const full = ready(plain) - ready(settle(act(plain, 0, { type: 'play', card: 'rr', smuggle: true })))
+  // His Action: a Spice token, then 2 less
+  let state = setup()
+  const action = legalActions(state, 0).find((a) => a.type === 'ability' && a.source === 'leader')!
+  assert.ok(action, 'his Action, with a Spice token and a card to smuggle')
+  const before = ready(state)
+  state = act(state, 0, action)
+  if (state.prompt?.options.some((o) => o.id === 'rr')) state = answer(state, 'rr')
+  state = settle(state)
+  assert.equal(before - ready(state), full - 2, '2 less')
+  assert.ok(state.players[0].discard.some((c) => c.id === 'rr'), "Smugglers' Raid played")
+  // Nothing to smuggle: no Action, so no Spice token spent for nothing
+  const bare = table({})
+  bare.players[0].leader.def = 'gurneyLeader'
+  assert.ok(!legalActions(bare, 0).some((a) => a.type === 'ability' && a.source === 'leader'))
+  // Deployed: a 3/5 Saboteur that may smuggle a card for 2 less, no Spice token needed
+  state = setup()
+  state.players[0].spice = []
+  state = act(state, 0, { type: 'deploy' })
+  assert.ok(state.prompt?.options.some((o) => o.id === 'rr'), 'the card to smuggle')
+  assert.equal(state.prompt?.min, 0, 'you may')
+  state = settle(answer(state, 'rr'))
+  assert.ok(state.players[0].discard.some((c) => c.id === 'rr'))
+  const gurney = state.players[0].units.find((u) => u.leader)!
+  assert.equal(keywordsOf(state, gurney).saboteur, true)
+})
+
+test('the AI keeps a unit whose Plot play defeats it (Yueh) to play from the hand, not as a resource', () => {
+  const state = table({ hand0: ['yuehPlot', 'trooper', 'informant'] })
+  assert.ok(state.defs.yuehPlot.keywords.plot, 'Yueh has Plot')
+  assert.ok(!state.players[0].leader.deployed)
+  const picks = resourcePicks(state, 0, 1)
+  assert.notEqual(state.players[0].hand.find((c) => c.id === picks[0])!.def, 'yuehPlot')
+})
+
+test('the AI plays a unit, not The Spice Must Flow, against a board that outpowers its own', () => {
+  // Round 3: 3 resources, a 5-power enemy unit, nothing of its own
+  const state = table({ hand0: ['spiceFlow', 'informant'], units1: ['big'] })
+  state.players[0].resources = state.players[0].resources.slice(0, 3)
+  state.players[0].resources.forEach((r) => (r.exhausted = false))
+  const why: { action: Action; gain: number }[] = []
+  chooseAction(state, 0, why)
+  // (with 8 resources, deploying its leader comes first: compare the two cards)
+  const gain = (card: string) => why.find((w) => w.action.type === 'play' && w.action.card === card)!.gain
+  assert.ok(gain('h1') > gain('h0'), `the Informant ${gain('h1')}, The Spice Must Flow ${gain('h0')}`)
+})
+
+test('the AI holds A Web of Spies until it makes 2 Spy tokens', () => {
+  let state = table({ hand0: ['webOfSpies', 'trooper'], units0: ['informant'] })
+  state.players[0].resources.forEach((r) => (r.exhausted = false))
+  const move = chooseAction(state, 0)!
+  assert.ok(!(move.type === 'play' && move.card === 'h0'), 'one Spy: it waits')
+  state = table({ hand0: ['webOfSpies', 'trooper'], units0: ['informant', 'imperialSpy', 'doubleAgent'] })
+  state.players[0].resources.forEach((r) => (r.exhausted = false))
+  const later = chooseAction(state, 0)!
+  assert.ok(later.type === 'play' && later.card === 'h0', 'three Spies: it plays it')
+})
+
+test("Tleilaxu Face Dancer: Experience tokens for half the copied unit's power and HP, and its traits", () => {
+  let state = table({ hand0: ['faceDancer'], units0: ['informant'] })
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  const informant = state.players[0].units.find((u) => u.def === 'informant')!.id
+  if (state.prompt) state = answer(state, informant)
+  const dancer = state.players[0].units.find((u) => u.def === 'faceDancer')!
+  assert.equal(dancer.upgrades.filter((u) => state.defs[u.def].name === 'Experience').length, 3, 'a 2/4: 3')
+  assert.deepEqual([...traitsOf(state, dancer)].sort(), ['Emperor', 'Spy', 'Tleilaxu'])
+  // Copied traits count as its own: a Spy for A Web of Spies
+  state.players[0].hand.push({ id: 'h9', def: 'webOfSpies' })
+  state.players[0].resources.forEach((r) => (r.exhausted = false))
+  state.active = 0
+  state = settle(act(state, 0, { type: 'play', card: 'h9' }))
+  assert.equal(state.players[0].units.filter((u) => state.defs[u.def].token && state.defs[u.def].name === 'Spy').length, 2)
+})
+
+test('Imperial Picket Ship: Sentinel; exhausts an enemy space unit when played, not a ground one', () => {
+  let state = table({ hand0: ['picket'], units1: ['big', 'enemyThopter'] })
+  state.players[1].units[1].arena = 'space'
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  if (state.prompt) {
+    assert.deepEqual(state.prompt.options.map((o) => o.id), ['u11'], 'the space unit only')
+    state = answer(state, 'u11')
+  }
+  assert.equal(state.players[1].units[1].exhausted, true)
+  assert.equal(state.players[1].units[0].exhausted, false)
+  const picket = state.players[0].units.find((u) => u.def === 'picket')!
+  assert.equal(keywordsOf(state, picket).sentinel, true)
+})
+
+test('Ixian Probe Drone: Hidden, a Spy, and a Spy token on attack', () => {
+  let state = table({ units0: ['probe'] })
+  const probe = state.players[0].units[0]
+  probe.arena = 'space'
+  assert.equal(keywordsOf(state, probe).hidden, true)
+  assert.ok(traitsOf(state, probe).includes('Spy'))
+  state = settle(act(state, 0, { type: 'attack', attacker: probe.id, target: 'base' }))
+  assert.equal(state.players[0].units.filter((u) => state.defs[u.def].token && state.defs[u.def].name === 'Spy').length, 1)
+})
+
+test('Spymaster of Kaitain: other Spies +1/+0; 2 Spy tokens, then another ready Spy may attack', () => {
+  let state = table({ hand0: ['spymaster'], units0: ['imperialSpy'] })
+  state.players[0].resources.forEach((r) => (r.exhausted = false))
+  const spy = state.players[0].units[0].id
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  assert.ok(state.prompt, 'the attack question')
+  assert.deepEqual(state.prompt!.options.map((o) => o.id).filter((id) => id !== 'none'), [spy], 'the ready Imperial Spy, not the new tokens nor itself')
+  state = answer(state, spy)
+  state = settle(state)
+  const units = state.players[0].units
+  assert.equal(units.filter((u) => state.defs[u.def].token && state.defs[u.def].name === 'Spy').length, 2)
+  const master = units.find((u) => u.def === 'spymaster')!
+  assert.equal(powerOf(state, master), 4, 'not itself')
+  const token = units.find((u) => state.defs[u.def].token && state.defs[u.def].name === 'Spy')!
+  assert.equal(powerOf(state, token), 1, 'a Spy token gets +1/+0')
+  assert.ok(state.players[1].base.damage > 0, 'the Imperial Spy attacked')
+})
+
+test('Scytale: defeats an enemy non-leader unit with 4 or less remaining HP', () => {
+  let state = table({ hand0: ['scytale'], units1: ['big', 'informant'] })
+  state.players[0].resources.forEach((r) => (r.exhausted = false))
+  // The 5/5 has 5 HP left; damaged by 1, it has 4
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  if (state.prompt) {
+    assert.deepEqual(state.prompt.options.map((o) => o.id), ['u11'], 'only the 2/4')
+    state = answer(state, 'u11')
+  }
+  assert.equal(state.players[1].units.length, 1)
+  let hurt = table({ hand0: ['scytale'], units1: ['big'] })
+  hurt.players[0].resources.forEach((r) => (r.exhausted = false))
+  hurt.players[1].units[0].damage = 1
+  hurt = settle(act(hurt, 0, { type: 'play', card: 'h0' }))
+  assert.equal(hurt.players[1].units.length, 0, '4 HP left: defeated')
+})
+
+test('Imperial Herald: an Experience token to another friendly unit', () => {
+  let state = table({ hand0: ['herald'], units0: ['informant'] })
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  const informant = state.players[0].units.find((u) => u.def === 'informant')!.id
+  assert.deepEqual(state.prompt?.options.map((o) => o.id), [informant], 'not itself')
+  state = answer(state, informant)
+  const tokens = (id: string) => state.players[0].units.find((u) => u.id === id)!.upgrades.filter((u) => state.defs[u.def].name === 'Experience').length
+  assert.equal(tokens(informant), 1)
+  assert.equal(tokens('h0'), 0, 'not on itself')
+  // Alone, nothing to give
+  let alone = table({ hand0: ['herald'] })
+  alone = act(alone, 0, { type: 'play', card: 'h0' })
+  assert.ok(!alone.prompt, 'no question')
+})
+
+test('Landsraad Double Agent: Saboteur, and a Spy token when played', () => {
+  let state = table({ hand0: ['doubleAgent'] })
+  state = settle(act(state, 0, { type: 'play', card: 'h0' }))
+  const agent = state.players[0].units.find((u) => u.def === 'doubleAgent')!
+  assert.equal(keywordsOf(state, agent).saboteur, true)
+  assert.equal(state.players[0].units.filter((u) => state.defs[u.def].name === 'Spy').length, 1)
+})
+
+test('Residency Informant: Saboteur while you control a Spice token', () => {
+  const state = table({ units0: ['informant'] })
+  const informant = state.players[0].units[0]
+  assert.ok(state.players[0].spice.length > 0)
+  assert.equal(keywordsOf(state, informant).saboteur, true, 'the Arrakis Spice token')
+  state.players[0].spice = []
+  assert.ok(!keywordsOf(state, informant).saboteur, 'no Spice token, no Saboteur')
+})
+
+test('Count Hasimir Fenring: a Spice token for a Spy token; deployed, a Spy token on attack', () => {
+  const spies = (st: GameState) => st.players[0].units.filter((u) => st.defs[u.def].name === 'Spy').length
+  let state = table({})
+  state.players[0].leader.def = 'fenringLeader'
+  const action = legalActions(state, 0).find((a) => a.type === 'ability' && a.source === 'leader')!
+  assert.ok(action)
+  state = settle(act(state, 0, action))
+  assert.equal(spies(state), 1)
+  assert.equal(state.players[0].spice.length, 0)
+  assert.ok(!legalActions(state, 0).some((a) => a.type === 'ability' && a.source === 'leader'), 'no Spice token, no Action')
+  state = table({ units1: ['trooper'] })
+  state.players[0].leader.def = 'fenringLeader'
+  state = settle(act(state, 0, { type: 'deploy' }))
+  const fenring = state.players[0].units.find((u) => u.leader)!
+  fenring.exhausted = false
+  state.active = 0
+  state = settle(act(state, 0, { type: 'attack', attacker: fenring.id, target: 'base' }))
+  assert.equal(spies(state), 1)
+})
+
+test('Imperial Spy: the AI leaves a weak card on top of their deck, and discards a strong one', () => {
+  const top = (def: string, resources: number) => {
+    let state = table({ hand0: ['imperialSpy'] })
+    state.players[1].deck.unshift({ id: 'top', def })
+    state.players[1].resources = state.players[1].resources.slice(0, 1)
+    while (state.players[1].resources.length < resources) state.players[1].resources.push({ card: { id: `r${state.players[1].resources.length}`, def: 'trooper' }, exhausted: false })
+    state = act(state, 0, { type: 'play', card: 'h0' })
+    // What the AI answers
+    while (state.prompt) state = answer(state, state.prompt.ai ?? state.prompt.options[0].id)
+    return state.players[1].deck[0]?.id === 'top'
+  }
+  assert.equal(top('trooper', 5), true, 'a 2-cost card late: left on top')
+  assert.equal(top('big', 5), false, 'a dear card: gone')
+})
+
+test("Count Hasimir Fenring, The Emperor's Blade: a Spy token when played", () => {
+  let state = table({ hand0: ['blade'] })
+  state = settle(act(state, 0, { type: 'play', card: 'h0' }))
+  assert.equal(state.players[0].units.filter((u) => state.defs[u.def].name === 'Spy').length, 1)
+})
+
+test('A Web of Spies: a ready Spy token for each friendly Spy unit, not counting Spy tokens', () => {
+  const spyTokens = (st: GameState) => st.players[0].units.filter((u) => st.defs[u.def].token && st.defs[u.def].name === 'Spy')
+  let state = table({ hand0: ['webOfSpies'], units0: ['informant', 'imperialSpy', 'trooper'] })
+  state.players[0].resources.forEach((r) => (r.exhausted = false))
+  while (state.players[0].resources.length < 8) state.players[0].resources.push({ card: { id: `r${state.players[0].resources.length}`, def: 'trooper' }, exhausted: false })
+  // Two Spy tokens already: not counted
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  state = settle(state)
+  assert.equal(spyTokens(state).length, 2, 'the Informant and the Imperial Spy')
+  assert.ok(spyTokens(state).every((u) => !u.exhausted), 'ready')
+  assert.ok(spyTokens(state).every((u) => state.defs[u.def].traits.includes('Spy')), 'DUNE Spy tokens are Spies')
+  state.players[0].hand.push({ id: 'h9', def: 'webOfSpies' })
+  state.players[0].resources.forEach((r) => (r.exhausted = false))
+  state.active = 0
+  state = settle(act(state, 0, { type: 'play', card: 'h9' }))
+  assert.equal(spyTokens(state).length, 4, 'still 2 more, the tokens not counted')
+})
+
+test('Forged Imperial Writ: +1/+1 and Saboteur; a Spy token only when it goes on a Spy', () => {
+  const spies = (st: GameState) => st.players[0].units.filter((u) => st.defs[u.def].token && st.defs[u.def].name === 'Spy').length
+  let state = table({ hand0: ['writ'], units0: ['trooper'] })
+  state = settle(act(state, 0, { type: 'play', card: 'h0', attachTo: 'u00' }))
+  const trooper = state.players[0].units.find((u) => u.id === 'u00')!
+  assert.equal(keywordsOf(state, trooper).saboteur, true)
+  assert.equal(hpOf(state, trooper), 3)
+  assert.equal(spies(state), 0, 'not a Spy: no token')
+  let spy = table({ hand0: ['writ'], units0: ['informant'] })
+  spy = settle(act(spy, 0, { type: 'play', card: 'h0', attachTo: 'u00' }))
+  assert.equal(spies(spy), 1, 'on a Spy: a Spy token')
+})
+
+test('the AI puts the Forged Imperial Writ on a Spy', () => {
+  const state = table({ hand0: ['writ'], units0: ['trooper', 'informant'] })
+  state.players[0].resources.forEach((r) => (r.exhausted = false))
+  const why: { action: Action; gain: number }[] = []
+  chooseAction(state, 0, why)
+  const on = (id: string) => why.find((w) => w.action.type === 'play' && w.action.attachTo === id)?.gain ?? -Infinity
+  assert.ok(on('u01') > on('u00'), `the Informant ${on('u01')}, the Trooper ${on('u00')}`)
+})

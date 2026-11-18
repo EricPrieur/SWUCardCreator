@@ -1,5 +1,5 @@
 {
-  "hp": 4,
+  "hp": 3,
   "id": "fbddb7fe-ef50-4e29-955c-b85bdea26e99",
   "art": {
     "x": 0,
@@ -8,12 +8,12 @@
     "zoom": 0.75,
     "rotate": 0
   },
-  "cost": 4,
+  "cost": 3,
   "name": "Ixian No-Ship",
   "text": "[Hidden]\n[When Played/On Attack:] You may play a ground unit that costs [#3] or less from your hand. It gains [Ambush] for this phase.",
   "power": 2,
   "trait": "Ixian, Vehicle, Transport",
-  "number": "165",
+  "number": "166",
   "rarity": "R",
   "unique": true,
   "frameId": "unit-cunning-villainy-space",

@@ -10,7 +10,7 @@
   "name": "Mother School",
   "text": "[When you defeat a friendly Spice token:] Look at the top card of your deck. You may discard it.",
   "trait": "Wallach IX",
-  "number": "022",
+  "number": "023",
   "rarity": "R",
   "frameId": "base-cunning-text",
   "setCode": "DUNE",

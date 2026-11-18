@@ -9,10 +9,10 @@
   },
   "cost": 5,
   "name": "Gurney Halleck",
-  "text": "[Action [Arrow]:] Defeat a friendly Spice token. If you do, choose one:\n• Play a card using Smuggle. It costs [2] less.\n• Give an Experience token to a friendly [{Underworld}] unit.",
-  "power": 4,
+  "text": "[Action [Arrow]:] Defeat a friendly Spice token. If you do, play a card using Smuggle. It costs [2] less.",
+  "power": 3,
   "trait": "Atreides, Underworld",
-  "number": "013",
+  "number": "014",
   "rarity": "R",
   "backArt": {
     "x": 0,
@@ -23,7 +23,7 @@
   "frameId": "leader-cunning-heroism",
   "setCode": "DUNE",
   "backName": "Gurney Halleck",
-  "backText": "[On Attack:] You may defeat a friendly Spice token. If you do, choose one:\n• Play a card using Smuggle. It costs [2] less.\n• Give an Experience token to a friendly [{Underworld}] unit.",
+  "backText": "[Saboteur]\n[When Deployed:] You may play a card using Smuggle. It costs [2] less.",
   "language": "EN",
   "subtitle": "Smuggler of Arrakis",
   "prescient": {

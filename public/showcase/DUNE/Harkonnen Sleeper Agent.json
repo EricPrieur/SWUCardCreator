@@ -1,0 +1,21 @@
+{
+  "hp": 3,
+  "id": "71ae43cb-063c-47ec-a3cf-6e6582e6ac5d",
+  "art": {
+    "x": 0,
+    "y": -19,
+    "src": "Harkonnen Sleeper Agent (art).webp",
+    "zoom": 1.04,
+    "rotate": 0
+  },
+  "cost": 2,
+  "name": "Harkonnen Sleeper Agent",
+  "text": "[When Played:] If you control an [{Arrakis}] base, create a Spy token.\n[When Played/On Attack:] If you don't control an [{Arrakis}] base, create a Spice token.",
+  "power": 1,
+  "trait": "Harkonnen, Spy",
+  "number": "163",
+  "rarity": "U",
+  "frameId": "unit-cunning-villainy",
+  "setCode": "DUNE",
+  "language": "EN"
+}

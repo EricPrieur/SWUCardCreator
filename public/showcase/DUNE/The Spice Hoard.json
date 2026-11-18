@@ -1,0 +1,19 @@
+{
+  "id": "e9b68726-928b-40c8-ba34-9224bff4f8b6",
+  "art": {
+    "x": 0,
+    "y": -11,
+    "src": "The Spice Hoard (art).webp",
+    "zoom": 1
+  },
+  "cost": 2,
+  "name": "The Spice Hoard",
+  "text": "[Fortify]\n[When Played:] Create a Spice token.\nWhenever you defeat a friendly Spice token, heal 1 damage from your base.\n[Smuggle] [[3 Cunning Vigilance]]",
+  "trait": "Fortification",
+  "number": "221",
+  "rarity": "R",
+  "unique": true,
+  "frameId": "fortification-cunning-vigilance",
+  "setCode": "DUNE",
+  "language": "EN"
+}

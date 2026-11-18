@@ -12,7 +12,7 @@
   "text": "[PLOT]\n[When Played:] Deal 3 damage to a unit. If you played this unit using [Plot], deal 3 damage to another unit.",
   "power": 5,
   "trait": "Harkonnen, Vehicle",
-  "number": "129",
+  "number": "130",
   "rarity": "U",
   "frameId": "unit-aggression-villainy",
   "setCode": "DUNE",

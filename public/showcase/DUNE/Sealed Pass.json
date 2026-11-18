@@ -1,0 +1,18 @@
+{
+  "id": "2b5401c7-fdbe-4393-a34d-0a6049277c4e",
+  "art": {
+    "x": 0,
+    "y": 5,
+    "src": "Sealed Pass (art).webp",
+    "zoom": 0.9
+  },
+  "cost": 2,
+  "name": "Sealed Pass",
+  "text": "If you control an [{Underworld}] unit, this event costs [1] less.\nDefeat a non-leader ground unit that costs [#3] or less.",
+  "trait": "Tactic",
+  "number": "219",
+  "rarity": "U",
+  "frameId": "event-vigilance",
+  "setCode": "DUNE",
+  "language": "EN"
+}

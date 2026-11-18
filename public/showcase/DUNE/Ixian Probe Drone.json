@@ -1,0 +1,14 @@
+{
+  "hp": 2,
+  "id": "60f2a836-9dfb-44df-8117-6bd33545366c",
+  "cost": 2,
+  "name": "Ixian Probe Drone",
+  "text": "[Hidden]\n[On Attack:] Create a Spy token.",
+  "power": 2,
+  "trait": "Ixian, Vehicle, Drone, Spy",
+  "number": "229",
+  "rarity": "U",
+  "frameId": "unit-cunning-villainy-space",
+  "setCode": "DUNE",
+  "language": "EN"
+}

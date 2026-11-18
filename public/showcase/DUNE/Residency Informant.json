@@ -1,0 +1,14 @@
+{
+  "hp": 4,
+  "id": "9e3ba69a-f4ca-4c6b-8f57-27965762dc8b",
+  "cost": 2,
+  "name": "Residency Informant",
+  "text": "While you control a Spice token, this unit gains [Saboteur].",
+  "power": 2,
+  "trait": "Emperor, Spy",
+  "number": "223",
+  "rarity": "C",
+  "frameId": "unit-cunning-villainy",
+  "setCode": "DUNE",
+  "language": "EN"
+}

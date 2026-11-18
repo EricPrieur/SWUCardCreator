@@ -1,0 +1,20 @@
+{
+  "hp": 4,
+  "id": "6ee82b80-0013-4ebb-9ade-ea1782329aa6",
+  "art": {
+    "x": 0,
+    "y": 6,
+    "src": "Water Seller (art).webp",
+    "zoom": 0.9
+  },
+  "cost": 1,
+  "name": "Water Seller",
+  "text": "[When Played:] You may defeat a friendly Spice token. If you do, heal 3 damage from your base.",
+  "power": 1,
+  "trait": "Underworld",
+  "number": "216",
+  "rarity": "C",
+  "frameId": "unit-cunning-vigilance",
+  "setCode": "DUNE",
+  "language": "EN"
+}

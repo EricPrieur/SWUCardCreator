@@ -229,6 +229,8 @@ export const builtInTokens: CardDef[] = [
     text: 'While you control an [{Arrakis}] base, this unit gains [Raid 1].',
     arrakisKeywords: { raid: 1 },
   },
+  // DUNE's Spy token is a Spy (SWU's is an Official)
+  { name: 'Spy', type: 'unit', power: 0, hp: 2, arena: 'ground', traits: ['Spy'], text: '[Raid 2]', keywords: { raid: 2 } },
 ].map((token) => ({
   id: `token-${token.name.toLowerCase()}`,
   cost: 0,

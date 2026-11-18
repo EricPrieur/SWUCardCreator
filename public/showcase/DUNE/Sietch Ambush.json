@@ -10,7 +10,7 @@
   "name": "Sietch Ambush",
   "text": "[PLOT]\nDeal 1 damage to a ground unit. Then, if you control a [{Fremen}] unit, deal 1 damage to an enemy base.",
   "trait": "Fremen, Tactic",
-  "number": "144",
+  "number": "145",
   "rarity": "C",
   "frameId": "event-aggression-heroism",
   "setCode": "DUNE",

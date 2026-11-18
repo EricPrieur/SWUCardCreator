@@ -13,7 +13,7 @@
   "text": "Attach to a non-[{Vehicle}] unit.\nAttached unit gains: \"[On Attack:] Deal 1 damage to an enemy base.\"",
   "power": 1,
   "trait": "Fremen, Item, Weapon",
-  "number": "161",
+  "number": "162",
   "rarity": "C",
   "frameId": "upgrade-aggression",
   "setCode": "DUNE",

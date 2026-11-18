@@ -894,5 +894,193 @@
         "count": 3
       }
     ]
+  },
+  {
+    "id": "24c0af5f-4fee-437b-8329-f9a0f02ea60d",
+    "name": "Gurney Blue",
+    "leader": "9218a637-8808-4998-b56f-8bc38d6ccffa",
+    "base": "fc7b410b-4957-431e-9fac-7bed7e75443c",
+    "cards": [
+      {
+        "id": "cfcaca80-9e13-460c-89d3-021a218ff5af",
+        "count": 3
+      },
+      {
+        "id": "83566c75-2e6b-4c05-aa73-6b8b58bb2760",
+        "count": 3
+      },
+      {
+        "id": "dcfbdc45-80f5-4c85-a2e3-443fd5743af6",
+        "count": 3
+      },
+      {
+        "id": "8c73f01a-8e4d-4013-933a-5225d6447954",
+        "count": 1
+      },
+      {
+        "id": "85a64f30-403c-4f67-9342-c78a1ce78bc0",
+        "count": 2
+      },
+      {
+        "id": "3a8b66f3-6fb7-479b-b28d-ef820edf9c8a",
+        "count": 1
+      },
+      {
+        "id": "7c85f602-4737-4736-a57c-78b46e362d72",
+        "count": 3
+      },
+      {
+        "id": "b5a0d3e5-b64e-4a72-a2c7-5305a768032a",
+        "count": 3
+      },
+      {
+        "id": "aa516956-22ce-4614-a083-42a599f69237",
+        "count": 2
+      },
+      {
+        "id": "bde01fcd-e2e0-4483-94a4-28acd6dc1c3d",
+        "count": 3
+      },
+      {
+        "id": "87577ef3-b817-4ae7-8b97-3c6d88659254",
+        "count": 2
+      },
+      {
+        "id": "80dd57c0-8e3a-4ae5-acec-91bb8d4e5d7c",
+        "count": 3
+      },
+      {
+        "id": "dd02a6f8-dfd1-4a5b-b26f-ae2696a6f65d",
+        "count": 1
+      },
+      {
+        "id": "9f8ca78c-696d-4879-858d-8485d6565b64",
+        "count": 2
+      },
+      {
+        "id": "bad799dd-a5f5-4d51-a7a6-928bca64ea46",
+        "count": 3
+      },
+      {
+        "id": "a97c85ec-2d72-4f20-8c1c-25f152fc8b11",
+        "count": 3
+      },
+      {
+        "id": "36cf6bad-32cc-4ce4-92d6-de95c6ebccd0",
+        "count": 3
+      },
+      {
+        "id": "ab9c7673-7e6e-4644-9dbe-0eeb7c8df113",
+        "count": 2
+      },
+      {
+        "id": "2b5401c7-fdbe-4393-a34d-0a6049277c4e",
+        "count": 2
+      },
+      {
+        "id": "a7d059f2-2acd-4730-864c-4959130d34ff",
+        "count": 1
+      },
+      {
+        "id": "e9b68726-928b-40c8-ba34-9224bff4f8b6",
+        "count": 1
+      },
+      {
+        "id": "99c2cc89-e664-4965-92ab-5ed9410351f1",
+        "count": 1
+      },
+      {
+        "id": "5340e3f4-3941-402c-ae35-7cc97cd0ec57",
+        "count": 2
+      }
+    ]
+  },
+  {
+    "id": "a41295a4-ba66-4a01-8018-39b8b69b23f3",
+    "name": "Fenring Green",
+    "leader": "c46dd839-5925-4d9c-941d-d2193196512f",
+    "base": "003c87be-36d7-4aae-813f-c949e1c29ae1",
+    "cards": [
+      {
+        "id": "83566c75-2e6b-4c05-aa73-6b8b58bb2760",
+        "count": 2
+      },
+      {
+        "id": "7c85f602-4737-4736-a57c-78b46e362d72",
+        "count": 3
+      },
+      {
+        "id": "7e3fc552-6c87-4d05-913f-17f5ab9f2f47",
+        "count": 2
+      },
+      {
+        "id": "82f46df0-dc2b-4de7-9c89-b84f01275c4f",
+        "count": 3
+      },
+      {
+        "id": "93efa093-e11c-4e68-b743-ca5334d8b966",
+        "count": 3
+      },
+      {
+        "id": "dcfbdc45-80f5-4c85-a2e3-443fd5743af6",
+        "count": 3
+      },
+      {
+        "id": "abacdb60-bcc1-45e5-94e9-ee3ebe98472e",
+        "count": 3
+      },
+      {
+        "id": "85a64f30-403c-4f67-9342-c78a1ce78bc0",
+        "count": 2
+      },
+      {
+        "id": "79be048c-39d3-4ea5-9d43-f65f1c5e147b",
+        "count": 3
+      },
+      {
+        "id": "ea4afbda-5e49-4a0c-8d15-1dede4a6fd49",
+        "count": 3
+      },
+      {
+        "id": "6c24f2ff-cdc5-4d40-b66b-503e523b5ad1",
+        "count": 3
+      },
+      {
+        "id": "9e3ba69a-f4ca-4c6b-8f57-27965762dc8b",
+        "count": 3
+      },
+      {
+        "id": "71ae43cb-063c-47ec-a3cf-6e6582e6ac5d",
+        "count": 2
+      },
+      {
+        "id": "aa54d7f1-9768-4c8a-9f43-197470794097",
+        "count": 2
+      },
+      {
+        "id": "f65c73a6-8c8d-49e7-9f81-4d15cf1e60ec",
+        "count": 2
+      },
+      {
+        "id": "0895e4a0-a547-447c-8257-fc4f7bb953e3",
+        "count": 3
+      },
+      {
+        "id": "ed260a33-ddcd-4191-88e4-435e325dbb68",
+        "count": 2
+      },
+      {
+        "id": "60f2a836-9dfb-44df-8117-6bd33545366c",
+        "count": 3
+      },
+      {
+        "id": "5dda201f-c988-4496-afcd-1bcca4f83f88",
+        "count": 2
+      },
+      {
+        "id": "50ddfd6c-0845-40ee-9aaa-31fa2f085950",
+        "count": 1
+      }
+    ]
   }
 ]

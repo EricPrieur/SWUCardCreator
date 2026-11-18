@@ -164,6 +164,8 @@ export type Effect = {
   power: number
   hp: number
   keywords?: Keywords
+  // Keywords lost for a while ("It loses [Sentinel] for this phase": Guild Bribe)
+  loses?: (keyof Keywords)[]
   // Traits gained as well ("gains the [{Harkonnen}] trait for this phase")
   traits?: string[]
   until: 'attack' | 'phase' | 'source'
