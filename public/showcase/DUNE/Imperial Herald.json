@@ -1,6 +1,12 @@
 {
   "hp": 5,
   "id": "aeb9b01c-c6b7-46ff-9eba-0e4e4c69937f",
+  "art": {
+    "x": 0,
+    "y": 11,
+    "src": "Imperial Herald (art).webp",
+    "zoom": 1
+  },
   "cost": 4,
   "name": "Imperial Herald",
   "text": "[When Played:] Give an Experience token to another friendly unit.",

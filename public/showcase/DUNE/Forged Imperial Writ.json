@@ -1,6 +1,12 @@
 {
   "hp": 1,
   "id": "f65c73a6-8c8d-49e7-9f81-4d15cf1e60ec",
+  "art": {
+    "x": 0,
+    "y": -28,
+    "src": "Forged Imperial Writ (art).webp",
+    "zoom": 1
+  },
   "cost": 1,
   "name": "Forged Imperial Writ",
   "text": "Attach to a non-[{Vehicle}] unit.\nAttached unit gains [Saboteur].\n[When Played:] If attached unit is a [{Spy}], create a Spy token.",

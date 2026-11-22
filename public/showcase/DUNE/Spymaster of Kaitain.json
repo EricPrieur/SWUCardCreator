@@ -10,5 +10,11 @@
   "rarity": "R",
   "frameId": "unit-cunning-villainy",
   "setCode": "DUNE",
-  "language": "EN"
+  "language": "EN",
+  "art": {
+    "src": "Spymaster of Kaitain (art).webp",
+    "zoom": 0.9,
+    "x": 0,
+    "y": 5
+  }
 }

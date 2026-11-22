@@ -10,5 +10,11 @@
   "rarity": "U",
   "frameId": "unit-cunning-villainy-space",
   "setCode": "DUNE",
-  "language": "EN"
+  "language": "EN",
+  "art": {
+    "src": "Ixian Probe Drone (art).webp",
+    "zoom": 1.1,
+    "x": -7,
+    "y": -9
+  }
 }

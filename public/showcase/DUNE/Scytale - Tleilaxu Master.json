@@ -12,5 +12,11 @@
   "frameId": "unit-cunning-vigilance-villainy",
   "setCode": "DUNE",
   "language": "EN",
-  "subtitle": "Tleilaxu Master"
+  "subtitle": "Tleilaxu Master",
+  "art": {
+    "src": "Scytale - Tleilaxu Master (art).webp",
+    "zoom": 1,
+    "x": 0,
+    "y": 3
+  }
 }

@@ -1,5 +1,11 @@
 {
   "id": "aa54d7f1-9768-4c8a-9f43-197470794097",
+  "art": {
+    "x": 0,
+    "y": 21,
+    "src": "A Web of Spies (art).webp",
+    "zoom": 1
+  },
   "cost": 3,
   "name": "A Web of Spies",
   "text": "Create a Spy token for each friendly non-token [{Spy}] unit. Ready them.",

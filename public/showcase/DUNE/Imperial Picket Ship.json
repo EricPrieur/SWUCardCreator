@@ -10,5 +10,12 @@
   "rarity": "C",
   "frameId": "unit-villainy-space",
   "setCode": "DUNE",
-  "language": "EN"
+  "language": "EN",
+  "art": {
+    "src": "Imperial Picket Ship (art).webp",
+    "zoom": 0.8,
+    "x": -1,
+    "y": -5,
+    "rotate": 19
+  }
 }
