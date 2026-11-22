@@ -1,22 +1,22 @@
 {
   "hp": 6,
   "id": "3263d81d-0004-4dc7-8ea1-8cdbcf75723f",
+  "art": {
+    "x": 0,
+    "y": 3,
+    "src": "Scytale - Tleilaxu Master (art).webp",
+    "zoom": 1
+  },
   "cost": 6,
   "name": "Scytale",
   "text": "[When Played:] Defeat an enemy non-leader unit with 4 or less remaining HP.",
   "power": 5,
   "trait": "Tleilaxu, Spy",
-  "number": "231",
+  "number": "031",
   "rarity": "R",
   "unique": true,
   "frameId": "unit-cunning-vigilance-villainy",
   "setCode": "DUNE",
   "language": "EN",
-  "subtitle": "Tleilaxu Master",
-  "art": {
-    "src": "Scytale - Tleilaxu Master (art).webp",
-    "zoom": 1,
-    "x": 0,
-    "y": 3
-  }
+  "subtitle": "Tleilaxu Master"
 }

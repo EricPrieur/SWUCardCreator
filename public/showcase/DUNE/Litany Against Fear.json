@@ -12,7 +12,7 @@
   "text": "Attach to a non-[{Vehicle}] unit.\nAttached unit can't be defeated by enemy card abilities.",
   "power": 2,
   "trait": "Bene Gesserit, Learned",
-  "number": "209",
+  "number": "225",
   "rarity": "C",
   "frameId": "upgrade-heroism",
   "setCode": "DUNE",

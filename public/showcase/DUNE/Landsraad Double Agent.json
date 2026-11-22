@@ -1,20 +1,20 @@
 {
   "hp": 4,
   "id": "ed260a33-ddcd-4191-88e4-435e325dbb68",
+  "art": {
+    "x": 0,
+    "y": 2,
+    "src": "Landsraad Double Agent (art).webp",
+    "zoom": 0.9
+  },
   "cost": 4,
   "name": "Landsraad Double Agent",
   "text": "[Saboteur]\n[When Played:] Create a Spy token.",
   "power": 5,
   "trait": "Spy, Official",
-  "number": "227",
+  "number": "176",
   "rarity": "U",
   "frameId": "unit-cunning-villainy",
   "setCode": "DUNE",
-  "language": "EN",
-  "art": {
-    "src": "Landsraad Double Agent (art).webp",
-    "zoom": 0.9,
-    "x": 0,
-    "y": 2
-  }
+  "language": "EN"
 }

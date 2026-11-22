@@ -10,7 +10,7 @@
   "name": "The Spice Hoard",
   "text": "[Fortify]\n[When Played:] Create a Spice token.\nWhenever you defeat a friendly Spice token, heal 1 damage from your base.\n[Smuggle] [[3 Cunning Vigilance]]",
   "trait": "Fortification",
-  "number": "221",
+  "number": "038",
   "rarity": "R",
   "unique": true,
   "frameId": "fortification-cunning-vigilance",

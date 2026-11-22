@@ -12,7 +12,7 @@
   "text": "[When a Shield token on this unit is defeated:] Deal 2 damage to an enemy ground unit.",
   "power": 3,
   "trait": "Emperor, Trooper",
-  "number": "037",
+  "number": "041",
   "rarity": "U",
   "frameId": "unit-vigilance-villainy",
   "setCode": "DUNE",

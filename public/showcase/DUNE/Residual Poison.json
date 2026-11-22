@@ -13,7 +13,7 @@
   "text": "[PLOT]\nAttach to an enemy non-[{Vehicle}] unit.\n[When the regroup phase starts:] Deal 2 damage to attached unit.",
   "power": -2,
   "trait": "Poison",
-  "number": "070",
+  "number": "076",
   "rarity": "U",
   "frameId": "upgrade-vigilance",
   "setCode": "DUNE",

@@ -12,7 +12,7 @@
   "text": "[When Played:] Return a friendly non-leader ground unit that costs [#3] or less to its owner's hand. Then, you may play that unit for free.",
   "power": 2,
   "trait": "Spacing Guild, Vehicle, Transport",
-  "number": "222",
+  "number": "037",
   "rarity": "U",
   "frameId": "unit-cunning-vigilance-space",
   "setCode": "DUNE",

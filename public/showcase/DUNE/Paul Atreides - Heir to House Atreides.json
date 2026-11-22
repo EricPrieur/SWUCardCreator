@@ -12,7 +12,7 @@
   "text": "[On Attack:] Choose an enemy unit. Reveal the top card of your deck. If it has the same cost as that unit, deal 1 damage to that unit or to a base.",
   "power": 3,
   "trait": "Atreides",
-  "number": "088",
+  "number": "094",
   "rarity": "U",
   "unique": true,
   "frameId": "unit-command-heroism",

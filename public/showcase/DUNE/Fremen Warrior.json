@@ -16,10 +16,10 @@
     "frameOpacity": 1
   },
   "name": "Fremen Warrior",
-  "text": "While you control an [{Arrakis}] base, this unit gains [Hidden]",
+  "text": "While you control an [{Arrakis}] base, this unit gains [Hidden].",
   "power": 3,
   "trait": "Fremen, Trooper",
-  "number": "170",
+  "number": "183",
   "rarity": "C",
   "unique": false,
   "frameId": "unit-cunning-heroism",
