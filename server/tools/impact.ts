@@ -21,6 +21,13 @@ const top = Number(process.env.TOP ?? 10)
 const defs = loadDefs()
 if (process.env.VARIANT) (await import(pathToFileURL(process.env.VARIANT).href)).default(defs, scripts)
 const nameOf = (id: string) => defs.find((d) => d.id === id)?.name ?? id
+// ALT_VARIANT: the cards as some games were played, when a card changed during the run; a game
+// that won't replay with the cards as they are now is replayed with those. One that replays with
+// neither is left out (and counted).
+const altDefs = process.env.ALT_VARIANT ? loadDefs() : undefined
+if (altDefs) (await import(pathToFileURL(process.env.ALT_VARIANT!).href)).default(altDefs, scripts)
+let skipped = 0
+let alt = 0
 
 type Count = { plays: number; games: number; wins: number }
 type Deck = { games: number; wins: number; cards: Record<string, Count> }
@@ -28,7 +35,19 @@ const decks: Record<string, Deck> = {}
 for (const file of files) {
   for (const line of readFileSync(file, 'utf8').trim().split('\n')) {
     const record: GameRecord = JSON.parse(line)
-    const state = replay(record, defs)
+    let state
+    try {
+      state = replay(record, defs)
+    } catch {
+      try {
+        if (!altDefs) throw new Error('no other cards')
+        state = replay(record, altDefs)
+        alt++
+      } catch {
+        skipped++
+        continue
+      }
+    }
     for (const p of [0, 1] as const) {
       const list = record.decks[p]
       const deck = (decks[list.name] ??= { games: 0, wins: 0, cards: {} })
@@ -67,7 +86,7 @@ const line = (r: Row) =>
   `| ${r.name} | ${r.plays} | ${r.games} | ${r.withRate}% | ${r.withoutRate}% | ${r.impact > 0 ? '+' : ''}${r.impact} |`
 const head = '| Card | Played | In games | Won with | Won without | Impact |\n|---|---|---|---|---|---|'
 
-const out: string[] = [`# Card impact\n\n${files.length} records files, ${Object.values(decks).reduce((s, d) => s + d.games, 0) / 2} games.\n`]
+const out: string[] = [`# Card impact\n\n${files.length} records files, ${Object.values(decks).reduce((s, d) => s + d.games, 0) / 2} games${alt ? ` (${alt} replayed with ALT_VARIANT's cards)` : ''}${skipped ? `, ${skipped} left out: they no longer replay with these cards` : ''}.\n`]
 for (const [name, deck] of Object.entries(decks).sort((a, b) => b[1].wins / b[1].games - a[1].wins / a[1].games)) {
   const list = rows(deck)
   out.push(`## ${name}: ${deck.wins}/${deck.games} (${pct(deck.wins, deck.games)}%)\n`)

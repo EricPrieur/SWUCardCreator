@@ -1454,6 +1454,12 @@ input.picker-button::placeholder {
   vertical-align: 0.02em;
 }
 
+.text-unique-icon {
+  height: 0.7em;
+  margin: 0 0.06em;
+  vertical-align: 0;
+}
+
 .card-subtitle {
   font-family: 'Barlow', sans-serif;
   letter-spacing: 0.02em;

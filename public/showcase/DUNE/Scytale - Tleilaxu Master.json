@@ -12,7 +12,7 @@
   "text": "[When Played:] Defeat an enemy non-leader unit with 4 or less remaining HP.",
   "power": 5,
   "trait": "Tleilaxu, Spy",
-  "number": "031",
+  "number": "231",
   "rarity": "R",
   "unique": true,
   "frameId": "unit-cunning-vigilance-villainy",

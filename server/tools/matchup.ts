@@ -17,6 +17,10 @@ const [a = 'rabban', b = 'jessica', count = '20', seedArg = '1', nameArg] = proc
 const defs = loadDefs()
 if (process.env.VARIANT) (await import(pathToFileURL(process.env.VARIANT).href)).default(defs, scripts)
 const decks = [deckList(a, defs), deckList(b, defs)]
+// AI_B: another AI module (a saved copy of engine/ai.ts) for deck b, to test an AI change against
+// the AI as it was
+const chooseA: typeof chooseAction = process.env.AI_A ? (await import(pathToFileURL(process.env.AI_A).href)).chooseAction : chooseAction
+const chooseB: typeof chooseAction = process.env.AI_B ? (await import(pathToFileURL(process.env.AI_B).href)).chooseAction : chooseAction
 const name = nameArg ?? `${a}-${b}`
 const dir = fileURLToPath(new URL('../records/', import.meta.url))
 mkdirSync(dir, { recursive: true })
@@ -37,7 +41,7 @@ for (let g = 0; g < Number(count); g++) {
     let moved = false
     for (const p of [0, 1] as const) {
       const why: Weighed[] = []
-      const action = chooseAction(state, p, why)
+      const action = (seats[p] === 1 ? chooseB : chooseA)(state, p, why)
       if (!action) continue
       state = recordAction(record, state, p, action, why.slice(0, 3))
       moved = true

@@ -7,7 +7,10 @@ import type { DeckList } from '../engine/game.ts'
 import type { CardDef } from '../engine/types.ts'
 
 const root = fileURLToPath(new URL('../../', import.meta.url))
-const setDir = `${root}public/showcase/DUNE/`
+// POOL=SWU: the real SWU cards imported for the dev-only SWU tab (tools/swu-import.ts), with
+// their own Featured Decks; DUNE otherwise
+const pool = process.env.POOL === 'SWU' ? 'SWU' : 'DUNE'
+const setDir = `${root}public/showcase/${pool}/`
 
 // The set's cards, a two-sided base's back as a card of its own (id#back), as in the simulator
 export function loadDefs(): CardDef[] {
@@ -28,7 +31,7 @@ export function loadDefs(): CardDef[] {
 
 type Featured = { name: string; leader: string; base: string; cards: { id: string; count: number }[] }
 // FEATURED: another list of decks, to compare versions of a deck
-export const featured: Featured[] = JSON.parse(readFileSync(process.env.FEATURED ?? `${root}public/sim/featured-decks.json`, 'utf8'))
+export const featured: Featured[] = JSON.parse(readFileSync(process.env.FEATURED ?? (pool === 'SWU' ? `${setDir}featured-decks.json` : `${root}public/sim/featured-decks.json`), 'utf8'))
 
 // A Featured Deck as the engine takes it, by its name (any case, any part of it)
 export function deckList(name: string, defs: CardDef[]): DeckList {

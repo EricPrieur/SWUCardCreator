@@ -23,6 +23,8 @@ export type SideView = {
   // hidden: Hidden keeps it from being attacked now, the phase it entered play
   units: (UnitState & { power: number; hp: number; keywords: Keywords; hidden: boolean })[]
   spice: Inst[]
+  // Their Force token (SWU): the Force is with them
+  force?: boolean
   // The cards they revealed last (from their deck, say), and the card that revealed them
   revealed: Revealed | null
   // Yours: what each card in your hand costs you to play now
@@ -72,6 +74,7 @@ export function viewFor(state: GameState, you: PlayerId, watching = false): Play
       resources: player.resources.map((r) => ({ card: mine ? { ...r.card } : null, exhausted: r.exhausted })),
       units: player.units.map((u) => ({ ...structuredClone(u), power: powerOf(state, u), hp: hpOf(state, u), keywords: keywordsOf(state, u), hidden: isHidden(state, u) })),
       spice: player.spice.map((t) => ({ ...t })),
+      ...(state.force?.[p as PlayerId] && { force: true }),
       revealed: state.revealed?.[p as PlayerId] ?? null,
       ...(mine && { prices: Object.fromEntries(player.hand.map((c) => [c.id, handPrice(state, p as PlayerId, state.defs[c.def])])) }),
     }

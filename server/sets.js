@@ -39,6 +39,9 @@ async function load() {
 // The cards a game of a pool plays: DUNE's, or the community's with DUNE's
 export const POOLS = ['DUNE', 'community']
 export const poolOf = (value) => (value === 'community' ? 'community' : 'DUNE')
+// A saved game's: also SWU, the dev-only SWU tab's games against the AI (real SWU cards, which
+// only this computer has: no online rooms), kept to study them (tools/stored-games.ts)
+export const gamePoolOf = (value) => (value === 'SWU' ? 'SWU' : poolOf(value))
 export async function poolDefs(pool) {
   if (pool !== 'community') return setDefs()
   const { communityDefs } = await import('./community.js')

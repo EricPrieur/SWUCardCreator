@@ -177,6 +177,8 @@ function Bracketed(props: { text: string }) {
   const stat = /^([ph])([+-]?\d{1,2})$/i.exec(text)
   if (stat) return <InlineStat kind={stat[1].toLowerCase() === 'p' ? 'power' : 'hp'} number={stat[2]} />
   if (isArrow(text)) return <ExhaustIcon />
+  // The unique star: "Attach to a [Unique] unit."
+  if (/^unique$/i.test(text.trim())) return <img className="unique-icon text-unique-icon" src={asset('/icons/unique.png')} alt="unique" />
   // An aspect's name prints its icon: "a [Villainy] card"
   const aspect = aspects.find((name) => name.toLowerCase() === text.trim().toLowerCase())
   if (aspect) {
@@ -243,7 +245,7 @@ function Bracketed(props: { text: string }) {
 
 // Game text markup. In square brackets: [Hidden] or [Raid 2] prints a keyword in red,
 // [1] prints a cost icon and [#1] a cost as a number, [+1/+0] a change to power and
-// HP in their red and blue numbers, [P3] a power and [H7] an HP alone, [Arrow] the exhaust arrow, [Villainy] or another
+// HP in their red and blue numbers, [P3] a power and [H7] an HP alone, [Arrow] the exhaust arrow, [Unique] the unique star, [Villainy] or another
 // aspect's name its icon, and anything else,
 // like [Action:], prints in bold. Bold text can hold any of those: [Action [[Arrow]]:].
 // In curly brackets, text prints in italics, also inside bold: [{Imperial}] is a

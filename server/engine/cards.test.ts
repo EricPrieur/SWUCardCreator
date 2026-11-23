@@ -502,3 +502,9 @@ test('The AI facing defeat next round plays its turn first and takes the initiat
   board.active = 1
   assert.notDeepEqual(chooseAction(board, 1), { type: 'initiative' })
 })
+
+test('"Attach to a [Unique] unit." reads the unique star, written either way', () => {
+  assert.equal(readText('Attach to a [Unique] unit.').attach?.unique, true)
+  assert.equal(readText('Attach to a [{Unique}] unit.').attach?.unique, true)
+  assert.equal(readText('Attach to a friendly unit.').attach?.unique, undefined)
+})

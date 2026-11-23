@@ -646,28 +646,6 @@
       "rarity": "L"
     },
     {
-      "id": "3263d81d-0004-4dc7-8ea1-8cdbcf75723f",
-      "image": "Scytale - Tleilaxu Master",
-      "name": "Scytale",
-      "subtitle": "Tleilaxu Master",
-      "type": "Unit",
-      "aspects": [
-        "Cunning",
-        "Vigilance",
-        "Villainy"
-      ],
-      "cost": 6,
-      "traits": [
-        "Tleilaxu",
-        "Spy"
-      ],
-      "text": "when played: defeat an enemy non-leader unit with 4 or less remaining hp.",
-      "set": "DUNE",
-      "number": "031",
-      "arena": "Ground",
-      "rarity": "R"
-    },
-    {
       "id": "cfcaca80-9e13-460c-89d3-021a218ff5af",
       "image": "Alia Atreides - Pre-born",
       "name": "Alia Atreides",
@@ -3525,7 +3503,7 @@
         "Emperor",
         "Spy"
       ],
-      "text": "other friendly spy units get +1/+0 and gain saboteur.\nwhen played: create 2 spy tokens. then, you may attack with another friendly spy unit.",
+      "text": "when played: create a spy token and ready it. then, you may attack with another friendly spy unit.",
       "set": "DUNE",
       "number": "178",
       "arena": "Ground",
@@ -4162,7 +4140,7 @@
       "traits": [
         "Trick"
       ],
-      "text": "attack with a unit. it gets +2/+0 for this attack.\nsmuggle 4 cunning\nwhen played using smuggle: create a spice token.",
+      "text": "attack with a unit. it gets +2/+0 for this attack.\nsmuggle 4 cunning",
       "set": "DUNE",
       "number": "211",
       "rarity": "C"
@@ -4531,6 +4509,28 @@
       "set": "DUNE",
       "number": "231",
       "rarity": "U"
+    },
+    {
+      "id": "3263d81d-0004-4dc7-8ea1-8cdbcf75723f",
+      "image": "Scytale - Tleilaxu Master",
+      "name": "Scytale",
+      "subtitle": "Tleilaxu Master",
+      "type": "Unit",
+      "aspects": [
+        "Cunning",
+        "Vigilance",
+        "Villainy"
+      ],
+      "cost": 6,
+      "traits": [
+        "Tleilaxu",
+        "Spy"
+      ],
+      "text": "when played: defeat an enemy non-leader unit with 4 or less remaining hp.",
+      "set": "DUNE",
+      "number": "231",
+      "arena": "Ground",
+      "rarity": "R"
     }
   ]
 }

@@ -1057,7 +1057,7 @@ test('Stunner Dart: exhaust a unit, from the hand or using Smuggle', () => {
   assert.equal(state.players[1].units[0].exhausted, true)
 })
 
-test("Smugglers' Raid: an attack with +2/+0, and a Spice token when played using Smuggle", () => {
+test("Smugglers' Raid: an attack with +2/+0, from the hand or using Smuggle", () => {
   let state = table({ hand0: ['raid'], units0: ['trooper'] })
   const spice = state.players[0].spice.length
   state = settle(act(state, 0, { type: 'play', card: 'h0' }))
@@ -1068,7 +1068,7 @@ test("Smugglers' Raid: an attack with +2/+0, and a Spice token when played using
   state.players[0].resources[0].card = { id: 'rr', def: 'raid' }
   state = settle(act(state, 0, { type: 'play', card: 'rr', smuggle: true }))
   assert.equal(state.players[1].base.damage, 4)
-  assert.equal(state.players[0].spice.length, spice + 1, 'a Spice token for the Smuggle')
+  assert.equal(state.players[0].spice.length, spice, 'no Spice token for the Smuggle either')
 })
 
 test('Shishakli: ready again when you play a Trick event, after it resolves', () => {
@@ -1968,22 +1968,22 @@ test('Ixian Probe Drone: Hidden, a Spy, and a Spy token on attack', () => {
   assert.equal(state.players[0].units.filter((u) => state.defs[u.def].token && state.defs[u.def].name === 'Spy').length, 1)
 })
 
-test('Spymaster of Kaitain: other Spies +1/+0; 2 Spy tokens, then another ready Spy may attack', () => {
+test('Spymaster of Kaitain: a ready Spy token, then another ready Spy (the new token too) may attack', () => {
   let state = table({ hand0: ['spymaster'], units0: ['imperialSpy'] })
   state.players[0].resources.forEach((r) => (r.exhausted = false))
   const spy = state.players[0].units[0].id
   state = act(state, 0, { type: 'play', card: 'h0' })
   assert.ok(state.prompt, 'the attack question')
-  assert.deepEqual(state.prompt!.options.map((o) => o.id).filter((id) => id !== 'none'), [spy], 'the ready Imperial Spy, not the new tokens nor itself')
-  state = answer(state, spy)
-  state = settle(state)
-  const units = state.players[0].units
-  assert.equal(units.filter((u) => state.defs[u.def].token && state.defs[u.def].name === 'Spy').length, 2)
-  const master = units.find((u) => u.def === 'spymaster')!
-  assert.equal(powerOf(state, master), 4, 'not itself')
-  const token = units.find((u) => state.defs[u.def].token && state.defs[u.def].name === 'Spy')!
-  assert.equal(powerOf(state, token), 1, 'a Spy token gets +1/+0')
-  assert.ok(state.players[1].base.damage > 0, 'the Imperial Spy attacked')
+  const token = state.players[0].units.find((u) => state.defs[u.def].token && state.defs[u.def].name === 'Spy')!
+  assert.ok(!token.exhausted, 'the token is ready')
+  assert.deepEqual(
+    state.prompt!.options.map((o) => o.id).filter((id) => id !== 'none').sort(),
+    [spy, token.id].sort(),
+    'the ready Spies, not itself',
+  )
+  state = settle(answer(state, token.id))
+  assert.equal(powerOf(state, state.players[0].units.find((u) => u.id === spy)!), 2, 'no +1/+0 for the other Spies')
+  assert.ok(state.players[1].base.damage > 0, 'the token attacked')
 })
 
 test('Scytale: defeats an enemy non-leader unit with 4 or less remaining HP', () => {

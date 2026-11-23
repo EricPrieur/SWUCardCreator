@@ -54,7 +54,7 @@ export type CardDef = {
   // A base's or leader's "You start the game with a [Spice Token]."
   startSpice?: number
   // An upgrade's "Attach to a friendly unit." or "Attach to a non-[{Vehicle}], non-leader unit."
-  attach?: { friendly?: boolean; enemy?: boolean; not?: string[]; nonLeader?: boolean }
+  attach?: { friendly?: boolean; enemy?: boolean; not?: string[]; nonLeader?: boolean; maxPower?: number; unique?: boolean }
   // An upgrade's "Attached unit gains [Sentinel]."; a unit's, as it is attached as an upgrade
   attachedKeywords?: Keywords
   // A unit attached as an upgrade (a pilot frame's second box): its modifiers then
@@ -225,6 +225,9 @@ export type GameState = {
   // Units that can't ready this round, the regroup phase included (Shigawire Snare); a game
   // saved before it had none
   held?: string[]
+  // Each player's Force token (SWU, Legends of the Force): "The Force is with you" makes it, "use
+  // the Force" spends it; one at most
+  force?: [boolean, boolean]
   // The attack under way, for what applies while attacking and the defender's own abilities
   attack: { attacker: string; target: string | 'base' } | null
   // The cards each player revealed last, and the card that made them reveal them (card ids);

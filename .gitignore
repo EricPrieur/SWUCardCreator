@@ -41,3 +41,6 @@ server/.localdb
 server/.localdata
 # Game records the tools write (server/tools)
 server/records
+
+# Real SWU cards for the dev-only SWU tab (server/tools/swu-import.ts): official cards and images, never committed
+public/showcase/SWU/

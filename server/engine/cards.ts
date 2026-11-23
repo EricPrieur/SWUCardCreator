@@ -80,7 +80,7 @@ const smuggleLine = /^\[Smuggle\]?\s*\[\[(\d+)[^\]]*\]\]\]?$/i
 const arrakisLine = /^While you control an \[\{?Arrakis\}?\] base, this unit gains (.+)\.$/i
 const spiceCostLine = /^As an additional cost to play this unit, defeat (a|\d+) friendly Spice tokens?\.$/i
 const startSpiceLine = /^You start the game with (a|\d+) \[?Spice Tokens?\]?\.$/i
-const attachLine = /^Attach to an? ((?:(?:friendly|enemy|non-leader|non-\[\{?[^}\]]+\}?\]),? )*)unit\.$/i
+const attachLine = /^Attach to an? ((?:(?:friendly|enemy|non-leader|\[\{?Unique\}?\]|non-\[\{?[^}\]]+\}?\]),? )*)unit(?: with (\d+) or less power)?\.$/i
 const attachedGainsLine = /^Attached unit gains ((?:\[[^\]]+\](?:,? and |, )?)+)\.$/i
 // A pilot's Piloting box: "[Piloting] [[2 Command Villainy]]", its cost and aspects;
 // "Attached unit is a leader unit."
@@ -122,6 +122,8 @@ export function readText(text = '') {
         ...(/enemy/i.test(words) && { enemy: true }),
         ...(not.length && { not }),
         ...(/non-leader/i.test(words) && { nonLeader: true }),
+        ...(/\[\{?Unique\}?\]/i.test(words) && { unique: true }),
+        ...(match[2] && { maxPower: Number(match[2]) }),
       }
     }
     else if ((match = line.match(attachedGainsLine))) {
@@ -149,6 +151,12 @@ export function printedKeywords(text = ''): Keywords {
 
 // The engine's card for a saved one, or nothing for a frame it doesn't know.
 // A leader's Leader side keeps the deploy cost; its back is the unit.
+// A printed number as a number: a saved card may hold one as text ("3"), which would add up as
+// text (3 + 1 is "31")
+const num = (value: unknown) => {
+  const n = Number(value ?? 0)
+  return Number.isFinite(n) ? n : 0
+}
 export function cardDef(card: SavedCard): CardDef | undefined {
   const front = frameFacts(card.frameId)
   if (!front.type) return undefined
@@ -161,9 +169,9 @@ export function cardDef(card: SavedCard): CardDef | undefined {
     name: card.name,
     subtitle: card.subtitle?.trim() || undefined,
     type: front.type,
-    cost: card.cost ?? 0,
-    power: front.type === 'leader' ? 0 : (card.power ?? 0),
-    hp: front.type === 'leader' ? 0 : (card.hp ?? 0),
+    cost: num(card.cost),
+    power: front.type === 'leader' ? 0 : num(card.power),
+    hp: front.type === 'leader' ? 0 : num(card.hp),
     aspects: front.aspects,
     traits,
     unique: front.type === 'leader' || !!card.unique,
@@ -177,7 +185,7 @@ export function cardDef(card: SavedCard): CardDef | undefined {
   if (front.type === 'unit') def.arena = front.arena
   // Attached as an upgrade: its modifiers, and what it gives ("Attached unit gains [Restore 2].")
   if (card.frameId.startsWith('pilot-')) {
-    def.upgrade = { power: card.upgradePower ?? 0, hp: card.upgradeHp ?? 0 }
+    def.upgrade = { power: num(card.upgradePower), hp: num(card.upgradeHp) }
     const piloting = pilotingCost(card.pilotText)
     if (piloting !== undefined) def.piloting = piloting
   }
@@ -192,15 +200,15 @@ export function cardDef(card: SavedCard): CardDef | undefined {
   if (front.type === 'leader') {
     const back = readText(card.backText)
     def.unit = {
-      power: card.power ?? 0,
-      hp: card.hp ?? 0,
+      power: num(card.power),
+      hp: num(card.hp),
       arena: card.backFrameId ? frameFacts(card.backFrameId).arena : 'ground',
       keywords: back.keywords,
       ...(back.arrakisKeywords && { arrakisKeywords: back.arrakisKeywords }),
     }
     def.backText = card.backText
     // A pilot leader: deployed as an upgrade, what it gives
-    if (pilot) def.unit.pilot = { power: card.upgradePower ?? 0, hp: card.upgradeHp ?? 0 }
+    if (pilot) def.unit.pilot = { power: num(card.upgradePower), hp: num(card.upgradeHp) }
   }
   return def
 }

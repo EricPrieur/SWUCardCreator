@@ -9,7 +9,7 @@
   },
   "cost": 6,
   "name": "Spymaster of Kaitain",
-  "text": "Other friendly [{Spy}] units get [+1/+0] and gain [Saboteur].\n[When Played:] Create 2 Spy tokens. Then, you may attack with another friendly [{Spy}] unit.",
+  "text": "[When Played:] Create a Spy token and ready it. Then, you may attack with another friendly [{Spy}] unit.",
   "power": 4,
   "trait": "Emperor, Spy",
   "number": "178",

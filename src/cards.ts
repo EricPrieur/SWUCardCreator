@@ -84,9 +84,9 @@ export type Card = {
   name: string
   trait: string
   text: string
-  // Units only: prints the unique star before the name
+  // Units and upgrades: prints the unique star before the name
   unique?: boolean
-  // Unique units only: the line under the name
+  // Unique units and upgrades only: the line under the name
   subtitle?: string
   // A Legends card: the gold bar along the bottom of its frame
   legends?: boolean

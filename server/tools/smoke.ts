@@ -35,11 +35,21 @@ const giant = plain('smoke-giant', { cost: 8, power: 9, hp: 12 })
 const extras = [smokeLeader, smokeBase, otherBase, enemyBase, giant]
 
 // Plain units from the set to fill the board with traits cards ask about
-const cheapest = (test: (d: CardDef) => boolean, not: Set<string>) =>
-  dune.filter((d) => d.type === 'unit' && !d.unique && !not.has(d.id) && test(d)).sort((a, b) => a.cost - b.cost || a.id.localeCompare(b.id))[0]
+// Non-unique first; a pool of mostly unique cards (real SWU decks) takes unique ones too
+const cheapest = (test: (d: CardDef) => boolean, not: Set<string>) => {
+  const fits = dune.filter((d) => d.type === 'unit' && !not.has(d.id) && test(d)).sort((a, b) => Number(a.unique) - Number(b.unique) || a.cost - b.cost || a.id.localeCompare(b.id))
+  return fits[0]
+}
+// The pool's own most common unit traits, so another pool's board (real SWU cards) has them too
+const commonTraits = Object.entries(
+  dune.filter((d) => d.type === 'unit' && !d.token).flatMap((d) => d.traits).reduce<Record<string, number>>((n, t) => ({ ...n, [t]: (n[t] ?? 0) + 1 }), {}),
+)
+  .sort((a, b) => b[1] - a[1])
+  .slice(0, 4)
+  .map(([t]) => t)
 function boardOf(traits: string[], space: number, not: Set<string>) {
   const picked: CardDef[] = []
-  for (const t of traits) {
+  for (const t of [...traits, ...commonTraits.filter((c) => !traits.includes(c))]) {
     const d = cheapest((d) => d.arena === 'ground' && d.traits.includes(t), new Set([...not, ...picked.map((p) => p.id)]))
     if (d) picked.push(d)
   }
@@ -49,7 +59,10 @@ function boardOf(traits: string[], space: number, not: Set<string>) {
   }
   return picked
 }
-const fillers = dune.filter((d) => d.type === 'unit' && !d.unique && d.cost <= 3).slice(0, 8)
+const fillers = [
+  ...dune.filter((d) => d.type === 'unit' && !d.unique && d.cost <= 3),
+  ...dune.filter((d) => d.type === 'unit' && d.unique && d.cost <= 3),
+].slice(0, 8)
 const handExtras = [
   cheapest((d) => d.arena === 'ground' && d.cost <= 2, new Set()),
   dune.find((d) => d.type === 'event' && d.cost <= 2 && !d.unique),
@@ -207,8 +220,8 @@ function board(d: CardDef, rich: boolean): GameState {
     ...[0, 1].map((i) => ({ id: `g${i}`, def: giant.id, owner: 1 as PlayerId, arena: 'ground' as const, damage: 0, exhausted: false, upgrades: [], entered: -1 })),
   ]
   // Damaged and exhausted units for cards that ask for them
-  if (s.players[0].units[1]) s.players[0].units[1].damage = 1
-  if (s.players[1].units[0]) s.players[1].units[0].damage = 1
+  // (a unit with 1 HP left alone: 1 damage would defeat it)
+  for (const u of [s.players[0].units[1], s.players[1].units[0]]) if (u && hpOf(s, u) > 1) u.damage = 1
   if (s.players[1].units[1]) s.players[1].units[1].exhausted = true
   const tokenOf = (name: string) => Object.values(s.defs).find((t) => t.token && t.name === name)
   if (rich) {
@@ -244,6 +257,11 @@ function board(d: CardDef, rich: boolean): GameState {
 // --- The steps ---
 type Step = { name: string; run: (s: GameState, way: Way, card: string) => GameState | undefined }
 const mineId = (id: string) => ['smoke', 'smoke-r', 'smoke-d'].includes(id)
+// A card's def id, wherever player 0 has it
+const findCard = (s: GameState, id: string) => {
+  const p = s.players[0]
+  return [...p.hand, ...p.discard, ...p.deck, ...p.resources.map((r) => r.card)].find((c) => c.id === id)!.def
+}
 
 // The ways the card can be played; upgrades onto a few different kinds of unit
 function plays(s: GameState): Action[] {
@@ -251,7 +269,11 @@ function plays(s: GameState): Action[] {
   const kinds = new Map<string, Action>()
   for (const a of all) {
     const target = a.attachTo ? units(s).find((u) => u.id === a.attachTo) : undefined
-    const kind = [a.card, a.smuggle, a.spice, a.discard, a.pilot, target ? `${target.owner}${target.arena}${!!target.leader}` : a.attachTo].join()
+    // A unit's traits make it another kind only when the card names them ("If attached unit is a
+    // [{Creature}] or a [{Force}] unit"): others' traits would multiply the steps for nothing
+    const named = (s.defs[findCard(s, a.card)].text ?? '').match(/\[\{([^}]+)\}\]/g)?.map((t) => t.slice(2, -2)) ?? []
+    const traits = target ? s.defs[target.def].traits.filter((t) => named.includes(t)).join('/') : ''
+    const kind = [a.card, a.smuggle, a.spice, a.discard, a.pilot, target ? `${target.owner}${target.arena}${!!target.leader}${traits}` : a.attachTo].join()
     if (!kinds.has(kind)) kinds.set(kind, a)
   }
   return [...kinds.values()]

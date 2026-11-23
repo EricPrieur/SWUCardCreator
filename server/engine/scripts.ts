@@ -2,6 +2,7 @@ import type { Game, PlayedFrom } from './game.ts'
 import { enginePlays } from './cards.ts'
 import type { CardDef, Keywords, PlayerId, UnitState } from './types.ts'
 import { communityScripts } from './community.ts'
+import { swuScripts } from './swu.ts'
 
 // What each card's text does. A script names the card and quotes its text as printed: while
 // the card's text is the same, the script plays it; once the card is changed in the Creator,
@@ -69,6 +70,10 @@ export type Abilities = {
   whenSpiceDefeated?: Ability
   // When another friendly unit is defeated; self.otherDef is that unit
   whenFriendlyDefeated?: Ability
+  // When an enemy unit is defeated; self.otherDef is that unit
+  whenEnemyDefeated?: Ability
+  // When another friendly unit is dealt damage; self.other is that unit
+  whenFriendlyDamaged?: Ability
   // When the regroup phase starts; when the action phase starts
   regroupStart?: Ability
   actionStart?: Ability
@@ -99,6 +104,9 @@ export type Abilities = {
   // "If damage would be dealt to another friendly [Emperor] unit, you may defeat a Shield token
   // on this unit. If you do, prevent that damage.": whether it may for that unit
   sharesShield?: (g: Game, self: Self, unit: UnitState) => boolean
+  // "If damage would be dealt to this unit, you may …. If you do, prevent that damage.": whether
+  // it was prevented
+  preventsDamage?: (g: Game, self: Self, amount: number) => boolean
   // An upgrade's: when the unit it is on becomes exhausted; when that unit is defeated; the On
   // Attack that unit gains ("Attached unit gains: "[On Attack:] …""), the unit's own when it attacks
   whenAttachedExhausted?: Ability
@@ -108,8 +116,9 @@ export type Abilities = {
   gives?: (g: Game, self: Self, unit: UnitState) => Grant | undefined
   // Whether the additional costs of a card being played may be ignored
   ignoresAdditionalCost?: (g: Game, self: Self, card: CardDef) => boolean
-  // A unit that can't attack some units
+  // A unit that can't attack some units; one that can't attack bases
   cantAttack?: (g: Game, self: Self, target: UnitState) => boolean
+  cantAttackBases?: boolean
   // An upgrade's: "Attached unit can't be defeated by enemy card abilities."
   cantBeDefeatedByEnemies?: boolean
   // Whether a friendly unit can't be defeated by an enemy card's ability (`from`)
@@ -2134,13 +2143,14 @@ const dune: CardScript[] = [
   },
   {
     name: "Smugglers' Raid",
-    text: 'Attack with a unit. It gets [+2/+0] for this attack.\n[Smuggle] [[4 Cunning]]\n[When played using Smuggle:] Create a Spice token.',
+    // Made a Spice token when played using Smuggle, which refuelled Gurney's Action: Gurney Blue
+    // 58% in the 12-deck gauntlet (2026-11-22), taken out
+    text: 'Attack with a unit. It gets [+2/+0] for this attack.\n[Smuggle] [[4 Cunning]]',
     front: {
       play: (g, self) => {
         const p = self.controller
         const pick = g.chooseOne(p, "Smugglers' Raid: attack with a unit", friendlyIds(g, self, (u) => g.canAttack(u.id)), { ai: 'help', source: self.def.id })
         if (pick) g.attackWith(pick, { power: 2 })
-        if (self.smuggled) g.createSpice(p, 1)
       },
     },
   },
@@ -3415,11 +3425,21 @@ const dune: CardScript[] = [
       onAttack: (g, self) => g.createToken(self.controller, 'Spy'),
     },
   },
-  // The Spy deck's 6-drop (2026-11-18)
+  // The Spy deck's 6-drop (2026-11-18). Its "Other friendly Spies get +1/+0" (and, for a while,
+  // Saboteur) went 2026-11-23: Fenring Green 63% to 56% in the 12-deck gauntlet. One ready Spy
+  // token instead of 2 exhausted ones, so it attacks in any deck.
   {
     name: 'Spymaster of Kaitain',
-    text: 'Other friendly [{Spy}] units get [+1/+0] and gain [Saboteur].\n[When Played:] Create 2 Spy tokens. Then, you may attack with another friendly [{Spy}] unit.',
-    front: spymaster(true),
+    text: '[When Played:] Create a Spy token and ready it. Then, you may attack with another friendly [{Spy}] unit.',
+    front: {
+      whenPlayed: (g, self) => {
+        const p = self.controller
+        g.createToken(p, 'Spy', { ready: true })
+        const spies = friendlyIds(g, self, (u) => u.id !== self.id && g.hasTrait(u, 'Spy') && g.canAttack(u.id))
+        const pick = g.chooseOne(p, 'Spymaster of Kaitain: you may attack with another friendly Spy unit', spies, { optional: true, ai: 'help', source: self.def.id })
+        if (pick) g.attackWith(pick, {})
+      },
+    },
   },
   {
     name: 'Scytale',
@@ -3961,7 +3981,13 @@ const normal = (text = '') =>
 
 // A card is known by its name and, for a unique one, its subtitle
 const keyOf = (name: string, subtitle?: string) => `${name}|${subtitle?.trim() ?? ''}`
-const byKey = new Map(dune.map((script) => [keyOf(script.name, script.subtitle), script]))
+// A card may have several scripts while versions of it are tested: the one quoting its text
+const byKey = new Map<string, CardScript[]>()
+for (const script of dune) byKey.set(keyOf(script.name, script.subtitle), [...(byKey.get(keyOf(script.name, script.subtitle)) ?? []), script])
+const duneScript = (card: CardDef) => {
+  const scripts = byKey.get(keyOf(card.name, card.subtitle)) ?? []
+  return scripts.find((script) => normal(script.text) === normal(card.text)) ?? scripts[0]
+}
 // The community cards' scripts, by '<account id>/<card id>' (community.ts), looked up when first
 // needed: that file uses this one's helpers
 let communityByKey: Map<string, CardScript> | undefined
@@ -3969,6 +3995,13 @@ const communityScript = (key: string) => {
   communityByKey ??= new Map(communityScripts.map((script) => [script.card, script]))
   return communityByKey.get(key)
 }
+// Real SWU cards' scripts (swu.ts), by card id (swu-<set>-<number>), for the dev-only SWU tab
+let swuById: Map<string, CardScript> | undefined
+const swuScript = (id: string) => {
+  swuById ??= new Map(swuScripts.map((script) => [script.card, script]))
+  return swuById.get(id)
+}
+const isSwu = (card: CardDef) => card.id.startsWith('swu-')
 
 // Looked up again and again as the engine works out what units have: each card's text is
 // compared with its script's once
@@ -3988,7 +4021,7 @@ export function scriptFor(card: CardDef): CardScript | undefined {
 function findScript(card: CardDef): CardScript | undefined {
   const lookup = `${card.community ?? ''}|${keyOf(card.name, card.subtitle)}|${card.type}|${card.text}|${card.backText}`
   if (found.has(lookup)) return found.get(lookup)
-  let script = card.community ? communityScript(card.community) : byKey.get(keyOf(card.name, card.subtitle))
+  let script = card.community ? communityScript(card.community) : isSwu(card) ? swuScript(card.id) : duneScript(card)
   if (script && normal(script.text) !== normal(card.text)) script = undefined
   if (script && card.type === 'leader' && normal(script.backText) !== normal(card.backText)) script = undefined
   // A Piloting box the script plays must be the card's
@@ -4003,7 +4036,7 @@ function findScript(card: CardDef): CardScript | undefined {
 // itself (keywords, Smuggle, Spice costs, see enginePlays) needs no script.
 export function scriptStatus(card: CardDef): 'scripted' | 'outdated' | 'none' | 'blank' {
   if (scriptFor(card)) return 'scripted'
-  if (card.community ? communityScript(card.community) : byKey.has(keyOf(card.name, card.subtitle))) return 'outdated'
+  if (card.community ? communityScript(card.community) : isSwu(card) ? swuScript(card.id) : byKey.has(keyOf(card.name, card.subtitle))) return 'outdated'
   const lines = [normal(card.text), normal(card.backText), normal(card.pilotText)].join('\n').split('\n').filter(Boolean)
   if (!lines.length) return 'blank'
   return lines.every(enginePlays) ? 'scripted' : 'none'
@@ -4039,26 +4072,6 @@ function noShipLanding(g: Game, self: Self) {
   // Ambush before it enters play, so it may attack as it does
   g.grant(pick, { ambush: true }, 'phase')
   g.playCard(p, pick)
-}
-
-// Spymaster of Kaitain: other friendly Spies +1/+0 (and Saboteur, in the version tested); 2 Spy
-// tokens, then another ready Spy may attack
-function spymaster(saboteur: boolean): Abilities {
-  return {
-    gives: (g, self, unit) =>
-      unit.id !== self.id && g.controller(unit) === self.controller && g.hasTrait(unit, 'Spy')
-        ? { power: 1, ...(saboteur && { keywords: { saboteur: true } }) }
-        : undefined,
-    whenPlayed: (g, self) => {
-      const p = self.controller
-      g.createToken(p, 'Spy')
-      g.createToken(p, 'Spy')
-      // The new tokens enter exhausted: a Spy already ready attacks
-      const spies = friendlyIds(g, self, (u) => u.id !== self.id && g.hasTrait(u, 'Spy') && g.canAttack(u.id))
-      const pick = g.chooseOne(p, 'Spymaster of Kaitain: you may attack with another friendly Spy unit', spies, { optional: true, ai: 'help', source: self.def.id })
-      if (pick) g.attackWith(pick, {})
-    },
-  }
 }
 
 export const scripts = dune

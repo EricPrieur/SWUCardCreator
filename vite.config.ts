@@ -99,6 +99,8 @@ function publishSets(): Plugin {
 }
 
 const featuredFile = resolve(import.meta.dirname, 'public/sim/featured-decks.json')
+// The dev-only SWU tab's, beside its imported cards (not in git)
+const swuFeaturedFile = resolve(import.meta.dirname, 'public/showcase/SWU/featured-decks.json')
 
 // For the Deck Builder's Feature button, on this computer only: puts a deck in the Simulator's
 // Featured Decks, public/sim/featured-decks.json, which the site serves once committed (so a
@@ -119,9 +121,11 @@ function featuredDecks(): Plugin {
         req.on('data', (chunk: Buffer) => chunks.push(chunk))
         req.on('end', () => {
           type Featured = { id: string; name: string; leader: string; base: string; cards: { id: string; count: number }[] }
-          const list: Featured[] = existsSync(featuredFile) ? JSON.parse(readFileSync(featuredFile, 'utf-8')) : []
+          // ?pool=SWU: the SWU tab's own list, beside its imported cards
+          const file = /[?&]pool=SWU\b/.test(req.url ?? '') ? swuFeaturedFile : featuredFile
+          const list: Featured[] = existsSync(file) ? JSON.parse(readFileSync(file, 'utf-8')) : []
           const save = (next: Featured[]) => {
-            writeFileSync(featuredFile, JSON.stringify(next, null, 2) + '\n')
+            writeFileSync(file, JSON.stringify(next, null, 2) + '\n')
             res.end('ok')
           }
           if (req.method === 'PUT') {

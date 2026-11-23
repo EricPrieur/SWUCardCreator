@@ -10,7 +10,8 @@ import type { GameState } from '../server/engine/types.ts'
 // told the server as it starts: listed for anyone (public) and open to watch (spectators).
 export type SavedGame = { id: number; key: string }
 // pool: the cards it is played with, DUNE's or the community's
-export type GameSeen = { public?: boolean; spectators?: boolean; pool?: 'DUNE' | 'community' }
+// pool SWU: the dev-only SWU tab's games, kept on this computer's server (tools/stored-games.ts)
+export type GameSeen = { public?: boolean; spectators?: boolean; pool?: 'DUNE' | 'community' | 'SWU' }
 export function gameLog(
   session: Session | null,
   record: GameRecord,

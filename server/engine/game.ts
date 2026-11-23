@@ -394,6 +394,9 @@ function damageUnit(state: GameState, unit: UnitState, amount: number, combat = 
     shieldDefeated(state, guard)
     return 0
   }
+  // "If damage would be dealt to this unit, you may … If you do, prevent that damage." (Queen Amidala)
+  const own = unitScript(state, unit).preventsDamage
+  if (own && own(new Game(state, p), { id: unit.id, controller: p, def: def(state, unit) }, amount)) return 0
   // Combat damage an upgrade on it changes (Ink: plus 1, then the token is defeated)
   if (combat)
     for (const upgrade of [...unit.upgrades]) {
@@ -403,6 +406,8 @@ function damageUnit(state: GameState, unit: UnitState, amount: number, combat = 
       amount = change(new Game(state, owner), { id: upgrade.id, controller: owner, def: def(state, upgrade), attachedTo: unit.id }, amount)
     }
   unit.damage += amount
+  // "When another friendly unit … is dealt damage:" (Logray)
+  if (amount > 0) trigger(state, p, 'whenFriendlyDamaged', { other: unit.id }, unit.id)
   return amount
 }
 
@@ -509,6 +514,8 @@ type Hook =
   | 'whenYouCreate'
   | 'whenSpiceDefeated'
   | 'whenFriendlyDefeated'
+  | 'whenEnemyDefeated'
+  | 'whenFriendlyDamaged'
   | 'whenFriendlyAttacks'
   | 'whenEnemyAttacks'
   | 'whenCombatDamageBase'
@@ -527,6 +534,8 @@ const hookNames: Record<Hook, string> = {
   whenYouCreate: 'when you create a token',
   whenSpiceDefeated: 'when a Spice token is defeated',
   whenFriendlyDefeated: 'when a friendly unit is defeated',
+  whenEnemyDefeated: 'when an enemy unit is defeated',
+  whenFriendlyDamaged: 'when a friendly unit is dealt damage',
   whenFriendlyAttacks: 'when a friendly unit attacks',
   whenEnemyAttacks: 'when an enemy unit attacks',
   whenCombatDamageBase: 'when combat damage is dealt to a base',
@@ -654,6 +663,7 @@ function defeatUnit(state: GameState, unit: UnitState) {
     ...(inAttack && { attack: { ...inAttack } }),
   })
   trigger(state, p, 'whenFriendlyDefeated', { other: unit.id, otherDef: def(state, unit) })
+  trigger(state, other(p), 'whenEnemyDefeated', { other: unit.id, otherDef: def(state, unit) })
 }
 
 function heal(state: GameState, p: PlayerId, amount: number) {
@@ -691,7 +701,8 @@ function attackTargets(state: GameState, p: PlayerId, attacker: UnitState): (str
   const g = new Game(state)
   const self: Self = { id: attacker.id, controller: p, def: def(state, attacker) }
   const allowed = (u: UnitState) => !isHidden(state, u) && !cant?.(g, self, u)
-  return [...enemies.filter(allowed).map((u) => u.id), 'base']
+  // "This unit can't attack bases." (Wicket)
+  return [...enemies.filter(allowed).map((u) => u.id), ...(unitScript(state, attacker).cantAttackBases ? [] : ['base' as const])]
 }
 
 function choose<T>(list: T[], count: number): T[][] {
@@ -1108,7 +1119,8 @@ type PlayOptions = { discount?: number; free?: boolean; ignoreAdditional?: boole
 // The next card of a trait a player plays this phase costs less (Bene Gesserit Sister); each
 // such discount waiting applies to that card
 const discountsFor = (state: GameState, p: PlayerId, card: CardDef) =>
-  state.discounts.filter((d) => d.player === p && card.traits.includes(d.trait))
+  // trait ':unit': the next unit, whatever its traits (Emerie Karr)
+  state.discounts.filter((d) => d.player === p && (d.trait === ':unit' ? card.type === 'unit' : card.traits.includes(d.trait)))
 
 // "[Creature] cards you play cost [1] less.": what the cards on a player's side take off, and
 // the card's own, onto the unit it goes on
@@ -1185,8 +1197,12 @@ function canAttach(state: GameState, p: PlayerId, card: CardDef, unit: UnitState
   if (card.attach?.friendly && controllerOf(state, unit) !== p) return false
   if (card.attach?.enemy && controllerOf(state, unit) === p) return false
   if (card.attach?.nonLeader && isLeaderUnit(state, unit)) return false
+  // "Attach to a [{Unique}] unit." (Figure of Unity)
+  if (card.attach?.unique && !def(state, unit).unique) return false
   const traits = traitsOf(state, unit)
   if (card.attach?.not?.some((trait) => traits.includes(trait))) return false
+  // "with 3 or less power" (Gaderffii Stick)
+  if (card.attach?.maxPower !== undefined && powerOf(state, unit) > card.attach.maxPower) return false
   return true
 }
 
@@ -1881,6 +1897,8 @@ export class Game {
   // +power/+HP to a unit, for this attack or this phase
   buff(unitId: string, power: number, hp: number, until: Effect['until']) {
     this.state.effects.push({ unit: unitId, power, hp, until })
+    // -3/-3 can defeat it (Bo-Katan Kryze, Alone)
+    if (hp < 0) checkDefeats(this.state)
   }
   pay(p: PlayerId, amount: number) {
     if (readyResources(this.state.players[p]) < amount) return false
@@ -1903,6 +1921,14 @@ export class Game {
     player.hand = player.hand.filter((c) => c !== card)
     player.discard.push(card)
     this.log(`${player.name} discards ${nameOf(this.state, card)}`, p)
+  }
+  // "That player discards a random card from their hand", by the game's seeded randomness
+  discardRandom(p: PlayerId) {
+    const hand = this.state.players[p].hand
+    if (!hand.length) return undefined
+    const card = hand[Math.floor(random(this.state) * hand.length)]
+    this.discard(p, card.id)
+    return card.id
   }
   // A player chooses cards from their own hand and discards them
   discardChosen(p: PlayerId, count: number, text = `Choose ${count === 1 ? 'a card' : `${count} cards`} to discard`, source?: string) {
@@ -2014,6 +2040,24 @@ export class Game {
     if (!unit || unit.arena === arena) return false
     unit.arena = arena
     this.log(`${nameOf(this.state, unit)} moves to the ${arena} arena`, controllerOf(this.state, unit))
+    return true
+  }
+
+  // The Force token (SWU): "The Force is with you" (one at most), and "use the Force" (lose it)
+  hasForce(p: PlayerId) {
+    return !!this.state.force?.[p]
+  }
+  forceIsWith(p: PlayerId) {
+    if (this.hasForce(p)) return
+    this.state.force = [...(this.state.force ?? [false, false])] as [boolean, boolean]
+    this.state.force[p] = true
+    this.log(`The Force is with ${this.player(p).name}`, p)
+  }
+  useForce(p: PlayerId) {
+    if (!this.hasForce(p)) return false
+    this.state.force = [...this.state.force!] as [boolean, boolean]
+    this.state.force[p] = false
+    this.log(`${this.player(p).name} uses the Force`, p)
     return true
   }
 

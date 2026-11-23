@@ -1821,6 +1821,25 @@
   position: relative;
   flex: none;
 }
+/* The Force token (SWU): a glowing disc on the base's left, where the Spice pile is on its right */
+.sim-force-token {
+  position: absolute;
+  right: calc(100% + 1.2vh);
+  bottom: 0.4vh;
+  width: 4.6vh;
+  height: 4.6vh;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 1.1vh;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #eaf6ff;
+  background: radial-gradient(circle at 40% 35%, #9fd8ff, #2d6fb3 60%, #123a66);
+  box-shadow: 0 0 1.4vh rgba(110, 190, 255, 0.8);
+  z-index: 5;
+}
 .sim-spice-pile {
   --token: 4.6vh;
   --rise: 0.85vh;

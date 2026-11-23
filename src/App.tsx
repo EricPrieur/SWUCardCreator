@@ -72,6 +72,9 @@ const tabs = [
   { id: 'community', label: 'Community' },
   // The DUNE set's own page (#DuneSWU), with its Deck Builder and the game simulator
   { id: 'dune', label: 'Dune SWU' },
+  // Real SWU cards (#SWU), imported from swudb.com by server/tools/swu-import.ts to test with the
+  // engine; dev only: their images are official and stay out of git and off the site
+  { id: 'swu', label: 'SWU' },
   { id: 'projects', label: 'My Other Projects' },
 ] as const
 
@@ -774,7 +777,7 @@ const showroomLink = (name: string) => `${window.location.origin}${window.locati
 // Showcases on the site that no menu links to: the address's name, and its folder in public/showcase
 // A published set is at #set/<SET>; some also have a name of their own
 // (#simulator: the Simulator had its own tab before it moved to the DUNE page)
-const showcases: Record<string, string> = { DuneSWU: 'DUNE', simulator: 'DUNE' }
+const showcases: Record<string, string> = { DuneSWU: 'DUNE', simulator: 'DUNE', ...(import.meta.env.DEV && { SWU: 'SWU' }) }
 // A slash at the end, or other capitals, still find it: #DuneSWU/, #duneswu, #set/dune
 const showcaseFromHash = () => {
   const asked = window.location.hash.slice(1).replace(/\/+$/, '')
@@ -2873,7 +2876,8 @@ function Showcase(props: { folder: string; promos?: Card[] }) {
   }, [])
   // My Other Projects was a view here before the site's tabs were on this page
   const view = stored === 'projects' ? 'cards' : stored
-  const playable = props.folder === 'DUNE'
+  // SWU: the dev-only SWU tab's real cards, played by the engine too
+  const playable = props.folder === 'DUNE' || props.folder === 'SWU'
   const prescient = usePrescientDrawer()
   useEffect(() => {
     if (list) document.title = list.title
@@ -2902,7 +2906,7 @@ function Showcase(props: { folder: string; promos?: Card[] }) {
     return (
       <>
         {views}
-        <Simulator drawCard={prescient.drawCard} />
+        <Simulator drawCard={prescient.drawCard} {...(props.folder === 'SWU' && { pool: 'SWU' as const })} />
         {prescient.stage}
       </>
     )
@@ -2916,6 +2920,7 @@ function Showcase(props: { folder: string; promos?: Card[] }) {
           prefix={`showcase.${props.folder}.decks`}
           storageKey={`dune-unlimited.decks.${props.folder}`}
           source="set"
+          {...(props.folder === 'SWU' && { featured: `${folder}/featured-decks.json`, noSealed: true })}
         />
       </>
     )
@@ -4575,11 +4580,13 @@ function DeckImageView(props: { url: string; fileName: string; note: string; onC
 // the deck shown in them, or updates or takes out its copy there (public/sim/featured-decks.json,
 // which reaches the site with the next push)
 type FeaturedDeck = { id: string; name: string; leader: string; base: string; cards: { id: string; count: number }[] }
-function FeatureButton(props: { deck: Deck; onNote: (note: string) => void }) {
-  const { deck, onNote } = props
+// pool SWU: the SWU tab's own Featured Decks (public/showcase/SWU/featured-decks.json, not in git)
+function FeatureButton(props: { deck: Deck; onNote: (note: string) => void; pool?: 'SWU' }) {
+  const { deck, onNote, pool } = props
   const [featured, setFeatured] = useState<FeaturedDeck[] | null>(null)
+  const query = pool ? `?pool=${pool}` : ''
   const load = () =>
-    fetch(asset('/sim/featured-decks.json'), { cache: 'no-store' })
+    fetch(asset(pool ? `/showcase/${pool}/featured-decks.json` : '/sim/featured-decks.json'), { cache: 'no-store' })
       .then((response) => (response.ok ? response.json() : []))
       .then(setFeatured, () => setFeatured([]))
   useEffect(() => {
@@ -4596,15 +4603,17 @@ function FeatureButton(props: { deck: Deck; onNote: (note: string) => void }) {
   const there = featured.find((d) => d.id === deck.id)
   const same = there && JSON.stringify(there) === JSON.stringify(copy)
   const send = async (method: 'PUT' | 'DELETE') => {
-    const response = await fetch(method === 'PUT' ? '/__featured' : `/__featured/${encodeURIComponent(deck.id)}`, {
+    const response = await fetch(method === 'PUT' ? `/__featured${query}` : `/__featured/${encodeURIComponent(deck.id)}${query}`, {
       method,
       body: method === 'PUT' ? JSON.stringify(copy) : undefined,
     })
     if (!response.ok) return onNote(`Could not change the Featured Decks: ${await response.text()}`)
     onNote(
-      method === 'DELETE'
-        ? `${deck.name} is out of the Featured Decks; the site follows with the next push.`
-        : `${deck.name} is ${there ? 'updated in' : 'in'} the Featured Decks; the site gets it with the next push.`,
+      pool
+        ? `${deck.name} is ${method === 'DELETE' ? 'out of' : there ? 'updated in' : 'in'} the ${pool} Featured Decks.`
+        : method === 'DELETE'
+          ? `${deck.name} is out of the Featured Decks; the site follows with the next push.`
+          : `${deck.name} is ${there ? 'updated in' : 'in'} the Featured Decks; the site gets it with the next push.`,
     )
     load()
   }
@@ -4699,6 +4708,11 @@ function DeckBuilder(props: {
   offByDefault?: string[]
   // The Community Deck Builder: its decks are featured in the Community Simulator
   community?: boolean
+  // A list of decks (FeaturedDeck[]) each put in the deck list once, by itself: the SWU tab's
+  // imported swudb decks. One taken out isn't put back.
+  featured?: string
+  // No Sealed format (the SWU tab: real SWU cards have no packs here)
+  noSealed?: boolean
 }) {
   const { cards, prefix = 'decks', storageKey, source = 'Showroom', sealed = false, offByDefault = [] } = props
   const fixedSet = source === 'set' || sealed
@@ -4737,6 +4751,32 @@ function DeckBuilder(props: {
       live = false
     }
   }, [account?.token, scope, storageKey])
+  // Featured decks not yet in the list: added once the decks are known
+  useEffect(() => {
+    if (!props.featured || deckState !== 'ready') return
+    let live = true
+    const seenKey = `${storageKey ?? DECKS_KEY}.featured-seen`
+    fetch(asset(props.featured), { cache: 'no-cache' })
+      .then((response) => (response.ok ? response.json() : []))
+      .then((list: FeaturedDeck[]) => {
+        if (!live) return
+        let seen: string[] = []
+        try {
+          seen = JSON.parse(localStorage.getItem(seenKey) ?? '[]')
+        } catch {}
+        const added: Deck[] = list
+          .filter((d) => d.id && !seen.includes(d.id) && !decks.some((saved) => saved.id === d.id))
+          .map((d) => ({ id: d.id, name: d.name, sets: [], leader: d.leader, base: d.base, cards: d.cards, sideboard: [] }))
+        try {
+          localStorage.setItem(seenKey, JSON.stringify([...new Set([...seen, ...list.map((d) => d.id)])]))
+        } catch {}
+        if (added.length) saveDecks([...decks, ...added])
+      })
+      .catch(() => {})
+    return () => {
+      live = false
+    }
+  }, [props.featured, deckState])
   const [currentId, setCurrentId] = useRemembered(`${prefix}.current`, '')
   // On each time the Deck Builder opens: cards a deck can't play at their cost are left out
   const [onAspect, setOnAspect] = useState(true)
@@ -5317,7 +5357,8 @@ function DeckBuilder(props: {
           {props.community ? (
             <CommunityFeatureButton deck={deck} onNote={setNote} />
           ) : (
-            import.meta.env.DEV && account?.user.isAdmin && <FeatureButton deck={deck} onNote={setNote} />
+            // The SWU tab's decks go in its own Featured Decks
+            import.meta.env.DEV && account?.user.isAdmin && <FeatureButton deck={deck} onNote={setNote} {...(props.featured && { pool: 'SWU' as const })} />
           )}
           <input ref={importInput} type="file" accept=".json,application/json" hidden onChange={importDeck} />
           <button
@@ -5503,6 +5544,7 @@ type DeckFormat = 'premier' | 'sealed'
 function DeckFormats(props: DeckBuilderProps) {
   const { prefix = 'decks' } = props
   const [format, setFormat] = useRemembered<DeckFormat>(`${prefix}.format`, 'premier')
+  if (props.noSealed) return <DeckBuilder {...props} />
   return (
     <div className="deck-formats">
       <div className="deck-tabs deck-format-tabs" role="tablist" aria-label="Format">
@@ -6564,7 +6606,7 @@ function CardCreator(props: {
               <span>
                 In brackets: [Hidden] or [Raid 2] prints a keyword in red, as does [Keywords], and so does a keyword of
                 your own with # before it, [#Elusive]; [3] a cost on the yellow icon, [#3] a cost as
-                a number alone, [+1/+0] a change to power and HP, [P3] a power and [H7] an HP alone, [Arrow] the exhaust arrow, [Villainy] or another aspect its icon, anything else bold. Doubled brackets print
+                a number alone, [+1/+0] a change to power and HP, [P3] a power and [H7] an HP alone, [Arrow] the exhaust arrow, [Unique] the unique star, [Villainy] or another aspect its icon, anything else bold. Doubled brackets print
                 the brackets too: {"[Action [[Arrow]]:]"} or {"[Action [[1, Arrow]]:]"}.
                 In curly brackets, text is italic: {"{reminder text}"}, or {"[{Imperial}]"} for bold italic. A line
                 between {"< >"} gets Sentinel's red box, between {"<< >>"} the tinted one; a line that is only
@@ -7756,12 +7798,12 @@ function App() {
   const mainTabs = (
     <nav className="tabs">
       {tabs
-        .filter(({ id }) => id !== 'community' || online)
+        .filter(({ id }) => (id !== 'community' || online) && (id !== 'swu' || import.meta.env.DEV))
         .map(({ id, label }) => (
         <a
           key={id}
-          href={id === 'dune' ? '#DuneSWU' : `#${id}`}
-          aria-current={(id === 'dune' ? showcase === 'DUNE' : !showcase && tab === id) ? 'page' : undefined}
+          href={id === 'dune' ? '#DuneSWU' : id === 'swu' ? '#SWU' : `#${id}`}
+          aria-current={(id === 'dune' ? showcase === 'DUNE' : id === 'swu' ? showcase === 'SWU' : !showcase && tab === id) ? 'page' : undefined}
         >
           {label}
           {id === 'community' && communityNew > 0 && (

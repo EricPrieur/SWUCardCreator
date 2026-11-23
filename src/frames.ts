@@ -246,6 +246,9 @@ function upgradeFrame(key: string, aspects: Aspect[], paper: string, ext = 'webp
     power: { x: 74.5, y: 890, h: 52 },
     hp: { x: 637.5, y: 888, h: 52 },
     modifiers: true,
+    // A unique upgrade's subtitle bar (Sabine's Lightsaber, Not Alone): the unit's, which fits
+    // the same name bar
+    subtitle: { ...commandHeroismSubtitle, src: `/templates/unit/${key}-subtitle.${ext}` },
   }
 }
 

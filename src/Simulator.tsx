@@ -82,23 +82,25 @@ const prescientImage = (set: SetCards, id: string, drawCard: (card: Card) => Pro
   set.prescient?.[id] ? Promise.resolve(set.prescient[id]) : drawCard(set.cards[id])
 const BACK_SIDE = '#back'
 
-export async function loadSet(): Promise<SetCards> {
+// folder: DUNE's, or SWU (the dev-only SWU tab's real cards, their images found by their path)
+export async function loadSet(folder = SET): Promise<SetCards> {
   // Asked again of the server each time, so a new export shows at once
-  const response = await fetch(asset(`/showcase/${SET}/showcase.json`), { cache: 'no-cache' })
-  if (!response.ok) throw new Error(`The ${SET} set isn't exported`)
+  const response = await fetch(asset(`/showcase/${folder}/showcase.json`), { cache: 'no-cache' })
+  if (!response.ok) throw new Error(`The ${folder} set isn't exported`)
   const entries: { image: string; back?: string }[] = (await response.json()).cards
   const cards = await Promise.all(
     entries.map(async (entry) => {
-      const saved = await fetch(asset(`/showcase/${SET}/${entry.image}.json`), { cache: 'no-cache' })
+      const saved = await fetch(asset(`/showcase/${folder}/${entry.image}.json`), { cache: 'no-cache' })
       return { entry, card: saved.ok ? ((await saved.json()) as SavedCard) : undefined }
     }),
   )
   const set: SetCards = { defs: [], images: {}, cards: {} }
+  const path = (image?: string) => (image && folder !== SET ? asset(`/showcase/${folder}/${image}.jpg`) : image)
   for (const { entry, card } of cards) {
     const d = card && cardDef(card)
     if (!d) continue
     set.defs.push(d)
-    set.images[d.id] = { image: entry.image, back: entry.back }
+    set.images[d.id] = { image: path(entry.image)!, back: path(entry.back) }
     const inSet = (art?: { src?: string }) => (art?.src ? { zoom: 1, x: 0, y: 0, ...art, src: asset(`/showcase/${SET}/${art.src}`) } : undefined)
     const saved = card as unknown as Card
     set.cards[d.id] = { ...saved, art: inSet(saved.art), prescient: saved.prescient && { ...saved.prescient, art: inSet(saved.prescient.art) } }
@@ -106,7 +108,7 @@ export async function loadSet(): Promise<SetCards> {
     const second = d.type === 'base' && card.backFrameId && cardDef({ ...card, id: card.id + BACK_SIDE, frameId: card.backFrameId })
     if (second && entry.back) {
       set.defs.push(second)
-      set.images[second.id] = { image: entry.back }
+      set.images[second.id] = { image: path(entry.back)! }
     }
   }
   return set
@@ -159,9 +161,10 @@ export async function loadCommunitySet(): Promise<SetCards> {
   return set
 }
 
-// Which cards a Simulator plays, and where its decks are: DUNE's, or the community's
-export type SimPool = 'DUNE' | 'community'
-const poolKey = (pool: SimPool, key: string) => (pool === 'DUNE' ? key : `${key}.community`)
+// Which cards a Simulator plays, and where its decks are: DUNE's, the community's, or the real SWU
+// cards of the dev-only SWU tab (no online games, no Sealed, its games kept on this computer's server only)
+export type SimPool = 'DUNE' | 'community' | 'SWU'
+const poolKey = (pool: SimPool, key: string) => (pool === 'DUNE' ? key : `${key}.${pool}`)
 
 // The decks made in the Deck Builder, and in the set's Showcase: the account's when signed in,
 // this browser's otherwise. Only those whose leader and base are cards of the set, and that have
@@ -173,6 +176,7 @@ const deckSources = [
 ]
 const COMMUNITY_DECKS = 'Community Decks'
 const communitySources = [{ from: COMMUNITY_DECKS, scope: 'showcase:community', key: 'dune-unlimited.decks.community' }]
+const swuSources = [{ from: 'SWU Decks', scope: 'showcase:SWU', key: 'dune-unlimited.decks.SWU' }]
 
 // The decks built from Sealed pools, the Deck Builder's and the Showcase's, each named with
 // its pool's; the newest first, the pools and their decks being kept in the order they were made
@@ -180,6 +184,7 @@ const SEALED = 'Sealed Decks'
 const sealedSources = [DECKS_KEY, `${DECKS_KEY}.${SET}`]
 const communitySealedSources = [`${DECKS_KEY}.community`]
 async function loadSealedDecks(account: Session | null, pool: SimPool = 'DUNE'): Promise<SavedDeck[]> {
+  if (pool === 'SWU') return []
   const lists = await Promise.all(
     (pool === 'DUNE' ? sealedSources : communitySealedSources).map(async (prefix) => {
       const load = <T,>(key: string) => (account ? loadAccountDecks<T>(account, deckScope(key)).catch(() => [] as T[]) : Promise.resolve(loadDecks<T>(key)))
@@ -197,9 +202,11 @@ async function loadSealedDecks(account: Session | null, pool: SimPool = 'DUNE'):
 const FEATURED = 'Featured Decks'
 type FeaturedDeck = Pick<Deck, 'id' | 'name' | 'leader' | 'base' | 'cards'>
 async function loadFeaturedDecks(pool: SimPool): Promise<SavedDeck[]> {
-  const response = await fetch(asset('/sim/featured-decks.json'), { cache: 'no-cache' }).catch(() => undefined)
+  // The SWU tab's: its own list, the swudb decks imported and those featured from its Deck Builder
+  const file = pool === 'SWU' ? '/showcase/SWU/featured-decks.json' : '/sim/featured-decks.json'
+  const response = await fetch(asset(file), { cache: 'no-cache' }).catch(() => undefined)
   const decks: FeaturedDeck[] = response?.ok ? await response.json().catch(() => []) : []
-  const dune = decks.map((deck) => ({ ...deck, id: `featured-${deck.id}`, sets: [SET], sideboard: [], from: FEATURED }))
+  const dune = decks.map((deck) => ({ ...deck, id: `featured-${deck.id}`, sets: pool === 'SWU' ? [] : [SET], sideboard: [], from: FEATURED }))
   if (pool !== 'community') return dune
   // The Community Simulator's: those their makers featured, kept on the server
   const { decks: community } = await api<{ decks: (FeaturedDeck & { userId: number; owner: string })[] }>('/api/community/featured').catch(() => ({
@@ -222,7 +229,7 @@ async function loadSavedDecks(account: Session | null, set: SetCards, pool: SimP
   const lists = await Promise.all([
     loadFeaturedDecks(pool),
     loadSealedDecks(account, pool),
-    ...(pool === 'DUNE' ? deckSources : communitySources).map(async ({ from, scope, key }) => {
+    ...(pool === 'DUNE' ? deckSources : pool === 'SWU' ? swuSources : communitySources).map(async ({ from, scope, key }) => {
       const decks = account ? await loadAccountDecks(account, scope).catch(() => [] as Deck[]) : loadDecks(key)
       return decks.map((deck) => ({ ...deck, from }))
     }),
@@ -456,7 +463,7 @@ function DeckPicker(props: {
   const value = props.value.startsWith('deck:') && !chosen ? 'random-generated' : props.value
   // Your own decks first, those built from Sealed pools after the Deck Builder's, the ones that
   // ship with the site last
-  const groups = [deckSources[0].from, COMMUNITY_DECKS, SEALED, ...deckSources.slice(1).map(({ from }) => from), FEATURED].map((from) => ({
+  const groups = [deckSources[0].from, COMMUNITY_DECKS, swuSources[0].from, SEALED, ...deckSources.slice(1).map(({ from }) => from), FEATURED].map((from) => ({
     from,
     decks: decks.filter((deck) => deck.from === from),
   }))
@@ -469,7 +476,7 @@ function DeckPicker(props: {
       ? `of ${played.join(', ').replace(/, ([^,]*)$/, ' and $1')}`
       : community
         ? `of ${SET} and the community's playable cards`
-        : `of the ${SET} set`
+        : `of the ${set.defs.some((d) => d.id.startsWith('swu-')) ? 'SWU' : SET} set`
   const about: Record<string, string> = {
     'random-generated': `A random leader and base, with up to 50 cards ${from} they can pay for.`,
     random: decks.length ? 'One of the decks in this list, picked at random.' : 'There are no decks yet: a random deck is made instead.',
@@ -614,7 +621,7 @@ export function Simulator(props: { drawCard?: (card: Card) => Promise<string>; p
   }, [gameNumber, set])
 
   useEffect(() => {
-    ;(community ? loadCommunitySet() : loadSet())
+    ;(community ? loadCommunitySet() : loadSet(pool === 'SWU' ? 'SWU' : SET))
       .then(setSet)
       .catch((error: Error) => setFailed(error.message))
   }, [])
@@ -773,15 +780,17 @@ export function Simulator(props: { drawCard?: (card: Card) => Promise<string>; p
         <button type="button" role="tab" aria-selected={view === 'ai'} onClick={() => setView('ai')}>
           Play vs AI
         </button>
-        <button type="button" role="tab" aria-selected={view === 'online'} onClick={() => setView('online')}>
-          Online Game
-        </button>
+        {pool !== 'SWU' && (
+          <button type="button" role="tab" aria-selected={view === 'online'} onClick={() => setView('online')}>
+            Online Game
+          </button>
+        )}
       </div>
       {failed || !set ? (
         <div className="sim-menu-panel">
-          <p>{failed || `Loading the ${community ? 'community' : SET} cards…`}</p>
+          <p>{failed || `Loading the ${community ? 'community' : pool === 'SWU' ? 'SWU' : SET} cards…`}</p>
         </div>
-      ) : view === 'online' ? (
+      ) : view === 'online' && pool !== 'SWU' ? (
         <>
           {setNames.length > 1 && <SetChoice names={setNames} off={setsOff} onToggle={toggleSet} />}
           <OnlineLobby account={account} set={playing!.set} decks={playing!.decks} invited={invited} onSeat={takeSeat} pool={pool} />
@@ -2285,6 +2294,12 @@ function Table(props: {
           <span className="sim-base-hp">{hp - side.base.damage}</span>
           {!!side.base.damage && <span className="sim-damage big">{side.base.damage}</span>}
         </button>
+        {/* The Force token (SWU), on the base's other side: the Force is with them */}
+        {side.force && (
+          <div className="sim-force-token" title={`The Force is with ${side === me ? 'you' : side.name}`}>
+            Force
+          </div>
+        )}
         {/* The Spice tokens, a pile beside the base: up to 5 shown, the count on the top one */}
         {!!spice && (
           <div

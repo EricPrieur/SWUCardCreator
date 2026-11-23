@@ -70,8 +70,30 @@ export function chooseAction(state: GameState, p: PlayerId, why?: Weighed[]): Ac
   // the power for what it has left. What an attack opens up (a unit traded away) the replies
   // below still weigh, so a Sentinel played first to cover it can still come out ahead.
   const racing = lethalNow(state, p)
+  // The control player makes its trades before it plays its cards
+  const r = role(state, p)
+  // A card that doesn't help this round's attacks waits for them, while a unit can still hit the
+  // base: a unit with no Ambush or Support, removal with no enemy Sentinel to clear
+  const baseOpen = actions.some((a) => a.type === 'attack' && a.target === 'base')
+  const sentinelUp = state.players[p === 0 ? 1 : 0].units.some((u) => keywordsOf(state, u).sentinel)
+  const waits = (move: Action) => {
+    if (!baseOpen || move.type !== 'play' || !swuGame(state)) return false
+    const card = player.hand.find((c) => c.id === move.card)
+    if (!card) return false
+    const d = state.defs[card.def]
+    const text = d.text ?? ''
+    if (/\[Support\]|\[Ambush\]|attack with/i.test(text) || d.keywords.ambush) return false
+    if (REMOVAL.test(text)) return !sentinelUp
+    return d.type === 'unit'
+  }
   const bias = (move: Action) =>
-    move.type !== 'attack' ? 0 : ATTACK_FIRST + (racing && move.target === 'base' ? LETHAL_RACE + 0.1 * powerOf(state, state.players[p].units.find((u) => u.id === move.attacker)!) : 0)
+    move.type !== 'attack'
+      ? waits(move)
+        ? -AFTER_ATTACKS
+        : 0
+      : ATTACK_FIRST +
+        (r < 0 && move.target !== 'base' ? CONTROL_FIRST : 0) +
+        (racing && move.target === 'base' ? LETHAL_RACE + 0.1 * powerOf(state, state.players[p].units.find((u) => u.id === move.attacker)!) : 0)
   // Past its time budget, it judges the moves left without trying its later answers
   const start = performance.now()
   const tried = moves.map((move) => {
@@ -113,7 +135,8 @@ export function chooseAction(state: GameState, p: PlayerId, why?: Weighed[]): Ac
     const stay = afterReply({ ...state, active: p === 0 ? 1 : 0 }, p)
     const weighed: Weighed[] = promising.map((t) => {
       const gain = afterReply(t.after!, p) + Math.max(0, t.best - t.single) + t.extra - stay
-      return { action: t.move, gain: gain > MIN_GAIN ? gain + bias(t.move) : gain }
+      // A card that waits is still worth making: it only comes after
+      return { action: t.move, gain: gain > MIN_GAIN ? Math.max(MIN_GAIN + 0.01, gain + bias(t.move)) : gain }
     })
     // Among the moves worth making, the order matters: each is played on to its next move too,
     // as long as time allows. A card in hand can still be played after an attack, but an
@@ -132,7 +155,7 @@ export function chooseAction(state: GameState, p: PlayerId, why?: Weighed[]): Ac
   }
   const now = evaluate(state, p)
   return pick(
-    tried.map((t) => ({ action: t.move, gain: t.best + t.extra - now > MIN_GAIN ? t.best + t.extra - now + bias(t.move) : t.best + t.extra - now })),
+    tried.map((t) => ({ action: t.move, gain: t.best + t.extra - now > MIN_GAIN ? Math.max(MIN_GAIN + 0.01, t.best + t.extra - now + bias(t.move)) : t.best + t.extra - now })),
     done,
     why,
   )
@@ -228,6 +251,8 @@ function fuel(state: GameState, p: PlayerId, move: Action, actions: Action[]) {
   return top.type === 'unit' ? DISCARD_FUEL : 0
 }
 
+const RESOURCES_ITSELF = /^Resource this card\.$/m
+const RAMP_SOON = 8
 function timing(state: GameState, p: PlayerId, move: Action, actions: Action[]) {
   if (move.type === 'ability') return fuel(state, p, move, actions)
   if (move.type !== 'play') return 0
@@ -247,6 +272,10 @@ function timing(state: GameState, p: PlayerId, move: Action, actions: Action[]) 
     )
     if (unitInstead && board(p === 0 ? 1 : 0) > board(p)) worth -= SPICE_UNDER_PRESSURE * Number(spiceOnly[1])
   }
+  // A card that becomes a resource as it is played (Overgrowth): that resource is there every
+  // round after, which looking one round ahead doesn't see. Played as soon as it can be, while
+  // the deck's plan still wants resources (Mace: 5 to 6, the leader deployed a round sooner).
+  if (RESOURCES_ITSELF.test(d.text ?? '') && state.players[p].resources.length < deckPlan(state, p).target) worth += RAMP_SOON
   const perKind = d.type === 'event' ? (d.text ?? '').match(TOKENS_PER_KIND) : null
   if (perKind) {
     const count = state.players[p].units.filter((u) => (!perKind[2] || !state.defs[u.def].token) && state.defs[u.def].traits?.includes(perKind[3])).length
@@ -508,6 +537,9 @@ export function resourcePicks(state: GameState, p: PlayerId, count: number) {
     // resources, the Baron): a resource now, and played from there later, replaced from the deck
     if (plotWanted(state, p, d)) return 3500 + cost
     if (smuggleWanted(state, p, d)) return 3300 - (d.keywords.smuggle ?? 0)
+    // Better played in the first round ("While it's the first round of the game, this unit enters
+    // play ready"): kept then
+    if (state.round === 1 && /first round of the game/i.test(d.text ?? '') && cost <= soon) return -1
     if (cost > plan.target) return 3000 + cost
     if (cost > soon && cost < plan.target - 1) return 2000 + cost
     if (cost <= soon) return 1000 - cost
@@ -622,8 +654,32 @@ function raceRate(state: GameState, p: PlayerId) {
   return power / left
 }
 
+// Who's the beatdown: the player whose leader deploys dearer holds the board, trading early and
+// keeping its base whole (Mace Windu, 6, against Wicket, 4): -1 for it, 0 otherwise. Its own base
+// damage counts this much more. (A beatdown side, base damage it deals counting more and its
+// base attacks first, did worse: Wicket 58 of 200 against the old AI's Mace, 71 before; the
+// control side alone, Mace 142 of 200, 129 before. 2026-11-23)
+// A plain unit, or removal with no Sentinel to clear, ranks this much lower while a base attack
+// is open (the user, 2026-11-23: cards come after the attacks nearly always)
+const AFTER_ATTACKS = 10
+const REMOVAL = /(deals? [^.]*damage[^.]*unit|defeat [^.]*unit)/i
+const CONTROL_BASE = 0.5
+const CONTROL_FIRST = 1.5
+// The real SWU cards' games (the dev-only SWU tab): the control role and cards after attacks are
+// for those so far. On DUNE they did a little worse, the new AI 283 of 600 against the old one
+// (2026-11-23), so DUNE plays as before.
+const swuGame = (state: GameState) => state.players[0].leader.def.startsWith('swu-')
+export function role(state: GameState, p: PlayerId) {
+  if (!swuGame(state)) return 0
+  return Math.min(0, Math.sign(deckPlan(state, p === 0 ? 1 : 0).leader - deckPlan(state, p).leader))
+}
 export function evaluate(state: GameState, p: PlayerId) {
-  const board = side(state, p, true) - side(state, p === 0 ? 1 : 0) + RACE * (raceRate(state, p) - raceRate(state, p === 0 ? 1 : 0))
+  const r = role(state, p)
+  const board =
+    side(state, p, true) -
+    side(state, p === 0 ? 1 : 0) +
+    RACE * (raceRate(state, p) - raceRate(state, p === 0 ? 1 : 0)) +
+    (r < 0 ? -CONTROL_BASE * state.players[p].base.damage : 0)
   if (state.phase === 'over') return state.winner === p ? 1000 + board : state.winner === 'draw' ? board : -1000 + board
   return board
 }
@@ -653,10 +709,26 @@ function side(state: GameState, p: PlayerId, own = false) {
     (player.spice.length - kept) * spiceWorth(state, p)
   // A Fortification keeps giving while its base stands
   score += (player.base.upgrades?.length ?? 0) * 1.5
+  // The Force token (SWU): worth keeping for a card in hand that uses it and can soon be paid
+  // for (Vernestra Rwoh readying herself), rather than spent at once on the leader's ability
+  if (state.force?.[p]) score += own ? forceWorth(state, p) : FORCE_WORTH
   if (state.initiative === p) score += 0.5
   // Next round's first action goes to whoever has the initiative: in danger, that matters most
   if (inDanger(state, p)) score -= state.initiative === p ? DANGER_FIRST : DANGER
   return score
+}
+
+const FORCE_WORTH = 0.5
+const FORCE_KEPT_WORTH = 3
+const USES_FORCE = /you may use the Force|use the Force\]/i
+function forceWorth(state: GameState, p: PlayerId) {
+  const player = state.players[p]
+  const room = player.resources.length + 1
+  const user = player.hand.some((c) => {
+    const d = state.defs[c.def]
+    return d.type !== 'leader' && USES_FORCE.test(d.text ?? '') && playCost(state, p, d) <= room
+  })
+  return user ? FORCE_KEPT_WORTH : FORCE_WORTH
 }
 
 // One attack next round defeats the opponent's base: a unit not held off by a Sentinel, with its

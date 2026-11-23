@@ -3,7 +3,7 @@ import { Router } from 'express'
 import { query, SCHEMA } from './db.js'
 import { optionalUser } from './auth.js'
 import { roomOfGame } from './rooms.js'
-import { poolOf } from './sets.js'
+import { gamePoolOf } from './sets.js'
 import { STEP_CENTS } from './tiers.ts'
 
 // The Simulator's games, saved as they are played: started, then saved again each round and
@@ -54,7 +54,7 @@ function parse(body) {
     bytes: json.length,
     isPublic: body.public !== false,
     spectators: body.spectators === true,
-    pool: poolOf(body.pool),
+    pool: gamePoolOf(body.pool),
   }
 }
 
@@ -138,7 +138,7 @@ router.get('/games/recent', optionalUser, async (req, res) => {
          AND (NOT g.is_dev OR $1) AND ($2 OR (g.is_public AND g.spectators)) AND g.pool = $3
        ORDER BY g.started_at DESC, g.id DESC
        LIMIT ${RECENT_GAMES}`,
-      [isDev(req), all, poolOf(req.query.pool)],
+      [isDev(req), all, gamePoolOf(req.query.pool)],
     )
     // Each side as the list shows it, without its cards
     const games = rows.map(({ sides, ...game }) => ({
