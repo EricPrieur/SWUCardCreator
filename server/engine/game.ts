@@ -357,12 +357,39 @@ function createUnitToken(state: GameState, p: PlayerId, name: string) {
   return unit
 }
 
-function giveToken(state: GameState, unit: UnitState, name: string) {
+// attached: whether this token counts as upgrades attaching (false for the 2nd and 3rd of 3 at once)
+function giveToken(state: GameState, unit: UnitState, name: string, attached = true) {
   const token = tokenDef(state, name)
   // A community card's token (Ink) not in the game: its card isn't supported
   if (!token) return
-  unit.upgrades.push({ id: `k${state.nextId++}`, def: token.id, owner: controllerOf(state, unit) })
+  const id = `k${state.nextId++}`
+  unit.upgrades.push({ id, def: token.id, owner: controllerOf(state, unit) })
   log(state, `${nameOf(state, unit)} gets ${/^[AEIOU]/.test(name) ? 'an' : 'a'} ${name} token`, controllerOf(state, unit))
+  if (attached) upgradeAttached(state, unit, id)
+}
+
+// "When 1 or more upgrades attach to this unit:" (Sabine Wren): once for each time, several
+// given by one ability (3 Advantage tokens) once in all. Her Shield token from Shielded and an
+// Advantage token from Greef Karga are two.
+function upgradeAttached(state: GameState, unit: UnitState, upgradeId: string) {
+  const p = controllerOf(state, unit)
+  queue(state, p, nameOf(state, unit), 'upgrade attached', unitScript(state, unit).whenUpgradeAttached, {
+    id: unit.id,
+    controller: p,
+    def: def(state, unit),
+    other: upgradeId,
+  })
+}
+
+// Advantage tokens (ASH): "When attached unit's attack or defense ends: Defeat this upgrade."
+function endAdvantage(state: GameState, unitId: string) {
+  const unit = findUnit(state, unitId)
+  if (!unit) return
+  const tokens = unit.upgrades.filter((u) => def(state, u).token && def(state, u).name === 'Advantage')
+  if (!tokens.length) return
+  unit.upgrades = unit.upgrades.filter((u) => !tokens.includes(u))
+  log(state, `${nameOf(state, unit)}'s Advantage token${tokens.length > 1 ? 's are' : ' is'} defeated`, controllerOf(state, unit))
+  checkDefeats(state)
 }
 
 // Damage to a unit, unless a Shield token on it prevents it and is defeated instead, one Shield
@@ -463,7 +490,8 @@ class Pause extends Error {
 // for the card played and once for each token created) from two that need an order
 // last: an ability that counts what happened this phase (Fedaykin Strike Leader), which the AI
 // resolves after the others
-type Trigger = { player: PlayerId; label: string; run: () => void; same?: unknown[]; last?: boolean }
+// later: whether the AI resolves it after the others, asked as it orders them (Abilities.aiLater)
+type Trigger = { player: PlayerId; label: string; run: () => void; same?: unknown[]; last?: boolean; later?: () => boolean }
 
 // The action being played: the answers it has, the next to hand out, the abilities triggered.
 // One action at a time, start to end in one go, so it can live outside the game state.
@@ -478,10 +506,17 @@ function ask(prompt: Prompt): string[] {
 
 // Outside an action (as the game is set up) nothing triggers. Labelled with the card and its
 // trigger: a card with two abilities waiting (a leader and its unit, say) is told apart
-function queue(state: GameState, player: PlayerId, source: string, what: string, ability: Ability | undefined, self: Self) {
+function queue(state: GameState, player: PlayerId, source: string, what: string, ability: Ability | undefined, self: Self, later?: (g: Game, self: Self) => boolean) {
   if (!ability || !current) return
   const last = /this phase/.test(self.def.text ?? '') && /for each time/.test(self.def.text ?? '')
-  current.queue.push({ player, label: `${source}: ${what}`, run: () => ability(new Game(state, player), self), same: [ability, self.id], last })
+  current.queue.push({
+    player,
+    label: `${source}: ${what}`,
+    run: () => ability(new Game(state, player), self),
+    same: [ability, self.id],
+    last,
+    ...(later && { later: () => later(new Game(state, player), self) }),
+  })
 }
 
 // The abilities a card has where it is: a unit's, a leader's unit side's once deployed, a
@@ -551,7 +586,7 @@ function trigger(state: GameState, p: PlayerId, hook: Hook, extra: Partial<Self>
     if (abilities.triggersIf?.[hook]?.(new Game(state, p), triggered) === false) continue
     const what = triggerText(self.def, !!findUnit(state, self.id)?.leader) ?? hookNames[hook]
     const by = self.id === 'leader' ? ' (leader)' : ''
-    queue(state, p, self.def.name + by, what, abilities[hook], triggered)
+    queue(state, p, self.def.name + by, what, abilities[hook], triggered, abilities.aiLater?.[hook])
   }
 }
 
@@ -576,7 +611,8 @@ function resolveTriggers(state: GameState) {
         options: mine.map((t, i) => ({ id: String(i), label: t.label })),
         min: 1,
         max: 1,
-        ai: String(Math.max(0, mine.findIndex((t) => !t.last))),
+        // The AI: the first that is neither "last" nor "later", else the first not "last"
+        ai: String([mine.findIndex((t) => !t.last && !t.later?.()), mine.findIndex((t) => !t.last), 0].find((i) => i >= 0)),
       })
       next = mine[Number(pick)]
     }
@@ -1276,6 +1312,7 @@ function playCard(state: GameState, p: PlayerId, id: string, attachTo?: string, 
     log(state, `${player.name} plays ${d.name} as a pilot on ${nameOf(state, unit)}${using}`, p)
     const attached = { ...self, other: unit.id, attachedTo: unit.id }
     queue(state, p, d.name, 'When Played', scriptOf(state, card, 'pilot').whenPlayed, attached)
+    upgradeAttached(state, unit, card.id)
   } else if (d.type === 'unit') {
     // 3.5.3: a unit enters play exhausted
     const unit: UnitState = { ...card, owner: p, arena: d.arena ?? 'ground', damage: 0, exhausted: true, upgrades: [], entered: state.phaseCount }
@@ -1296,6 +1333,7 @@ function playCard(state: GameState, p: PlayerId, id: string, attachTo?: string, 
     unit.upgrades.push({ ...card, owner: p })
     log(state, `${player.name} attaches ${d.name} to ${nameOf(state, unit)}${using}`, p)
     queue(state, p, d.name, 'When Played', scriptOf(state, card).whenPlayed, { ...self, other: unit.id })
+    upgradeAttached(state, unit, card.id)
   } else {
     // An event resolves its text, then goes to the discard pile
     log(state, `${player.name} plays ${d.name}${using}`, p)
@@ -1439,6 +1477,8 @@ function attack(state: GameState, p: PlayerId, attackerId: string, target: strin
   const defenderName = target === 'base' ? nameOf(state, enemy.base) : nameOf(state, findUnit(state, target) as UnitState)
   log(state, `${player.name} attacks ${defenderName} with ${nameOf(state, attacker)}`, p)
   exhaustUnit(state, attacker)
+  if (state.attackers?.phase !== state.phaseCount) state.attackers = { phase: state.phaseCount, units: [] }
+  state.attackers.units.push(attackerId)
   const self: Self = { id: attackerId, controller: p, def: def(state, attacker), attack: { attacker: attackerId, target } }
   queue(state, p, nameOf(state, attacker), 'On Attack', unitScript(state, attacker).onAttack, self)
   if (options.onAttack) queue(state, p, nameOf(state, attacker), 'On Attack', options.onAttack, self)
@@ -1545,6 +1585,8 @@ function attack(state: GameState, p: PlayerId, attackerId: string, target: strin
       })
     resolveTriggers(state)
   }
+  endAdvantage(state, attackerId)
+  if (defending) endAdvantage(state, defending.id)
   state.effects = state.effects.filter((e) => !(e.until === 'attack' && e.unit === attackerId))
   state.attack = outer
   run.queue = [...run.queue, ...waiting]
@@ -1693,6 +1735,10 @@ export class Game {
   }
   hp(unit: UnitState) {
     return hpOf(this.state, unit)
+  }
+  // Its keywords now, those it is given included
+  keywords(unit: UnitState) {
+    return keywordsOf(this.state, unit)
   }
   cost(unit: UnitState) {
     return this.def(unit).cost
@@ -1882,9 +1928,12 @@ export class Game {
       checkDefeats(this.state)
     }
   }
+  // By an ability: logged (an attack's exhausting isn't)
   exhaust(unitId: string) {
     const unit = this.unit(unitId)
-    if (unit) exhaustUnit(this.state, unit)
+    if (!unit || unit.exhausted) return
+    exhaustUnit(this.state, unit)
+    this.log(`${nameOf(this.state, unit)} is exhausted`)
   }
   ready(unitId: string) {
     const unit = this.unit(unitId)
@@ -2022,8 +2071,12 @@ export class Game {
   giveToken(unitId: string, name: string, count = 1) {
     const unit = this.unit(unitId)
     if (!unit) return
-    for (let i = 0; i < count; i++) giveToken(this.state, unit, name)
+    for (let i = 0; i < count; i++) giveToken(this.state, unit, name, i === 0)
     checkDefeats(this.state)
+  }
+  // The units that attacked this phase, in order
+  attackedThisPhase() {
+    return this.state.attackers?.phase === this.state.phaseCount ? [...this.state.attackers.units] : []
   }
   tokens(unitId: string, name: string) {
     const unit = this.unit(unitId)
@@ -2106,6 +2159,7 @@ export class Game {
     this.state.effects = this.state.effects.filter((e) => e.source !== upgrade.id)
     to.upgrades.push(upgrade)
     this.log(`${nameOf(this.state, upgrade)} moves to ${nameOf(this.state, to)}`)
+    upgradeAttached(this.state, to, upgrade.id)
     checkDefeats(this.state)
   }
   // A unit out of play to the bottom of its owner's deck (its upgrades discarded)
@@ -2169,6 +2223,21 @@ export class Game {
     return traitsOf(this.state, unit)
   }
   // To its owner's hand; a leader unit is defeated instead (3.4.6), a token set aside (3.7.3)
+  // An upgrade back to its owner's hand (Liberty); a token one is set aside (3.7)
+  upgradeToHand(upgradeId: string) {
+    for (const unit of this.units()) {
+      const upgrade = unit.upgrades.find((u) => u.id === upgradeId)
+      if (!upgrade) continue
+      unit.upgrades = unit.upgrades.filter((u) => u !== upgrade)
+      this.state.effects = this.state.effects.filter((e) => e.source !== upgrade.id)
+      if (this.def(upgrade).token) this.log(`${nameOf(this.state, upgrade)} on ${nameOf(this.state, unit)} is set aside`)
+      else {
+        this.state.players[upgrade.owner].hand.push({ id: upgrade.id, def: upgrade.def })
+        this.log(`${nameOf(this.state, upgrade)} returns to ${this.state.players[upgrade.owner].name}'s hand`)
+      }
+      checkDefeats(this.state)
+    }
+  }
   returnToHand(unitId: string) {
     const unit = this.unit(unitId)
     if (!unit) return

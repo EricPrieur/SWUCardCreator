@@ -1,5 +1,5 @@
 import type { Game } from './game.ts'
-import { abilitiesOf, type Ability, type CardScript, type Self } from './scripts.ts'
+import { abilitiesOf, searchDeck, type Ability, type CardScript, type Self } from './scripts.ts'
 import type { Aspect, Keywords, PlayerId, UnitState } from './types.ts'
 
 // The scripts of real Star Wars: Unlimited cards, for the dev-only SWU tab: the cards a swudb.com
@@ -76,6 +76,78 @@ function migsAttack(g: Game, self: Self) {
   const target = self.attack?.target
   if (!target || target === 'base' || !g.unit(target)) return
   g.damage(target, g.unit(self.id)?.upgrades.length ? 2 : 1, self)
+}
+
+// Greef Karga's: "When you play or create a unit:" an Advantage token to it, the leader side
+// exhausting for it (the AI always does), the unit side for free
+function greefLeader(g: Game, self: Self) {
+  const p = self.controller
+  if (!self.other || !g.unit(self.other) || !g.leaderReady(p)) return
+  if (!g.may(p, `Greef Karga: exhaust this leader to give ${g.name(self.other)} an Advantage token?`, { yes: 'Exhaust', no: 'Skip', ai: true, source: self.def.id })) return
+  g.exhaustLeader(p)
+  g.giveToken(self.other, 'Advantage')
+}
+// Whether the AI lets the unit's Ambush go first: the token, given after, stays on it for its
+// next fight if it survives, where given before it is spent on the Ambush. Unless the +1 is what
+// lets it defeat a unit (the dearest it can), or the unit has already attacked.
+function ambushFirst(g: Game, self: Self) {
+  const unit = self.other ? g.unit(self.other) : undefined
+  if (!unit || !g.keywords(unit).ambush || g.attackedThisPhase().includes(unit.id)) return false
+  const power = g.power(unit)
+  const targets = g.attackable(unit.id, { exhausted: true, noBases: true }).map((id) => g.unit(id)!)
+  const dearest = (bonus: number) =>
+    Math.max(-1, ...targets.filter((t) => power + bonus >= g.hp(t) - t.damage).map((t) => g.cost(t)))
+  return dearest(1) <= dearest(0)
+}
+function greefUnit(g: Game, self: Self) {
+  if (self.other && g.unit(self.other)) g.giveToken(self.other, 'Advantage')
+}
+
+// Liberty's When Played and On Attack: exhaust an enemy unit, its upgrades costing 4 or less back
+// to their owners' hands. The AI picks the ready enemy with the most of those, then the strongest.
+function liberty(g: Game, self: Self) {
+  const targets = enemy(g, self)
+  if (!targets.length) return
+  const bounced = (id: string) => g.unit(id)!.upgrades.filter((u) => g.def(u).cost <= 4).length
+  const score = (id: string) => (g.unit(id)!.exhausted ? 0 : 10 + g.power(g.unit(id)!)) + 5 * bounced(id)
+  const ai = [...targets].sort((a, b) => score(b) - score(a))[0]
+  const pick = g.chooseOne(self.controller, 'Liberty: exhaust an enemy unit and return its upgrades that cost 4 or less', targets, { ai, source: self.def.id })
+  if (!pick) return
+  g.exhaust(pick)
+  for (const upgrade of g.unit(pick)?.upgrades.filter((u) => g.def(u).cost <= 4) ?? []) g.upgradeToHand(upgrade.id)
+}
+
+// Princess Leia's When Played and On Attack: up to 2 units in one arena, costing 4 or less
+// together. The AI exhausts ready enemies, the strongest pair it can.
+function leiaDistraction(g: Game, self: Self) {
+  const p = self.controller
+  const ready = enemy(g, self, (u) => !u.exhausted && g.cost(u) <= 4)
+  let plan: string[] = []
+  let planPower = -1
+  for (const a of ready)
+    for (const b of [undefined, ...ready]) {
+      if (b === a) continue
+      const ua = g.unit(a)!
+      const ub = b ? g.unit(b)! : undefined
+      if (ub && (ub.arena !== ua.arena || g.cost(ua) + g.cost(ub) > 4)) continue
+      const power = g.power(ua) + (ub ? g.power(ub) : 0)
+      if (power > planPower) [plan, planPower] = [b ? [a, b] : [a], power]
+    }
+  const first = g.chooseOne(p, 'Princess Leia: you may exhaust a unit (up to 2 in one arena, combined cost 4 or less)', all(g, (u) => g.cost(u) <= 4), {
+    optional: true,
+    ai: plan[0] ?? null,
+    source: self.def.id,
+  })
+  if (!first) return
+  const one = g.unit(first)!
+  const left = 4 - g.cost(one)
+  const second = g.chooseOne(p, 'Princess Leia: you may exhaust another unit in that arena', all(g, (u) => u.id !== first && u.arena === one.arena && g.cost(u) <= left), {
+    optional: true,
+    ai: plan[1] ?? null,
+    source: self.def.id,
+  })
+  g.exhaust(first)
+  if (second) g.exhaust(second)
 }
 
 export const swuScripts: (CardScript & { card: string })[] = [
@@ -904,6 +976,231 @@ export const swuScripts: (CardScript & { card: string })[] = [
         g.discard(p, pick)
         const target = g.chooseOne(p, 'Reckless Sacrifice: deal 5 damage to a unit that costs more', all(g, (u) => g.cost(u) > cost), { ai: 'harm', source: self.def.id })
         if (target) g.damage(target, 5, self)
+      },
+    },
+  },
+  // --- Veiled Icons Greef (swudb.com/deck/hVRtepYEKlM) ---
+  {
+    // The token Greef Karga gives: the engine defeats it as the unit's attack or defense ends
+    card: 'swu-TASH-T02',
+    name: 'Advantage',
+    text: "[When attached unit's attack or defense ends:] Defeat this upgrade.",
+    front: {},
+  },
+  {
+    card: 'swu-ASH-017',
+    name: 'Greef Karga',
+    subtitle: 'Gracious Magistrate',
+    text: '[When you play or create a unit:] You may exhaust this leader. If you do, give an Advantage token to that unit.',
+    backText: '[When you play or create a unit:] Give an Advantage token to that unit.',
+    front: {
+      triggersIf: {
+        whenYouPlay: (g, self) => !!self.other && !!g.unit(self.other) && g.leaderReady(self.controller),
+        whenYouCreate: (g, self) => !!self.other && !!g.unit(self.other) && g.leaderReady(self.controller),
+      },
+      whenYouPlay: greefLeader,
+      whenYouCreate: greefLeader,
+      aiLater: { whenYouPlay: ambushFirst },
+    },
+    back: { whenYouPlay: greefUnit, whenYouCreate: greefUnit },
+  },
+  {
+    card: 'swu-LAW-219',
+    name: "Anakin's Podracer",
+    subtitle: 'So Wizard!',
+    text: '[Ambush]\nWhile attacking, if no other units have attacked this phase, this unit deals combat damage before the defending unit.',
+    front: {
+      // Its On Attack comes before combat damage: the first to attack this phase strikes first
+      onAttack: (g, self) => {
+        if (!g.attackedThisPhase().some((id) => id !== self.id)) g.grant(self.id, { firstStrike: true }, 'attack')
+      },
+    },
+  },
+  {
+    card: 'swu-SEC-204',
+    name: 'Blue Ace',
+    subtitle: 'Colorful Racer',
+    text: '[Ambush]\n[On Attack:] Ready an exhausted enemy unit.',
+    front: {
+      onAttack: (g, self) => {
+        const exhausted = enemy(g, self, (u) => u.exhausted)
+        if (!exhausted.length) return
+        // The AI readies the enemy that can do the least with it
+        const weakest = [...exhausted].sort((a, b) => g.power(g.unit(a)!) - g.power(g.unit(b)!))[0]
+        const pick = g.chooseOne(self.controller, 'Blue Ace: ready an exhausted enemy unit', exhausted, { ai: weakest, source: self.def.id })
+        if (pick) g.ready(pick)
+      },
+    },
+  },
+  {
+    card: 'swu-TWI-224',
+    name: 'Breaking In',
+    text: 'Attack with a unit. It gets [+2/+0] and gains [Saboteur] for this attack.',
+    front: {
+      play: (g, self) => {
+        const units = friendly(g, self, (u) => g.canAttack(u.id))
+        const pick = g.chooseOne(self.controller, 'Breaking In: attack with a unit; it gets +2/+0 and Saboteur', units, { ai: 'help', source: self.def.id })
+        if (!pick) return
+        g.grant(pick, { saboteur: true }, 'attack')
+        g.attackWith(pick, { power: 2 })
+      },
+    },
+  },
+  {
+    card: 'swu-IC27-168',
+    name: 'Cunning Ploy',
+    text: "Look at an opponent's hand. You may discard a card from it. If you do, that player draws a card.\nExhaust an enemy unit.\nYou may attack with a unit. It gets +3/+0 for this attack.",
+    front: {
+      play: (g, self) => {
+        const p = self.controller
+        const foe = p === 0 ? 1 : 0
+        const hand = g.player(foe).hand
+        g.log(`${g.player(p).name} looks at ${g.player(foe).name}'s hand`, p)
+        // The AI takes their dearest card
+        const dearest = [...hand].sort((a, b) => g.def(b).cost - g.def(a).cost)[0]
+        const discard = g.chooseOne(p, "Cunning Ploy: you may discard a card from your opponent's hand (they draw one)", hand.map((c) => c.id), {
+          optional: true,
+          ai: dearest?.id,
+          source: self.def.id,
+          seen: hand.map((c) => c.id),
+        })
+        if (discard) {
+          g.discard(foe, discard)
+          g.draw(foe, 1)
+        }
+        const target = g.chooseOne(p, 'Cunning Ploy: exhaust an enemy unit', enemy(g, self, (u) => !u.exhausted).length ? enemy(g, self, (u) => !u.exhausted) : enemy(g, self), {
+          ai: 'harm',
+          source: self.def.id,
+        })
+        if (target) g.exhaust(target)
+        const attacker = g.chooseOne(p, 'Cunning Ploy: you may attack with a unit; it gets +3/+0', friendly(g, self, (u) => g.canAttack(u.id)), {
+          optional: true,
+          ai: 'help',
+          source: self.def.id,
+        })
+        if (attacker) g.attackWith(attacker, { power: 3 })
+      },
+    },
+  },
+  {
+    card: 'swu-SEC-211',
+    name: 'Faith in Your Friends',
+    text: 'Search the top 3 cards of your deck for a card and draw it. Then, you may disclose [Cunning][Cunning][Cunning][Heroism][Heroism]. If you do, create 2 Spy tokens.',
+    front: {
+      play: (g, self) => {
+        searchDeck(g, self, 3, () => true, 'a card')
+        if (disclose(g, self, ['Cunning', 'Cunning', 'Cunning', 'Heroism', 'Heroism'])) {
+          g.createToken(self.controller, 'Spy')
+          g.createToken(self.controller, 'Spy')
+        }
+      },
+    },
+  },
+  {
+    card: 'swu-IC27-155',
+    name: 'Han Solo',
+    subtitle: "Gamblin' Man",
+    text: '[Saboteur]\n[When Played:] Search the top 10 cards of your deck for a card and draw it, then discard a random card from your hand.',
+    front: {
+      whenPlayed: (g, self) => {
+        searchDeck(g, self, 10, () => true, 'a card')
+        g.discardRandom(self.controller)
+      },
+    },
+  },
+  {
+    card: 'swu-JTL-203',
+    name: 'Han Solo',
+    subtitle: 'Has His Moments',
+    text: '[Ambush]',
+    pilotText: "[Piloting] [[2 Cunning Heroism]]\n[When played as an upgrade:] You may attack with attached unit. If it's the Millennium Falcon, it deals its combat damage before the defender.",
+    front: {},
+    pilot: {
+      whenPlayed: (g, self) => {
+        const unit = self.attachedTo
+        if (!unit || !g.canAttack(unit)) return
+        if (!g.may(self.controller, `Han Solo: attack with ${g.name(unit)}?`, { yes: 'Attack', no: 'Skip', ai: true, source: self.def.id })) return
+        g.attackWith(unit, { firstStrike: g.def(g.unit(unit)!).name === 'Millennium Falcon' })
+      },
+    },
+  },
+  {
+    card: 'swu-ASH-206',
+    name: 'Kelleran Beq',
+    subtitle: 'Where are the Others?',
+    text: '[Ambush]\nThis unit gets +1/+0 for each other unit with 0 power.',
+    front: {
+      gives: (g, self, unit) => {
+        if (unit.id !== self.id) return undefined
+        const zero = g.units((u) => u.id !== self.id && g.power(u) === 0).length
+        return zero ? { power: zero } : undefined
+      },
+    },
+  },
+  {
+    card: 'swu-LAW-224',
+    name: 'Liberty',
+    subtitle: 'Draw Their Fire!',
+    text: '[Sentinel]\n[When Played/On Attack:] Exhaust an enemy unit and return all upgrades on it that cost 4 or less to their owner\'s hands.',
+    front: { whenPlayed: liberty, onAttack: liberty },
+  },
+  {
+    card: 'swu-SEC-207',
+    name: 'Lightmaker',
+    subtitle: 'I Have An Idea',
+    text: '[Raid 4]\n[When Defeated:] Choose an arena. Exhaust each enemy unit in that arena.',
+    front: {
+      whenDefeated: (g, self) => {
+        // The AI takes the arena where the ready enemies have the most power
+        const ready = (arena: string) => enemy(g, self, (u) => u.arena === arena && !u.exhausted).reduce((sum, id) => sum + g.power(g.unit(id)!), 0)
+        const pick = g.option(self.controller, 'Lightmaker: exhaust each enemy unit in an arena', ['Ground', 'Space'], {
+          ai: ready('space') > ready('ground') ? 1 : 0,
+          source: self.def.id,
+        })
+        const arena = pick === 1 ? 'space' : 'ground'
+        for (const id of enemy(g, self, (u) => u.arena === arena)) g.exhaust(id)
+      },
+    },
+  },
+  {
+    card: 'swu-IC27-165',
+    name: 'Luke Skywalker',
+    subtitle: 'Overplaying His Hand',
+    text: "[When Played:] You may put an enemy non-leader unit on the bottom of its owner's deck. Its owner draws 2 cards.",
+    front: {
+      whenPlayed: (g, self) => {
+        const targets = enemy(g, self, (u) => !g.isLeader(u))
+        const pick = g.chooseOne(self.controller, "Luke Skywalker: you may put an enemy non-leader unit on the bottom of its owner's deck (they draw 2)", targets, {
+          optional: true,
+          ai: 'harm',
+          source: self.def.id,
+        })
+        if (!pick) return
+        const owner = g.unit(pick)!.owner
+        g.toDeckBottom(pick)
+        g.draw(owner, 2)
+      },
+    },
+  },
+  {
+    card: 'swu-IC27-159',
+    name: 'Princess Leia',
+    subtitle: 'Calculated Distraction',
+    text: '[When Played/On Attack:] Exhaust up to 2 units in the same arena with combined cost 4 or less.',
+    front: { whenPlayed: leiaDistraction, onAttack: leiaDistraction },
+  },
+  {
+    card: 'swu-ASH-208',
+    name: 'Sabine Wren',
+    subtitle: 'I Learned the Hard Way',
+    text: '[Shielded]\n[When 1 or more upgrades attach to this unit:] You may exhaust a ground unit.',
+    front: {
+      whenUpgradeAttached: (g, self) => {
+        const ground = all(g, (u) => u.arena === 'ground')
+        const ready = enemy(g, self, (u) => u.arena === 'ground' && !u.exhausted)
+        const strongest = [...ready].sort((a, b) => g.power(g.unit(b)!) - g.power(g.unit(a)!))[0]
+        const pick = g.chooseOne(self.controller, 'Sabine Wren: you may exhaust a ground unit', ground, { optional: true, ai: strongest ?? null, source: self.def.id })
+        if (pick) g.exhaust(pick)
       },
     },
   },

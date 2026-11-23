@@ -1429,6 +1429,11 @@
   font-weight: 900;
   line-height: 1.5;
 }
+.sim-xp i.advantage {
+  background: #a85a00;
+  border-color: #ffc46b;
+  color: #fff3df;
+}
 .sim-xp i.down {
   background: #8a1f1f;
   border-color: #ff8a80;

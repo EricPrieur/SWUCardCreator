@@ -2001,8 +2001,8 @@ function Table(props: {
   const unitView = (side: SideView, arena: Arena) => (u: SideView['units'][number]) => {
     const d = defOf(u.def)
     const tokenCount = (name: string) => u.upgrades.filter((up) => defOf(up.def).token && defOf(up.def).name === name).length
-    const [experience, weakness, shields] = [tokenCount('Experience'), tokenCount('Weakness'), tokenCount('Shield')]
-    const banners = u.upgrades.filter((up) => !(defOf(up.def).token && ['Experience', 'Weakness', 'Shield'].includes(defOf(up.def).name)))
+    const [experience, weakness, shields, advantage] = [tokenCount('Experience'), tokenCount('Weakness'), tokenCount('Shield'), tokenCount('Advantage')]
+    const banners = u.upgrades.filter((up) => !(defOf(up.def).token && ['Experience', 'Weakness', 'Shield', 'Advantage'].includes(defOf(up.def).name)))
     const keywords = u.keywords
     const printed = u.leader ? d.unit : d
     const target = isTarget(u.id)
@@ -2082,10 +2082,16 @@ function Table(props: {
                 {shields}
               </span>
             )}
-            {/* Top right: +1 for each Experience token, and to its left -1 for each Weakness token */}
-            {!!(experience || weakness) && (
+            {/* Top right: +1 for each Experience token, to its left -1 for each Weakness token,
+                and +1 for each Advantage token (SWU), gone after its next attack or defense */}
+            {!!(experience || weakness || advantage) && (
               <span className="sim-xp">
                 {!!weakness && <i className="down">-{weakness}</i>}
+                {!!advantage && (
+                  <i className="advantage" title={`${advantage} Advantage token${advantage > 1 ? 's' : ''}: +${advantage}/+0 until its next attack or defense ends`}>
+                    +{advantage}
+                  </i>
+                )}
                 {!!experience && <i>+{experience}</i>}
               </span>
             )}
@@ -2099,8 +2105,8 @@ function Table(props: {
           {!!u.damage && <span className="sim-damage">{u.damage}</span>}
         </button>
         {/* Its upgrades, banners tucked under the card's bottom edge as it lies, ready or
-            exhausted, each hoverable for the full card. Experience and Weakness tokens are the
-            badge above it, Shield tokens the badge at its top left. */}
+            exhausted, each hoverable for the full card. Experience, Weakness and Advantage tokens
+            are the badges above it, Shield tokens the badge at its top left. */}
         {!!banners.length && (
           <span className="sim-upgrades">
             {banners.map((up, i) => (

@@ -68,7 +68,8 @@ async function printing(set: string, number: string): Promise<Printing> {
 // An image saved as JPG (the Showcase page's), through Python's PIL
 async function image(path: string, to: string) {
   if (existsSync(to)) return
-  const response = await fetch(`https://swudb.com/images${path}`)
+  // Some paths start with ~ for the site root: ~/cards/TWI/489.png
+  const response = await fetch(`https://swudb.com/images${path.replace(/^~/, "")}`)
   if (!response.ok) throw new Error(`swudb image ${path}: ${response.status}`)
   const png = `${to}.png`
   writeFileSync(png, Buffer.from(await response.arrayBuffer()))
@@ -146,20 +147,34 @@ async function card(set: string, number: string) {
   if (front) await image(front, `${dir}${name}.jpg`)
   if (back) await image(back, `${dir}${name} (unit).jpg`)
   const type = TYPES[p.cardType]
+  // A pilot (Han Solo, Has His Moments): a unit with an upgrade's +power/+HP too. Its Piloting box,
+  // from the Piloting line on, is its pilotText, the cost as the Creator writes one: [[2 Cunning Heroism]]
+  const pilot = type === 'Unit' && p.powerBonus != null
+  const text = markup(p.frontAbilityText).split('\n')
+  const box = pilot ? text.findIndex((line) => line.startsWith('[Piloting]')) : -1
+  const pilotText =
+    box >= 0
+      ? text
+          .slice(box)
+          .join('\n')
+          .replace(/^\[Piloting\] \[\[((?:\[[^\]]+\])+)\]\]/, (_, cost: string) => `[Piloting] [[${[...cost.matchAll(/\[([^\]]+)\]/g)].map((m) => m[1]).join(' ')}]]`)
+      : undefined
   const saved = {
     id,
-    frameId: frameOf(p),
+    frameId: pilot ? frameOf(p).replace(/^unit-/, 'pilot-') : frameOf(p),
     name: p.cardName,
     ...(p.title && { subtitle: p.title }),
     trait: (p.traits ?? []).join(', '),
-    text: markup(p.frontAbilityText),
+    text: box >= 0 ? text.slice(0, box).join('\n') : text.join('\n'),
+    ...(pilotText && { pilotText }),
     ...(p.backAbilityText && { backText: markup(p.backAbilityText) }),
     unique: p.isUnique,
     ...(p.cost !== null && { cost: p.cost }),
     ...(p.power !== null && { power: p.power }),
     ...(p.hitPoints !== null && { hp: p.hitPoints }),
-    ...(p.powerBonus != null && { power: p.powerBonus }),
-    ...(p.hitPointBonus != null && { hp: p.hitPointBonus }),
+    // An upgrade's +power/+HP are its stats; a pilot's, its upgrade stats
+    ...(p.powerBonus != null && (pilot ? { upgradePower: p.powerBonus } : { power: p.powerBonus })),
+    ...(p.hitPointBonus != null && (pilot ? { upgradeHp: p.hitPointBonus } : { hp: p.hitPointBonus })),
     setCode: set,
     number,
     rarity: RARITY[p.alternativePrintings.find((a) => a.isCurrent)?.rarity ?? 0] ?? '',
@@ -223,12 +238,12 @@ for (const arg of process.argv.slice(2)) {
   const cards: { id: string; count: number }[] = []
   // Sideboard cards are listed with no copies in the deck
   for (const { count, card: c } of deck.shuffledDeck) if (count > 0) cards.push({ id: await at(c), count })
-  // The tokens its cards create (Experience and Shield are the engine's own)
+  // The tokens its cards create or give (Experience and Shield are the engine's own)
   for (const id of [leader, base, ...cards.map((c) => c.id)]) {
     const entry = showcase.cards.find((c) => c.id === id) as unknown as { image: string }
     const text = JSON.parse(readFileSync(`${dir}${entry.image}.json`, 'utf8'))
     for (const [, name] of `${text.text ?? ''}
-${text.backText ?? ''}`.matchAll(/[Cc]reate (?:a|an|\d+) ([A-Z][\w-]*(?: [A-Z][\w-]*)*) tokens?/g)) await token(name)
+${text.backText ?? ''}`.matchAll(/(?:[Cc]reate|[Gg]ive) (?:a|an|\d+) ([A-Z][\w-]*(?: [A-Z][\w-]*)*) tokens?/g)) await token(name)
   }
   const name = deck.deckName
   // Its id is swudb's: importing it again replaces it, and the SWU Deck Builder knows it

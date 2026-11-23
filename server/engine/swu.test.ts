@@ -1,6 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { applyAction, createGame, keywordsOf, legalActions, powerOf, hpOf } from './game.ts'
+import { chooseAction } from './ai.ts'
 import { readText } from './cards.ts'
 import { swuScripts } from './swu.ts'
 import { scriptStatus } from './scripts.ts'
@@ -101,6 +102,23 @@ const defs: CardDef[] = [
   swu('swu-ASH-163', { type: 'event', cost: 2, arena: undefined, unique: false, traits: ['Gambit'] }),
   card('aggressionHeroism', { type: 'event', cost: 1, arena: undefined, aspects: ['Aggression', 'Heroism'] }),
   card('wall', { cost: 6, power: 1, hp: 9 }),
+  // Veiled Icons Greef
+  swu('swu-ASH-017', { type: 'leader', cost: 6, traits: ['Underworld', 'Official'], unit: { power: 4, hp: 7, arena: 'ground', keywords: {} } }),
+  card('advantage', { name: 'Advantage', type: 'upgrade', token: true, power: 1, hp: 0, arena: undefined }),
+  swu('swu-LAW-219', { cost: 3, power: 3, hp: 2, arena: 'space', traits: ['Vehicle'] }),
+  swu('swu-ASH-208', { cost: 5, power: 4, hp: 5, traits: ['Mandalorian', 'Rebel'] }),
+  swu('swu-LAW-224', { cost: 8, power: 9, hp: 7, arena: 'space', traits: ['Rebel', 'Vehicle', 'Capital Ship'] }),
+  swu('swu-ASH-206', { cost: 4, power: 3, hp: 5, traits: ['Force', 'Jedi'] }),
+  swu('swu-JTL-203', {
+    cost: 5,
+    power: 4,
+    hp: 5,
+    traits: ['Rebel', 'Pilot'],
+    piloting: 2,
+    upgrade: { power: 2, hp: 3 },
+    pilotText: swuScripts.find((s) => s.card === 'swu-JTL-203')!.pilotText,
+  }),
+  card('fighter', { cost: 2, power: 2, hp: 3, arena: 'space', traits: ['Vehicle', 'Fighter'] }),
   card('vigilant', { cost: 2, power: 1, hp: 3, aspects: ['Vigilance'] }),
   card('aggressive', { cost: 2, power: 1, hp: 3, aspects: ['Aggression'] }),
 ]
@@ -680,4 +698,100 @@ test('Reckless Sacrifice: discard a unit, 5 damage to a unit that costs more', (
   if (state.prompt) state = answer(state, 'u10')
   assert.equal(state.players[0].discard.filter((c) => c.def === 'small').length, 1)
   assert.equal(unit(state, 'u10')!.damage, 5)
+})
+
+// --- Veiled Icons Greef ---
+
+test('Greef Karga (leader): exhaust him as you play a unit, an Advantage token on it until its attack ends', () => {
+  let state = table({ leader0: 'swu-ASH-017', hand0: ['cheap'] })
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  state = yes(state)
+  const played = state.players[0].units.find((u) => u.def === 'cheap')!
+  assert.equal(tokensOn(state, played.id, 'Advantage'), 1)
+  assert.equal(powerOf(state, played), 3, '+1/+0')
+  assert.equal(hpOf(state, played), 2)
+  assert.ok(state.players[0].leader.exhausted)
+  played.exhausted = false
+  state.active = 0
+  state = act(state, 0, { type: 'attack', attacker: played.id, target: 'base' })
+  assert.equal(state.players[1].base.damage, 3)
+  assert.equal(tokensOn(state, played.id, 'Advantage'), 0, 'defeated as its attack ends')
+})
+
+test('Advantage token: defeated as the unit it is on defends', () => {
+  let state = table({ units0: ['cheap'], units1: ['wall'] })
+  state.players[1].units[0].upgrades.push({ id: 'k1', def: 'advantage', owner: 1 })
+  state = act(state, 0, { type: 'attack', attacker: 'u00', target: 'u10' })
+  assert.equal(tokensOn(state, 'u10', 'Advantage'), 0)
+})
+
+test("Anakin's Podracer: the phase's first attacker deals its combat damage first", () => {
+  let state = table({ units0: ['swu-LAW-219', 'fighter'], units1: ['fighter', 'fighter'] })
+  state = act(state, 0, { type: 'attack', attacker: 'u00', target: 'u10' })
+  assert.ok(unit(state, 'u00'), 'it defeats the fighter before it strikes back')
+  assert.equal(unit(state, 'u00')!.damage, 0)
+  state = table({ units0: ['swu-LAW-219', 'fighter'], units1: ['fighter', 'fighter'] })
+  state = act(state, 0, { type: 'attack', attacker: 'u01', target: 'base' })
+  state.active = 0
+  state = act(state, 0, { type: 'attack', attacker: 'u00', target: 'u10' })
+  assert.equal(unit(state, 'u00'), undefined, 'after another unit attacked, the two trade')
+})
+
+test('Sabine Wren: her Shield token attaching lets her exhaust a ground unit, once', () => {
+  let state = table({ units1: ['big'], hand0: ['swu-ASH-208'] })
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  assert.equal(state.prompt?.text.startsWith('Sabine Wren'), true)
+  state = answer(state, 'u10')
+  assert.ok(unit(state, 'u10')!.exhausted)
+  assert.equal(state.prompt, null)
+})
+
+test('Liberty: exhaust an enemy unit, its upgrades costing 4 or less back to hand (tokens set aside)', () => {
+  let state = table({ units1: ['big'], hand0: ['swu-LAW-224'] })
+  const big = state.players[1].units[0]
+  big.upgrades.push({ id: 'g1', def: 'swu-ASH-114', owner: 1 }, { id: 'k1', def: 'xp', owner: 1 })
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  if (state.prompt) state = answer(state, 'u10')
+  assert.ok(unit(state, 'u10')!.exhausted)
+  assert.equal(unit(state, 'u10')!.upgrades.length, 0)
+  assert.ok(state.players[1].hand.some((c) => c.id === 'g1'), 'the lightsaber back to its hand')
+  assert.ok(!state.players[1].hand.some((c) => c.id === 'k1'), 'the Experience token set aside')
+})
+
+test('Kelleran Beq: +1/+0 for each other unit with 0 power', () => {
+  const state = table({ units0: ['swu-ASH-206', 'spy'], units1: ['spy', 'big'] })
+  assert.equal(powerOf(state, unit(state, 'u00')!), 5)
+})
+
+test('Han Solo (Has His Moments): played as a pilot, the Vehicle may attack', () => {
+  let state = table({ units0: ['fighter'], hand0: ['swu-JTL-203'] })
+  state = act(state, 0, { type: 'play', card: 'h0', attachTo: 'u00', pilot: true })
+  state = yes(state)
+  if (state.prompt) state = answer(state, 'base1')
+  assert.equal(state.players[1].base.damage, 4, '2 power +2 from Han')
+})
+
+test('Greef Karga (leader), AI: an Ambush that defeats its target goes first, the token kept after', () => {
+  // Kelleran Beq 3/5 defeats a 2/2 without the +1: Ambush first, the Advantage token stays
+  let state = table({ leader0: 'swu-ASH-017', units1: ['cheap'], hand0: ['swu-ASH-206'] })
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  for (let i = 0; i < 6 && state.prompt; i++) state = act(state, 0, chooseAction(state, 0)!)
+  const kelleran = state.players[0].units.find((u) => u.def === 'swu-ASH-206')!
+  assert.equal(unit(state, 'u10'), undefined, 'the 2/2 is defeated')
+  assert.equal(tokensOn(state, kelleran.id, 'Advantage'), 1, 'the token is still on it')
+})
+
+test('Greef Karga (leader), AI: the token goes first when the +1 is what defeats the Ambush target', () => {
+  // Kelleran Beq 3/5 needs 4 power for a 4-HP unit
+  let state = table({ leader0: 'swu-ASH-017', units1: ['small'], hand0: ['swu-ASH-206'] })
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  for (let i = 0; i < 6 && state.prompt; i++) state = act(state, 0, chooseAction(state, 0)!)
+  assert.equal(unit(state, 'u10'), undefined, 'the 1/4 is defeated with the +1')
+})
+
+test('Sabine Wren with Greef Karga: her Shield token and the Advantage token are two triggers, two units exhausted', () => {
+  let state = table({ leader0: 'swu-ASH-017', units1: ['big', 'cheap'], hand0: ['swu-ASH-208'] })
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  for (let i = 0; i < 8 && state.prompt; i++) state = act(state, 0, chooseAction(state, 0)!)
+  assert.ok(unit(state, 'u10')!.exhausted && unit(state, 'u11')!.exhausted)
 })

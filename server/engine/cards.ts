@@ -219,6 +219,8 @@ export const builtInTokens: CardDef[] = [
   { name: 'Experience', type: 'upgrade', power: 1, hp: 1, traits: ['Learned'] },
   { name: 'Shield', type: 'upgrade', power: 0, hp: 0, traits: ['Armor'] },
   { name: 'Weakness', type: 'upgrade', power: -1, hp: -1, traits: ['Condition'] },
+  // ASH: "When attached unit's attack or defense ends: Defeat this upgrade." (the engine does that)
+  { name: 'Advantage', type: 'upgrade', power: 1, hp: 0, traits: ['Innate'] },
   {
     name: 'Spice',
     type: 'token',

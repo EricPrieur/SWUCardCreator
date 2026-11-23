@@ -77,7 +77,7 @@ export function chooseAction(state: GameState, p: PlayerId, why?: Weighed[]): Ac
   const baseOpen = actions.some((a) => a.type === 'attack' && a.target === 'base')
   const sentinelUp = state.players[p === 0 ? 1 : 0].units.some((u) => keywordsOf(state, u).sentinel)
   const waits = (move: Action) => {
-    if (!baseOpen || move.type !== 'play' || !swuGame(state)) return false
+    if (!baseOpen || move.type !== 'play') return false
     const card = player.hand.find((c) => c.id === move.card)
     if (!card) return false
     const d = state.defs[card.def]
@@ -665,12 +665,9 @@ const AFTER_ATTACKS = 10
 const REMOVAL = /(deals? [^.]*damage[^.]*unit|defeat [^.]*unit)/i
 const CONTROL_BASE = 0.5
 const CONTROL_FIRST = 1.5
-// The real SWU cards' games (the dev-only SWU tab): the control role and cards after attacks are
-// for those so far. On DUNE they did a little worse, the new AI 283 of 600 against the old one
-// (2026-11-23), so DUNE plays as before.
-const swuGame = (state: GameState) => state.players[0].leader.def.startsWith('swu-')
+// One AI for DUNE and SWU: the same game. On DUNE the new AI won 345 of 720 against the one before
+// (2026-11-23), even within noise.
 export function role(state: GameState, p: PlayerId) {
-  if (!swuGame(state)) return 0
   return Math.min(0, Math.sign(deckPlan(state, p === 0 ? 1 : 0).leader - deckPlan(state, p).leader))
 }
 export function evaluate(state: GameState, p: PlayerId) {

@@ -51,6 +51,9 @@ export type Abilities = {
   // When a triggered ability triggers at all ("Whenever a friendly Harkonnen unit is
   // defeated", once each round): otherwise it isn't, and isn't among those to order
   triggersIf?: { [K in keyof Abilities]?: (g: Game, self: Self) => boolean }
+  // When the AI, ordering its triggered abilities, resolves this one after the others (Greef
+  // Karga's Advantage token after the unit's Ambush): asked as it orders them
+  aiLater?: { [K in keyof Abilities]?: (g: Game, self: Self) => boolean }
   // An event's text
   play?: Ability
   whenPlayed?: Ability
@@ -74,6 +77,9 @@ export type Abilities = {
   whenEnemyDefeated?: Ability
   // When another friendly unit is dealt damage; self.other is that unit
   whenFriendlyDamaged?: Ability
+  // "When 1 or more upgrades attach to this unit:" (a token given, an upgrade played or moved
+  // onto it, a pilot); self.other is the upgrade
+  whenUpgradeAttached?: Ability
   // When the regroup phase starts; when the action phase starts
   regroupStart?: Ability
   actionStart?: Ability

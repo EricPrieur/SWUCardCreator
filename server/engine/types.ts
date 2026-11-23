@@ -188,6 +188,9 @@ export type GameState = {
   phase: Phase
   // Counts the phases gone by, for what lasts "this phase"
   phaseCount: number
+  // The units that attacked this phase (phase: the phaseCount), in order ("if no other units have
+  // attacked this phase")
+  attackers?: { phase: number; units: string[] }
   active: PlayerId
   initiative: PlayerId
   initiativeTaken: boolean
