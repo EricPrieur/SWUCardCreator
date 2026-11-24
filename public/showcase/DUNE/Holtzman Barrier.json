@@ -11,7 +11,7 @@
   "name": "Holtzman Barrier",
   "text": "Give a Shield token to a friendly unit. If you don't control an [{Arrakis}] base, give a Shield token to another friendly unit.",
   "trait": "Tactic",
-  "number": "066",
+  "number": "067",
   "rarity": "C",
   "frameId": "event-vigilance",
   "setCode": "DUNE",

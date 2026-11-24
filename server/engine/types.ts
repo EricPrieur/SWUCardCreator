@@ -146,8 +146,9 @@ export type Prompt = {
   seen?: { id: string; def: string }[]
   min: number
   max: number
-  // How the AI answers: a pick that 'harm's or 'help's, the option it takes
-  ai?: 'harm' | 'help' | 'cheap' | string
+  // How the AI answers: a pick that 'harm's or 'help's, the option it takes ('strip': the
+  // opponent's card in hand whose play would help them most)
+  ai?: 'harm' | 'help' | 'cheap' | 'strip' | string
   // The action's first question, which it may be taken back from: the game as it was before it
   cancel?: boolean
 }

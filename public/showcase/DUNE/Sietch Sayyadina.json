@@ -12,7 +12,7 @@
   "text": "[Restore 1]\n[When Played:] Draw a card. Then, discard a card from your hand.",
   "power": 2,
   "trait": "Fremen",
-  "number": "185",
+  "number": "189",
   "rarity": "C",
   "frameId": "unit-cunning-heroism",
   "setCode": "DUNE",

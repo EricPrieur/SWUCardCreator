@@ -54,6 +54,9 @@ export type CardLine = {
   // A Sealed print run's code, printed in place of the artist: "A07-12" is run A, pack 07,
   // the pack's 12th card. Set only while drawing a print run, never saved with the card.
   code?: string
+  // A Showdown promo's placing, stamped across the art: CHAMPION, FINALIST, TOP 4, TOP 8. Set only
+  // while drawing a Sealed event's prizes, never saved with the card.
+  showdown?: string
 }
 export const cardLineKeys = ['artist', 'block', 'setCode', 'language', 'rarity', 'number'] as const
 

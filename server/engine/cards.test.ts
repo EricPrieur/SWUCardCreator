@@ -47,6 +47,11 @@ const defs: CardDef[] = [
   card('voice', { ...scripted('The Voice'), type: 'event', cost: 2, arena: undefined }),
   card('litany', { ...scripted('Litany Against Fear'), type: 'upgrade', cost: 2, arena: undefined }),
   card('atomics', { ...scripted('Family Atomics'), type: 'event', cost: 2, arena: undefined }),
+  card('burseg', { ...scripted('Sardaukar Burseg'), cost: 5, power: 1, hp: 1, traits: ['Sardaukar'] }),
+  card('recruitT', { cost: 1, power: 3, hp: 2, traits: ['Sardaukar'] }),
+  card('ducalGuard', { ...scripted('Atreides Ducal Guard'), cost: 4, power: 3, hp: 5, traits: ['Atreides', 'Trooper'] }),
+  card('atreidesTrooper', { cost: 2, power: 2, hp: 2, traits: ['Atreides', 'Trooper'] }),
+  card('atreidesNoble', { cost: 2, power: 2, hp: 2, traits: ['Atreides', 'Official'] }),
   card('gom', { ...scripted('Gom Jabbar'), type: 'upgrade', cost: 2, arena: undefined }),
   card('worm', { ...scripted('Shai-Hulud'), cost: 9, power: 10, hp: 10 }),
   card('duncan', { ...scripted('Duncan Idaho', 'Swordmaster of the Ginaz'), cost: 4, power: 4, hp: 5 }),
@@ -190,12 +195,23 @@ test("Litany Against Fear: an enemy card's ability can't defeat the unit", () =>
   assert.ok(!state.players[1].units.some((u) => u.id === 'u11'), 'a unit without it is defeated')
 })
 
-test('Gom Jabbar: exhausted, the unit is defeated unless its controller discards a card', () => {
-  let state = table({ units0: ['big'], hand0: ['small'] })
-  state.players[0].units[0].upgrades = [{ id: 'gom', def: 'gom', owner: 1 }]
-  state = act(state, 0, { type: 'attack', attacker: 'u00', target: 'base' })
-  state = answer(state, 'no')
-  assert.equal(state.players[0].units.length, 0)
+test('Gom Jabbar: played, it exhausts the unit, which stays exhausted at the regroup unless its controller discards a card', () => {
+  const round = (keep: boolean) => {
+    let state = table({ units1: ['big'], hand0: ['gom'], hand1: ['small'] })
+    state = act(state, 0, { type: 'play', card: 'h0', attachTo: 'u10' })
+    assert.equal(state.players[1].units[0].exhausted, true, 'exhausted when played')
+    state = act(state, 1, { type: 'pass' })
+    state = act(state, 0, { type: 'pass' })
+    state = answer(state, keep ? 'yes' : 'no')
+    if (keep) state = answer(state, state.prompt!.options[0].id)
+    for (const p of [state.initiative, state.initiative === 0 ? 1 : 0] as PlayerId[]) state = act(state, p, { type: 'resource', cards: [] })
+    assert.equal(state.phase, 'action')
+    return state
+  }
+  const kept = round(true)
+  assert.equal(kept.players[1].units[0].exhausted, false, 'a card discarded: it readies')
+  assert.ok(kept.players[1].discard.some((c) => c.def === 'small'), 'the card discarded')
+  assert.equal(round(false).players[1].units[0].exhausted, true, 'no card: it stays exhausted')
 })
 
 test('Shai-Hulud goes to the bottom of its deck once its attack is done', () => {
@@ -507,4 +523,24 @@ test('"Attach to a [Unique] unit." reads the unique star, written either way', (
   assert.equal(readText('Attach to a [Unique] unit.').attach?.unique, true)
   assert.equal(readText('Attach to a [{Unique}] unit.').attach?.unique, true)
   assert.equal(readText('Attach to a friendly unit.').attach?.unique, undefined)
+})
+
+test('Atreides Ducal Guard: an Experience token to another Atreides unit, and one to itself when that unit is a Trooper', () => {
+  const play = (other: string) => {
+    let state = table({ hand0: ['ducalGuard'], units0: [other] })
+    state = act(state, 0, { type: 'play', card: 'h0' })
+    if (state.prompt) state = answer(state, 'u00')
+    return state.players[0].units.map((u) => u.upgrades.length)
+  }
+  assert.deepEqual(play('atreidesTrooper'), [1, 1], 'a Trooper: both')
+  assert.deepEqual(play('atreidesNoble'), [1, 0], 'not a Trooper: that unit only')
+  assert.deepEqual(play('big'), [0, 0], 'not Atreides: none')
+})
+
+test('A unit defeated takes the HP it gave with it: another unit that now has lethal damage is defeated too', () => {
+  let state = table({ units0: ['big'], units1: ['recruitT', 'burseg'] })
+  state.players[1].units[0].damage = 2
+  assert.equal(state.players[1].units.length, 2, '2 damage on 3 HP with the Burseg')
+  state = act(state, 0, { type: 'attack', attacker: 'u00', target: 'u11' })
+  assert.deepEqual(state.players[1].units, [], 'the Recruit goes with the Burseg')
 })

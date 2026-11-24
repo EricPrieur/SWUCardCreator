@@ -551,6 +551,7 @@ type Hook =
   | 'whenFriendlyDefeated'
   | 'whenEnemyDefeated'
   | 'whenFriendlyDamaged'
+  | 'whenBaseHealed'
   | 'whenFriendlyAttacks'
   | 'whenEnemyAttacks'
   | 'whenCombatDamageBase'
@@ -571,6 +572,7 @@ const hookNames: Record<Hook, string> = {
   whenFriendlyDefeated: 'when a friendly unit is defeated',
   whenEnemyDefeated: 'when an enemy unit is defeated',
   whenFriendlyDamaged: 'when a friendly unit is dealt damage',
+  whenBaseHealed: 'when damage is healed from your base',
   whenFriendlyAttacks: 'when a friendly unit attacks',
   whenEnemyAttacks: 'when an enemy unit attacks',
   whenCombatDamageBase: 'when combat damage is dealt to a base',
@@ -624,8 +626,16 @@ function resolveTriggers(state: GameState) {
 // 1.12.4: defeated once its damage reaches its HP. A unit goes to its owner's discard pile with
 // its upgrades; a leader unit flips back to its leader side, exhausted, and can't deploy again.
 function checkDefeats(state: GameState) {
-  for (const p of [0, 1] as const) {
-    for (const unit of [...state.players[p].units]) if (unit.damage >= hpOf(state, unit)) defeatUnit(state, unit)
+  // Again until none is left: a unit defeated may take another's HP with it (Sardaukar Burseg's
+  // +1/+1, the smoke test found 2026-11-24: a Sardaukar Recruit checked before him stayed alive)
+  for (let again = true; again; ) {
+    again = false
+    for (const p of [0, 1] as const)
+      for (const unit of [...state.players[p].units])
+        if (state.players[p].units.includes(unit) && unit.damage >= hpOf(state, unit)) {
+          defeatUnit(state, unit)
+          again = true
+        }
   }
   // 5.6: the game ends the moment a base is defeated; both at once is a draw
   const lost = ([0, 1] as const).filter((p) => state.players[p].base.damage >= def(state, state.players[p].base).hp)
@@ -705,7 +715,9 @@ function defeatUnit(state: GameState, unit: UnitState) {
 function heal(state: GameState, p: PlayerId, amount: number) {
   if (spiceLocked(state)) return
   const base = state.players[p].base
+  const before = base.damage
   base.damage = Math.max(0, base.damage - amount)
+  if (base.damage < before) trigger(state, p, 'whenBaseHealed')
 }
 
 // 8.6: drawing from an empty deck deals 3 damage to your base instead
@@ -811,6 +823,9 @@ export function legalActions(state: GameState, p: PlayerId): Action[] {
   const plays = (card: Inst, from: PlayedFrom, spice = false, awakened = false) => {
     const d = def(state, card)
     if (isBanned(state, p, d)) return
+    // Its own cost; a pilot too dear as a unit may still be played for its Piloting cost, below
+    // (Han Solo: 5 as a unit, 2 as a pilot)
+    let payable = true
     if (spice) {
       if (!player.spice.length) return
     } else if (
@@ -818,8 +833,10 @@ export function legalActions(state: GameState, p: PlayerId): Action[] {
         spiceRoom(state, p, d) >
         ready ||
       !canPayAdditional(state, p, d)
-    )
-      return
+    ) {
+      if (!(d.type === 'unit' && d.piloting !== undefined)) return
+      payable = false
+    }
     const extra = {
       ...(from === 'smuggle' && { smuggle: true }),
       ...(from === 'discard' && { discard: true }),
@@ -828,7 +845,9 @@ export function legalActions(state: GameState, p: PlayerId): Action[] {
     }
     const fromDiscard = from === 'discard' && !awakened ? scriptOf(state, card).discardPlay : undefined
     const self: Self = { id: card.id, controller: p, def: d }
-    if (d.keywords.fortify) {
+    if (!payable) {
+      // Only as a pilot
+    } else if (d.keywords.fortify) {
       if (!fromDiscard || fromDiscard(g, self)) actions.push({ type: 'play', card: card.id, attachTo: baseId(p), ...extra })
     } else if (d.type === 'upgrade') {
       for (const unit of units)
@@ -1016,9 +1035,13 @@ function perform(state: GameState, p: PlayerId, action: Action) {
 function chooseFirst(state: GameState, p: PlayerId, goFirst: boolean) {
   state.initiative = state.active = goFirst ? p : other(p)
   log(state, `${state.players[p].name} chooses to go ${goFirst ? 'first' : 'second'}`, p)
-  for (const q of [0, 1] as const) draw(state, q, HAND_SIZE)
+  for (const q of [0, 1] as const) draw(state, q, handSize(state, q))
   state.phase = 'mulligan'
 }
+
+// The opening hand: 6 cards, more with a leader that says so (Luke Skywalker, I Have to Face Him:
+// "Draw 2 more cards in your starting hand.")
+const handSize = (state: GameState, p: PlayerId) => HAND_SIZE + (scriptOf(state, state.players[p].leader, 'front').startingHand ?? 0)
 
 function mulligan(state: GameState, p: PlayerId, take: boolean) {
   const player = state.players[p]
@@ -1026,7 +1049,7 @@ function mulligan(state: GameState, p: PlayerId, take: boolean) {
     player.deck.push(...player.hand)
     player.hand = []
     shuffle(state, player.deck)
-    player.hand = player.deck.splice(0, HAND_SIZE)
+    player.hand = player.deck.splice(0, handSize(state, p))
     player.drawn += player.hand.length
     log(state, `${player.name} takes a mulligan`, p)
   } else {
@@ -1889,6 +1912,7 @@ export class Game {
     const healed = Math.min(amount, damaged.damage)
     damaged.damage -= healed
     this.log(`${from ? `${from.def.name} heals` : 'Healed'} ${healed} damage from ${this.name(target)}`, from?.controller)
+    if (owner !== undefined && healed > 0) trigger(this.state, owner, 'whenBaseHealed')
   }
   // A unit an upgrade keeps from being defeated by enemy card abilities isn't; nor one a card
   // on its side keeps from being defeated by the card whose ability it is (`from`)

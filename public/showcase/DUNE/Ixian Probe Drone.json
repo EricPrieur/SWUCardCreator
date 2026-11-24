@@ -12,8 +12,8 @@
   "text": "[Hidden]\n[On Attack:] Create a Spy token.",
   "power": 2,
   "trait": "Ixian, Vehicle, Drone, Spy",
-  "number": "172",
-  "rarity": "U",
+  "number": "175",
+  "rarity": "C",
   "frameId": "unit-cunning-villainy-space",
   "setCode": "DUNE",
   "language": "EN"

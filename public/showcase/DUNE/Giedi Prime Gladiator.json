@@ -12,7 +12,7 @@
   "text": "[When Defeated:] Give an Experience token to a friendly [{Harkonnen}] unit.",
   "power": 3,
   "trait": "Harkonnen",
-  "number": "127",
+  "number": "130",
   "rarity": "C",
   "frameId": "unit-aggression-villainy",
   "setCode": "DUNE",

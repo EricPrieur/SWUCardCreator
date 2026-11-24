@@ -12,7 +12,7 @@
   "text": "[When Played:] Create a Spy token and ready it. Then, you may attack with another friendly [{Spy}] unit.",
   "power": 4,
   "trait": "Emperor, Spy",
-  "number": "178",
+  "number": "181",
   "rarity": "R",
   "frameId": "unit-cunning-villainy",
   "setCode": "DUNE",

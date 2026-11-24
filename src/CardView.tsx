@@ -501,6 +501,8 @@ function frameParts(frame: Frame, look: Look) {
 // the same on every unit frame, the shadow under each with it, a pixel more where the frame is
 // clear around, and none of the trait bar or text box beside them
 const UNIT_STATS_Y = 638
+// How far in from its traced outline a solid power or HP icon is cut (see solidAreas)
+const OUTLINE_INSET = 3
 const POWER_OUTLINE = [
   73, 577, 73, 578, 71, 578, 70, 580, 68, 580, 66, 582, 48, 582, 46, 584, 46, 587, 45, 587, 46, 589, 44, 590, 44,
   592, 42, 594, 40, 594, 38, 596, 33, 596, 32, 598, 27, 598, 25, 600, 27, 615, 29, 616, 29, 661, 28, 661, 28, 665,
@@ -701,7 +703,19 @@ function solidAreas(frame: Frame, text: boolean, icons: boolean): { clip: string
         if (shift && y === UNIT_STATS_Y) [dx, dy] = shift
         const points: [number, number][] = []
         for (let i = 0; i < outline.length; i += 2) points.push([outline[i] + dx, outline[i + 1] + dy])
-        add(polygon(points))
+        // Pulled in 3 px toward the icon's middle: traced on its edge, the outline took a thin
+        // line of the frame's white border with it, under the power icon's lower points most
+        // (the user, 2026-11-23)
+        const cx = points.reduce((sum, [x]) => sum + x, 0) / points.length
+        const cy = points.reduce((sum, [, y]) => sum + y, 0) / points.length
+        add(
+          polygon(
+            points.map(([x, y]) => {
+              const r = Math.hypot(x - cx, y - cy) || 1
+              return [x - ((x - cx) / r) * OUTLINE_INSET, y - ((y - cy) / r) * OUTLINE_INSET]
+            }),
+          ),
+        )
         return true
       }
       return false
@@ -1194,6 +1208,12 @@ export const CardView = memo(function CardView(props: {
           <Shifted shift={shift('label')}>
             <CardText frame={frame} box={frame.label.box} className="card-label" text={frame.label.text} />
           </Shifted>
+        )}
+        {/* A Showdown promo's placing, a gold banner at the top right */}
+        {props.line?.showdown?.trim() && (
+          <div className="card-showdown">
+            <span className="card-showdown-place">{props.line.showdown.trim()}</span>
+          </div>
         )}
         {props.line && !props.thumb && (props.line.code?.trim() || cardLineKeys.some((key) => props.line?.[key]?.trim())) && (
           <CardLine frame={frame} line={props.line} />

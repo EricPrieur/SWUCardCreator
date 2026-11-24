@@ -1,5 +1,5 @@
 {
-  "hp": 4,
+  "hp": 5,
   "id": "30cd19e1-5537-479b-81e6-a40cdc099044",
   "art": {
     "x": 0,
@@ -10,7 +10,7 @@
   "cost": 3,
   "name": "Pardot Kynes",
   "text": "[When Played:] Create a Spice token.\n[When the regroup phase starts:] If you control 3 or more Spice tokens, heal 3 damage from your base.",
-  "power": 1,
+  "power": 2,
   "trait": "Fremen, Emperor",
   "number": "035",
   "rarity": "R",

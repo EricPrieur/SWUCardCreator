@@ -111,6 +111,8 @@ export function markup(text = '') {
       .replace(/\s+([.,])/g, '$1')
       // "[When you play a unit] :" (its colon left out of the bold): the trigger as the others are
       .replace(/\[(When [^\]]*?)\]\s*:/g, '[$1:]')
+      // A trigger swudb didn't bold (Mon Cal Cruiser's "When Played: Choose one:")
+      .replace(/^(When Played|On Attack|When Defeated|When Deployed)((?:\/[A-Z][A-Za-z ]+)*):/gm, '[$1$2:]')
     line = line
       .split('\n')
       .map((l) => l.replace(/\s+/g, ' ').trim())

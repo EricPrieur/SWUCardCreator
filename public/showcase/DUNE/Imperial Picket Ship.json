@@ -13,7 +13,7 @@
   "text": "[Sentinel]\n[When Played:] Exhaust an enemy space unit.",
   "power": 1,
   "trait": "Emperor, Vehicle, Fighter",
-  "number": "219",
+  "number": "224",
   "rarity": "C",
   "frameId": "unit-villainy-space",
   "setCode": "DUNE",

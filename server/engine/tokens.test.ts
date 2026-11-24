@@ -46,6 +46,12 @@ const defs: CardDef[] = [
   card('plotter', { cost: 2, power: 1, hp: 1, text: '[PLOT]' }),
   card('shieldTrooper', { ...scripted('Atreides Shield Trooper'), cost: 2, power: 2, hp: 2 }),
   card('lasgunVolley', { type: 'event', cost: 3, text: 'Deal 4 damage to a unit.' }),
+  card('escortFrigate', { ...scripted('Caladan Escort Frigate'), cost: 5, power: 3, hp: 6, arena: 'space', traits: ['Atreides', 'Vehicle', 'Capital Ship'] }),
+  card('tabrElder', { ...scripted('Sietch Tabr Elder'), cost: 5, power: 3, hp: 7, traits: ['Fremen'], keywords: { sentinel: true } }),
+  card('restorer', { cost: 2, power: 2, hp: 3, keywords: { restore: 2 } }),
+  card('spiceBarge', { ...scripted("Smuggler's Spice Barge"), cost: 5, power: 4, hp: 5, arena: 'space', traits: ['Underworld', 'Vehicle', 'Transport'] }),
+  card('turnedAsset', { ...scripted('Turned Asset'), cost: 6, power: 4, hp: 5, traits: ['Spy'] }),
+  card('spyToken', { cost: 0, power: 0, hp: 2, token: true, traits: ['Spy'], keywords: { raid: 2 } }),
   card('desertPower', { ...scripted('Desert Power'), type: 'event', cost: 4, arena: undefined }),
   card('runner', { ...scripted('Spice Runner'), cost: 1, power: 2, hp: 1 }),
   card('executioner', { ...scripted('Sardaukar Executioner'), cost: 4, power: 5, hp: 4, traits: ['Sardaukar', 'Trooper'] }),
@@ -503,17 +509,17 @@ test('Sardaukar Troop Carrier: the next Trooper unit played this phase costs 1 l
   assert.equal(ready(state), 4, 'the soldier for 0')
 })
 
-test("Kynes's Dream: heal 3 from a unit or base, then 3 from your base for each of up to 2 Spice tokens", () => {
-  let state = table({ hand0: ['kynesDream'] })
-  state.players[0].spice.push({ id: 'spice2', def: state.players[0].spice[0].def })
+test("Kynes's Dream: 3 healed from your base and each friendly Fremen unit, an Experience token to each Fremen unit healed", () => {
+  let state = table({ hand0: ['kynesDream'], units0: ['fremen', 'fremen', 'big'], units1: ['fremen'] })
   state.players[0].base.damage = 10
+  state.players[0].units[0].damage = 2
+  state.players[0].units[2].damage = 2
+  state.players[1].units[0].damage = 2
   state = act(state, 0, { type: 'play', card: 'h0' })
-  state = answer(state, 'base0')
   assert.equal(state.players[0].base.damage, 7)
-  assert.equal(state.prompt!.options.length, 3, '0, 1 or 2 Spice tokens')
-  state = answer(state, '2')
-  assert.equal(state.players[0].base.damage, 1)
-  assert.equal(state.players[0].spice.length, 0)
+  assert.deepEqual(state.players[0].units.map((u) => u.damage), [0, 0, 2], 'Fremen only')
+  assert.deepEqual(state.players[0].units.map((u) => u.upgrades.length), [1, 0, 0], 'the damaged Fremen only')
+  assert.equal(state.players[1].units[0].damage, 2, 'friendly only')
 })
 
 test('House Levy: a unit from the top 5, and a second Trooper unit when the first is one', () => {
@@ -1277,14 +1283,15 @@ test('CHOAM Spice Freighter: 2 Spice tokens for its controller when it is defeat
   assert.equal(state.players[1].spice.length, spice + 2, 'its owner gets the cargo')
 })
 
-test('Frigate in Harkonnen Livery: readies a friendly ground Trooper unit with +2/+0 for this phase', () => {
+test('Frigate in Harkonnen Livery: attacks with a friendly ground Trooper unit, +2/+0 for that attack', () => {
   let state = table({ hand0: ['livery'], units0: ['soldier', 'big'] })
-  state.players[0].units[0].exhausted = true
-  state = settle(act(state, 0, { type: 'play', card: 'h0' }))
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  assert.deepEqual(state.prompt!.options.map((o) => o.id), ['u00'], 'the Trooper only')
+  state = settle(answer(state, 'u00'))
   const soldier = state.players[0].units[0]
-  assert.equal(soldier.exhausted, false, 'the Trooper is ready again')
-  assert.equal(powerOf(state, soldier), 4, '2 + 2')
-  assert.equal(powerOf(state, state.players[0].units[1]), 5, 'not a Trooper: no change')
+  assert.equal(soldier.exhausted, true, 'it attacked')
+  assert.equal(state.players[1].base.damage, 4, '2 + 2')
+  assert.equal(powerOf(state, soldier), 2, 'for that attack only')
 })
 
 test('Atreides Frigate: an Experience token to each of up to 3 friendly ground units', () => {
@@ -2114,4 +2121,65 @@ test('the AI puts the Forged Imperial Writ on a Spy', () => {
   chooseAction(state, 0, why)
   const on = (id: string) => why.find((w) => w.action.type === 'play' && w.action.attachTo === id)?.gain ?? -Infinity
   assert.ok(on('u01') > on('u00'), `the Informant ${on('u01')}, the Trooper ${on('u00')}`)
+})
+
+test('Caladan Escort Frigate: an Experience token to another friendly unit when played and on attack', () => {
+  let state = table({ hand0: ['escortFrigate'], units0: ['big'] })
+  state = settle(act(state, 0, { type: 'play', card: 'h0' }))
+  assert.equal(state.players[0].units[0].upgrades.length, 1, 'when played')
+  const frigate = state.players[0].units.find((u) => u.def === 'escortFrigate')!
+  frigate.exhausted = false
+  state.active = 0
+  state = settle(act(state, 0, { type: 'attack', attacker: frigate.id, target: 'base' }))
+  assert.equal(state.players[0].units[0].upgrades.length, 2, 'on attack')
+})
+
+test('Sietch Tabr Elder: heals 3 from your base when played, and a Fremen token the first time your base is healed each round', () => {
+  let state = table({ hand0: ['tabrElder'], units0: ['restorer'] })
+  state.players[0].base.damage = 10
+  state = settle(act(state, 0, { type: 'play', card: 'h0' }))
+  assert.equal(state.players[0].base.damage, 7)
+  const fremen = () => state.players[0].units.filter((u) => state.defs[u.def].token).length
+  assert.equal(fremen(), 1, 'its own heal makes a token')
+  state.active = 0
+  state = settle(act(state, 0, { type: 'attack', attacker: 'u00', target: 'base' }))
+  assert.equal(state.players[0].base.damage, 5, 'Restore 2')
+  assert.equal(fremen(), 1, 'once each round')
+})
+
+test('Sietch Tabr Elder: no token when nothing is healed', () => {
+  let state = table({ hand0: ['tabrElder'] })
+  state = settle(act(state, 0, { type: 'play', card: 'h0' }))
+  assert.equal(state.players[0].units.filter((u) => state.defs[u.def].token).length, 0)
+})
+
+test("Smuggler's Spice Barge: a Spice token when played and on attack", () => {
+  let state = table({ hand0: ['spiceBarge'] })
+  const spice = state.players[0].spice.length
+  state = settle(act(state, 0, { type: 'play', card: 'h0' }))
+  assert.equal(state.players[0].spice.length, spice + 1)
+  const barge = state.players[0].units[0]
+  barge.exhausted = false
+  state.active = 0
+  state = settle(act(state, 0, { type: 'attack', attacker: barge.id, target: 'base' }))
+  assert.equal(state.players[0].spice.length, spice + 2)
+})
+
+test('Turned Asset: a friendly Spy defeated, it takes control of an enemy non-leader unit that costs 3 or less', () => {
+  let state = table({ hand0: ['turnedAsset'], units0: ['spyToken'], units1: ['big', 'soldier'] })
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  assert.deepEqual(state.prompt!.options.map((o) => o.id).sort(), ['h0', 'u00'], 'the token or itself')
+  state = answer(state, 'u00')
+  assert.deepEqual(state.prompt!.options.map((o) => o.id), ['u11'], 'only the one that costs 3 or less')
+  state = settle(answer(state, 'u11'))
+  assert.ok(state.players[0].units.some((u) => u.def === 'soldier'), 'taken')
+  assert.equal(state.players[1].units.length, 1)
+  assert.ok(!state.players[0].units.some((u) => u.def === 'spyToken'), 'the Spy token defeated')
+})
+
+test('Turned Asset: the AI gives up its Spy token for the enemy unit', () => {
+  let state = table({ hand0: ['turnedAsset'], units0: ['spyToken'], units1: ['soldier'] })
+  state = settle(act(state, 0, { type: 'play', card: 'h0' }))
+  assert.ok(state.players[0].units.some((u) => u.def === 'soldier'))
+  assert.ok(state.players[0].units.some((u) => u.def === 'turnedAsset'), 'not itself')
 })

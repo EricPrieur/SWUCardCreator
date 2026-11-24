@@ -16,9 +16,9 @@
     "frameOpacity": 1
   },
   "name": "The Butlerian Jihad",
-  "text": "Defeat each [{Vehicle}] unit.",
+  "text": "Defeat each [{Vehicle}] unit and each [{Item}] upgrade.",
   "trait": "Tactic",
-  "number": "072",
+  "number": "073",
   "rarity": "R",
   "frameId": "event-vigilance",
   "setCode": "DUNE",

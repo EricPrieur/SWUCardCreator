@@ -10,7 +10,7 @@
   "name": "He Who Can Destroy a Thing",
   "text": "Defeat each Spice token. For each Spice token defeated this way, deal 1 damage to a unit or base.\nUntil the end of the round, Spice tokens can't be created and bases can't be healed.",
   "trait": "Fremen, Tactic",
-  "number": "153",
+  "number": "156",
   "rarity": "R",
   "frameId": "event-aggression-heroism",
   "setCode": "DUNE",

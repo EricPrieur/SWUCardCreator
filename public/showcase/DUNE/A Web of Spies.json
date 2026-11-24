@@ -10,7 +10,7 @@
   "name": "A Web of Spies",
   "text": "Create a Spy token for each friendly non-token [{Spy}] unit. Ready them.",
   "trait": "Trick",
-  "number": "181",
+  "number": "185",
   "rarity": "R",
   "frameId": "event-cunning-villainy",
   "setCode": "DUNE",

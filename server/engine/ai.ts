@@ -106,7 +106,7 @@ export function chooseAction(state: GameState, p: PlayerId, why?: Weighed[]): Ac
       single,
       best: Math.max(single, deep ? combo(state, p, move) : -Infinity, after ? awakened(after, p) : -Infinity) + leaderPlays(state, p, move, after) + searchPlays(state, p, move) - uniqueSpent(state, p, move),
       // Kept apart, so a reason to wait (a negative) isn't lost below
-      extra: timing(state, p, move, actions),
+      extra: timing(state, p, move, actions) + readyKill(state, p, move, after),
     }
   })
   // A move that wins is made at once: playing on first may look better, a win still in reach
@@ -326,8 +326,24 @@ function pick(weighed: Weighed[], done: Action, why?: Weighed[]) {
   const worth = (w: Weighed) => w.gain > MIN_GAIN
   weighed.sort((a, b) => Number(worth(b)) - Number(worth(a)) || (b.rank ?? b.gain) - (a.rank ?? a.gain) || b.gain - a.gain)
   why?.push(...weighed.filter((w) => w.gain > -Infinity).map((w) => ({ action: w.action, gain: Math.round(w.gain * 100) / 100 })))
-  return weighed[0] && worth(weighed[0]) ? weighed[0].action : done
+  // A move ranked about as well that gains clearly more goes first: the rank, which looks past
+  // the reply to a follow-up, can miss what one move adds to the other (Mace Windu's attack with
+  // Restore 2 against the same attack without, the user's game 120, 2026-11-24)
+  // Only an ability in place of a plain attack: otherwise the rank's order stands (an ability
+  // first, its unit's attack after, as Paul Atreides' leader side wants)
+  const top = weighed[0]
+  if (top && worth(top) && top.rank !== undefined && top.action.type === 'attack') {
+    const better = weighed
+      .filter((w) => worth(w) && w.action.type === 'ability' && w.rank !== undefined && w.rank >= top.rank! - RANK_CLOSE * Math.abs(top.rank!) && w.gain >= top.gain + GAIN_LEAD)
+      .sort((a, b) => b.gain - a.gain)[0]
+    if (better) return better.action
+  }
+  return top && worth(top) ? top.action : done
 }
+// How close two ranks must be (a share of the top one's), and how much more the other must gain,
+// for it to go first
+const RANK_CLOSE = 0.12
+const GAIN_LEAD = 3
 
 // How many of its moves it tries against the opponent's replies
 const REPLY_WIDTH = 8
@@ -643,13 +659,20 @@ function bestAnswer(state: GameState, p: PlayerId, deep = true): Action {
 // attacker slows their clock, base damage speeds up its own. Tested 2026-11-13 on 210 games
 // each: Mohiam 44% to 50%, Paul 44% to 53% (a beatdown/control role on top did worse).
 const RACE = 20
+const RESTORE_RACE = 1
 function raceRate(state: GameState, p: PlayerId) {
   const foe = state.players[p === 0 ? 1 : 0]
   const left = Math.max(1, state.defs[foe.base.def].hp - foe.base.damage)
   let power = 0
   for (const unit of state.players[p].units) {
     if (state.doomed.includes(unit.id)) continue
-    power += (powerOf(state, unit) + (keywordsOf(state, unit).raid ?? 0)) * (blocked(state, p, unit) ? 0.5 : 1)
+    // Restore takes back the other side's damage: in a race nearly as good as dealing as much
+    // (the user, 2026-11-23)
+    const keywords = keywordsOf(state, unit)
+    // A +N for this phase on a unit already exhausted ends before it attacks again (Bold
+    // Resistance on a unit just played: nothing gained)
+    const fading = unit.exhausted ? state.effects.filter((e) => e.unit === unit.id && e.until === 'phase').reduce((sum, e) => sum + e.power, 0) : 0
+    power += (powerOf(state, unit) - Math.max(0, fading) + (keywords.raid ?? 0) + RESTORE_RACE * (keywords.restore ?? 0)) * (blocked(state, p, unit) ? 0.5 : 1)
   }
   return power / left
 }
@@ -662,6 +685,20 @@ function raceRate(state: GameState, p: PlayerId) {
 // A plain unit, or removal with no Sentinel to clear, ranks this much lower while a base attack
 // is open (the user, 2026-11-23: cards come after the attacks nearly always)
 const AFTER_ATTACKS = 10
+// Defeating an enemy unit that can still attack this round saves the damage it would deal: worth
+// this much for each point of it (power and Raid). An exhausted one deals no more this round (the
+// user's game 121, 2026-11-24: Mace Windu defeated Sabine Wren, who had attacked, while Karis
+// Nemik and Reckless Rebel, still ready, then hit the base for 9)
+const READY_KILL = 0.5
+function readyKill(state: GameState, p: PlayerId, move: Action, after: GameState | undefined) {
+  if (move.type !== 'attack' || move.target === 'base' || !after) return 0
+  const foe = state.players[p === 0 ? 1 : 0]
+  if (foe.passedForPhase) return 0
+  const target = foe.units.find((u) => u.id === move.target)
+  if (!target || target.exhausted) return 0
+  if (after.players[p === 0 ? 1 : 0].units.some((u) => u.id === target.id)) return 0
+  return READY_KILL * Math.max(0, powerOf(state, target) + (keywordsOf(state, target).raid ?? 0))
+}
 const REMOVAL = /(deals? [^.]*damage[^.]*unit|defeat [^.]*unit)/i
 const CONTROL_BASE = 0.5
 const CONTROL_FIRST = 1.5
@@ -803,7 +840,8 @@ function unitWorth(state: GameState, unit: UnitState, isBlocked = false) {
     (keywords.sentinel ? 1 : 0) +
     (keywords.overwhelm || keywords.saboteur || keywords.grit ? 0.5 : 0) +
     0.3 * (keywords.raid ?? 0) +
-    0.5 * (keywords.restore ?? 0) +
+    // As much as power: healing undoes the other side's damage (was 0.5)
+    0.7 * (keywords.restore ?? 0) +
     unit.upgrades.filter((u) => state.defs[u.def].name === 'Shield').length * 1.5 -
     // An Ink token (a community card's): 1 more damage the next time it takes combat damage, as
     // good as 1 health less
@@ -833,14 +871,74 @@ function discardOrder(state: GameState, p: PlayerId, ids: string[]) {
   const keepNow = dearestUpTo(now)
   const keepNext = dearestUpTo(next, keepNow)
   const kept = [keepNext, keepNow].filter((id): id is string => id !== undefined)
-  const rest = ids.filter((id) => !kept.includes(id)).sort((a, b) => cost(a) - cost(b))
-  return [...rest, ...kept]
+  // A unique card it already has in play goes first: played, a copy is defeated at once (the
+  // user discarded Tantive IV to Luke's +2 for that reason, 2026-11-23)
+  const spent = (id: string) => (uniqueHeld(state, p, id) ? 0 : 1)
+  const rest = ids.filter((id) => !kept.includes(id)).sort((a, b) => spent(a) - spent(b) || cost(a) - cost(b))
+  return [...rest.filter((id) => !spent(id)), ...kept.filter((id) => !spent(id)), ...rest.filter((id) => spent(id)), ...kept.filter((id) => spent(id))]
+}
+
+// The opponent's cards in hand, the one whose play would help them most first (Cunning Ploy: "you
+// may discard a card from it"): each played on a copy of the board, their side scored after
+// against before. Those they can pay for now first; if none, each as it would be next turn, their
+// resources ready and one more. Those they can't play even then last, the dearest first.
+let stripping = false
+function stripOrder(state: GameState, p: PlayerId, ids: string[]): string[] {
+  const foe: PlayerId = p === 0 ? 1 : 0
+  const cost = (id: string) => {
+    const card = state.players[foe].hand.find((c) => c.id === id)
+    return card ? state.defs[card.def].cost : 0
+  }
+  const byCost = [...ids].sort((a, b) => cost(b) - cost(a))
+  // Not within its own playing out (the opponent's own Cunning Ploy, played on a copy)
+  if (stripping) return byCost
+  stripping = true
+  try {
+    const board = (nextTurn: boolean): GameState => {
+      const game = structuredClone({ ...state, defs: undefined, log: [], pending: null }) as unknown as GameState
+      game.defs = state.defs
+      game.prompt = null
+      game.active = foe
+      game.phase = 'action'
+      if (nextTurn) {
+        const player = game.players[foe]
+        for (const r of player.resources) r.exhausted = false
+        player.resources.push({ card: { id: 'strip-resource', def: player.resources[0]?.card.def ?? player.base.def }, exhausted: false })
+      }
+      return game
+    }
+    const impact = (game: GameState, id: string) => {
+      let plays: Action[]
+      try {
+        plays = legalActions(game, foe).filter((a) => a.type === 'play' && a.card === id)
+      } catch {
+        return -Infinity
+      }
+      const before = evaluate(game, foe)
+      let best = -Infinity
+      for (const play of plays) {
+        const after = outcome(game, foe, play, foe, false)
+        if (after) best = Math.max(best, evaluate(after, foe) - before)
+      }
+      return best
+    }
+    const rank = (game: GameState) => {
+      const scored = ids.map((id) => ({ id, score: impact(game, id) })).filter((s) => s.score > -Infinity)
+      return scored.sort((a, b) => b.score - a.score).map((s) => s.id)
+    }
+    let ranked = rank(board(false))
+    if (!ranked.length) ranked = rank(board(true))
+    return [...ranked, ...byCost.filter((id) => !ranked.includes(id))]
+  } finally {
+    stripping = false
+  }
 }
 
 // Answering an ability's question, as its script hints: 'harm' picks what hurts the opponent
 // most, 'help' what helps itself, 'cheap' its cheapest cards, 'best' the dearest card it can
-// soon pay for, an option's id that option, 'none' nothing. Anything else picks as little as it
-// may.
+// soon pay for, 'strip' the opponent's card in hand whose play would help them most, an option's
+// id that option, 'ids:a,b,c' those (as many as it may), 'none' nothing. Anything else picks as
+// little as it may.
 function quickAnswer(state: GameState, p: PlayerId): Action {
   const prompt = state.prompt as Prompt
   const ids = prompt.options.map((o) => o.id)
@@ -848,6 +946,10 @@ function quickAnswer(state: GameState, p: PlayerId): Action {
     return { type: 'answer', picks: [ids.includes(prompt.ai ?? '') ? (prompt.ai as string) : ids[0]] }
   }
   if (ids.includes(prompt.ai ?? '')) return { type: 'answer', picks: [prompt.ai as string] }
+  if (prompt.ai?.startsWith('ids:')) {
+    const named = prompt.ai.slice(4).split(',').filter((id) => ids.includes(id)).slice(0, prompt.max)
+    return { type: 'answer', picks: named.length >= prompt.min ? named : ids.slice(0, prompt.min) }
+  }
   if (prompt.ai === 'none') return { type: 'answer', picks: ids.slice(0, prompt.min) }
   const foe = p === 0 ? 1 : 0
   const unit = (id: string) => [...state.players[0].units, ...state.players[1].units].find((u) => u.id === id)
@@ -874,6 +976,7 @@ function quickAnswer(state: GameState, p: PlayerId): Action {
   else if (prompt.ai === 'help') ranked = ids.filter((id) => worth(id) < 0).sort((a, b) => worth(a) - worth(b))
   else if (prompt.ai === 'cheap') ranked = [...ids].sort((a, b) => cardCost(a) - cardCost(b))
   else if (prompt.ai === 'discard') ranked = discardOrder(state, p, ids)
+  else if (prompt.ai === 'strip') ranked = stripOrder(state, p, ids).slice(0, 1)
   else if (prompt.ai === 'best') {
     const soon = state.players[p].resources.length + 1
     ranked = [...ids].sort((a, b) => {
@@ -883,7 +986,7 @@ function quickAnswer(state: GameState, p: PlayerId): Action {
   }
   // Short of picks it likes, it takes what it must from the rest
   const rest = ids.filter((id) => !ranked.includes(id))
-  const wanted = prompt.ai === 'harm' || prompt.ai === 'help' ? Math.min(prompt.max, ranked.length) : prompt.ai === 'best' ? 1 : prompt.min
+  const wanted = prompt.ai === 'harm' || prompt.ai === 'help' ? Math.min(prompt.max, ranked.length) : prompt.ai === 'best' || prompt.ai === 'strip' ? 1 : prompt.min
   const picks = [...ranked, ...rest].slice(0, Math.max(prompt.min, wanted))
   return { type: 'answer', picks }
 }

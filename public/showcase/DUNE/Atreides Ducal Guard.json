@@ -1,0 +1,20 @@
+{
+  "hp": 5,
+  "id": "fd58e059-9d39-413b-9c07-712703458063",
+  "art": {
+    "x": 0,
+    "y": 0,
+    "src": "Atreides Ducal Guard (art).webp",
+    "zoom": 1
+  },
+  "cost": 4,
+  "name": "Atreides Ducal Guard",
+  "text": "[When Played:] Give an Experience token to another friendly [{Atreides}] unit. If it's a [{Trooper}] unit, give an Experience token to this unit too.",
+  "power": 3,
+  "trait": "Atreides, Trooper",
+  "number": "100",
+  "rarity": "C",
+  "frameId": "unit-command-heroism",
+  "setCode": "DUNE",
+  "language": "EN"
+}

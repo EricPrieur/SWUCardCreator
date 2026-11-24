@@ -12,7 +12,7 @@
   "text": "Attach to a non-[{Vehicle}] unit.\nAttached unit gains: \"[On Attack:] Give a Weakness token to the defender.\"\n[Smuggle] [[3 Cunning]]\n[When played using Smuggle:] Give a Weakness token to a ground unit.",
   "power": 1,
   "trait": "Item, Weapon, Poison",
-  "number": "217",
+  "number": "222",
   "rarity": "U",
   "frameId": "upgrade-cunning",
   "setCode": "DUNE",

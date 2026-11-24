@@ -20,11 +20,41 @@
   "text": "[Overwhelm]\n[When Played:] Attack with another friendly [{Harkonnen}] unit, even if it's exhausted. It can't attack bases and gets [+2/+0] and [Overwhelm] for this attack.\n[Action:] Defeat a friendly Spice token. If you do, use this unit's [When Played] ability. Use this ability only once each round.",
   "power": 8,
   "trait": "Harkonnen, Official",
-  "number": "138",
+  "number": "141",
   "rarity": "L",
   "unique": true,
   "frameId": "unit-aggression-villainy",
   "setCode": "DUNE",
   "language": "EN",
-  "subtitle": "Siridar-Baron"
+  "subtitle": "Siridar-Baron",
+  "prescient": {
+    "art": {
+      "x": 0,
+      "y": 10,
+      "src": "Baron Vladimir Harkonnen - Siridar-Baron (prescient art).webp",
+      "zoom": 1.1
+    },
+    "layout": {
+      "hp": {
+        "x": 6,
+        "y": 42
+      },
+      "name": {
+        "x": 0,
+        "y": -9
+      },
+      "text": {
+        "x": 4,
+        "y": 42
+      },
+      "power": {
+        "x": -2,
+        "y": 42
+      },
+      "trait": {
+        "x": -2,
+        "y": 72
+      }
+    }
+  }
 }

@@ -1,0 +1,20 @@
+{
+  "hp": 5,
+  "id": "98ff7973-8ce4-491f-97c8-7532da5ea663",
+  "art": {
+    "x": -1,
+    "y": -4,
+    "src": "Smuggler's Spice Barge (art).webp",
+    "zoom": 1
+  },
+  "cost": 5,
+  "name": "Smuggler's Spice Barge",
+  "text": "[When Played/On Attack:] Create a Spice token.\n[Smuggle] [[6 Cunning]]",
+  "power": 4,
+  "trait": "Underworld, Vehicle, Transport",
+  "number": "213",
+  "rarity": "U",
+  "frameId": "unit-cunning-space",
+  "setCode": "DUNE",
+  "language": "EN"
+}

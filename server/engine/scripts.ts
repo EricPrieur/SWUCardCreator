@@ -80,6 +80,8 @@ export type Abilities = {
   // "When 1 or more upgrades attach to this unit:" (a token given, an upgrade played or moved
   // onto it, a pilot); self.other is the upgrade
   whenUpgradeAttached?: Ability
+  // "When you heal damage from your base:" (Restore, a card's heal; damage actually removed)
+  whenBaseHealed?: Ability
   // When the regroup phase starts; when the action phase starts
   regroupStart?: Ability
   actionStart?: Ability
@@ -154,6 +156,8 @@ export type Abilities = {
   spicePlay?: boolean
   spiceReduces?: number
   toResources?: boolean
+  // A leader's "Draw N more cards in your starting hand."
+  startingHand?: number
 }
 
 export type CardScript = {
@@ -399,6 +403,89 @@ const dune: CardScript[] = [
         if (g.def(top).cost !== g.cost(g.unit(chosen)!)) return
         const pick = g.chooseOne(p, 'Paul Atreides: deal 1 damage to that unit or to a base', [chosen, ...bases()], { ai: 'harm', source: self.def.id })
         if (pick) g.damage(pick, 1, self)
+      },
+    },
+  },
+  {
+    name: 'Atreides Ducal Guard',
+    text: "[When Played:] Give an Experience token to another friendly [{Atreides}] unit. If it's a [{Trooper}] unit, give an Experience token to this unit too.",
+    front: {
+      // Made 2026-11-24: Atreides's first common above 3 cost. The AI picks a Trooper first, for
+      // the second token
+      whenPlayed: (g, self) => {
+        const ids = friendlyIds(g, self, (u) => u.id !== self.id && g.hasTrait(u, 'Atreides'))
+        const trooper = ids.find((id) => g.hasTrait(g.unit(id)!, 'Trooper'))
+        const pick = g.chooseOne(self.controller, 'Atreides Ducal Guard: give an Experience token to another friendly Atreides unit', ids, {
+          ai: trooper ?? 'help',
+          source: self.def.id,
+        })
+        if (!pick) return
+        const unit = g.unit(pick)
+        g.giveToken(pick, 'Experience')
+        if (unit && g.hasTrait(unit, 'Trooper') && g.unit(self.id)) g.giveToken(self.id, 'Experience')
+      },
+    },
+  },
+  {
+    name: 'Caladan Escort Frigate',
+    text: '[When Played/On Attack:] Give an Experience token to another friendly unit.',
+    front: {
+      // Made 2026-11-24: a 5+ cost uncommon for Command Heroism
+      whenPlayed: (g, self) => experienceTo(g, self, friendlyIds(g, self, (u) => u.id !== self.id), 'Caladan Escort Frigate: give an Experience token to another friendly unit'),
+      onAttack: (g, self) => experienceTo(g, self, friendlyIds(g, self, (u) => u.id !== self.id), 'Caladan Escort Frigate: give an Experience token to another friendly unit'),
+    },
+  },
+  {
+    name: 'Sietch Tabr Elder',
+    text: '[Sentinel]\n[When Played:] Heal 3 damage from your base.\n[When you heal damage from your base:] Create a [{Fremen}] token. Use this ability only once each round.',
+    front: {
+      // Made 2026-11-24: a 5+ cost uncommon for Vigilance Heroism. Restore, Kynes's Dream and
+      // Pardot Kynes heal the base too
+      whenPlayed: (g, self) => g.heal(`base${self.controller}`, 3, self),
+      whenBaseHealed: (g, self) => {
+        if (g.used(self)) return
+        g.use(self)
+        g.createToken(self.controller, 'Fremen')
+      },
+    },
+  },
+  {
+    name: "Smuggler's Spice Barge",
+    text: '[When Played/On Attack:] Create a Spice token.\n[Smuggle] [[6 Cunning]]',
+    front: {
+      // Made 2026-11-24: a 5+ cost uncommon for Cunning, Spice for the smugglers' spenders
+      whenPlayed: (g, self) => g.createSpice(self.controller),
+      onAttack: (g, self) => g.createSpice(self.controller),
+    },
+  },
+  {
+    name: 'Turned Asset',
+    text: '[When Played:] You may defeat a friendly [{Spy}] unit. If you do, take control of an enemy non-leader unit that costs [#3] or less.',
+    front: {
+      // Made 2026-11-24: a 5+ cost uncommon for Cunning Villainy, something new for Spies. It may
+      // defeat itself; the AI gives up a Spy token, or a Spy that costs less than what it takes
+      whenPlayed: (g, self) => {
+        const p = self.controller
+        const foe = p === 0 ? 1 : 0
+        const worth = (u: UnitState) => g.def(u).cost * 10 + g.power(u) + g.hp(u) - u.damage
+        const targets = g.units((u) => g.controller(u) === foe && !g.isLeader(u) && g.def(u).cost <= 3).sort((a, b) => worth(b) - worth(a))
+        if (!targets.length) return
+        const spies = friendlyIds(g, self, (u) => g.hasTrait(u, 'Spy'))
+        const best = targets[0]
+        const cheap = spies
+          .map((id) => g.unit(id)!)
+          .filter((u) => g.def(u).token || g.def(u).cost < g.def(best).cost)
+          .sort((a, b) => Number(!!g.def(b).token) - Number(!!g.def(a).token) || g.def(a).cost - g.def(b).cost)[0]
+        const spy = g.chooseOne(p, 'Turned Asset: you may defeat a friendly Spy unit to take control of an enemy unit that costs 3 or less', spies, {
+          optional: true,
+          ai: cheap?.id ?? 'none',
+          source: self.def.id,
+        })
+        if (!spy) return
+        g.defeat(spy)
+        const left = targets.filter((u) => g.unit(u.id)).map((u) => u.id)
+        const pick = g.chooseOne(p, 'Turned Asset: take control of an enemy non-leader unit that costs 3 or less', left, { ai: left[0], source: self.def.id })
+        if (pick) g.takeControl(pick, p)
       },
     },
   },
@@ -680,14 +767,14 @@ const dune: CardScript[] = [
   },
   {
     name: 'CHOAM Spice Broker',
-    text: '[When Played:] Create a Spice token. Then, you may pay [2]. If you do, create another Spice token.',
+    text: '[When Played:] Create a Spice token. Then, you may pay [3]. If you do, create another Spice token.',
     front: {
       whenPlayed: (g, self) => {
         const p = self.controller
         g.createSpice(p)
-        if (!g.canPay(p, 2)) return
+        if (!g.canPay(p, 3)) return
         // The AI pays with resources to spare
-        if (g.may(p, 'CHOAM Spice Broker: pay 2 resources to create another Spice token?', { yes: 'Pay 2', no: 'Skip', ai: g.canPay(p, 4), source: self.def.id }) && g.pay(p, 2))
+        if (g.may(p, 'CHOAM Spice Broker: pay 3 resources to create another Spice token?', { yes: 'Pay 3', no: 'Skip', ai: g.canPay(p, 5), source: self.def.id }) && g.pay(p, 3))
           g.createSpice(p)
       },
     },
@@ -785,10 +872,10 @@ const dune: CardScript[] = [
   {
     name: 'Korba',
     subtitle: 'Fedaykin Commander',
-    text: '[When Played/On Attack:] Give an Experience token to each friendly Fremen token.',
+    text: '[When Played/On Attack:] Give an Experience token to each of up to 2 other friendly [{Fremen}] units.',
     front: {
-      whenPlayed: (g, self) => korbaTokens(g, self),
-      onAttack: (g, self) => korbaTokens(g, self),
+      whenPlayed: (g, self) => upToTwoExperience(g, self, 'Fremen'),
+      onAttack: (g, self) => upToTwoExperience(g, self, 'Fremen'),
     },
   },
   {
@@ -1020,12 +1107,10 @@ const dune: CardScript[] = [
   {
     name: 'Captain Aramsham',
     subtitle: 'Sardaukar Hunter',
-    text: 'As an additional cost to play this unit, defeat a friendly Spice token.\nEnemy units lose [Hidden] and [Ambush].\n[When Played:] Give an Experience token to each other friendly [{Sardaukar}] unit.',
+    text: 'As an additional cost to play this unit, defeat a friendly Spice token.\nEnemy units lose [Hidden] and [Ambush].\n[When Played:] Give an Experience token to each of up to 2 other friendly [{Sardaukar}] units.',
     front: {
       gives: (g, self, unit) => (g.controller(unit) !== self.controller ? { loses: ['hidden', 'ambush'] } : undefined),
-      whenPlayed: (g, self) => {
-        for (const id of friendlyIds(g, self, (u) => u.id !== self.id && g.hasTrait(u, 'Sardaukar'))) g.giveToken(id, 'Experience')
-      },
+      whenPlayed: (g, self) => upToTwoExperience(g, self, 'Sardaukar'),
     },
   },
   {
@@ -1369,7 +1454,7 @@ const dune: CardScript[] = [
   },
   {
     name: 'Spotter \'Thopter',
-    text: '[When Played/On Attack:] If you control an [{Arrakis}] base and a [{Harvester}] [{Vehicle}] unit, create a Spice token.',
+    text: '[Raid 1]\n[When Played/On Attack:] If you control an [{Arrakis}] base and a [{Harvester}] [{Vehicle}] unit, create a Spice token.',
     front: { whenPlayed: spotterSpice, onAttack: spotterSpice },
   },
   {
@@ -2056,34 +2141,38 @@ const dune: CardScript[] = [
   },
   {
     name: 'Lasgun Volley',
-    text: 'Deal 4 damage to a unit. Then, you may defeat a friendly Spice token. If you do, deal 2 damage to the same unit.',
+    text: 'Deal 4 damage to a unit. Then, you may defeat a friendly Spice token. If you do, deal 2 damage to a unit or base.',
     front: {
       play: (g, self) => {
         const p = self.controller
         const pick = g.chooseOne(p, 'Lasgun Volley: deal 4 damage to a unit', g.units().map((u) => u.id), { ai: 'harm', source: self.def.id })
-        if (!pick) return
-        g.damage(pick, 4, self)
-        if (!g.unit(pick) || !g.spice(p)) return
-        if (g.may(p, `Lasgun Volley: defeat a Spice token to deal 2 more damage to ${g.name(pick)}?`, { yes: 'Defeat a Spice token', no: 'Skip', source: self.def.id }) && g.defeatSpice(p))
-          g.damage(pick, 2, self)
+        if (pick) g.damage(pick, 4, self)
+        if (!g.spice(p)) return
+        if (!g.may(p, 'Lasgun Volley: defeat a Spice token to deal 2 damage to a unit or base?', { yes: 'Defeat a Spice token', no: 'Skip', source: self.def.id }) || !g.defeatSpice(p)) return
+        // The AI finishes off a unit the 2 defeat, else hits the enemy base
+        const foe = p === 0 ? 1 : 0
+        const finish = g.units().filter((u) => g.controller(u) === foe && g.hp(u) - u.damage <= 2).sort((a, b) => g.def(b).cost - g.def(a).cost)[0]
+        const target = g.chooseOne(p, 'Lasgun Volley: deal 2 damage to a unit or base', [...g.units().map((u) => u.id), 'base0', 'base1'], {
+          ai: finish?.id ?? `base${foe}`,
+          source: self.def.id,
+        })
+        if (target) g.damage(target, 2, self)
       },
     },
   },
   {
     name: "Kynes's Dream",
-    text: '[PLOT]\nHeal 3 damage from a unit or base. Then, you may defeat up to 2 friendly Spice tokens. Heal 3 damage from your base for each Spice token defeated this way.',
+    text: '[PLOT]\nHeal 3 damage from your base and from each friendly [{Fremen}] unit. Give an Experience token to each [{Fremen}] unit healed this way.',
     front: {
+      // Reworked 2026-11-23 (it lost 24 points in the pool gauntlet): was 3 healed from a unit or
+      // base, then up to 2 Spice tokens for 3 more on the base each
       play: (g, self) => {
         const p = self.controller
-        healOne(g, self, 3)
-        if (!g.spice(p)) return
-        const counts = Array.from({ length: Math.min(2, g.spice(p)) + 1 }, (_, k) => `${k} (heal ${3 * k})`)
-        // The AI spends only for damage there is to heal
-        const worth = Math.min(counts.length - 1, Math.floor(g.player(p).base.damage / 3))
-        const spent = g.option(p, "Kynes's Dream: defeat how many Spice tokens?", counts, { ai: worth, source: self.def.id })
-        let healed = 0
-        for (let k = 0; k < spent; k++) if (g.defeatSpice(p)) healed += 3
-        g.heal(`base${p}`, healed, self)
+        g.heal(`base${p}`, 3, self)
+        for (const id of friendlyIds(g, self, (u) => u.damage > 0 && g.hasTrait(u, 'Fremen'))) {
+          g.heal(id, 3, self)
+          if (g.unit(id)) g.giveToken(id, 'Experience')
+        }
       },
     },
   },
@@ -2322,10 +2411,11 @@ const dune: CardScript[] = [
   },
   {
     name: 'The Butlerian Jihad',
-    text: 'Defeat each [{Vehicle}] unit.',
+    text: 'Defeat each [{Vehicle}] unit and each [{Item}] upgrade.',
     front: {
       play: (g, self) => {
         for (const id of unitIds(g, (u) => g.hasTrait(u, 'Vehicle'))) g.defeat(id, self)
+        for (const unit of g.units()) for (const upgrade of unit.upgrades) if (g.def(upgrade).traits.includes('Item')) g.defeatUpgrade(upgrade.id)
       },
     },
   },
@@ -2385,21 +2475,31 @@ const dune: CardScript[] = [
   },
   {
     name: "Earning the Fremen's respect",
-    text: 'You may defeat a friendly ground [{Vehicle}] unit, any number of friendly Spice tokens, or both. Create 2 [{Fremen}] tokens if you defeated a unit this way, plus 1 for each Spice token defeated this way.',
+    text: 'Discard up to 3 cards from your hand and defeat any number of friendly Spice tokens. Create a [{Fremen}] token for each card discarded this way (2 for a [{Vehicle}] card) and for each Spice token defeated this way.',
     front: {
       play: (g, self) => {
         const p = self.controller
-        const vehicles = friendlyIds(g, self, (u) => u.arena === 'ground' && g.hasTrait(u, 'Vehicle') && !g.isLeader(u))
-        const vehicle = g.chooseOne(p, "Earning the Fremen's respect: you may defeat a friendly ground Vehicle unit", vehicles, {
-          optional: true,
-          ai: 'none',
+        const hand = g.player(p).hand
+        // The AI keeps the 2 cards it can best play next, and throws in the rest (Vehicles first)
+        const kept = [...hand].sort((a, b) => g.def(a).cost - g.def(b).cost).slice(0, 2).map((c) => c.id)
+        const thrown = hand.filter((c) => !kept.includes(c.id)).sort((a, b) => Number(g.def(b).traits.includes('Vehicle')) - Number(g.def(a).traits.includes('Vehicle')))
+        const picks = g.choose(p, "Earning the Fremen's respect: discard up to 3 cards from your hand", hand.map((c) => c.id), {
+          min: 0,
+          max: 3,
+          ai: `ids:${thrown.slice(0, 3).map((c) => c.id).join(',')}`,
           source: self.def.id,
         })
-        if (vehicle) g.defeat(vehicle)
+        let fremen = 0
+        for (const id of picks) {
+          const card = hand.find((c) => c.id === id)
+          if (!card) continue
+          fremen += g.def(card).traits.includes('Vehicle') ? 2 : 1
+          g.discard(p, id)
+        }
         const counts = Array.from({ length: g.spice(p) + 1 }, (_, n) => `${n} Spice token${n === 1 ? '' : 's'}`)
         const spent = counts.length > 1 ? g.option(p, "Earning the Fremen's respect: defeat how many Spice tokens?", counts, { ai: counts.length - 1, source: self.def.id }) : 0
         for (let i = 0; i < spent; i++) g.defeatSpice(p)
-        const fremen = (vehicle ? 2 : 0) + spent
+        fremen += spent
         for (let i = 0; i < fremen; i++) g.createToken(p, 'Fremen')
       },
     },
@@ -2558,17 +2658,28 @@ const dune: CardScript[] = [
   },
   {
     name: 'Gom Jabbar',
-    text: 'Attach to a non-[{Vehicle}], non-leader unit.\nAttached unit gains: "When this unit becomes exhausted, defeat it unless its controller discards a card from their hand."',
+    text: 'Attach to a non-[{Vehicle}], non-leader unit.\n[When Played:] Exhaust attached unit.\nAttached unit gains: "This unit doesn\'t ready during the regroup phase unless its controller discards a card from their hand."',
     front: {
-      whenAttachedExhausted: (g, self) => {
+      // Defeat unless they discard each time it exhausted until 2026-11-23 (user: it stays
+      // exhausted instead, unless they discard to ready it)
+      whenPlayed: (g, self) => {
+        if (self.other) g.exhaust(self.other)
+      },
+      regroupStart: (g, self) => {
         const unit = self.attachedTo ? g.unit(self.attachedTo) : undefined
-        if (!unit) return
+        if (!unit?.exhausted) return
         const p = g.controller(unit)
-        const keep =
+        // The AI pays for a unit worth more than the card it gives up
+        const ready =
           g.player(p).hand.length > 0 &&
-          g.may(p, `Gom Jabbar: discard a card from your hand to keep ${g.name(unit.id)}?`, { yes: 'Discard a card', no: 'Let it be defeated', source: self.def.id })
-        if (keep) g.discardChosen(p, 1, 'Gom Jabbar: choose a card to discard', self.def.id)
-        else g.defeat(unit.id)
+          g.may(p, `Gom Jabbar: discard a card from your hand so ${g.name(unit.id)} readies?`, {
+            yes: 'Discard a card',
+            no: 'It stays exhausted',
+            ai: g.player(p).hand.length >= 2 && g.def(unit).cost >= 3,
+            source: self.def.id,
+          })
+        if (ready) g.discardChosen(p, 1, 'Gom Jabbar: choose a card to discard', self.def.id)
+        else g.hold(unit.id)
       },
     },
   },
@@ -2749,18 +2860,18 @@ const dune: CardScript[] = [
   },
   {
     name: 'Frigate in Harkonnen Livery',
-    text: '[PLOT]\n[When Played:] Ready a friendly ground [{Trooper}] unit. It gets [+2/+0] for this phase.',
+    text: '[PLOT]\n[When Played:] You may attack with a friendly ground [{Trooper}] unit. It gets [+2/+0] for this attack.',
     front: {
+      // Readied the Trooper with +2/+0 for the phase until 2026-11-23 (it won 20 points more
+      // than the card it replaced in the pool gauntlet)
       whenPlayed: (g, self) => {
-        const troopers = friendlyIds(g, self, (u) => u.arena === 'ground' && g.hasTrait(u, 'Trooper'))
-        // The AI readies an exhausted one first
-        const pick = g.chooseOne(self.controller, 'Frigate in Harkonnen Livery: ready a friendly ground Trooper unit, with +2/+0 for this phase', troopers, {
-          ai: troopers.find((id) => g.unit(id)?.exhausted) ?? 'help',
+        const troopers = friendlyIds(g, self, (u) => u.arena === 'ground' && g.hasTrait(u, 'Trooper') && g.canAttack(u.id))
+        const pick = g.chooseOne(self.controller, 'Frigate in Harkonnen Livery: you may attack with a friendly ground Trooper unit (+2/+0)', troopers, {
+          optional: true,
+          ai: 'help',
           source: self.def.id,
         })
-        if (!pick) return
-        g.ready(pick)
-        g.buff(pick, 2, 0, 'phase')
+        if (pick) g.attackWith(pick, { power: 2 })
       },
     },
   },
@@ -3930,9 +4041,18 @@ function imperialSpy(g: Game, self: Self) {
   } else if (where === 2) g.mill(foe, top.id)
 }
 
-// "Give an Experience token to each friendly Fremen token." (Korba)
-function korbaTokens(g: Game, self: Self) {
-  for (const id of friendlyIds(g, self, (u) => !!g.def(u).token && g.def(u).name === 'Fremen')) g.giveToken(id, 'Experience')
+// "Give an Experience token to each of up to 2 other friendly [{Trait}] units." (Korba, Captain
+// Aramsham; Korba gave one to each Fremen token and Aramsham to each other Sardaukar until
+// 2026-11-23)
+function upToTwoExperience(g: Game, self: Self, trait: string) {
+  const ids = friendlyIds(g, self, (u) => u.id !== self.id && g.hasTrait(u, trait))
+  const picks = g.choose(self.controller, `${self.def.name}: give an Experience token to each of up to 2 other friendly ${trait} units`, ids, {
+    min: 0,
+    max: 2,
+    ai: 'help',
+    source: self.def.id,
+  })
+  for (const id of picks) g.giveToken(id, 'Experience')
 }
 
 // A Trick event played, readying Shishakli

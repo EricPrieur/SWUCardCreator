@@ -12,8 +12,8 @@
   "text": "Whenever a friendly [{Harkonnen}] unit is defeated, create a Spice token. Use this ability only once each round.",
   "power": 3,
   "trait": "Harkonnen, Trooper, Harvester",
-  "number": "130",
-  "rarity": "U",
+  "number": "133",
+  "rarity": "C",
   "frameId": "unit-aggression-villainy",
   "setCode": "DUNE",
   "language": "EN"

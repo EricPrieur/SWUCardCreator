@@ -1582,6 +1582,33 @@ input.picker-button::placeholder {
   letter-spacing: 0.08em;
 }
 
+/* A Showdown promo's placing (Sealed event prizes): a gold banner at the top right, under the name */
+.card-showdown {
+  position: absolute;
+  right: 5%;
+  top: 16%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.8cqw 3.5cqw;
+  border: 0.5cqw solid #f4d58a;
+  border-radius: 1cqw;
+  background: linear-gradient(180deg, #2a1606 0%, #4a2a0c 55%, #2a1606 100%);
+  box-shadow: 0 0 2.5cqw rgb(0 0 0 / 0.7), inset 0 0 1.5cqw rgb(244 213 138 / 0.35);
+  color: #f7dc95;
+  font-family: 'Barlow Semi Condensed', 'Barlow', sans-serif;
+  text-transform: uppercase;
+  white-space: nowrap;
+  line-height: 1;
+  pointer-events: none;
+}
+.card-showdown-place {
+  font-size: 5.4cqw;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-shadow: 0 0.3cqw 0.6cqw rgb(0 0 0 / 0.8);
+}
+
 /* The block: a letter in a small box, a little left of the middle of the line */
 .card-line-block {
   position: absolute;

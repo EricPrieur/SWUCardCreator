@@ -12,8 +12,8 @@
   "text": "[Saboteur]\n[Hidden]\n[Restore 2]",
   "power": 3,
   "trait": "Bene Gesserit, Spy",
-  "number": "060",
-  "rarity": "U",
+  "number": "061",
+  "rarity": "C",
   "frameId": "unit-vigilance",
   "setCode": "DUNE",
   "language": "EN"

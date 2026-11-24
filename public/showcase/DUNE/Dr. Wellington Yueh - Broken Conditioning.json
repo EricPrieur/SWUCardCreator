@@ -12,7 +12,7 @@
   "text": "[PLOT]\n[When Played:] Exhaust an enemy ground unit.\n[When Played using Plot:] Exhaust each enemy ground unit that costs [#4] or less. Then, defeat this unit.",
   "power": 3,
   "trait": "Atreides, Suk, Spy",
-  "number": "173",
+  "number": "176",
   "rarity": "R",
   "unique": true,
   "frameId": "unit-cunning-villainy",

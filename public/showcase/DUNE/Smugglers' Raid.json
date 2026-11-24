@@ -11,7 +11,7 @@
   "name": "Smugglers' Raid",
   "text": "Attack with a unit. It gets [+2/+0] for this attack.\n[Smuggle] [[4 Cunning]]",
   "trait": "Trick",
-  "number": "211",
+  "number": "216",
   "rarity": "C",
   "frameId": "event-cunning",
   "setCode": "DUNE",

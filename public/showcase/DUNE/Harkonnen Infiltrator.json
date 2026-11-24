@@ -12,8 +12,8 @@
   "text": "[PLOT]\n[When Defeated:] Deal 2 damage to a unit.",
   "power": 2,
   "trait": "Harkonnen, Trooper",
-  "number": "126",
-  "rarity": "U",
+  "number": "129",
+  "rarity": "C",
   "frameId": "unit-aggression-villainy",
   "setCode": "DUNE",
   "language": "EN"

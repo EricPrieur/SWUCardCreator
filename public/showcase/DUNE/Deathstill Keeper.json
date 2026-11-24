@@ -12,7 +12,7 @@
   "text": "[When a friendly [{Fremen}] unit is defeated (including this one):] Deal 1 damage to an enemy base.",
   "power": 2,
   "trait": "Fremen",
-  "number": "147",
+  "number": "150",
   "rarity": "U",
   "frameId": "unit-aggression-heroism",
   "setCode": "DUNE",

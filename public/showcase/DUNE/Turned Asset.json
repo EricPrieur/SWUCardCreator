@@ -1,0 +1,21 @@
+{
+  "hp": 5,
+  "id": "fe235d80-8200-42c5-af8d-7755f59ae1bf",
+  "art": {
+    "x": 3,
+    "y": -7,
+    "src": "Turned Asset (art).webp",
+    "zoom": 1.3,
+    "rotate": 0
+  },
+  "cost": 6,
+  "name": "Turned Asset",
+  "text": "[When Played:] You may defeat a friendly [{Spy}] unit. If you do, take control of an enemy non-leader unit that costs [#3] or less.",
+  "power": 4,
+  "trait": "Spy",
+  "number": "182",
+  "rarity": "U",
+  "frameId": "unit-cunning-villainy",
+  "setCode": "DUNE",
+  "language": "EN"
+}

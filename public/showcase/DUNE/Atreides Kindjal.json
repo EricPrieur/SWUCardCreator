@@ -13,7 +13,7 @@
   "text": "Attach to a non-[{Vehicle}] unit.\nAttached unit gains [Saboteur].",
   "power": 1,
   "trait": "Atreides, Item, Weapon",
-  "number": "106",
+  "number": "109",
   "rarity": "C",
   "frameId": "upgrade-command-heroism",
   "setCode": "DUNE",

@@ -10,7 +10,7 @@
   },
   "cost": 2,
   "name": "Gom Jabbar",
-  "text": "Attach to a non-[{Vehicle}], non-leader unit.\nAttached unit gains: \"When this unit becomes exhausted, defeat it unless its controller discards a card from their hand.\"",
+  "text": "Attach to a non-[{Vehicle}], non-leader unit.\n[When Played:] Exhaust attached unit.\nAttached unit gains: \"This unit doesn't ready during the regroup phase unless its controller discards a card from their hand.\"",
   "power": 0,
   "trait": "Bene Gesserit",
   "number": "047",

@@ -2177,7 +2177,16 @@ function tokensBehindBases(cards: ShowcaseCard[]) {
 // "P1-2" for player 1's pack 2. prescient: drawn as its full-art Prescient version. code: printed
 // in place of the artist (see printCode).
 // promo: one of your own cards (your Showroom's), printed two-sided with another on its back
-type PrintCard = { entry: ShowcaseCard; prescient?: boolean; tag?: string; code?: string; promo?: { front: Card; back?: Card } }
+// showdown: a Showdown promo's placing, stamped across its art (see SHOWDOWN_PROMOS)
+type PrintCard = { entry: ShowcaseCard; prescient?: boolean; tag?: string; code?: string; showdown?: string; promo?: { front: Card; back?: Card } }
+
+// A Sealed event's prizes, the Showdown promos: Prescient legendaries stamped with the place won.
+// Run A: Paul Atreides, Muad'Dib for the top 4 (champion, finalist and both semi-finalists), the
+// Baron, Siridar-Baron for 5th to 8th (the user, 2026-11-23). Left out when the set has no such card.
+const SHOWDOWN_PROMOS: { name: string; subtitle: string; places: string[] }[] = [
+  { name: 'Paul Atreides', subtitle: "Muad'Dib", places: ['CHAMPION', 'FINALIST', 'TOP 4', 'TOP 4'] },
+  { name: 'Baron Vladimir Harkonnen', subtitle: 'Siridar-Baron', places: ['TOP 8', 'TOP 8', 'TOP 8', 'TOP 8'] },
+]
 
 // A Sealed print run's code on each card, to put the packs back together and reprint one:
 // "A07-12" is run A, pack 07 of the event, its 12th card. The next event is run B.
@@ -2249,6 +2258,13 @@ function PrintFiles(props: { folder: string; cards: ShowcaseCard[]; load?: (entr
     ...twoSided.flatMap((card) => Array.from({ length: eachOf(card) }, () => ({ front: card }))),
   ]
   const promosOn = !own && promo.on && promoSet.length > 0
+  // The Showdown promos, the event's prizes, printed last
+  const [showdownOn, setShowdownOn] = useRemembered(`showcase.${folder}.showdown`, true)
+  const showdownCards = SHOWDOWN_PROMOS.flatMap(({ name, subtitle, places }) => {
+    const entry = cards.find((card) => card.name === name && card.subtitle === subtitle)
+    return entry ? places.map((place) => ({ entry, place })) : []
+  })
+  const showdownPrints = !own && showdownOn ? showdownCards : []
   const { draw, stage, done: doneDrawing } = useCardDrawer()
   const [status, setStatus] = useState<string | null>(null)
   const [progress, setProgress] = useState<{ at: number; of: number; name: string } | null>(null)
@@ -2381,6 +2397,12 @@ function PrintFiles(props: { folder: string; cards: ShowcaseCard[]; load?: (entr
           promoSet.map(({ front, back }) => ({ entry: showcaseEntry(front), tag: `PROMO P${i + 1}`, promo: { front, back } })),
         ).flat()
       : []
+    // The prizes, after everything else: "SHOWDOWN 1" (the champion's) to "SHOWDOWN 8"
+    const showdownText = showdownPrints.length
+      ? `${showdownPrints.length} Showdown promos (the prizes, Prescient, the place stamped on the art), last: ${showdownPrints
+          .map(({ entry, place }, i) => `${i + 1} ${label(entry)} ${place}`)
+          .join('; ')}. "SHOWDOWN 1" in a file name for the first.`
+      : ''
     return {
       name: `${set} Sealed event ${run} deal ${deal} ${count} player${count === 1 ? '' : 's'}.zip`,
       cards: [
@@ -2391,12 +2413,19 @@ function PrintFiles(props: { folder: string; cards: ShowcaseCard[]; load?: (entr
           }),
         ),
         ...promoPrints,
+        ...showdownPrints.map(({ entry, place }, i) => ({
+          entry,
+          prescient: true,
+          showdown: place,
+          tag: `SHOWDOWN ${i + 1} ${place}`,
+          code: `${run} SHOWDOWN`,
+        })),
       ],
       // A deck ends with a whole pack
       deckSize: Math.floor(PRINT_DECK_MAX / EVENT_PACK_SIZE) * EVENT_PACK_SIZE,
       spares: spareTokens && { ...spareTokens, max: PRINT_SPARE_TOKENS },
       notes: (decks, spares) => ({
-        'packs.txt': promoText ? `${packsText}\n${promoText}\n` : packsText,
+        'packs.txt': [packsText, promoText, showdownText].filter(Boolean).join('\n') + (promoText || showdownText ? '\n' : ''),
         'print run.csv': runCsv + '\n',
         'README.txt': [
           `${set} Sealed event for ${count} player${count === 1 ? '' : 's'}: ${packs.length} packs of ${EVENT_PACK_SIZE}, ${total} cards, ${different} different.`,
@@ -2408,10 +2437,11 @@ function PrintFiles(props: { folder: string; cards: ShowcaseCard[]; load?: (entr
           'mixed pile by code to put the packs back together; to reprint a pack, print its 15 files again.',
           'packs.txt lists each pack, print run.csv how many of each card.',
           ...(promoText ? [promoText] : []),
+          ...(showdownText ? [showdownText] : []),
           `These are print run ${run}, deal ${deal}. The Sealed event window deals the same packs again for run ${run}, deal ${deal} and`,
           `${count} player${count === 1 ? '' : 's'}, as long as the set's cards have not changed since; packs.txt is the record either way.`,
           '',
-          ...layoutNote(total + promoCount + spares, decks, spares),
+          ...layoutNote(total + promoCount + showdownPrints.length + spares, decks, spares),
         ].join('\n'),
       }),
     }
@@ -2482,13 +2512,13 @@ function PrintFiles(props: { folder: string; cards: ShowcaseCard[]; load?: (entr
           }
           return { front: fronts.get(key)!, back: backs.get(key)! }
         }
-        const { entry, prescient, code } = card
+        const { entry, prescient, code, showdown } = card
         const full = await cardOf(entry)
         // A wild card: its Prescient version, with the shared card back. A Prescient base: its token
         // on the back is Prescient too. A Prescient leader: both its sides
         const face = prescient && canBePrescient(entry.type) ? prescientOf(full) : shownOf(full)
         const frontKey = `${entry.id ?? entry.image}${prescient ? '|prescient' : ''}`
-        const front = code ? await drawn({ ...face, code }, false) : (fronts.get(frontKey) ?? (await drawn(face, false)))
+        const front = code ? await drawn({ ...face, code, showdown }, false) : (fronts.get(frontKey) ?? (await drawn(face, false)))
         if (!code && plan.cards.filter((each) => each.entry === entry && !!each.prescient === !!prescient).length > 1) fronts.set(frontKey, front)
         // A common base's token, or the token chosen for a token's back
         const token = behind.get(entry) ?? pairs.get(entry)
@@ -2538,7 +2568,7 @@ function PrintFiles(props: { folder: string; cards: ShowcaseCard[]; load?: (entr
   }
 
   const count = Math.min(EVENT_MAX_PLAYERS, Math.max(1, Number(players) || 8))
-  const eventCards = count * EVENT_PACKS * EVENT_PACK_SIZE + (promosOn ? count * promoSet.length : 0)
+  const eventCards = count * EVENT_PACKS * EVENT_PACK_SIZE + (promosOn ? count * promoSet.length : 0) + showdownPrints.length
   const dealFor = (players: number, run = runLetter, deal = deals[run] ?? 0) => {
     setPlan(planSealedEvent(printable, players, seededRandom(`${folder}|${run}|${players}|${deal}`)))
     setViewed((was) => Math.min(was, players))
@@ -2757,6 +2787,43 @@ function PrintFiles(props: { folder: string; cards: ShowcaseCard[]; load?: (entr
                 )}
               </div>
             )}
+            {showdownCards.length > 0 && (
+              <>
+              <div className="event-bar">
+                <label className="event-players" title="Print the event's prizes after everything else: Prescient legendaries with the place won stamped on the art">
+                  <input type="checkbox" checked={showdownOn} onChange={(event) => setShowdownOn(event.target.checked)} /> Showdown promos
+                </label>
+                <span className="account-note">
+                  {SHOWDOWN_PROMOS.filter(({ name, subtitle }) => showdownCards.some(({ entry }) => entry.name === name && entry.subtitle === subtitle))
+                    .map(({ name, subtitle, places }) => `${name}, ${subtitle}: ${places.join(', ')}`)
+                    .join('; ')}
+                </span>
+              </div>
+              {showdownOn && (
+                <section className="event-pack">
+                  <h3>
+                    Showdown promos <span className="account-note">(the prizes, printed last)</span>
+                  </h3>
+                  <ul>
+                    {showdownCards.map(({ entry, place }, index) => (
+                      <li key={index} className="event-card event-wild" title={`${label(entry)}: ${place}`}>
+                        <div className="event-face">
+                          <ShowcaseDrawn
+                            folder={folder}
+                            image={entry.image}
+                            fallback={asset(`${folder}/${encodeURIComponent(entry.image)}.jpg`)}
+                            prescient
+                            code={`${runLetter} SHOWDOWN`}
+                            showdown={place}
+                          />
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+              </>
+            )}
             <div className="deck-tabs" role="tablist" aria-label="Player">
               {Array.from({ length: count }, (_, i) => i + 1).map((player) => (
                 <button key={player} type="button" role="tab" aria-selected={viewed === player} onClick={() => setViewed(player)}>
@@ -2769,11 +2836,19 @@ function PrintFiles(props: { folder: string; cards: ShowcaseCard[]; load?: (entr
               const names = mine.flatMap((pack) => pack.cards.map(({ card }) => card.name))
               const repeats = names.length - new Set(names).size
               const tops = mine.flatMap((pack) => pack.cards.filter(({ card }) => card.rarity === 'L' || card.rarity === 'R'))
+              const all = mine.flatMap((pack) => pack.cards)
+              const leaders = all.filter(({ slot }) => slot === 'Leader')
+              const showcaseLeaders = leaders.filter(({ prescient }) => prescient).length
+              // The set's main tribes, the smugglers by their Underworld trait
+              // (each card drawn counts, a second copy too)
+              const count = (trait: string) => all.filter(({ card }) => card.traits.includes(trait)).length
+              const tribes = POOL_TRIBES.map(([label, trait]) => `${label} ${count(trait)}${trait === 'Emperor' ? ` (Sardaukar ${count('Sardaukar')})` : ''}`)
               return (
                 <>
                   <p className="account-note">
                     {tops.filter(({ card }) => card.rarity === 'L').length} legendary, {tops.filter(({ card }) => card.rarity === 'R').length} rare
-                    {repeats ? `, ${repeats} card${repeats === 1 ? '' : 's'} twice in the pool` : ', no card twice in the pool'}.
+                    {repeats ? `, ${repeats} card${repeats === 1 ? '' : 's'} twice in the pool` : ', no card twice in the pool'}
+                    , {showcaseLeaders} of {leaders.length} leaders Showcase. Cards by tribe: {tribes.join(', ')}.
                   </p>
                   {mine.map((pack) => {
                     const number = plan.packs.indexOf(pack) + 1
@@ -3807,8 +3882,9 @@ function ShowcasePrescient(props: { folder: string; image: string; fallback: str
 // A Showcase card drawn from its .json rather than shown as its image: in full art (prescient),
 // or with a print run's code in place of the artist. Its image is shown until the .json has come.
 // back: its other side (a leader's unit side, a base's second side)
-function ShowcaseDrawn(props: { folder: string; image: string; fallback: string; prescient?: boolean; code?: string; back?: boolean }) {
-  const { folder, image, fallback, prescient, code, back } = props
+// showdown: a Showdown promo's placing stamped on it
+function ShowcaseDrawn(props: { folder: string; image: string; fallback: string; prescient?: boolean; code?: string; back?: boolean; showdown?: string }) {
+  const { folder, image, fallback, prescient, code, back, showdown } = props
   const [card, setCard] = useState<Card | null>(null)
   useEffect(() => {
     let live = true
@@ -3823,7 +3899,7 @@ function ShowcaseDrawn(props: { folder: string; image: string; fallback: string;
   if (prescient && !code && !card.prescient && card.look?.frameOpacity === 0)
     return <img className="showcase-image" src={fallback} alt="" />
   const face = prescient ? prescientOf(card) : card
-  return <CardFace card={code ? { ...face, code } : face} back={back} />
+  return <CardFace card={code || showdown ? { ...face, code, showdown } : face} back={back} />
 }
 
 const deckGroups = ['Ground units', 'Space units', 'Events', 'Upgrades'] as const
@@ -5581,6 +5657,16 @@ const PRESCIENT_FOIL_ODDS = 1 / 6
 const PRESCIENT_SIDE_ODDS = 1 / 6
 type PackSlot = 'Leader' | 'Base' | 'Common' | 'Uncommon' | 'Prescient' | 'Rare' | 'Legendary' | 'Foil'
 type PackCard = { card: DeckCard; slot: PackSlot; printing: Printing }
+// The tribes a Sealed pool counts, each with the trait that marks it
+const POOL_TRIBES: [string, string][] = [
+  ['Fremen', 'Fremen'],
+  ['Atreides', 'Atreides'],
+  ['Emperor', 'Emperor'],
+  ['Bene Gesserit', 'Bene Gesserit'],
+  ['Smuggler', 'Underworld'],
+  ['Harkonnen', 'Harkonnen'],
+]
+// Sardaukar, counted inside the Emperor's
 const boosterBack = asset('/sim/DuneCardBack01.jpg')
 
 const pickOne = <T,>(list: T[]): T | undefined => list[Math.floor(Math.random() * list.length)]

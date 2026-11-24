@@ -21,7 +21,7 @@
   "text": "[When Played/When Defeated:] Give an Experience token to each other friendly unit.",
   "power": 7,
   "trait": "Atreides, Official",
-  "number": "103",
+  "number": "106",
   "rarity": "L",
   "unique": true,
   "frameId": "unit-command-heroism",

@@ -1,0 +1,20 @@
+{
+  "hp": 6,
+  "id": "c1421bba-fb31-428f-a09b-8e66626d43cd",
+  "art": {
+    "x": 0,
+    "y": 0,
+    "src": "Caladan Escort Frigate (art).webp",
+    "zoom": 1
+  },
+  "cost": 5,
+  "name": "Caladan Escort Frigate",
+  "text": "[When Played/On Attack:] Give an Experience token to another friendly unit.",
+  "power": 3,
+  "trait": "Atreides, Vehicle, Capital Ship",
+  "number": "105",
+  "rarity": "U",
+  "frameId": "unit-command-heroism-space",
+  "setCode": "DUNE",
+  "language": "EN"
+}
