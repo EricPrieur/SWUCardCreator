@@ -1,0 +1,12 @@
+{
+  "id": "swu-HMW-019",
+  "frameId": "base-vigilance-text",
+  "name": "Dune Sea",
+  "trait": "Tatooine",
+  "text": "",
+  "unique": false,
+  "hp": 30,
+  "setCode": "HMW",
+  "number": "019",
+  "rarity": "C"
+}

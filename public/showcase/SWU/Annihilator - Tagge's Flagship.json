@@ -1,0 +1,15 @@
+{
+  "id": "swu-JTL-041",
+  "frameId": "unit-vigilance-villainy-space",
+  "name": "Annihilator",
+  "subtitle": "Tagge's Flagship",
+  "trait": "Imperial, Vehicle, Capital Ship",
+  "text": "[When Played/When Defeated:] You may defeat an enemy unit. If you do, search its controller's deck and hand for each card with that unit's name and discard them.",
+  "unique": true,
+  "cost": 11,
+  "power": 12,
+  "hp": 12,
+  "setCode": "JTL",
+  "number": "041",
+  "rarity": "L"
+}

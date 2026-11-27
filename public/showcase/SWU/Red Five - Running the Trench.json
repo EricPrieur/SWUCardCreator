@@ -1,0 +1,15 @@
+{
+  "id": "swu-JTL-151",
+  "frameId": "unit-aggression-heroism-space",
+  "name": "Red Five",
+  "subtitle": "Running the Trench",
+  "trait": "Rebel, Vehicle, Fighter",
+  "text": "[On Attack:] You may deal 2 damage to a damaged unit.",
+  "unique": true,
+  "cost": 3,
+  "power": 3,
+  "hp": 4,
+  "setCode": "JTL",
+  "number": "151",
+  "rarity": "U"
+}

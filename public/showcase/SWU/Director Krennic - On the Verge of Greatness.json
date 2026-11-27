@@ -1,0 +1,15 @@
+{
+  "id": "swu-JTL-032",
+  "frameId": "unit-vigilance-villainy",
+  "name": "Director Krennic",
+  "subtitle": "On the Verge of Greatness",
+  "trait": "Imperial, Official",
+  "text": "[Shielded]\nThe first unit you play each round that has a \"[When Defeated] \" ability costs [1] less.",
+  "unique": true,
+  "cost": 2,
+  "power": 2,
+  "hp": 2,
+  "setCode": "JTL",
+  "number": "032",
+  "rarity": "U"
+}

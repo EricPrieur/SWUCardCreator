@@ -1,0 +1,12 @@
+{
+  "id": "swu-LAW-041",
+  "frameId": "event-vigilance-command",
+  "name": "Nothing Left to Fear",
+  "trait": "Innate",
+  "text": "Choose a friendly unit and give it +2/+2 for this phase. Then, you may defeat a non-leader unit with power equal to or less than the chosen unit.",
+  "unique": false,
+  "cost": 5,
+  "setCode": "LAW",
+  "number": "041",
+  "rarity": "U"
+}

@@ -1,0 +1,14 @@
+{
+  "id": "swu-LOF-102",
+  "frameId": "upgrade-command-heroism",
+  "name": "Yoda's Lightsaber",
+  "trait": "Item, Weapon, Lightsaber",
+  "text": "Attach to a non-[{Vehicle}] unit.\n[When Played:] You may use the [{Force}]. If you do, heal 3 damage from a base.",
+  "unique": true,
+  "cost": 2,
+  "power": 3,
+  "hp": 1,
+  "setCode": "LOF",
+  "number": "102",
+  "rarity": "R"
+}

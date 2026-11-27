@@ -1,0 +1,12 @@
+{
+  "id": "swu-HMW-126",
+  "frameId": "upgrade-command-heroism",
+  "name": "Verdant Fortress",
+  "trait": "Fortification",
+  "text": "[Fortify]\nAttached base gains: \"Friendly units gain [Raid 1] \"",
+  "unique": false,
+  "cost": 2,
+  "setCode": "HMW",
+  "number": "126",
+  "rarity": "U"
+}

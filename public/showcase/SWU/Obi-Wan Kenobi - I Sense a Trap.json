@@ -1,0 +1,15 @@
+{
+  "id": "swu-IC27-042",
+  "frameId": "unit-vigilance-heroism",
+  "name": "Obi-Wan Kenobi",
+  "subtitle": "I Sense a Trap",
+  "trait": "Force, Jedi, Republic",
+  "text": "[When Played:] You may choose one:\n• Play a unit that was defeated this phase from your discard pile. It costs [5] less.\n• Choose a unit that entered play this phase. It gets -5/-5 for this phase.",
+  "unique": true,
+  "cost": 8,
+  "power": 5,
+  "hp": 9,
+  "setCode": "IC27",
+  "number": "042",
+  "rarity": "L"
+}

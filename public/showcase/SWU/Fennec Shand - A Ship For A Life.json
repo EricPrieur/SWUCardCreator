@@ -1,0 +1,15 @@
+{
+  "id": "swu-HMW-175",
+  "frameId": "unit-aggression",
+  "name": "Fennec Shand",
+  "subtitle": "A Ship For A Life",
+  "trait": "Underworld",
+  "text": "[Raid 2]",
+  "unique": true,
+  "cost": 1,
+  "power": 0,
+  "hp": 4,
+  "setCode": "HMW",
+  "number": "175",
+  "rarity": "U"
+}

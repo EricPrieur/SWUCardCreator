@@ -1,0 +1,15 @@
+{
+  "id": "swu-ASH-109",
+  "frameId": "unit-command-heroism-space",
+  "name": "T-6 Shuttle 1974",
+  "subtitle": "With a Mentor's Dedication",
+  "trait": "Jedi, Vehicle, Transport",
+  "text": "[Sentinel]\n[Action [Arrow]:] Give another unit +2/+2 for this phase. You may attack with that unit.",
+  "unique": true,
+  "cost": 4,
+  "power": 2,
+  "hp": 6,
+  "setCode": "ASH",
+  "number": "109",
+  "rarity": "U"
+}

@@ -1,0 +1,15 @@
+{
+  "id": "swu-LOF-229",
+  "frameId": "unit-villainy",
+  "name": "Kylo Ren",
+  "subtitle": "I Know Your Story",
+  "trait": "Force, First Order",
+  "text": "[Overwhelm]\n[When you play an upgrade on this unit:] You may use the Force. If you do, draw a card.",
+  "unique": true,
+  "cost": 2,
+  "power": 2,
+  "hp": 3,
+  "setCode": "LOF",
+  "number": "229",
+  "rarity": "U"
+}

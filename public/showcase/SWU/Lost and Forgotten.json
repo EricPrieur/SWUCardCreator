@@ -1,0 +1,12 @@
+{
+  "id": "swu-LAW-133",
+  "frameId": "event-vigilance",
+  "name": "Lost and Forgotten",
+  "trait": "Innate",
+  "text": "Defeat a non-leader unit. If you do, heal 3 damage from your base.",
+  "unique": false,
+  "cost": 6,
+  "setCode": "LAW",
+  "number": "133",
+  "rarity": "C"
+}

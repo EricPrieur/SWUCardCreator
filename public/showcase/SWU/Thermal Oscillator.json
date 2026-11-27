@@ -1,0 +1,12 @@
+{
+  "id": "swu-JTL-025",
+  "frameId": "base-aggression-text",
+  "name": "Thermal Oscillator",
+  "trait": "Starkiller Base",
+  "text": "Your minimum deck size is decreased by 5 cards.",
+  "unique": false,
+  "hp": 27,
+  "setCode": "JTL",
+  "number": "025",
+  "rarity": "R"
+}

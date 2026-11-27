@@ -1,0 +1,15 @@
+{
+  "id": "swu-LOF-200",
+  "frameId": "unit-cunning-heroism",
+  "name": "Qui-Gon Jinn",
+  "subtitle": "The Negotiations Will Be Short",
+  "trait": "Force, Jedi, Republic",
+  "text": "[Ambush]\n[When Defeated:] You may choose a non-leader ground unit. Its owner puts it on the top or bottom of their deck.",
+  "unique": true,
+  "cost": 7,
+  "power": 7,
+  "hp": 5,
+  "setCode": "LOF",
+  "number": "200",
+  "rarity": "L"
+}

@@ -1,0 +1,15 @@
+{
+  "id": "swu-LAW-149",
+  "frameId": "unit-command-heroism",
+  "name": "Rey",
+  "subtitle": "Skywalker",
+  "trait": "Force, Jedi, Resistance",
+  "text": "Opponents can't take control of this unit.\nThis unit can't be defeated by enemy card abilities.",
+  "unique": true,
+  "cost": 8,
+  "power": 9,
+  "hp": 9,
+  "setCode": "LAW",
+  "number": "149",
+  "rarity": "L"
+}

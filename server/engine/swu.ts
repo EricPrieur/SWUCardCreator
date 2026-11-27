@@ -3537,6 +3537,193 @@ export const swuScripts: (CardScript & { card: string })[] = [
     text: 'This unit enters play ready.',
     front: { whenPlayed: (g, self) => g.ready(self.id) },
   },
+  // --- Thrawn4 HMW (swudb kPKADbQzcMj): When Defeated, used again ---
+  {
+    card: 'swu-JTL-002',
+    name: 'Grand Admiral Thrawn',
+    subtitle: '...How Unfortunate',
+    text: '[When you use a "When Defeated" ability:] You may exhaust this leader. If you do, use that ability again.',
+    backText: '[When you use a "When Defeated" ability:] You may use that ability again. Use this ability only once each round.',
+    front: {
+      // The AI: on the first one each round that did something (a draw always does; a -1/-1 with
+      // no unit left doesn't), unless a bigger one is to come this turn (the user, 2026-11-27: "a
+      // 1 card draw should not be used if a Legacy Run is about to die and deal 6 + 6")
+      repeatsWhenDefeated: (g, self, used, did) => {
+        const p = self.controller
+        if (!g.leaderReady(p)) return false
+        const ai = did && !biggerDefeatedToCome(g, self, used.def)
+        if (!g.may(p, `Grand Admiral Thrawn: exhaust this leader to use ${used.def.name}'s When Defeated ability again?`, { yes: 'Exhaust Thrawn', no: 'Skip', ai, source: self.def.id }))
+          return false
+        g.exhaustLeader(p)
+        return true
+      },
+    },
+    back: {
+      repeatsWhenDefeated: (g, self, used, did) => {
+        if (g.used(self)) return false
+        if (!g.may(self.controller, `Grand Admiral Thrawn: use ${used.def.name}'s When Defeated ability again?`, { yes: 'Use it again', no: 'Skip', ai: did, source: self.def.id }))
+          return false
+        g.use(self)
+        return true
+      },
+    },
+  },
+  {
+    card: 'swu-JTL-030',
+    name: 'Mos Eisley',
+    text: '',
+    front: {},
+  },
+  {
+    card: 'swu-LOF-213',
+    name: 'The Legacy Run',
+    subtitle: 'Doomed Debris',
+    text: '[When Defeated:] Deal 6 damage divided as you choose among enemy units.',
+    front: { whenDefeated: (g, self) => divideAmongEnemies(g, self, 6, 'The Legacy Run') },
+  },
+  {
+    card: 'swu-ASH-048',
+    name: 'Imperial Armored Commando',
+    text: '[Sentinel]\n[Shielded]',
+    front: {},
+  },
+  {
+    card: 'swu-JTL-033',
+    name: 'Onyx Squadron Brute',
+    text: '[When Defeated:] Heal 2 damage from a base.',
+    front: {
+      whenDefeated: (g, self) => {
+        // Only a damaged base: healing none does nothing (and gives Thrawn nothing to repeat)
+        const p = self.controller
+        const bases = ([0, 1] as const).filter((q) => g.player(q).base.damage > 0).map(baseOf)
+        if (!bases.length) return
+        const pick = g.chooseOne(p, 'Onyx Squadron Brute: heal 2 damage from a base', bases, { ai: bases.includes(baseOf(p)) ? baseOf(p) : bases[0], source: self.def.id })
+        if (pick) g.heal(pick, 2, self)
+      },
+    },
+  },
+  {
+    card: 'swu-JTL-060',
+    name: 'Desperate Commando',
+    text: '[When Defeated:] You may give a unit -1/-1 for this phase.',
+    front: { whenDefeated: (g, self) => shrink(g, self, 1, 'Desperate Commando: you may give a unit -1/-1 for this phase') },
+  },
+  {
+    card: 'swu-HMW-202',
+    name: 'Inferno Squad',
+    subtitle: 'We Can Grieve Later',
+    text: '[When Played/When Defeated:] You may deal 1 damage to a unit and give a Weakness token to it.',
+    front: { whenPlayed: (g, self) => infernoSquad(g, self), whenDefeated: (g, self) => infernoSquad(g, self) },
+  },
+  {
+    card: 'swu-ASH-192',
+    name: 'Fennec Shand',
+    subtitle: 'The Galaxy Is Dangerous',
+    text: '[Ambush]\n[Saboteur]',
+    front: {},
+  },
+  {
+    // Support: the unit it supports doesn't gain its When Defeated (the engine gives an attack
+    // keywords and an On Attack only)
+    card: 'swu-ASH-050',
+    name: 'Morgan Elsbeth',
+    subtitle: 'Life Abandoned',
+    text: '[Support]\n[When Defeated:] You may give a unit -2/-2 for this phase.',
+    front: {
+      whenPlayed: (g, self) => support(g, self),
+      whenDefeated: (g, self) => shrink(g, self, 2, 'Morgan Elsbeth: you may give a unit -2/-2 for this phase'),
+    },
+  },
+  {
+    card: 'swu-SEC-078',
+    name: 'Hyperspace Disaster',
+    text: 'Defeat all space units.',
+    front: {
+      play: (g, self) => {
+        for (const unit of g.units((u) => u.arena === 'space')) g.defeat(unit.id, self)
+      },
+    },
+  },
+  {
+    card: 'swu-JTL-039',
+    name: 'Chimaera',
+    subtitle: 'Reinforcing the Center',
+    text: '[When Played:] You may use a "[When Defeated] " ability on another friendly unit.\n[When Defeated:] Create 2 TIE Fighter tokens.',
+    front: {
+      whenPlayed: (g, self) => {
+        const ids = friendly(g, self, (u) => u.id !== self.id && g.hasWhenDefeated(u.id))
+        if (!ids.length) return
+        // The AI: the one worth most, The Legacy Run's 6 damage above all (doubled by Thrawn, and
+        // The Legacy Run kept; the user, 2026-11-27)
+        const best = [...ids].sort((a, b) => whenDefeatedWorth(g, self, b) - whenDefeatedWorth(g, self, a))[0]
+        const pick = g.chooseOne(self.controller, 'Chimaera: you may use a When Defeated ability on another friendly unit', ids, {
+          optional: true,
+          ai: whenDefeatedWorth(g, self, best) > 0 ? best : 'none',
+          source: self.def.id,
+        })
+        if (pick) g.useWhenDefeated(pick)
+      },
+      whenDefeated: (g, self) => {
+        g.createToken(self.controller, 'TIE Fighter')
+        g.createToken(self.controller, 'TIE Fighter')
+      },
+    },
+  },
+  {
+    card: 'swu-JTL-041',
+    name: 'Annihilator',
+    subtitle: "Tagge's Flagship",
+    text: "[When Played/When Defeated:] You may defeat an enemy unit. If you do, search its controller's deck and hand for each card with that unit's name and discard them.",
+    front: { whenPlayed: (g, self) => annihilator(g, self), whenDefeated: (g, self) => annihilator(g, self) },
+  },
+  {
+    card: 'swu-ASH-247',
+    name: 'One Must Destroy to Create',
+    text: 'Defeat a friendly non-leader unit. Then, you may play that unit from your discard pile for free.',
+    front: {
+      play: (g, self) => {
+        const p = self.controller
+        const ids = friendly(g, self, (u) => !g.isLeader(u))
+        // The AI: a unit of its own with a When Defeated ability (both abilities, the When Played
+        // again), the dearest, the most damaged
+        const worth = (id: string) => {
+          const unit = g.unit(id)!
+          return g.cost(unit) + (g.hasWhenDefeated(id) ? 3 : 0) + unit.damage - (g.def(unit).token || unit.owner !== p ? 20 : 0)
+        }
+        const best = [...ids].sort((a, b) => worth(b) - worth(a))[0]
+        const pick = g.chooseOne(p, 'One Must Destroy to Create: defeat a friendly non-leader unit', ids, { ai: best ?? 'none', source: self.def.id })
+        if (!pick) return
+        g.defeat(pick, self)
+        if (g.unit(pick) || !g.player(p).discard.some((c) => c.id === pick)) return
+        g.mayPlay(p, pick, 'One Must Destroy to Create: play that unit from your discard pile for free?', { free: true, source: self.def.id })
+      },
+    },
+  },
+  {
+    card: 'swu-JTL-032',
+    name: 'Director Krennic',
+    subtitle: 'On the Verge of Greatness',
+    text: '[Shielded]\nThe first unit you play each round that has a "[When Defeated] " ability costs [1] less.',
+    front: {
+      costsLess: (g, self, card) => (card.type === 'unit' && /When Defeated/.test(card.text ?? '') && !g.used(self) ? 1 : 0),
+      costedLess: (g, self) => g.use(self),
+    },
+  },
+  {
+    card: 'swu-IC27-148',
+    name: 'Count Dooku',
+    subtitle: 'Silver-Tongued',
+    text: "Each opponent can't ready more than 1 ground unit and 1 space unit during the regroup phase.\n[When Played:] You may exhaust a unit.",
+    front: {
+      limitsRegroupReady: true,
+      whenPlayed: (g, self) => {
+        const ready = all(g, (u) => !u.exhausted)
+        const target = mostThreat(g, enemy(g, self, (u) => !u.exhausted))
+        const pick = g.chooseOne(self.controller, 'Count Dooku: you may exhaust a unit', ready, { optional: true, ai: target ?? 'none', source: self.def.id })
+        if (pick) g.exhaust(pick)
+      },
+    },
+  },
   {
     card: 'swu-HMW-204',
     name: 'Nightbrother',
@@ -3594,7 +3781,9 @@ export const swuScripts: (CardScript & { card: string })[] = [
         const p = self.controller
         const ids = all(g, (u) => !g.isLeader(u))
         // The AI: the enemy unit worth most
-        const worth = (id: string) => g.cost(g.unit(id)!) + threat(g, id)
+        // (a unit with a strong When Defeated counts more: taken, its ability is then ours, The
+        // Legacy Run's 6 damage on their units; the user, 2026-11-27)
+        const worth = (id: string) => g.cost(g.unit(id)!) + threat(g, id) + (STEAL_DEFEATED.test(g.def(g.unit(id)!).text ?? '') ? STEAL_WORTH : 0)
         const foes = enemy(g, self, (u) => !g.isLeader(u)).sort((a, b) => worth(b) - worth(a))
         const pick = g.chooseOne(p, 'No Glory, Only Results: take control of a non-leader unit, then defeat it', ids, { ai: foes[0] ?? 'none', source: self.def.id })
         if (!pick) return
@@ -3768,10 +3957,15 @@ function garindan(g: Game, self: Self) {
     const hit = text.match(/deal (\d+) damage to a unit/i)
     return (d.type === 'unit' && (!!d.keywords?.ambush || /Attack with a unit, even if it's exhausted/i.test(text))) || (!!hit && Number(hit[1]) >= left(g, leader.id))
   }
+  // A deck with strong When Defeated units (Thrawn's The Legacy Run) names the removal that takes
+  // them (No Glory, Only Results: their 6 damage on its own units; the user, 2026-11-27)
+  const mine = g.player(p)
+  const stealable = [...mine.hand, ...mine.deck, ...g.units((u) => g.controller(u) === p)].some((c) => STEAL_DEFEATED.test(g.def(c).text ?? ''))
+  const steals = (d: { text?: string }) => stealable && /^Take control of a non-leader unit, then defeat it/.test(d.text ?? '')
   const score: Record<string, number> = {}
   for (const c of unseen) {
     const d = g.def(c)
-    if (d.type !== 'leader' && !d.token) score[d.name] = (score[d.name] ?? 0) + (1 + 0.3 * d.cost) * (kills(d) ? GARINDAN_KILLER : 1)
+    if (d.type !== 'leader' && !d.token) score[d.name] = (score[d.name] ?? 0) + (1 + 0.3 * d.cost) * (kills(d) || steals(d) ? GARINDAN_KILLER : 1)
   }
   const wanted = [...names].sort((a, b) => (score[b] ?? 0) - (score[a] ?? 0))[0]
   const name = names[g.option(p, 'Garindan: name a card', names, { ai: Math.max(0, names.indexOf(wanted)), firm: true, source: self.def.id })]
@@ -3819,4 +4013,113 @@ function tradeTarget(g: Game, self: Self, amount: number) {
     }
   }
   return best
+}
+
+// "Deal N damage divided as you choose among enemy units." (The Legacy Run): the shares chosen
+// first, then dealt at once: each unit's share is one hit, so a Shield prevents all of it (the
+// user, 2026-11-27: "you cannot ping 1 to remove a shield, then another 1"). The AI: the dearest
+// units it can defeat, 1 on each shielded unit (its Shield gone for the next batch), the rest on
+// the biggest threat
+function divideAmongEnemies(g: Game, self: Self, total: number, source: string) {
+  const p = self.controller
+  const foes = enemy(g, self)
+  if (!foes.length) return
+  const shielded = (id: string) => g.tokens(id, 'Shield') > 0
+  const dearest = (a: string, b: string) => g.cost(g.unit(b)!) - g.cost(g.unit(a)!)
+  const plan = new Map<string, number>()
+  let spare = total
+  for (const id of foes.filter((id) => !shielded(id)).sort(dearest)) {
+    const need = Math.max(1, left(g, id))
+    if (need <= spare) [spare] = [spare - need, plan.set(id, need)]
+  }
+  for (const id of foes.filter(shielded).sort(dearest)) if (spare > 0) [spare] = [spare - 1, plan.set(id, 1)]
+  if (spare > 0) {
+    const open = foes.filter((id) => !shielded(id) && !plan.has(id))
+    const onto = mostThreat(g, open) ?? open[0] ?? [...plan.keys()].find((id) => !shielded(id)) ?? foes[0]
+    plan.set(onto, (plan.get(onto) ?? 0) + spare)
+  }
+  const aiPlan = [...plan.entries()]
+  const shares = new Map<string, number>()
+  let rest = total
+  while (rest > 0) {
+    const open = foes.filter((id) => !shares.has(id))
+    if (!open.length) break
+    const next = aiPlan.find(([id]) => !shares.has(id))
+    const target = g.chooseOne(p, `${source}: choose an enemy unit to deal damage to (${rest} left)`, open, { ai: next?.[0] ?? open[0], source: self.def.id })
+    if (!target) break
+    const amounts = Array.from({ length: rest }, (_, i) => String(i + 1))
+    const aim = Math.min(rest, plan.get(target) ?? rest)
+    const amount = amounts.length > 1 ? Number(amounts[g.option(p, `${source}: how much damage to ${g.name(target)}?`, amounts, { ai: aim - 1, source: self.def.id })]) : 1
+    shares.set(target, amount)
+    rest -= amount
+  }
+  for (const [id, amount] of shares) if (g.unit(id)) g.damage(id, amount, self)
+}
+
+// Inferno Squad: 1 damage and a Weakness token (-1/-1). The AI: an enemy unit that defeats, the
+// dearest, else the biggest threat
+function infernoSquad(g: Game, self: Self) {
+  const foes = enemy(g, self)
+  const kill = foes.filter((id) => g.tokens(id, 'Shield') === 0 && left(g, id) <= 2).sort((a, b) => g.cost(g.unit(b)!) - g.cost(g.unit(a)!))[0]
+  const target = kill ?? mostThreat(g, foes)
+  const pick = g.chooseOne(self.controller, 'Inferno Squad: you may deal 1 damage to a unit and give a Weakness token to it', all(g), {
+    optional: true,
+    ai: target ?? 'none',
+    source: self.def.id,
+  })
+  if (!pick) return
+  g.damage(pick, 1, self)
+  if (g.unit(pick)) g.giveToken(pick, 'Weakness')
+}
+
+// Annihilator: defeat an enemy unit, then every card with its name from its controller's hand
+// and deck. The AI: the one worth most (a leader unit's name takes its other printings too)
+function annihilator(g: Game, self: Self) {
+  const foes = enemy(g, self)
+  if (!foes.length) return
+  const worth = (id: string) => g.cost(g.unit(id)!) + threat(g, id)
+  const best = [...foes].sort((a, b) => worth(b) - worth(a))[0]
+  const pick = g.chooseOne(self.controller, "Annihilator: you may defeat an enemy unit, then discard each card with its name from its controller's hand and deck", foes, {
+    optional: true,
+    ai: best,
+    source: self.def.id,
+  })
+  if (!pick) return
+  const unit = g.unit(pick)!
+  const foe = g.controller(unit)
+  const name = g.def(unit).name
+  g.defeat(pick, self)
+  if (!g.unit(pick)) g.discardNamed(foe, name)
+}
+
+// A When Defeated worth taking (No Glory, Only Results) or using again (Chimaera): divided
+// damage, an enemy unit defeated
+const STEAL_DEFEATED = /When Defeated:\] (?:Deal \d+ damage divided|You may defeat an enemy unit)/
+const STEAL_WORTH = 6
+// What a friendly unit's When Defeated would do now, for Chimaera's AI: an enemy unit defeated,
+// the divided damage, else about half its cost; nothing for one with nothing to do it to
+function whenDefeatedWorth(g: Game, self: Self, id: string) {
+  const unit = g.unit(id)!
+  const text = g.def(unit).text ?? ''
+  const foes = enemy(g, self).length
+  if (/When Defeated:\] You may defeat an enemy unit/.test(text)) return foes ? 10 : 0
+  const damage = text.match(/When Defeated:\] Deal (\d+) damage divided/)
+  if (damage) return foes ? Number(damage[1]) + 2 : 0
+  if (/When Defeated:\] Heal/.test(text)) return g.player(self.controller).base.damage > 0 ? 1 : 0
+  return g.cost(unit) / 2
+}
+
+// Thrawn's leader side, exhausted to repeat a small When Defeated (a draw, a -1/-1): kept when a
+// big one (The Legacy Run's 6 damage, Annihilator's) is to come this turn: waiting to resolve
+// (defeated at once with this one), or on a friendly unit a card in hand can set off now
+// (Chimaera, One Must Destroy to Create, both affordable)
+const SETS_OFF_DEFEATED = /You may use a "\[When Defeated\] " ability on another friendly unit|^Defeat a friendly non-leader unit/
+function biggerDefeatedToCome(g: Game, self: Self, used: { text?: string }) {
+  const p = self.controller
+  const big = (d: { text?: string }) => STEAL_DEFEATED.test(d.text ?? '')
+  if (big(used)) return false
+  if (g.waitingWhenDefeated(p).some(big)) return true
+  const onBoard = friendly(g, self, (u) => big(g.def(u))).length > 0
+  if (!onBoard || !enemy(g, self).length) return false
+  return g.player(p).hand.some((c) => SETS_OFF_DEFEATED.test(g.def(c).text ?? '') && g.canPlay(p, c.id))
 }

@@ -1,0 +1,12 @@
+{
+  "id": "swu-LAW-217",
+  "frameId": "event-cunning-villainy",
+  "name": "Hold For Questioning",
+  "trait": "Law",
+  "text": "Exhaust an enemy unit. If you do, look at its controller's hand and discard a card form it that shares an aspect with that unit.",
+  "unique": false,
+  "cost": 3,
+  "setCode": "LAW",
+  "number": "217",
+  "rarity": "U"
+}

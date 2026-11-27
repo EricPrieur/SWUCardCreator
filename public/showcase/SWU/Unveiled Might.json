@@ -1,0 +1,14 @@
+{
+  "id": "swu-SEC-123",
+  "frameId": "upgrade-command",
+  "name": "Unveiled Might",
+  "trait": "Innate",
+  "text": "[Plot]",
+  "unique": false,
+  "cost": 4,
+  "power": 2,
+  "hp": 3,
+  "setCode": "SEC",
+  "number": "123",
+  "rarity": "C"
+}

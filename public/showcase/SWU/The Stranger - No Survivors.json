@@ -1,0 +1,15 @@
+{
+  "id": "swu-LAW-086",
+  "frameId": "unit-cunning-vigilance-villainy",
+  "name": "The Stranger",
+  "subtitle": "No Survivors",
+  "trait": "Force, Sith",
+  "text": "[Ambush]\n[Grit]\nWhile Attacking, you may have the defending unit deal combat damage before this unit.",
+  "unique": true,
+  "cost": 5,
+  "power": 1,
+  "hp": 7,
+  "setCode": "LAW",
+  "number": "086",
+  "rarity": "L"
+}

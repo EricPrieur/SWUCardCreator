@@ -1,0 +1,15 @@
+{
+  "id": "swu-IC27-075",
+  "frameId": "unit-command-heroism-space",
+  "name": "Red Leader",
+  "subtitle": "Wait For My Signal",
+  "trait": "Rebel, Vehicle, Fighter",
+  "text": "[Sentinel]\n[Restore 2]",
+  "unique": true,
+  "cost": 3,
+  "power": 2,
+  "hp": 4,
+  "setCode": "IC27",
+  "number": "075",
+  "rarity": "U"
+}

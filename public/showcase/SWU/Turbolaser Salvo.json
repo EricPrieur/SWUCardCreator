@@ -1,0 +1,12 @@
+{
+  "id": "swu-JTL-131",
+  "frameId": "event-command",
+  "name": "Turbolaser Salvo",
+  "trait": "Tactic",
+  "text": "Choose an arena. A friendly space unit deals damage equal to its power to each enemy unit in that arena.",
+  "unique": false,
+  "cost": 7,
+  "setCode": "JTL",
+  "number": "131",
+  "rarity": "L"
+}

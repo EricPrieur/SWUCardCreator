@@ -1,0 +1,16 @@
+{
+  "id": "swu-ASH-013",
+  "frameId": "leader-aggression-heroism",
+  "name": "Ezra Bridger",
+  "subtitle": "It's Now or Never",
+  "trait": "Force, Jedi, Rebel, Spectre",
+  "text": "[When a friendly unit's attack ends:] If it dealt 3 or more combat damage to a base, you may exhaust this leader. If you do, give an Advantage token to a different unit.",
+  "backText": "[Saboteur]\n[When a friendly unit's attack ends:] If it dealt 3 or more combat damage to a base, you may give an Advantage token to a different unit.",
+  "unique": true,
+  "cost": 5,
+  "power": 3,
+  "hp": 6,
+  "setCode": "ASH",
+  "number": "013",
+  "rarity": "C"
+}

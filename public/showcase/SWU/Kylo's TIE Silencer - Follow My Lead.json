@@ -1,0 +1,15 @@
+{
+  "id": "swu-IC27-063",
+  "frameId": "unit-command-villainy-space",
+  "name": "Kylo's TIE Silencer",
+  "subtitle": "Follow My Lead",
+  "trait": "First Order, Vehicle, Fighter",
+  "text": "[Restore 1]\n[When this unit is discarded from your hand:] For this phase, you may play it from your discard pile (paying its cost).",
+  "unique": true,
+  "cost": 4,
+  "power": 4,
+  "hp": 4,
+  "setCode": "IC27",
+  "number": "063",
+  "rarity": "R"
+}

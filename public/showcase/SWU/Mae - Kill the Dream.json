@@ -1,0 +1,15 @@
+{
+  "id": "swu-HMW-055",
+  "frameId": "unit-cunning-vigilance-villainy",
+  "name": "Mae",
+  "subtitle": "Kill the Dream",
+  "trait": "Force,  Sith",
+  "text": "[Ambush]\n[Shielded]\n[Grit]",
+  "unique": true,
+  "cost": 3,
+  "power": 2,
+  "hp": 4,
+  "setCode": "HMW",
+  "number": "055",
+  "rarity": "L"
+}

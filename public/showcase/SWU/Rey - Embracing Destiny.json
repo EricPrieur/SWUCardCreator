@@ -1,0 +1,15 @@
+{
+  "id": "swu-IC27-120",
+  "frameId": "unit-aggression-heroism",
+  "name": "Rey",
+  "subtitle": "Embracing Destiny",
+  "trait": "Force",
+  "text": "[Action [[1], discard a card from your hand]:] Attack with a unit. It gets +2/+0 for this attack.",
+  "unique": true,
+  "cost": 5,
+  "power": 6,
+  "hp": 6,
+  "setCode": "IC27",
+  "number": "120",
+  "rarity": "L"
+}

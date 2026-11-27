@@ -1,0 +1,15 @@
+{
+  "id": "swu-HMW-124",
+  "frameId": "unit-command-heroism",
+  "name": "Luminara Unduli",
+  "subtitle": "Besieged General",
+  "trait": "Force, Jedi, Republic",
+  "text": "[When you play a unit:] You may attack with a unit. It gets +2/+0 for this attack.",
+  "unique": true,
+  "cost": 7,
+  "power": 7,
+  "hp": 7,
+  "setCode": "HMW",
+  "number": "124",
+  "rarity": "L"
+}

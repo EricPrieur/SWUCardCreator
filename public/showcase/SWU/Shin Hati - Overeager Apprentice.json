@@ -1,0 +1,15 @@
+{
+  "id": "swu-LOF-183",
+  "frameId": "unit-cunning-villainy",
+  "name": "Shin Hati",
+  "subtitle": "Overeager Apprentice",
+  "trait": "Force, Fringe",
+  "text": "[Hidden]\n[Shielded]",
+  "unique": true,
+  "cost": 3,
+  "power": 4,
+  "hp": 2,
+  "setCode": "LOF",
+  "number": "183",
+  "rarity": "U"
+}

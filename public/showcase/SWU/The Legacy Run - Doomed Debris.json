@@ -1,0 +1,15 @@
+{
+  "id": "swu-LOF-213",
+  "frameId": "unit-cunning-space",
+  "name": "The Legacy Run",
+  "subtitle": "Doomed Debris",
+  "trait": "Republic, Vehicle, Transport",
+  "text": "[When Defeated:] Deal 6 damage divided as you choose among enemy units.",
+  "unique": true,
+  "cost": 5,
+  "power": 3,
+  "hp": 3,
+  "setCode": "LOF",
+  "number": "213",
+  "rarity": "L"
+}

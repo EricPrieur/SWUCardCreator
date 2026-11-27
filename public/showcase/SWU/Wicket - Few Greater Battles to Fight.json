@@ -1,0 +1,16 @@
+{
+  "id": "swu-HMW-014",
+  "frameId": "leader-aggression-heroism",
+  "name": "Wicket",
+  "subtitle": "Few Greater Battles to Fight",
+  "trait": "Ewok",
+  "text": "[When a friendly unit attacks a unit that costs more than it:] You may exhaust this leader. If you do, draw a card.",
+  "backText": "[On Attack:] If you control a unit that costs 3 or less, draw a card.",
+  "unique": true,
+  "cost": 4,
+  "power": 2,
+  "hp": 5,
+  "setCode": "HMW",
+  "number": "014",
+  "rarity": "C"
+}

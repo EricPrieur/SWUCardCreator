@@ -1,0 +1,16 @@
+{
+  "id": "swu-LOF-008",
+  "frameId": "leader-command-heroism",
+  "name": "Obi-Wan Kenobi",
+  "subtitle": "Courage Makes Heroes",
+  "trait": "Force, Jedi, Republic",
+  "text": "[Action [Arrow, use the Force]:] Give an Experience token to a unit without an Experience token on it.",
+  "backText": "[On Attack:] You may give an Experience token to another unit without an Experience token on it.",
+  "unique": true,
+  "cost": 5,
+  "power": 3,
+  "hp": 6,
+  "setCode": "LOF",
+  "number": "008",
+  "rarity": "C"
+}

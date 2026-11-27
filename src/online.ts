@@ -35,7 +35,7 @@ export type ChatLine = { seat: PlayerId; name: string; text: string }
 // A seat held in a room, kept in this tab so a reload finds the game again (each tab its own: two
 // tabs can play each other); no key: watching
 export type OnlineSeat = { room: string; key: string | null }
-// Each Simulator its own: DUNE's, the community's, SWU's (dev only)
+// Each Simulator its own: DUNE's, the community's, SWU's
 const SEAT_KEY = 'dune-unlimited.simulator.online'
 const seatKey = (pool: Pool) => (pool === 'DUNE' ? SEAT_KEY : pool === 'SWU' ? `${SEAT_KEY}.swu` : `${SEAT_KEY}.community`)
 type Pool = 'DUNE' | 'community' | 'SWU'

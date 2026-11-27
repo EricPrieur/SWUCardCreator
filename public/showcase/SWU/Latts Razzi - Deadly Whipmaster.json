@@ -1,0 +1,15 @@
+{
+  "id": "swu-LAW-039",
+  "frameId": "unit-vigilance-command",
+  "name": "Latts Razzi",
+  "subtitle": "Deadly Whipmaster",
+  "trait": "Underworld, Bounty Hunter",
+  "text": "[When Played:] Give a Shield token or an Experience token to this unit. Then, she deals damage equal to her power to an enemy ground unit.",
+  "unique": true,
+  "cost": 3,
+  "power": 2,
+  "hp": 1,
+  "setCode": "LAW",
+  "number": "039",
+  "rarity": "R"
+}

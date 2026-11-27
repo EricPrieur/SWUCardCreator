@@ -1,0 +1,15 @@
+{
+  "id": "swu-SEC-204",
+  "frameId": "unit-cunning-heroism-space",
+  "name": "Blue Ace",
+  "subtitle": "Colorful Racer",
+  "trait": "Resistance, Vehicle, Fighter",
+  "text": "[Ambush]\n[On Attack:] Ready an exhausted enemy unit.",
+  "unique": true,
+  "cost": 4,
+  "power": 4,
+  "hp": 5,
+  "setCode": "SEC",
+  "number": "204",
+  "rarity": "R"
+}

@@ -1,0 +1,15 @@
+{
+  "id": "swu-IC27-070",
+  "frameId": "unit-command-heroism",
+  "name": "C-3PO",
+  "subtitle": "Impulse Buy",
+  "trait": "Rebel, Droid",
+  "text": "[Action [Arrow]:] Give an Experience token to another unit. Then, if it has 6 or more power, draw a card.",
+  "unique": true,
+  "cost": 1,
+  "power": 1,
+  "hp": 3,
+  "setCode": "IC27",
+  "number": "070",
+  "rarity": "R"
+}

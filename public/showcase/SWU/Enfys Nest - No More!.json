@@ -1,0 +1,15 @@
+{
+  "id": "swu-IC27-086",
+  "frameId": "unit-command",
+  "name": "Enfys Nest",
+  "subtitle": "No More!",
+  "trait": "Underworld",
+  "text": "[Ambush]\nWhile attacking a unit that costs 3 or less, this unit gets +2/+0 and gains [Overwhelm].",
+  "unique": true,
+  "cost": 5,
+  "power": 4,
+  "hp": 6,
+  "setCode": "IC27",
+  "number": "086",
+  "rarity": "R"
+}

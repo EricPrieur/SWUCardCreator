@@ -1,0 +1,15 @@
+{
+  "id": "swu-IC27-148",
+  "frameId": "unit-cunning-villainy",
+  "name": "Count Dooku",
+  "subtitle": "Silver-Tongued",
+  "trait": "Force, Separatist, Sith, Official",
+  "text": "Each opponent can't ready more than 1 ground unit and 1 space unit during the regroup phase.\n[When Played:] You may exhaust a unit.",
+  "unique": true,
+  "cost": 7,
+  "power": 8,
+  "hp": 7,
+  "setCode": "IC27",
+  "number": "148",
+  "rarity": "L"
+}

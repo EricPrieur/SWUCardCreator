@@ -1,0 +1,15 @@
+{
+  "id": "swu-LAW-221",
+  "frameId": "unit-cunning-heroism",
+  "name": "Lieutenant Gorn",
+  "subtitle": "I Deserve Worse",
+  "trait": "Imperial, Rebel",
+  "text": "[On Attack:] Take control of an enemy Credit token.",
+  "unique": true,
+  "cost": 3,
+  "power": 4,
+  "hp": 4,
+  "setCode": "LAW",
+  "number": "221",
+  "rarity": "R"
+}

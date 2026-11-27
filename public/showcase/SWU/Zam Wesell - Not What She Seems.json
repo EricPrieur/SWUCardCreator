@@ -1,0 +1,15 @@
+{
+  "id": "swu-HMW-134",
+  "frameId": "unit-command",
+  "name": "Zam Wesell",
+  "subtitle": "Not What She Seems",
+  "trait": "Underworld, Bounty Hunter",
+  "text": "[Hidden]\nThis unit gains each friendly leader's [[{Traits}]] except [{Force}], even while she's not in play.",
+  "unique": true,
+  "cost": 2,
+  "power": 2,
+  "hp": 4,
+  "setCode": "HMW",
+  "number": "134",
+  "rarity": "R"
+}

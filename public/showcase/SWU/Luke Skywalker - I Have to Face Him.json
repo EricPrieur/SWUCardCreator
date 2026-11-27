@@ -1,0 +1,16 @@
+{
+  "id": "swu-IC27-006",
+  "frameId": "leader-aggression-heroism",
+  "name": "Luke Skywalker",
+  "subtitle": "I Have to Face Him",
+  "trait": "Force, Jedi, Rebel",
+  "text": "Draw 2 more cards in your starting hand.",
+  "backText": "[Overwhelm]\n[On Attack:] You may discard a card from your hand. If you do, this unit gets +2/+0 for this attack.",
+  "unique": true,
+  "cost": 6,
+  "power": 4,
+  "hp": 6,
+  "setCode": "IC27",
+  "number": "006",
+  "rarity": "C"
+}

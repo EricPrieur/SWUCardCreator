@@ -1,0 +1,15 @@
+{
+  "id": "swu-SEC-111",
+  "frameId": "unit-command",
+  "name": "Jar Jar Binks",
+  "subtitle": "Mesa Propose…",
+  "trait": "Naboo, Republic, Gungan, Official",
+  "text": "[When Played:] You may give another friendly unit [+2/+2] for this phase.\n[Plot]",
+  "unique": true,
+  "cost": 2,
+  "power": 2,
+  "hp": 1,
+  "setCode": "SEC",
+  "number": "111",
+  "rarity": "U"
+}

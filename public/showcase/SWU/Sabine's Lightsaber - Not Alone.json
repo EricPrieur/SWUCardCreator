@@ -1,0 +1,15 @@
+{
+  "id": "swu-ASH-114",
+  "frameId": "upgrade-command-heroism",
+  "name": "Sabine's Lightsaber",
+  "subtitle": "Not Alone",
+  "trait": "Item, Weapon, Lightsaber",
+  "text": "Attach to a non-[{Vehicle}] unit.\nIf attached unit is Sabine Wren or a [{Force}] unit, it gains [Restore 2].",
+  "unique": true,
+  "cost": 2,
+  "power": 2,
+  "hp": 2,
+  "setCode": "ASH",
+  "number": "114",
+  "rarity": "R"
+}

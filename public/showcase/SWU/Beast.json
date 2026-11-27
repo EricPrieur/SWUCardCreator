@@ -1,0 +1,14 @@
+{
+  "id": "swu-THMW-T03",
+  "frameId": "unit-token-text-neutral",
+  "name": "Beast",
+  "trait": "Creature",
+  "text": "",
+  "unique": false,
+  "cost": 0,
+  "power": 3,
+  "hp": 3,
+  "setCode": "THMW",
+  "number": "T03",
+  "rarity": "C"
+}

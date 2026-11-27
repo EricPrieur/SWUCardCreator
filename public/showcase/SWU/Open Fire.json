@@ -1,0 +1,12 @@
+{
+  "id": "swu-TWI-174",
+  "frameId": "event-aggression",
+  "name": "Open Fire",
+  "trait": "Tactic",
+  "text": "Deal 4 damage to a unit.",
+  "unique": false,
+  "cost": 3,
+  "setCode": "TWI",
+  "number": "174",
+  "rarity": "S"
+}

@@ -1,0 +1,14 @@
+{
+  "id": "swu-LAW-075",
+  "frameId": "unit-aggression-cunning-villainy",
+  "name": "Interrogation Droid",
+  "trait": "Imperial, Droid",
+  "text": "[When Played:] Exhaust an enemy unit. If you do, and that unit costs 3 or less, its controller discards a card from their hand.",
+  "unique": false,
+  "cost": 2,
+  "power": 3,
+  "hp": 1,
+  "setCode": "LAW",
+  "number": "075",
+  "rarity": "U"
+}

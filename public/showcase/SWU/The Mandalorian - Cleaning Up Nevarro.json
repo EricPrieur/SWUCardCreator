@@ -1,0 +1,15 @@
+{
+  "id": "swu-SEC-209",
+  "frameId": "unit-cunning-heroism",
+  "name": "The Mandalorian",
+  "subtitle": "Cleaning Up Nevarro",
+  "trait": "Mandalorian, Bounty Hunter",
+  "text": "[Ambush]\n[When this unit attacks and defeats a unit:] You may choose an enemy non-leader unit. This unit captures it.",
+  "unique": true,
+  "cost": 8,
+  "power": 6,
+  "hp": 8,
+  "setCode": "SEC",
+  "number": "209",
+  "rarity": "R"
+}

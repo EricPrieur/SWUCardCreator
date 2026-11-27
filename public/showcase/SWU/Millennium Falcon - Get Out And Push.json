@@ -1,0 +1,15 @@
+{
+  "id": "swu-JTL-249",
+  "frameId": "unit-heroism-space",
+  "name": "Millennium Falcon",
+  "subtitle": "Get Out And Push",
+  "trait": "Rebel, Vehicle, Transport",
+  "text": "You may play or deploy 1 additional [{Pilot}] on this unit.\nThis unit gets [+1/+0] for each [{Pilot}] on it.",
+  "unique": true,
+  "cost": 3,
+  "power": 3,
+  "hp": 4,
+  "setCode": "JTL",
+  "number": "249",
+  "rarity": "S"
+}

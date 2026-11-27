@@ -1,0 +1,15 @@
+{
+  "id": "swu-ASH-034",
+  "frameId": "unit-command-aggression-heroism",
+  "name": "Wicket",
+  "subtitle": "Yub Nub!",
+  "trait": "Ewok",
+  "text": "[Saboteur]\nThis unit can't attack bases.",
+  "unique": true,
+  "cost": 1,
+  "power": 3,
+  "hp": 3,
+  "setCode": "ASH",
+  "number": "034",
+  "rarity": "R"
+}

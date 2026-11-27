@@ -1,0 +1,14 @@
+{
+  "id": "swu-LOF-138",
+  "frameId": "upgrade-aggression-villainy",
+  "name": "Sith Holocron",
+  "trait": "Sith, Item",
+  "text": "Attach to a [{Force}] unit.\nAttached unit gains: \"[On Attack:] You may deal 2 damage to a friendly unit. If you do, this unit gets [+2/+0] for this attack.\"",
+  "unique": false,
+  "cost": 1,
+  "power": 1,
+  "hp": 1,
+  "setCode": "LOF",
+  "number": "138",
+  "rarity": "R"
+}

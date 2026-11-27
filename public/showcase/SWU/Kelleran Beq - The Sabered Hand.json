@@ -1,0 +1,15 @@
+{
+  "id": "swu-LOF-100",
+  "frameId": "unit-command-heroism",
+  "name": "Kelleran Beq",
+  "subtitle": "The Sabered Hand",
+  "trait": "Force, Jedi, Republic",
+  "text": "[When Played:] Search the top 7 cards of your deck for a unit, reveal it, and play it. It costs [3] less.",
+  "unique": true,
+  "cost": 7,
+  "power": 7,
+  "hp": 7,
+  "setCode": "LOF",
+  "number": "100",
+  "rarity": "U"
+}

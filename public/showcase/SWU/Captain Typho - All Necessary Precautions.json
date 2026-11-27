@@ -1,0 +1,15 @@
+{
+  "id": "swu-SEC-098",
+  "frameId": "unit-command-heroism",
+  "name": "Captain Typho",
+  "subtitle": "All Necessary Precautions",
+  "trait": "Naboo, Republic, Trooper",
+  "text": "[Sentinel]\n[When this unit is attacked:] You may disclose [Command][Heroism]. If you do, heal 1 damage from your base.",
+  "unique": true,
+  "cost": 4,
+  "power": 4,
+  "hp": 5,
+  "setCode": "SEC",
+  "number": "098",
+  "rarity": "S"
+}

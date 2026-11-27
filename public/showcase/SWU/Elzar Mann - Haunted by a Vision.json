@@ -1,0 +1,15 @@
+{
+  "id": "swu-ASH-224",
+  "frameId": "unit-cunning",
+  "name": "Elzar Mann",
+  "subtitle": "Haunted by a Vision",
+  "trait": "Force, Jedi",
+  "text": "While you control a [{Force}] leader, this unit enters play ready.\n[When Played:] Distribute up to 5 Advantage tokens among other friendly units. Then, an opponent searches twice that many cards from the top of their deck for an event, reveals it, and draws it.",
+  "unique": true,
+  "cost": 6,
+  "power": 3,
+  "hp": 7,
+  "setCode": "ASH",
+  "number": "224",
+  "rarity": "L"
+}

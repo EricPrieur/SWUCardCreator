@@ -1,0 +1,12 @@
+{
+  "id": "swu-LOF-020",
+  "frameId": "base-vigilance-text",
+  "name": "Nightsister Lair",
+  "trait": "Dathomir",
+  "text": "[When a friendly [{Force}] unit attacks:] The Force is with you.",
+  "unique": false,
+  "hp": 28,
+  "setCode": "LOF",
+  "number": "020",
+  "rarity": "C"
+}

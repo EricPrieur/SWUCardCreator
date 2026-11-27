@@ -1,0 +1,14 @@
+{
+  "id": "swu-HMW-232",
+  "frameId": "unit-cunning-space",
+  "name": "Mon Cal Cruiser",
+  "trait": "Rebel, Vehicle, Capital Ship",
+  "text": "[When Played:] Choose one:\n• Attack with a unit. It gets +2/+0 for this attack.\n• Look at an opponent's hand. You may discard a card from it. If you do, they draw a card.",
+  "unique": false,
+  "cost": 6,
+  "power": 4,
+  "hp": 7,
+  "setCode": "HMW",
+  "number": "232",
+  "rarity": "U"
+}

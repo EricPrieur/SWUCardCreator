@@ -1,0 +1,15 @@
+{
+  "id": "swu-ASH-206",
+  "frameId": "unit-cunning-heroism",
+  "name": "Kelleran Beq",
+  "subtitle": "Where are the Others?",
+  "trait": "Force, Jedi",
+  "text": "[Ambush]\nThis unit gets +1/+0 for each other unit with 0 power.",
+  "unique": true,
+  "cost": 4,
+  "power": 3,
+  "hp": 5,
+  "setCode": "ASH",
+  "number": "206",
+  "rarity": "L"
+}

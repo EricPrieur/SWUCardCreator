@@ -1,0 +1,12 @@
+{
+  "id": "swu-HMW-029",
+  "frameId": "base-aggression-text",
+  "name": "Dendroid Wilds",
+  "trait": "Endor",
+  "text": "",
+  "unique": false,
+  "hp": 30,
+  "setCode": "HMW",
+  "number": "029",
+  "rarity": "C"
+}

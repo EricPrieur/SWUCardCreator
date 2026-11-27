@@ -1,0 +1,14 @@
+{
+  "id": "swu-SEC-164",
+  "frameId": "unit-aggression",
+  "name": "Warrior of Clan Ordo",
+  "trait": "Mandalorian",
+  "text": "[On Attack:] You may disclose [Aggression]. If you don't, deal 2 damage to your base.",
+  "unique": false,
+  "cost": 2,
+  "power": 3,
+  "hp": 3,
+  "setCode": "SEC",
+  "number": "164",
+  "rarity": "C"
+}

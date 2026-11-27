@@ -1,0 +1,14 @@
+{
+  "id": "swu-HMW-235",
+  "frameId": "upgrade-cunning",
+  "name": "Gaderffii Stick",
+  "trait": "Item, Weapon",
+  "text": "Attach to a non-[{Vehicle}] unit with 3 or less power.",
+  "unique": false,
+  "cost": 1,
+  "power": 2,
+  "hp": 1,
+  "setCode": "HMW",
+  "number": "235",
+  "rarity": "C"
+}

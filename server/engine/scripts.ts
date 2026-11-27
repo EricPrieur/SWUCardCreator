@@ -65,6 +65,12 @@ export type Abilities = {
   whenPlayed?: Ability
   onAttack?: Ability
   whenDefeated?: Ability
+  // "When you use a "When Defeated" ability: … use that ability again." (Grand Admiral Thrawn):
+  // whether it does for this one (used: the ability's card; did: whether its first use did
+  // something), paying what it asks
+  repeatsWhenDefeated?: (g: Game, self: Self, used: Self, did: boolean) => boolean
+  // "Each opponent can't ready more than 1 ground unit and 1 space unit during the regroup phase."
+  limitsRegroupReady?: boolean
   whenDeployed?: Ability
   actions?: ActionAbility[]
   // When another friendly unit attacks; self.other is the attacker

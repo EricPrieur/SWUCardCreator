@@ -1,0 +1,15 @@
+{
+  "id": "swu-ASH-118",
+  "frameId": "unit-command",
+  "name": "8D8",
+  "subtitle": "Daimyo's Majordomo",
+  "trait": "Underworld, Droid",
+  "text": "[Hidden]\n[Action [Arrow]:] Deal 1 damage to another friendly unit. If you do, search the top 5 cards of your deck for a unit, reveal it, and draw it.",
+  "unique": true,
+  "cost": 2,
+  "power": 1,
+  "hp": 4,
+  "setCode": "ASH",
+  "number": "118",
+  "rarity": "R"
+}

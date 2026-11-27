@@ -1,0 +1,15 @@
+{
+  "id": "swu-ASH-135",
+  "frameId": "upgrade-command",
+  "name": "The Darksaber",
+  "subtitle": "Icon of Leadership",
+  "trait": "Mandalorian, Item, Weapon",
+  "text": "Attach to a [{Unique}] non-[{Vehicle}] unit.\nAttached unit is a leader unit and gains the [{Mandalorian}] trait.\nAttached unit gains: \"While you are paying costs, this unit provides its aspect icons.\"",
+  "unique": true,
+  "cost": 4,
+  "power": 4,
+  "hp": 2,
+  "setCode": "ASH",
+  "number": "135",
+  "rarity": "L"
+}

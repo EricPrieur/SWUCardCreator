@@ -1,0 +1,15 @@
+{
+  "id": "swu-LAW-219",
+  "frameId": "unit-cunning-heroism",
+  "name": "Anakin's Podracer",
+  "subtitle": "So Wizard!",
+  "trait": "Vehicle, Speeder",
+  "text": "[Ambush]\nWhile attacking, if no other units have attacked this phase, this unit deals combat damage before the defending unit.",
+  "unique": true,
+  "cost": 3,
+  "power": 3,
+  "hp": 2,
+  "setCode": "LAW",
+  "number": "219",
+  "rarity": "L"
+}

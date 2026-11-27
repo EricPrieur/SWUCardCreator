@@ -1,0 +1,15 @@
+{
+  "id": "swu-HMW-115",
+  "frameId": "unit-command-heroism",
+  "name": "Leia Organa",
+  "subtitle": "These Are My Friends",
+  "trait": "Rebel, Official",
+  "text": "[When you play another unit that costs 3 or less:] Heal 1 damage from your base.",
+  "unique": true,
+  "cost": 1,
+  "power": 2,
+  "hp": 3,
+  "setCode": "HMW",
+  "number": "115",
+  "rarity": "U"
+}

@@ -1,0 +1,14 @@
+{
+  "id": "swu-LOF-035",
+  "frameId": "unit-vigilance-villainy",
+  "name": "Talzin's Assassin",
+  "trait": "Force, Night",
+  "text": "[When Played:] You may use the Force. If you do, give a unit -3/-3 for this phase.",
+  "unique": false,
+  "cost": 4,
+  "power": 4,
+  "hp": 4,
+  "setCode": "LOF",
+  "number": "035",
+  "rarity": "C"
+}

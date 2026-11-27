@@ -1,0 +1,12 @@
+{
+  "id": "swu-LAW-022",
+  "frameId": "base-command-text",
+  "name": "Aldhani Garrison",
+  "trait": "Aldhani",
+  "text": "[Epic Action:] Play a card from your hand, ignoring 1 of its [Vigilance], [Command], [Aggression], or [Cunning] aspect penalties.",
+  "unique": false,
+  "hp": 27,
+  "setCode": "LAW",
+  "number": "022",
+  "rarity": "C"
+}

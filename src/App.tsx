@@ -1,4 +1,5 @@
 import { SupporterMark, SupportPage } from './Support'
+import { UpdateBanner } from './UpdateBanner'
 import { isSupporter } from '../server/tiers.ts'
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type CSSProperties, type ReactNode, type RefObject } from 'react'
 import { createPortal, flushSync } from 'react-dom'
@@ -74,7 +75,7 @@ const tabs = [
   // The DUNE set's own page (#DuneSWU), with its Deck Builder and the game simulator
   { id: 'dune', label: 'Dune SWU' },
   // Real SWU cards (#SWU), imported from swudb.com by server/tools/swu-import.ts to test with the
-  // engine; dev only: their images are official and stay out of git and off the site
+  // engine; open to all since 2026-11-27 (featuring a deck stays the admin's, in dev)
   { id: 'swu', label: 'SWU' },
   { id: 'projects', label: 'My Other Projects' },
 ] as const
@@ -803,7 +804,7 @@ const showroomLink = (name: string) => `${window.location.origin}${window.locati
 // Showcases on the site that no menu links to: the address's name, and its folder in public/showcase
 // A published set is at #set/<SET>; some also have a name of their own
 // (#simulator: the Simulator had its own tab before it moved to the DUNE page)
-const showcases: Record<string, string> = { DuneSWU: 'DUNE', simulator: 'DUNE', ...(import.meta.env.DEV && { SWU: 'SWU' }) }
+const showcases: Record<string, string> = { DuneSWU: 'DUNE', simulator: 'DUNE', SWU: 'SWU' }
 // A slash at the end, or other capitals, still find it: #DuneSWU/, #duneswu, #set/dune
 const showcaseFromHash = () => {
   const asked = window.location.hash.slice(1).replace(/\/+$/, '')
@@ -2977,7 +2978,7 @@ function Showcase(props: { folder: string; promos?: Card[] }) {
   }, [])
   // My Other Projects was a view here before the site's tabs were on this page
   const view = stored === 'projects' ? 'cards' : stored
-  // SWU: the dev-only SWU tab's real cards, played by the engine too
+  // SWU: the SWU tab's real cards, played by the engine too
   const playable = props.folder === 'DUNE' || props.folder === 'SWU'
   const prescient = usePrescientDrawer()
   useEffect(() => {
@@ -7956,7 +7957,7 @@ function App() {
   const mainTabs = (
     <nav className="tabs">
       {tabs
-        .filter(({ id }) => (id !== 'community' || online) && (id !== 'swu' || import.meta.env.DEV))
+        .filter(({ id }) => id !== 'community' || online)
         .map(({ id, label }) => (
         <a
           key={id}
@@ -7990,6 +7991,7 @@ function App() {
 
   return (
     <main className="page">
+      <UpdateBanner />
       <header className="page-header">
         {accountBar}
         <h1>SWU Card Creator</h1>

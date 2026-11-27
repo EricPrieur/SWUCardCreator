@@ -1,0 +1,15 @@
+{
+  "id": "swu-IC27-043",
+  "frameId": "unit-vigilance-heroism-space",
+  "name": "Raddus",
+  "subtitle": "Hope of the Resistance",
+  "trait": "Resistance, Vehicle, Capital Ship",
+  "text": "[Restore 3]\nWhile this unit is exhausted, cards your opponents play cost [3] more.",
+  "unique": true,
+  "cost": 9,
+  "power": 8,
+  "hp": 9,
+  "setCode": "IC27",
+  "number": "043",
+  "rarity": "R"
+}

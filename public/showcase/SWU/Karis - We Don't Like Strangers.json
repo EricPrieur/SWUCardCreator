@@ -1,0 +1,15 @@
+{
+  "id": "swu-LOF-031",
+  "frameId": "unit-vigilance-villainy",
+  "name": "Karis",
+  "subtitle": "We Don't Like Strangers",
+  "trait": "Force, Night",
+  "text": "[When Defeated:] You may use the Force. If you do, give a unit -2/-2 for this phase.",
+  "unique": true,
+  "cost": 2,
+  "power": 2,
+  "hp": 4,
+  "setCode": "LOF",
+  "number": "031",
+  "rarity": "U"
+}

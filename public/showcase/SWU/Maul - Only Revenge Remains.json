@@ -1,0 +1,15 @@
+{
+  "id": "swu-HMW-174",
+  "frameId": "unit-aggression",
+  "name": "Maul",
+  "subtitle": "Only Revenge Remains",
+  "trait": "Force, Underworld",
+  "text": "",
+  "unique": true,
+  "cost": 4,
+  "power": 6,
+  "hp": 6,
+  "setCode": "HMW",
+  "number": "174",
+  "rarity": "R"
+}

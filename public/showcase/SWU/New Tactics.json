@@ -1,0 +1,12 @@
+{
+  "id": "swu-HMW-218",
+  "frameId": "event-cunning-heroism",
+  "name": "New Tactics",
+  "trait": "Learned, Tactic",
+  "text": "Choose a non-leader unit. Its owner puts it on the top or bottom of their deck.",
+  "unique": false,
+  "cost": 5,
+  "setCode": "HMW",
+  "number": "218",
+  "rarity": "C"
+}

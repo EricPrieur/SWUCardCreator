@@ -1,0 +1,15 @@
+{
+  "id": "swu-LOF-199",
+  "frameId": "unit-cunning-heroism",
+  "name": "Depa Billaba",
+  "subtitle": "A Higher Purpose",
+  "trait": "Force, Jedi, Republic",
+  "text": "[Ambush]\n[Saboteur]",
+  "unique": true,
+  "cost": 6,
+  "power": 5,
+  "hp": 7,
+  "setCode": "LOF",
+  "number": "199",
+  "rarity": "U"
+}

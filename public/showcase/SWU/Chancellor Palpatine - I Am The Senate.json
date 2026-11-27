@@ -1,0 +1,15 @@
+{
+  "id": "swu-SEC-082",
+  "frameId": "unit-command-villainy",
+  "name": "Chancellor Palpatine",
+  "subtitle": "I Am The Senate",
+  "trait": "Republic, Official",
+  "text": "[When Played:] If you control a leader unit, create 2 Spy tokens and give those tokens [Sentinel] for this phase.\n[Plot]",
+  "unique": true,
+  "cost": 3,
+  "power": 2,
+  "hp": 2,
+  "setCode": "SEC",
+  "number": "082",
+  "rarity": "R"
+}

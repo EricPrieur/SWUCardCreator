@@ -1,0 +1,15 @@
+{
+  "id": "swu-HMW-203",
+  "frameId": "unit-cunning-villainy-space",
+  "name": "Victor Squadron",
+  "subtitle": "In Attack Formation",
+  "trait": "Imperial, Vehicle, Fighter",
+  "text": "This unit enters play ready.",
+  "unique": true,
+  "cost": 6,
+  "power": 5,
+  "hp": 5,
+  "setCode": "HMW",
+  "number": "203",
+  "rarity": "U"
+}

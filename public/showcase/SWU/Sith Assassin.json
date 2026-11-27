@@ -1,0 +1,14 @@
+{
+  "id": "swu-SEC-238",
+  "frameId": "unit-villainy",
+  "name": "Sith Assassin",
+  "trait": "Force, Sith",
+  "text": "[Hidden]",
+  "unique": false,
+  "cost": 2,
+  "power": 3,
+  "hp": 2,
+  "setCode": "SEC",
+  "number": "238",
+  "rarity": "C"
+}

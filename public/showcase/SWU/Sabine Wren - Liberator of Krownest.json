@@ -1,0 +1,15 @@
+{
+  "id": "swu-IC27-119",
+  "frameId": "unit-aggression-heroism",
+  "name": "Sabine Wren",
+  "subtitle": "Liberator of Krownest",
+  "trait": "Mandalorian, Rebel, Spectre",
+  "text": "[Saboteur]\n[When Played:] Discard 2 cards from a deck. You may deal damage to a unit equal to the difference in those cards' costs.",
+  "unique": true,
+  "cost": 4,
+  "power": 5,
+  "hp": 4,
+  "setCode": "IC27",
+  "number": "119",
+  "rarity": "R"
+}

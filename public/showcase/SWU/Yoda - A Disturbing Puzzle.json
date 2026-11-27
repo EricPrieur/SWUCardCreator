@@ -1,0 +1,15 @@
+{
+  "id": "swu-IC27-035",
+  "frameId": "unit-vigilance-heroism",
+  "name": "Yoda",
+  "subtitle": "A Disturbing Puzzle",
+  "trait": "Force, Jedi, Republic",
+  "text": "[On Attack:] You may choose an enemy unit. Prevent all combat damage that would be dealt to and dealt by that unit for this phase.",
+  "unique": true,
+  "cost": 3,
+  "power": 3,
+  "hp": 4,
+  "setCode": "IC27",
+  "number": "035",
+  "rarity": "L"
+}

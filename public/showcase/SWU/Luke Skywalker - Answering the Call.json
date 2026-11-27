@@ -1,0 +1,15 @@
+{
+  "id": "swu-ASH-112",
+  "frameId": "unit-command-heroism",
+  "name": "Luke Skywalker",
+  "subtitle": "Answering the Call",
+  "trait": "Force, Jedi",
+  "text": "[Restore 1]\n[When Played:] If you control at least 4 units, deal 3 damage to each enemy unit.",
+  "unique": true,
+  "cost": 6,
+  "power": 5,
+  "hp": 5,
+  "setCode": "ASH",
+  "number": "112",
+  "rarity": "L"
+}

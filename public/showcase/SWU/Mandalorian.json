@@ -1,0 +1,14 @@
+{
+  "id": "swu-TASH-T01",
+  "frameId": "unit-token-text-neutral",
+  "name": "Mandalorian",
+  "trait": "Mandalorian",
+  "text": "[Shielded]",
+  "unique": false,
+  "cost": 0,
+  "power": 2,
+  "hp": 2,
+  "setCode": "TASH",
+  "number": "T01",
+  "rarity": "C"
+}

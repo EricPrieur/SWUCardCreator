@@ -1,0 +1,12 @@
+{
+  "id": "swu-JTL-043",
+  "frameId": "event-vigilance-villainy",
+  "name": "No Glory, Only Results",
+  "trait": "Tactic",
+  "text": "Take control of a non-leader unit, then defeat it.",
+  "unique": false,
+  "cost": 5,
+  "setCode": "JTL",
+  "number": "043",
+  "rarity": "R"
+}

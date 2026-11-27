@@ -1,0 +1,15 @@
+{
+  "id": "swu-ASH-097",
+  "frameId": "unit-command-villainy",
+  "name": "Moff Gideon",
+  "subtitle": "Remnant Commander",
+  "trait": "Imperial, Official",
+  "text": "[Sentinel]\n[When Defeated:] You may return a non-[{Unique}] [{Imperial}] unit from your discard pile to your hand.",
+  "unique": true,
+  "cost": 3,
+  "power": 2,
+  "hp": 5,
+  "setCode": "ASH",
+  "number": "097",
+  "rarity": "U"
+}

@@ -1,0 +1,14 @@
+{
+  "id": "swu-SEC-146",
+  "frameId": "unit-aggression-heroism",
+  "name": "Rebellious Functionary",
+  "trait": "Rebel, Official",
+  "text": "[Hidden]",
+  "unique": false,
+  "cost": 1,
+  "power": 2,
+  "hp": 2,
+  "setCode": "SEC",
+  "number": "146",
+  "rarity": "C"
+}

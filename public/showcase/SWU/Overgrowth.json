@@ -1,0 +1,12 @@
+{
+  "id": "swu-HMW-151",
+  "frameId": "event-command",
+  "name": "Overgrowth",
+  "trait": "Disaster",
+  "text": "If you control a [{Kashyyyk}] base, a friendly unit deals damage equal to its power to an enemy unit.\nResource this card.",
+  "unique": false,
+  "cost": 5,
+  "setCode": "HMW",
+  "number": "151",
+  "rarity": "C"
+}

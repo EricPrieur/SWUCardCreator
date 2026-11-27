@@ -1,0 +1,12 @@
+{
+  "id": "swu-ASH-090",
+  "frameId": "event-vigilance",
+  "name": "Reforge",
+  "trait": "Supply",
+  "text": "Defeat an upgrade on a friendly unit. If you do, search the top 8 cards of your deck for an upgrade that can attach to that unit, reveal it, and play it on that unit. It costs [4] less.",
+  "unique": false,
+  "cost": 2,
+  "setCode": "ASH",
+  "number": "090",
+  "rarity": "R"
+}

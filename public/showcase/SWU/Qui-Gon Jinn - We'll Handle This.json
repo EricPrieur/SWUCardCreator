@@ -1,0 +1,15 @@
+{
+  "id": "swu-HMW-078",
+  "frameId": "unit-vigilance-heroism",
+  "name": "Qui-Gon Jinn",
+  "subtitle": "We'll Handle This",
+  "trait": "Force, Jedi, Republic",
+  "text": "[Grit]\n[When Played:] You may defeat a unit that attacked your base this phase. If it's a leader unit, defeat this unit.",
+  "unique": true,
+  "cost": 5,
+  "power": 2,
+  "hp": 5,
+  "setCode": "HMW",
+  "number": "078",
+  "rarity": "L"
+}

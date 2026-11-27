@@ -1,0 +1,14 @@
+{
+  "id": "swu-JTL-153",
+  "frameId": "unit-aggression-heroism-space",
+  "name": "Rebellious Hammerhead",
+  "trait": "Rebel, Vehicle, Capital Ship",
+  "text": "[When Played:] You may deal damage to a unit equal to the number of cards in your hand.",
+  "unique": false,
+  "cost": 6,
+  "power": 5,
+  "hp": 7,
+  "setCode": "JTL",
+  "number": "153",
+  "rarity": "C"
+}

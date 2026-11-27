@@ -1,0 +1,16 @@
+{
+  "id": "swu-LOF-002",
+  "frameId": "leader-vigilance-villainy",
+  "name": "Mother Talzin",
+  "subtitle": "Power Through Magick",
+  "trait": "Force, Night",
+  "text": "[Action [Arrow, use the Force]:] Give a unit -1/-1 for this phase.",
+  "backText": "[On Attack:] You may give a unit -1/-1 for this phase.",
+  "unique": true,
+  "cost": 5,
+  "power": 3,
+  "hp": 7,
+  "setCode": "LOF",
+  "number": "002",
+  "rarity": "C"
+}

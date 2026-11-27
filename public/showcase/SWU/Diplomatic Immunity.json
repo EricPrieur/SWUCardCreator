@@ -1,0 +1,14 @@
+{
+  "id": "swu-SEC-052",
+  "frameId": "upgrade-vigilance-heroism",
+  "name": "Diplomatic Immunity",
+  "trait": "Law",
+  "text": "Attached unit gains: \"[When this unit is attacked:] You may disclose [Vigilance][Vigilance][Heroism][Heroism] (reveal cards from your hand with these aspect icons among them). If you do, the attacker gets -2/-0 for this attack.\"",
+  "unique": false,
+  "cost": 2,
+  "power": 2,
+  "hp": 2,
+  "setCode": "SEC",
+  "number": "052",
+  "rarity": "U"
+}

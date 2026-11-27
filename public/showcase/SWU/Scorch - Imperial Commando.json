@@ -1,0 +1,15 @@
+{
+  "id": "swu-HMW-064",
+  "frameId": "unit-vigilance-villainy",
+  "name": "Scorch",
+  "subtitle": "Imperial Commando",
+  "trait": "Imperial, Clone, Trooper",
+  "text": "[On Attack:] You may deal 1 damage to an upgrade unit.",
+  "unique": true,
+  "cost": 3,
+  "power": 3,
+  "hp": 5,
+  "setCode": "HMW",
+  "number": "064",
+  "rarity": "U"
+}

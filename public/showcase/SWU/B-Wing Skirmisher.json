@@ -1,0 +1,14 @@
+{
+  "id": "swu-LAW-183",
+  "frameId": "unit-aggression-heroism-space",
+  "name": "B-Wing Skirmisher",
+  "trait": "Rebel, Vehicle, Fighter",
+  "text": "[When Played:] Deal 1 damage to each of up to 2 space units.",
+  "unique": false,
+  "cost": 4,
+  "power": 4,
+  "hp": 4,
+  "setCode": "LAW",
+  "number": "183",
+  "rarity": "C"
+}

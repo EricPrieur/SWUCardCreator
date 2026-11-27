@@ -1,0 +1,14 @@
+{
+  "id": "swu-SEC-176",
+  "frameId": "upgrade-aggression",
+  "name": "Sudden Ferocity",
+  "trait": "Innate",
+  "text": "[Plot]",
+  "unique": false,
+  "cost": 3,
+  "power": 3,
+  "hp": 0,
+  "setCode": "SEC",
+  "number": "176",
+  "rarity": "C"
+}

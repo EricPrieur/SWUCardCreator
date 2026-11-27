@@ -1,0 +1,15 @@
+{
+  "id": "swu-LOF-153",
+  "frameId": "unit-aggression",
+  "name": "Paz Vizsla",
+  "subtitle": "Unyielding Warrior",
+  "trait": "Mandalorian",
+  "text": "This unit gets [+2/+0] for each damage on him.",
+  "unique": true,
+  "cost": 5,
+  "power": 3,
+  "hp": 6,
+  "setCode": "LOF",
+  "number": "153",
+  "rarity": "R"
+}

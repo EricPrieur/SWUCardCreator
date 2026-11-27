@@ -1,0 +1,15 @@
+{
+  "id": "swu-IC27-123",
+  "frameId": "unit-aggression-heroism",
+  "name": "Jyn Erso",
+  "subtitle": "Her Father's Revenge",
+  "trait": "Rebel",
+  "text": "[Saboteur]\n[When Played:] Ready up to 3 units with combined cost 7 or less. They each gain [Saboteur] for this phase.",
+  "unique": true,
+  "cost": 8,
+  "power": 8,
+  "hp": 7,
+  "setCode": "IC27",
+  "number": "123",
+  "rarity": "L"
+}

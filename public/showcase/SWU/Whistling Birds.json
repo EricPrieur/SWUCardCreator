@@ -1,0 +1,14 @@
+{
+  "id": "swu-ASH-183",
+  "frameId": "upgrade-aggression",
+  "name": "Whistling Birds",
+  "trait": "Item, Weapon",
+  "text": "Attach to a non-[{Vehicle}] unit.\nAttached unit gains: \"[When Attack Ends:] If this unit dealt combat damage to an opponent's base, deal 2 damage to each unit that opponent controls in this unit's arena.\"",
+  "unique": false,
+  "cost": 3,
+  "power": 2,
+  "hp": 2,
+  "setCode": "ASH",
+  "number": "183",
+  "rarity": "L"
+}

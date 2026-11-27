@@ -1,0 +1,15 @@
+{
+  "id": "swu-LOF-147",
+  "frameId": "unit-aggression-heroism-space",
+  "name": "Kit Fisto's Aethersprite",
+  "subtitle": "Good Hunting",
+  "trait": "Jedi, Republic, Vehicle, Fighter",
+  "text": "[Saboteur]\n[When Played:] You may defeat any number of upgrades on a unit.",
+  "unique": true,
+  "cost": 5,
+  "power": 4,
+  "hp": 5,
+  "setCode": "LOF",
+  "number": "147",
+  "rarity": "R"
+}

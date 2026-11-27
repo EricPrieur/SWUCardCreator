@@ -1,0 +1,12 @@
+{
+  "id": "swu-HMW-173",
+  "frameId": "event-aggression-heroism",
+  "name": "Rebel Operation",
+  "trait": "Rebel, Plan",
+  "text": "This card costs [1] less to play for each friendly [{Rebel}] unit and leader.\nDraw 2 cards.",
+  "unique": false,
+  "cost": 4,
+  "setCode": "HMW",
+  "number": "173",
+  "rarity": "R"
+}

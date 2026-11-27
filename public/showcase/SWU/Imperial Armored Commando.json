@@ -1,0 +1,14 @@
+{
+  "id": "swu-ASH-048",
+  "frameId": "unit-vigilance-villainy",
+  "name": "Imperial Armored Commando",
+  "trait": "Imperial, Trooper",
+  "text": "[Sentinel]\n[Shielded]",
+  "unique": false,
+  "cost": 4,
+  "power": 4,
+  "hp": 3,
+  "setCode": "ASH",
+  "number": "048",
+  "rarity": "C"
+}

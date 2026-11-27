@@ -1,0 +1,15 @@
+{
+  "id": "swu-SEC-172",
+  "frameId": "unit-aggression",
+  "name": "Cinta Kaz",
+  "subtitle": "The Struggle Comes First",
+  "trait": "Rebel",
+  "text": "[When Played:] You may attack with a unit.\n[Plot]",
+  "unique": true,
+  "cost": 6,
+  "power": 5,
+  "hp": 5,
+  "setCode": "SEC",
+  "number": "172",
+  "rarity": "U"
+}

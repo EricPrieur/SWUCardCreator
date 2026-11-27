@@ -1,0 +1,15 @@
+{
+  "id": "swu-SEC-101",
+  "frameId": "unit-command-heroism",
+  "name": "Queen Amidala",
+  "subtitle": "Championing Her People",
+  "trait": "Naboo, Official",
+  "text": "[When Played:] Create 2 Spy tokens.\nIf damage would be dealt to this unit, you may defeat another friendly unit that shares a trait with this unit. If you do, prevent that damage.",
+  "unique": true,
+  "cost": 5,
+  "power": 5,
+  "hp": 3,
+  "setCode": "SEC",
+  "number": "101",
+  "rarity": "L"
+}

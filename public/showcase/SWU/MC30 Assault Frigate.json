@@ -1,0 +1,14 @@
+{
+  "id": "swu-JTL-118",
+  "frameId": "unit-command-space",
+  "name": "MC30 Assault Frigate",
+  "trait": "Rebel, Vehicle, Capital Ship",
+  "text": "[Overwhelm]\n[Raid 1]",
+  "unique": false,
+  "cost": 5,
+  "power": 5,
+  "hp": 5,
+  "setCode": "JTL",
+  "number": "118",
+  "rarity": "C"
+}

@@ -1,0 +1,15 @@
+{
+  "id": "swu-LOF-111",
+  "frameId": "unit-command",
+  "name": "Maz Kanata",
+  "subtitle": "The Light Guides",
+  "trait": "Underworld",
+  "text": "[When Played:] You may attack with a [{Force}] unit. It gets [+2/+0] for this attack.",
+  "unique": true,
+  "cost": 3,
+  "power": 3,
+  "hp": 4,
+  "setCode": "LOF",
+  "number": "111",
+  "rarity": "U"
+}

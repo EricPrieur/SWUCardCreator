@@ -1,0 +1,12 @@
+{
+  "id": "swu-ASH-247",
+  "frameId": "event-villainy",
+  "name": "One Must Destroy to Create",
+  "trait": "Plan",
+  "text": "Defeat a friendly non-leader unit. Then, you may play that unit from your discard pile for free.",
+  "unique": false,
+  "cost": 3,
+  "setCode": "ASH",
+  "number": "247",
+  "rarity": "R"
+}

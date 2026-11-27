@@ -1,0 +1,15 @@
+{
+  "id": "swu-LAW-224",
+  "frameId": "unit-cunning-heroism-space",
+  "name": "Liberty",
+  "subtitle": "Draw Their Fire!",
+  "trait": "Rebel, Vehicle, Capital Ship",
+  "text": "[Sentinel]\n[When Played/On Attack:] Exhaust an enemy unit and return all upgrades on it that cost 4 or less to their owner's hands.",
+  "unique": true,
+  "cost": 8,
+  "power": 9,
+  "hp": 7,
+  "setCode": "LAW",
+  "number": "224",
+  "rarity": "L"
+}

@@ -1,0 +1,15 @@
+{
+  "id": "swu-IC27-163",
+  "frameId": "unit-cunning-heroism",
+  "name": "Bo-Katan Kryze",
+  "subtitle": "Right Place, Right Time",
+  "trait": "Mandalorian",
+  "text": "[Shielded]\n[When Played:] Give each enemy unit -7/-0 for this phase.",
+  "unique": true,
+  "cost": 7,
+  "power": 7,
+  "hp": 6,
+  "setCode": "IC27",
+  "number": "163",
+  "rarity": "R"
+}

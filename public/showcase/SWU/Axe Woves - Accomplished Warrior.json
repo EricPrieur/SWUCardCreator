@@ -1,0 +1,15 @@
+{
+  "id": "swu-LOF-062",
+  "frameId": "unit-vigilance",
+  "name": "Axe Woves",
+  "subtitle": "Accomplished Warrior",
+  "trait": "Mandalorian, Trooper",
+  "text": "[Shielded]\nThis unit gets [+1/+1] for each upgrade on him.",
+  "unique": true,
+  "cost": 3,
+  "power": 2,
+  "hp": 2,
+  "setCode": "LOF",
+  "number": "062",
+  "rarity": "R"
+}

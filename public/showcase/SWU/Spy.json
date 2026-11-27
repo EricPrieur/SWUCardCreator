@@ -1,0 +1,14 @@
+{
+  "id": "swu-TSEC-T01",
+  "frameId": "unit-token-text-neutral",
+  "name": "Spy",
+  "trait": "Official",
+  "text": "[Raid 2]",
+  "unique": false,
+  "cost": 0,
+  "power": 0,
+  "hp": 2,
+  "setCode": "TSEC",
+  "number": "T01",
+  "rarity": "C"
+}

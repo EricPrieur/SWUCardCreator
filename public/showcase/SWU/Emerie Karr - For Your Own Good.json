@@ -1,0 +1,15 @@
+{
+  "id": "swu-HMW-130",
+  "frameId": "unit-command",
+  "name": "Emerie Karr",
+  "subtitle": "For Your Own Good",
+  "trait": "Imperial, Clone",
+  "text": "[When Played:] You may deal 1 damage to another ground unit. If you control that unit, the next unit you play this phase costs [1] less.",
+  "unique": true,
+  "cost": 1,
+  "power": 2,
+  "hp": 1,
+  "setCode": "HMW",
+  "number": "130",
+  "rarity": "R"
+}

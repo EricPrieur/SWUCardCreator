@@ -1,0 +1,15 @@
+{
+  "id": "swu-ASH-062",
+  "frameId": "unit-vigilance-heroism",
+  "name": "The Mandalorian",
+  "subtitle": "Devoted Rescuer",
+  "trait": "Mandalorian",
+  "text": "[Shielded]\nIf damage would be dealt to another friendly unit, you may defeat a Shield token on this unit. If you do, prevent that damage.",
+  "unique": true,
+  "cost": 4,
+  "power": 5,
+  "hp": 4,
+  "setCode": "ASH",
+  "number": "062",
+  "rarity": "L"
+}

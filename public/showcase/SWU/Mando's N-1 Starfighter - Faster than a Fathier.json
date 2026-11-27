@@ -1,0 +1,15 @@
+{
+  "id": "swu-ASH-203",
+  "frameId": "unit-cunning-heroism-space",
+  "name": "Mando's N-1 Starfighter",
+  "subtitle": "Faster than a Fathier",
+  "trait": "Mandalorian, Vehicle, Fighter",
+  "text": "[Support]\n[On Attack:] You may exhaust a friendly leader. If you do, this unit gets +2/+0 for this attack.",
+  "unique": true,
+  "cost": 2,
+  "power": 1,
+  "hp": 3,
+  "setCode": "ASH",
+  "number": "203",
+  "rarity": "R"
+}

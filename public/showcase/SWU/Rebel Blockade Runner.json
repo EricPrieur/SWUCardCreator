@@ -1,0 +1,14 @@
+{
+  "id": "swu-LAW-222",
+  "frameId": "unit-cunning-heroism-space",
+  "name": "Rebel Blockade Runner",
+  "trait": "Rebel, Vehicle, Transport",
+  "text": "[Saboteur]",
+  "unique": false,
+  "cost": 4,
+  "power": 4,
+  "hp": 5,
+  "setCode": "LAW",
+  "number": "222",
+  "rarity": "C"
+}

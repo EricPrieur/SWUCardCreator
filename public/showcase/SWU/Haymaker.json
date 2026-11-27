@@ -1,0 +1,12 @@
+{
+  "id": "swu-LAW-168",
+  "frameId": "event-command",
+  "name": "Haymaker",
+  "trait": "Tactic",
+  "text": "Give an Experience token to a friendly unit. That unit deals damage equal to its power to an enemy unit in the same arena.",
+  "unique": false,
+  "cost": 4,
+  "setCode": "LAW",
+  "number": "168",
+  "rarity": "C"
+}

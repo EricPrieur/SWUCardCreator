@@ -401,7 +401,9 @@ const HOLOCRON_ON_FORCE = 1.5
 // An enemy combo piece (Paz Vizsla, who grows with damage; Gungi, who readies as he's damaged,
 // Sith Holocron's loop): defeated in one attack at high priority (the user, 2026-11-26: "make sure
 // the AI doesn't fall too easily to that combo")
-const COMBO_PIECE = /for each damage on|When this unit is dealt damage and survives:\] You may discard a card from your hand\. If you do, ready this unit/
+// Director Krennic, whose discount runs Thrawn's deck, and Count Dooku, who keeps an aggro deck's
+// units exhausted, are killed as soon as can be (the user, 2026-11-27)
+const COMBO_PIECE = /for each damage on|When this unit is dealt damage and survives:\] You may discard a card from your hand\. If you do, ready this unit|has a "\[When Defeated\] " ability costs \[1\] less|can't ready more than 1 ground unit and 1 space unit/
 const KILL_COMBO = 3
 function killsComboPiece(state: GameState, p: PlayerId, move: Action) {
   if (move.type !== 'attack' || move.target === 'base') return 0
@@ -571,12 +573,20 @@ function upgradesForLeader(state: GameState, p: PlayerId, move: Action) {
 // it on Finn, Captain Typho, Hunter, half its uses)
 const HARD_REMOVAL = /^Take control of a non-leader unit, then defeat it\.|^Defeat a non-leader unit\./
 const HOLD_REMOVAL = 3
+const DEFEATED_STORED = 3
+const STEAL_DEFEATED = /When Defeated:\] (?:Deal \d+ damage divided|You may defeat an enemy unit)/
 function holdsRemoval(state: GameState, p: PlayerId, move: Action) {
   if (move.type !== 'play') return 0
   const card = state.players[p].hand.find((c) => c.id === move.card)
   const d = card && state.defs[card.def]
   if (!d || d.type !== 'event' || !HARD_REMOVAL.test(d.text ?? '')) return 0
   const foe = state.players[p === 0 ? 1 : 0]
+  // Removal that takes the unit waits for one with a When Defeated worth taking (Thrawn's The
+  // Legacy Run, its 6 damage then ours) while one is unseen and none is on the board (the user,
+  // 2026-11-27: "keep No Glory for stuff like Thrawn's own Legacy Run")
+  const steals = /^Take control/.test(d.text ?? '')
+  const prize = (c: { def: string }) => STEAL_DEFEATED.test(state.defs[c.def].text ?? '')
+  if (steals && !inDanger(state, p) && !foe.units.some(prize) && [...foe.hand, ...foe.deck].some(prize)) return HOLD_REMOVAL
   const dearest = Math.max(0, ...foe.units.filter((u) => !u.leader).map((u) => state.defs[u.def].cost))
   if (dearest >= d.cost || inDanger(state, p)) return 0
   const big = [...foe.hand, ...foe.deck].some((c) => state.defs[c.def].cost >= BIG_CARD)
@@ -645,8 +655,51 @@ function pingSetsUpTrade(state: GameState, p: PlayerId, move: Action, actions: A
   }
   return best
 }
+// Director Krennic first: the first unit with a When Defeated each round costs 1 less, and most of
+// Thrawn's deck has one (the user, 2026-11-27: "high priority to play")
+const DEFEATED_DISCOUNT = /has a "\[When Defeated\] " ability costs \[1\] less/
+function playsDefeatedDiscount(state: GameState, p: PlayerId, move: Action) {
+  if (move.type !== 'play') return 0
+  const player = state.players[p]
+  const card = player.hand.find((c) => c.id === move.card)
+  if (!card || !DEFEATED_DISCOUNT.test(state.defs[card.def].text ?? '')) return 0
+  const fed = player.hand.filter((c) => c.id !== card.id && state.defs[c.def].type === 'unit' && /When Defeated/.test(state.defs[c.def].text ?? ''))
+  return fed.length ? ENABLER : 0
+}
+// A unit whose When Defeated draws (Nightsister Warrior) trades as soon as its attack defeats an
+// enemy unit: the card drawn, Thrawn's again (the user, 2026-11-27: "he wants options in hand,
+// trade that unit as soon as a good trade is available")
+const DRAWS_ON_DEFEAT = /\[When Defeated:\] Draw/
+const TRADE_FOR_CARDS = 2.5
+function tradesForCards(state: GameState, p: PlayerId, move: Action) {
+  if (move.type !== 'attack' || move.target === 'base') return 0
+  const attacker = state.players[p].units.find((u) => u.id === move.attacker)
+  const target = state.players[p === 0 ? 1 : 0].units.find((u) => u.id === move.target)
+  if (!attacker || !target || !DRAWS_ON_DEFEAT.test(state.defs[attacker.def].text ?? '')) return 0
+  const shielded = target.upgrades.some((u) => state.defs[u.def].token && state.defs[u.def].name === 'Shield')
+  return !shielded && powerOf(state, attacker) >= hpOf(state, target) - target.damage ? TRADE_FOR_CARDS : 0
+}
+// "Defeat a friendly non-leader unit. Then, you may play that unit …" (One Must Destroy to
+// Create) waits while a friendly unit with a When Defeated can still attack: its attack first,
+// then the card (the user, 2026-11-27: Inferno Squad recycled before it attacked)
+const DESTROY_TO_CREATE = /^Defeat a friendly non-leader unit\. Then, you may play that unit/
+const RECYCLE_AFTER_ATTACK = 2.5
+function attacksBeforeRecycling(state: GameState, p: PlayerId, move: Action, actions: Action[]) {
+  if (move.type !== 'play') return 0
+  const card = state.players[p].hand.find((c) => c.id === move.card)
+  if (!card || !DESTROY_TO_CREATE.test(state.defs[card.def].text ?? '')) return 0
+  const attackers = new Set(actions.flatMap((a) => (a.type === 'attack' ? [a.attacker] : [])))
+  const waiting = state.players[p].units.some((u) => attackers.has(u.id) && !u.leader && /When Defeated/.test(state.defs[u.def].text ?? ''))
+  return waiting ? -RECYCLE_AFTER_ATTACK : 0
+}
 function baseTiming(state: GameState, p: PlayerId, move: Action, actions: Action[]) {
-  const enabling = enablerWorth(state, p, move) + killsEnabler(state, p, move) + killsComboPiece(state, p, move)
+  const enabling =
+    enablerWorth(state, p, move) +
+    killsEnabler(state, p, move) +
+    killsComboPiece(state, p, move) +
+    playsDefeatedDiscount(state, p, move) +
+    tradesForCards(state, p, move) +
+    attacksBeforeRecycling(state, p, move, actions)
   if (enabling) return enabling
   const searching = searchActionWorth(state, p, move, actions)
   if (searching) return searching
@@ -1686,7 +1739,11 @@ function unitWorth(state: GameState, unit: UnitState, isBlocked = false) {
     // An Ink token (a community card's): 1 more damage the next time it takes combat damage, as
     // good as 1 health less
     unit.upgrades.filter((u) => state.defs[u.def].token && state.defs[u.def].name === 'Ink').length * INK_WORTH +
-    (unit.leader ? 2 : 0)
+    (unit.leader ? 2 : 0) +
+    // A When Defeated still to come that hits the other side hard (The Legacy Run's 6 damage,
+    // Annihilator's unit defeated): the AI played it like a vanilla 3/3 for 5 (the user,
+    // 2026-11-27: "super important card to deal with aggro")
+    (STEAL_DEFEATED.test(card.text ?? '') ? DEFEATED_STORED : 0)
   // Ready, it may still attack this phase
   if (unit.exhausted) worth -= 0.2
   if (state.doomed.includes(unit.id)) worth *= 0.2

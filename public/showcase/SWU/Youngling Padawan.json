@@ -1,0 +1,14 @@
+{
+  "id": "swu-LOF-193",
+  "frameId": "unit-cunning-heroism",
+  "name": "Youngling Padawan",
+  "trait": "Force, Jedi",
+  "text": "[When Played:] The Force is with you.",
+  "unique": false,
+  "cost": 2,
+  "power": 2,
+  "hp": 3,
+  "setCode": "LOF",
+  "number": "193",
+  "rarity": "C"
+}

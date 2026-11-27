@@ -1,0 +1,16 @@
+{
+  "id": "swu-ASH-017",
+  "frameId": "leader-cunning-heroism",
+  "name": "Greef Karga",
+  "subtitle": "Gracious Magistrate",
+  "trait": "Official",
+  "text": "[When you play or create a unit:] You may exhaust this leader. If you do, give an Advantage token to that unit.",
+  "backText": "[When you play or create a unit:] Give an Advantage token to that unit.",
+  "unique": true,
+  "cost": 6,
+  "power": 4,
+  "hp": 7,
+  "setCode": "ASH",
+  "number": "017",
+  "rarity": "C"
+}

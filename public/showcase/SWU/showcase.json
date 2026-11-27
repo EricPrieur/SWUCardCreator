@@ -1,0 +1,4842 @@
+{
+  "title": "Star Wars: Unlimited",
+  "cards": [
+    {
+      "id": "swu-ASH-013",
+      "image": "Ezra Bridger - It's Now or Never",
+      "back": "Ezra Bridger - It's Now or Never (unit)",
+      "name": "Ezra Bridger",
+      "subtitle": "It's Now or Never",
+      "type": "Leader",
+      "aspects": [
+        "Aggression",
+        "Heroism"
+      ],
+      "cost": 5,
+      "traits": [
+        "Force",
+        "Jedi",
+        "Rebel",
+        "Spectre"
+      ],
+      "text": "when a friendly unit's attack ends: if it dealt 3 or more combat damage to a base, you may exhaust this leader. if you do, give an advantage token to a different unit.",
+      "set": "ASH",
+      "number": "013",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-ASH-017",
+      "image": "Greef Karga - Gracious Magistrate",
+      "back": "Greef Karga - Gracious Magistrate (unit)",
+      "name": "Greef Karga",
+      "subtitle": "Gracious Magistrate",
+      "type": "Leader",
+      "aspects": [
+        "Cunning",
+        "Heroism"
+      ],
+      "cost": 6,
+      "traits": [
+        "Official"
+      ],
+      "text": "when you play or create a unit: you may exhaust this leader. if you do, give an advantage token to that unit.",
+      "set": "ASH",
+      "number": "017",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-ASH-026",
+      "image": "Freetown",
+      "name": "Freetown",
+      "type": "Base",
+      "aspects": [
+        "Cunning"
+      ],
+      "traits": [
+        "Tatooine"
+      ],
+      "text": "",
+      "set": "ASH",
+      "number": "026"
+    },
+    {
+      "id": "swu-ASH-034",
+      "image": "Wicket - Yub Nub!",
+      "name": "Wicket",
+      "subtitle": "Yub Nub!",
+      "type": "Unit",
+      "aspects": [
+        "Command",
+        "Aggression",
+        "Heroism"
+      ],
+      "cost": 1,
+      "traits": [
+        "Ewok"
+      ],
+      "text": "saboteur\nthis unit can't attack bases.",
+      "set": "ASH",
+      "number": "034",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-ASH-040",
+      "image": "Poe Dameron - I'll Come Back For You",
+      "name": "Poe Dameron",
+      "subtitle": "I'll Come Back For You",
+      "type": "Unit",
+      "aspects": [
+        "Aggression",
+        "Cunning",
+        "Heroism"
+      ],
+      "cost": 2,
+      "traits": [
+        "Resistance"
+      ],
+      "text": "all units lose sentinel.",
+      "set": "ASH",
+      "number": "040",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-ASH-048",
+      "image": "Imperial Armored Commando",
+      "name": "Imperial Armored Commando",
+      "type": "Unit",
+      "aspects": [
+        "Vigilance",
+        "Villainy"
+      ],
+      "cost": 4,
+      "traits": [
+        "Imperial",
+        "Trooper"
+      ],
+      "text": "sentinel\nshielded",
+      "set": "ASH",
+      "number": "048",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-ASH-050",
+      "image": "Morgan Elsbeth - Life Abandoned",
+      "name": "Morgan Elsbeth",
+      "subtitle": "Life Abandoned",
+      "type": "Unit",
+      "aspects": [
+        "Vigilance",
+        "Villainy"
+      ],
+      "cost": 6,
+      "traits": [
+        "Force",
+        "Night"
+      ],
+      "text": "support\nwhen defeated: you may give a unit -2/-2 for this phase.",
+      "set": "ASH",
+      "number": "050",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-ASH-053",
+      "image": "Pre Vizsla - Strong-Willed Ruler",
+      "name": "Pre Vizsla",
+      "subtitle": "Strong-Willed Ruler",
+      "type": "Unit",
+      "aspects": [
+        "Vigilance",
+        "Villainy"
+      ],
+      "cost": 8,
+      "traits": [
+        "Mandalorian",
+        "Official"
+      ],
+      "text": "when played: defeat any number of non-leader units with a total of 6 or less remaining hp. create a mandalorian token for each unit defeated this way.",
+      "set": "ASH",
+      "number": "053",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-ASH-056",
+      "image": "Huyang - Your Aptitude Falls Short",
+      "name": "Huyang",
+      "subtitle": "Your Aptitude Falls Short",
+      "type": "Unit",
+      "aspects": [
+        "Vigilance",
+        "Heroism"
+      ],
+      "cost": 2,
+      "traits": [
+        "Jedi",
+        "Droid"
+      ],
+      "text": "on attack: you may give an upgraded unit -4/-0 for this phase.",
+      "set": "ASH",
+      "number": "056",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-ASH-062",
+      "image": "The Mandalorian - Devoted Rescuer",
+      "name": "The Mandalorian",
+      "subtitle": "Devoted Rescuer",
+      "type": "Unit",
+      "aspects": [
+        "Vigilance",
+        "Heroism"
+      ],
+      "cost": 4,
+      "traits": [
+        "Mandalorian"
+      ],
+      "text": "shielded\nif damage would be dealt to another friendly unit, you may defeat a shield token on this unit. if you do, prevent that damage.",
+      "set": "ASH",
+      "number": "062",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-ASH-065",
+      "image": "Home One - Heart of the Fleet",
+      "name": "Home One",
+      "subtitle": "Heart of the Fleet",
+      "type": "Unit",
+      "aspects": [
+        "Vigilance",
+        "Heroism"
+      ],
+      "cost": 8,
+      "traits": [
+        "Rebel",
+        "Vehicle",
+        "Capital Ship"
+      ],
+      "text": "sentinel\nwhen played: heal all damage from each friendly unit.",
+      "set": "ASH",
+      "number": "065",
+      "arena": "Space"
+    },
+    {
+      "id": "swu-ASH-090",
+      "image": "Reforge",
+      "name": "Reforge",
+      "type": "Event",
+      "aspects": [
+        "Vigilance"
+      ],
+      "cost": 2,
+      "traits": [
+        "Supply"
+      ],
+      "text": "defeat an upgrade on a friendly unit. if you do, search the top 8 cards of your deck for an upgrade that can attach to that unit, reveal it, and play it on that unit. it costs 4 less.",
+      "set": "ASH",
+      "number": "090"
+    },
+    {
+      "id": "swu-ASH-097",
+      "image": "Moff Gideon - Remnant Commander",
+      "name": "Moff Gideon",
+      "subtitle": "Remnant Commander",
+      "type": "Unit",
+      "aspects": [
+        "Command",
+        "Villainy"
+      ],
+      "cost": 3,
+      "traits": [
+        "Imperial",
+        "Official"
+      ],
+      "text": "sentinel\nwhen defeated: you may return a non-unique imperial unit from your discard pile to your hand.",
+      "set": "ASH",
+      "number": "097",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-ASH-099",
+      "image": "Gozanti Assault Carrier",
+      "name": "Gozanti Assault Carrier",
+      "type": "Unit",
+      "aspects": [
+        "Command",
+        "Villainy"
+      ],
+      "cost": 5,
+      "traits": [
+        "Imperial",
+        "Vehicle",
+        "Capital Ship"
+      ],
+      "text": "support\non attack: this unit gains sentinel for this phase.",
+      "set": "ASH",
+      "number": "099",
+      "arena": "Space"
+    },
+    {
+      "id": "swu-ASH-109",
+      "image": "T-6 Shuttle 1974 - With a Mentor's Dedication",
+      "name": "T-6 Shuttle 1974",
+      "subtitle": "With a Mentor's Dedication",
+      "type": "Unit",
+      "aspects": [
+        "Command",
+        "Heroism"
+      ],
+      "cost": 4,
+      "traits": [
+        "Jedi",
+        "Vehicle",
+        "Transport"
+      ],
+      "text": "sentinel\naction arrow: give another unit +2/+2 for this phase. you may attack with that unit.",
+      "set": "ASH",
+      "number": "109",
+      "arena": "Space"
+    },
+    {
+      "id": "swu-ASH-112",
+      "image": "Luke Skywalker - Answering the Call",
+      "name": "Luke Skywalker",
+      "subtitle": "Answering the Call",
+      "type": "Unit",
+      "aspects": [
+        "Command",
+        "Heroism"
+      ],
+      "cost": 6,
+      "traits": [
+        "Force",
+        "Jedi"
+      ],
+      "text": "restore 1\nwhen played: if you control at least 4 units, deal 3 damage to each enemy unit.",
+      "set": "ASH",
+      "number": "112",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-ASH-114",
+      "image": "Sabine's Lightsaber - Not Alone",
+      "name": "Sabine's Lightsaber",
+      "subtitle": "Not Alone",
+      "type": "Upgrade",
+      "aspects": [
+        "Command",
+        "Heroism"
+      ],
+      "cost": 2,
+      "traits": [
+        "Item",
+        "Weapon",
+        "Lightsaber"
+      ],
+      "text": "attach to a non-vehicle unit.\nif attached unit is sabine wren or a force unit, it gains restore 2.",
+      "set": "ASH",
+      "number": "114"
+    },
+    {
+      "id": "swu-ASH-115",
+      "image": "The Student Guides the Master",
+      "name": "The Student Guides the Master",
+      "type": "Event",
+      "aspects": [
+        "Command",
+        "Heroism"
+      ],
+      "cost": 1,
+      "traits": [
+        "Learned"
+      ],
+      "text": "give a friendly unit +1/+0 for this phase for each other friendly unit with less power than it.",
+      "set": "ASH",
+      "number": "115"
+    },
+    {
+      "id": "swu-ASH-116",
+      "image": "Ant Droid",
+      "name": "Ant Droid",
+      "type": "Unit",
+      "aspects": [
+        "Command"
+      ],
+      "cost": 1,
+      "traits": [
+        "Droid"
+      ],
+      "text": "when defeated: draw a card.",
+      "set": "ASH",
+      "number": "116",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-ASH-118",
+      "image": "8D8 - Daimyo's Majordomo",
+      "name": "8D8",
+      "subtitle": "Daimyo's Majordomo",
+      "type": "Unit",
+      "aspects": [
+        "Command"
+      ],
+      "cost": 2,
+      "traits": [
+        "Underworld",
+        "Droid"
+      ],
+      "text": "hidden\naction arrow: deal 1 damage to another friendly unit. if you do, search the top 5 cards of your deck for a unit, reveal it, and draw it.",
+      "set": "ASH",
+      "number": "118",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-ASH-133",
+      "image": "Trask Walker",
+      "name": "Trask Walker",
+      "type": "Unit",
+      "aspects": [
+        "Command"
+      ],
+      "cost": 8,
+      "traits": [
+        "Vehicle",
+        "Walker"
+      ],
+      "text": "when played/on attack: choose a unit in your discard pile that costs 7 or less. either put that card on the bottom of your deck and heal 3 damage from your base or return it to your hand.",
+      "set": "ASH",
+      "number": "133",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-ASH-135",
+      "image": "The Darksaber - Icon of Leadership",
+      "name": "The Darksaber",
+      "subtitle": "Icon of Leadership",
+      "type": "Upgrade",
+      "aspects": [
+        "Command"
+      ],
+      "cost": 4,
+      "traits": [
+        "Mandalorian",
+        "Item",
+        "Weapon"
+      ],
+      "text": "attach to a unique non-vehicle unit.\nattached unit is a leader unit and gains the mandalorian trait.\nattached unit gains: \"while you are paying costs, this unit provides its aspect icons.\"",
+      "set": "ASH",
+      "number": "135"
+    },
+    {
+      "id": "swu-ASH-153",
+      "image": "Green Leader - Crynyd's Sacrifice",
+      "name": "Green Leader",
+      "subtitle": "Crynyd's Sacrifice",
+      "type": "Unit",
+      "aspects": [
+        "Aggression",
+        "Heroism"
+      ],
+      "cost": 2,
+      "traits": [
+        "Rebel",
+        "Vehicle",
+        "Fighter"
+      ],
+      "text": "when defeated: you may deal 2 damage to a unit.",
+      "set": "ASH",
+      "number": "153",
+      "arena": "Space"
+    },
+    {
+      "id": "swu-ASH-157",
+      "image": "Danger Squadron Wingmen",
+      "name": "Danger Squadron Wingmen",
+      "type": "Unit",
+      "aspects": [
+        "Aggression",
+        "Heroism"
+      ],
+      "cost": 4,
+      "traits": [
+        "Rebel",
+        "Vehicle",
+        "Fighter"
+      ],
+      "text": "on attack: you may give an advantage token to another unit.",
+      "set": "ASH",
+      "number": "157",
+      "arena": "Space"
+    },
+    {
+      "id": "swu-ASH-159",
+      "image": "Alphabet Squadron U-Wing - Quiet Devotion",
+      "name": "Alphabet Squadron U-Wing",
+      "subtitle": "Quiet Devotion",
+      "type": "Unit",
+      "aspects": [
+        "Aggression",
+        "Heroism"
+      ],
+      "cost": 5,
+      "traits": [
+        "Rebel",
+        "Vehicle",
+        "Transport"
+      ],
+      "text": "overwhelm\nwhen the regroup phase starts: give an advantage token to a unit.",
+      "set": "ASH",
+      "number": "159",
+      "arena": "Space"
+    },
+    {
+      "id": "swu-ASH-163",
+      "image": "Reckless Sacrifice",
+      "name": "Reckless Sacrifice",
+      "type": "Event",
+      "aspects": [
+        "Aggression",
+        "Heroism"
+      ],
+      "cost": 2,
+      "traits": [
+        "Gambit"
+      ],
+      "text": "discard a unit from your hand. deal 5 damage to a unit that costs more than the discarded card.",
+      "set": "ASH",
+      "number": "163"
+    },
+    {
+      "id": "swu-ASH-168",
+      "image": "Migs Mayfeld - How About a Toast",
+      "name": "Migs Mayfeld",
+      "subtitle": "How About a Toast?",
+      "type": "Unit",
+      "aspects": [
+        "Aggression"
+      ],
+      "cost": 2,
+      "traits": [
+        "Fringe"
+      ],
+      "text": "support\non attack: deal 1 damage to the defending unit. if this unit is upgraded, deal 2 damage to the defending unit instead.",
+      "set": "ASH",
+      "number": "168",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-ASH-183",
+      "image": "Whistling Birds",
+      "name": "Whistling Birds",
+      "type": "Upgrade",
+      "aspects": [
+        "Aggression"
+      ],
+      "cost": 3,
+      "traits": [
+        "Item",
+        "Weapon"
+      ],
+      "text": "attach to a non-vehicle unit.\nattached unit gains: \"when attack ends: if this unit dealt combat damage to an opponent's base, deal 2 damage to each unit that opponent controls in this unit's arena.\"",
+      "set": "ASH",
+      "number": "183"
+    },
+    {
+      "id": "swu-ASH-192",
+      "image": "Fennec Shand - The Galaxy Is Dangerous",
+      "name": "Fennec Shand",
+      "subtitle": "The Galaxy Is Dangerous",
+      "type": "Unit",
+      "aspects": [
+        "Cunning",
+        "Villainy"
+      ],
+      "cost": 3,
+      "traits": [
+        "Underworld",
+        "Bounty Hunter"
+      ],
+      "text": "ambush\nsaboteur",
+      "set": "ASH",
+      "number": "192",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-ASH-194",
+      "image": "Snub Fighter Squadron",
+      "name": "Snub Fighter Squadron",
+      "type": "Unit",
+      "aspects": [
+        "Cunning",
+        "Villainy"
+      ],
+      "cost": 4,
+      "traits": [
+        "Underworld",
+        "Vehicle",
+        "Fighter"
+      ],
+      "text": "ambush\nwhen played: deal 1 damage to a space unit.",
+      "set": "ASH",
+      "number": "194",
+      "arena": "Space"
+    },
+    {
+      "id": "swu-ASH-203",
+      "image": "Mando's N-1 Starfighter - Faster than a Fathier",
+      "name": "Mando's N-1 Starfighter",
+      "subtitle": "Faster than a Fathier",
+      "type": "Unit",
+      "aspects": [
+        "Cunning",
+        "Heroism"
+      ],
+      "cost": 2,
+      "traits": [
+        "Mandalorian",
+        "Vehicle",
+        "Fighter"
+      ],
+      "text": "support\non attack: you may exhaust a friendly leader. if you do, this unit gets +2/+0 for this attack.",
+      "set": "ASH",
+      "number": "203",
+      "arena": "Space"
+    },
+    {
+      "id": "swu-ASH-206",
+      "image": "Kelleran Beq - Where are the Others",
+      "name": "Kelleran Beq",
+      "subtitle": "Where are the Others?",
+      "type": "Unit",
+      "aspects": [
+        "Cunning",
+        "Heroism"
+      ],
+      "cost": 4,
+      "traits": [
+        "Force",
+        "Jedi"
+      ],
+      "text": "ambush\nthis unit gets +1/+0 for each other unit with 0 power.",
+      "set": "ASH",
+      "number": "206",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-ASH-208",
+      "image": "Sabine Wren - I Learned the Hard Way",
+      "name": "Sabine Wren",
+      "subtitle": "I Learned the Hard Way",
+      "type": "Unit",
+      "aspects": [
+        "Cunning",
+        "Heroism"
+      ],
+      "cost": 5,
+      "traits": [
+        "Jedi",
+        "Mandalorian",
+        "Spectre"
+      ],
+      "text": "shielded\nwhen 1 or more upgrades attach to this unit: you may exhaust a ground unit.",
+      "set": "ASH",
+      "number": "208",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-ASH-219",
+      "image": "Jod Na Nawood - Keeping Secrets",
+      "name": "Jod Na Nawood",
+      "subtitle": "Keeping Secrets",
+      "type": "Unit",
+      "aspects": [
+        "Cunning"
+      ],
+      "cost": 3,
+      "traits": [
+        "Force",
+        "Underworld"
+      ],
+      "text": "sentinel\nwhen played: you may pay 4. if you do, choose an arena. exhaust each unit in that arena.",
+      "set": "ASH",
+      "number": "219",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-ASH-222",
+      "image": "Unsanctioned Patrol",
+      "name": "Unsanctioned Patrol",
+      "type": "Unit",
+      "aspects": [
+        "Cunning"
+      ],
+      "cost": 4,
+      "traits": [
+        "Resistance",
+        "Vehicle",
+        "Fighter"
+      ],
+      "text": "support\nsaboteur",
+      "set": "ASH",
+      "number": "222",
+      "arena": "Space"
+    },
+    {
+      "id": "swu-ASH-224",
+      "image": "Elzar Mann - Haunted by a Vision",
+      "name": "Elzar Mann",
+      "subtitle": "Haunted by a Vision",
+      "type": "Unit",
+      "aspects": [
+        "Cunning"
+      ],
+      "cost": 6,
+      "traits": [
+        "Force",
+        "Jedi"
+      ],
+      "text": "while you control a force leader, this unit enters play ready.\nwhen played: distribute up to 5 advantage tokens among other friendly units. then, an opponent searches twice that many cards from the top of their deck for an event, reveals it, and draws it.",
+      "set": "ASH",
+      "number": "224",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-ASH-247",
+      "image": "One Must Destroy to Create",
+      "name": "One Must Destroy to Create",
+      "type": "Event",
+      "aspects": [
+        "Villainy"
+      ],
+      "cost": 3,
+      "traits": [
+        "Plan"
+      ],
+      "text": "defeat a friendly non-leader unit. then, you may play that unit from your discard pile for free.",
+      "set": "ASH",
+      "number": "247"
+    },
+    {
+      "id": "swu-ASH-253",
+      "image": "Yellow Aces Bomber",
+      "name": "Yellow Aces Bomber",
+      "type": "Unit",
+      "aspects": [
+        "Heroism"
+      ],
+      "cost": 3,
+      "traits": [
+        "New Republic",
+        "Vehicle",
+        "Fighter"
+      ],
+      "text": "support\non attack: if this unit is upgraded, deal 2 damage to a base.",
+      "set": "ASH",
+      "number": "253",
+      "arena": "Space"
+    },
+    {
+      "id": "swu-HMW-014",
+      "image": "Wicket - Few Greater Battles to Fight",
+      "back": "Wicket - Few Greater Battles to Fight (unit)",
+      "name": "Wicket",
+      "subtitle": "Few Greater Battles to Fight",
+      "type": "Leader",
+      "aspects": [
+        "Aggression",
+        "Heroism"
+      ],
+      "cost": 4,
+      "traits": [
+        "Ewok"
+      ],
+      "text": "when a friendly unit attacks a unit that costs more than it: you may exhaust this leader. if you do, draw a card.",
+      "set": "HMW",
+      "number": "014",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-HMW-019",
+      "image": "Dune Sea",
+      "name": "Dune Sea",
+      "type": "Base",
+      "aspects": [
+        "Vigilance"
+      ],
+      "traits": [
+        "Tatooine"
+      ],
+      "text": "",
+      "set": "HMW",
+      "number": "019"
+    },
+    {
+      "id": "swu-HMW-020",
+      "image": "Great Grass Plains",
+      "name": "Great Grass Plains",
+      "type": "Base",
+      "aspects": [
+        "Vigilance"
+      ],
+      "traits": [
+        "Naboo"
+      ],
+      "text": "",
+      "set": "HMW",
+      "number": "020"
+    },
+    {
+      "id": "swu-HMW-021",
+      "image": "Kachirho",
+      "name": "Kachirho",
+      "type": "Base",
+      "aspects": [
+        "Vigilance"
+      ],
+      "traits": [
+        "Kashyyyk"
+      ],
+      "text": "",
+      "set": "HMW",
+      "number": "021"
+    },
+    {
+      "id": "swu-HMW-023",
+      "image": "Bright Tree Village",
+      "name": "Bright Tree Village",
+      "type": "Base",
+      "aspects": [
+        "Command"
+      ],
+      "traits": [
+        "Endor"
+      ],
+      "text": "",
+      "set": "HMW",
+      "number": "023"
+    },
+    {
+      "id": "swu-HMW-029",
+      "image": "Dendroid Wilds",
+      "name": "Dendroid Wilds",
+      "type": "Base",
+      "aspects": [
+        "Aggression"
+      ],
+      "traits": [
+        "Endor"
+      ],
+      "text": "",
+      "set": "HMW",
+      "number": "029"
+    },
+    {
+      "id": "swu-HMW-034",
+      "image": "Research Station 9",
+      "name": "Research Station 9",
+      "type": "Base",
+      "aspects": [
+        "Cunning"
+      ],
+      "traits": [
+        "Endor"
+      ],
+      "text": "",
+      "set": "HMW",
+      "number": "034"
+    },
+    {
+      "id": "swu-HMW-035",
+      "image": "Hunter - Everyone Get to Cover!",
+      "name": "Hunter",
+      "subtitle": "Everyone Get to Cover!",
+      "type": "Unit",
+      "aspects": [
+        "Vigilance",
+        "Command",
+        "Heroism"
+      ],
+      "cost": 6,
+      "traits": [
+        "Clone"
+      ],
+      "text": "when played: choose two. you may choose the same option more than once:\n• give a shield token to a unit.\n• attack with a unit, even if it's exhausted. it can't attack bases for this attack.",
+      "set": "HMW",
+      "number": "035",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-HMW-038",
+      "image": "Bestial Bond",
+      "name": "Bestial Bond",
+      "type": "Upgrade",
+      "aspects": [
+        "Vigilance",
+        "Command"
+      ],
+      "cost": 3,
+      "traits": [
+        "Innate"
+      ],
+      "text": "when played: if attached unit is a creature or a force unit, create a beast token.",
+      "set": "HMW",
+      "number": "038"
+    },
+    {
+      "id": "swu-HMW-045",
+      "image": "Logray - Bright Tree Shaman",
+      "name": "Logray",
+      "subtitle": "Bright Tree Shaman",
+      "type": "Unit",
+      "aspects": [
+        "Command",
+        "Aggression"
+      ],
+      "cost": 2,
+      "traits": [
+        "Ewok"
+      ],
+      "text": "when another friendly unit that costs 3 or less is dealt damage: you may deal 1 damage to an enemy unit.",
+      "set": "HMW",
+      "number": "045",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-HMW-048",
+      "image": "Vernestra Rwoh - We Should Handle This Ourselves",
+      "name": "Vernestra Rwoh",
+      "subtitle": "We Should Handle This Ourselves",
+      "type": "Unit",
+      "aspects": [
+        "Command",
+        "Cunning"
+      ],
+      "cost": 6,
+      "traits": [
+        "Force",
+        "Jedi"
+      ],
+      "text": "sentinel\nas an additional cost to play this unit, put up to 2 units that each cost 5 or less from your discard pile on the bottom of your deck. this unit gains those units' \"when played\" abilities for this phase.",
+      "set": "HMW",
+      "number": "048",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-HMW-055",
+      "image": "Mae - Kill the Dream",
+      "name": "Mae",
+      "subtitle": "Kill the Dream",
+      "type": "Unit",
+      "aspects": [
+        "Cunning",
+        "Vigilance",
+        "Villainy"
+      ],
+      "cost": 3,
+      "traits": [
+        "Force",
+        " Sith"
+      ],
+      "text": "ambush\nshielded\ngrit",
+      "set": "HMW",
+      "number": "055",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-HMW-064",
+      "image": "Scorch - Imperial Commando",
+      "name": "Scorch",
+      "subtitle": "Imperial Commando",
+      "type": "Unit",
+      "aspects": [
+        "Vigilance",
+        "Villainy"
+      ],
+      "cost": 3,
+      "traits": [
+        "Imperial",
+        "Clone",
+        "Trooper"
+      ],
+      "text": "on attack: you may deal 1 damage to an upgrade unit.",
+      "set": "HMW",
+      "number": "064",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-HMW-078",
+      "image": "Qui-Gon Jinn - We'll Handle This",
+      "name": "Qui-Gon Jinn",
+      "subtitle": "We'll Handle This",
+      "type": "Unit",
+      "aspects": [
+        "Vigilance",
+        "Heroism"
+      ],
+      "cost": 5,
+      "traits": [
+        "Force",
+        "Jedi",
+        "Republic"
+      ],
+      "text": "grit\nwhen played: you may defeat a unit that attacked your base this phase. if it's a leader unit, defeat this unit.",
+      "set": "HMW",
+      "number": "078",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-HMW-108",
+      "image": "The First Legion - Vader's Fist",
+      "name": "The First Legion",
+      "subtitle": "Vader's Fist",
+      "type": "Unit",
+      "aspects": [
+        "Command",
+        "Villainy"
+      ],
+      "cost": 4,
+      "traits": [
+        "Imperial",
+        "Trooper"
+      ],
+      "text": "on attack: name a trait. enemy cards, including those not in play, lose that trait for this phase.",
+      "set": "HMW",
+      "number": "108",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-HMW-114",
+      "image": "Breach",
+      "name": "Breach",
+      "type": "Event",
+      "aspects": [
+        "Command",
+        "Villainy"
+      ],
+      "cost": 2,
+      "traits": [
+        "Tactic"
+      ],
+      "text": "a friendly unit deals damage equal to its power to an enemy unit in its arena. if the friendly unit has overwhelm, deal deal excess damage to an enemy base.",
+      "set": "HMW",
+      "number": "114"
+    },
+    {
+      "id": "swu-HMW-115",
+      "image": "Leia Organa - These Are My Friends",
+      "name": "Leia Organa",
+      "subtitle": "These Are My Friends",
+      "type": "Unit",
+      "aspects": [
+        "Command",
+        "Heroism"
+      ],
+      "cost": 1,
+      "traits": [
+        "Rebel",
+        "Official"
+      ],
+      "text": "when you play another unit that costs 3 or less: heal 1 damage from your base.",
+      "set": "HMW",
+      "number": "115",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-HMW-118",
+      "image": "Ryyk Blademaster",
+      "name": "Ryyk Blademaster",
+      "type": "Unit",
+      "aspects": [
+        "Command",
+        "Heroism"
+      ],
+      "cost": 4,
+      "traits": [
+        "Wookiee"
+      ],
+      "text": "while you control 6 or more resources, this unit gains ambush and overwhelm.",
+      "set": "HMW",
+      "number": "118",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-HMW-124",
+      "image": "Luminara Unduli - Besieged General",
+      "name": "Luminara Unduli",
+      "subtitle": "Besieged General",
+      "type": "Unit",
+      "aspects": [
+        "Command",
+        "Heroism"
+      ],
+      "cost": 7,
+      "traits": [
+        "Force",
+        "Jedi",
+        "Republic"
+      ],
+      "text": "when you play a unit: you may attack with a unit. it gets +2/+0 for this attack.",
+      "set": "HMW",
+      "number": "124",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-HMW-126",
+      "image": "Verdant Fortress",
+      "name": "Verdant Fortress",
+      "type": "Upgrade",
+      "aspects": [
+        "Command",
+        "Heroism"
+      ],
+      "cost": 2,
+      "traits": [
+        "Fortification"
+      ],
+      "text": "fortify\nattached base gains: \"friendly units gain raid 1 \"",
+      "set": "HMW",
+      "number": "126"
+    },
+    {
+      "id": "swu-HMW-128",
+      "image": "Mace Windu - Austere Centrist",
+      "name": "Mace Windu",
+      "subtitle": "Austere Centrist",
+      "type": "Unit",
+      "aspects": [
+        "Command",
+        "Command"
+      ],
+      "cost": 3,
+      "traits": [
+        "Force",
+        "Jedi"
+      ],
+      "text": "",
+      "set": "HMW",
+      "number": "128",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-HMW-130",
+      "image": "Emerie Karr - For Your Own Good",
+      "name": "Emerie Karr",
+      "subtitle": "For Your Own Good",
+      "type": "Unit",
+      "aspects": [
+        "Command"
+      ],
+      "cost": 1,
+      "traits": [
+        "Imperial",
+        "Clone"
+      ],
+      "text": "when played: you may deal 1 damage to another ground unit. if you control that unit, the next unit you play this phase costs 1 less.",
+      "set": "HMW",
+      "number": "130",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-HMW-134",
+      "image": "Zam Wesell - Not What She Seems",
+      "name": "Zam Wesell",
+      "subtitle": "Not What She Seems",
+      "type": "Unit",
+      "aspects": [
+        "Command"
+      ],
+      "cost": 2,
+      "traits": [
+        "Underworld",
+        "Bounty Hunter"
+      ],
+      "text": "hidden\nthis unit gains each friendly leader's traits except force, even while she's not in play.",
+      "set": "HMW",
+      "number": "134",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-HMW-151",
+      "image": "Overgrowth",
+      "name": "Overgrowth",
+      "type": "Event",
+      "aspects": [
+        "Command"
+      ],
+      "cost": 5,
+      "traits": [
+        "Disaster"
+      ],
+      "text": "if you control a kashyyyk base, a friendly unit deals damage equal to its power to an enemy unit.\nresource this card.",
+      "set": "HMW",
+      "number": "151"
+    },
+    {
+      "id": "swu-HMW-163",
+      "image": "Champions of Endor",
+      "name": "Champions of Endor",
+      "type": "Unit",
+      "aspects": [
+        "Aggression",
+        "Heroism"
+      ],
+      "cost": 2,
+      "traits": [
+        "Ewok"
+      ],
+      "text": "",
+      "set": "HMW",
+      "number": "163",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-HMW-166",
+      "image": "Gungi - Fighting for Kashyyyk",
+      "name": "Gungi",
+      "subtitle": "Fighting for Kashyyyk",
+      "type": "Unit",
+      "aspects": [
+        "Aggression",
+        "Heroism"
+      ],
+      "cost": 3,
+      "traits": [
+        "Force",
+        "Jedi",
+        "Wookiee"
+      ],
+      "text": "grit\nwhen this unit is dealt damage and survives: you may discard a card from your hand. if you do, ready this unit.",
+      "set": "HMW",
+      "number": "166",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-HMW-173",
+      "image": "Rebel Operation",
+      "name": "Rebel Operation",
+      "type": "Event",
+      "aspects": [
+        "Aggression",
+        "Heroism"
+      ],
+      "cost": 4,
+      "traits": [
+        "Rebel",
+        "Plan"
+      ],
+      "text": "this card costs 1 less to play for each friendly rebel unit and leader.\ndraw 2 cards.",
+      "set": "HMW",
+      "number": "173"
+    },
+    {
+      "id": "swu-HMW-174",
+      "image": "Maul - Only Revenge Remains",
+      "name": "Maul",
+      "subtitle": "Only Revenge Remains",
+      "type": "Unit",
+      "aspects": [
+        "Aggression",
+        "Aggression"
+      ],
+      "cost": 4,
+      "traits": [
+        "Force",
+        "Underworld"
+      ],
+      "text": "",
+      "set": "HMW",
+      "number": "174",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-HMW-175",
+      "image": "Fennec Shand - A Ship For A Life",
+      "name": "Fennec Shand",
+      "subtitle": "A Ship For A Life",
+      "type": "Unit",
+      "aspects": [
+        "Aggression"
+      ],
+      "cost": 1,
+      "traits": [
+        "Underworld"
+      ],
+      "text": "raid 2",
+      "set": "HMW",
+      "number": "175",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-HMW-177",
+      "image": "Adamant Ewoks",
+      "name": "Adamant Ewoks",
+      "type": "Unit",
+      "aspects": [
+        "Aggression"
+      ],
+      "cost": 2,
+      "traits": [
+        "Ewok"
+      ],
+      "text": "when played: if you control another ewok unit or an endor base, you may deal 1 damage to a base and 1 damage to an enemy unit.",
+      "set": "HMW",
+      "number": "177",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-HMW-193",
+      "image": "Nightfall",
+      "name": "Nightfall",
+      "type": "Event",
+      "aspects": [
+        "Aggression"
+      ],
+      "cost": 2,
+      "traits": [
+        "Disaster"
+      ],
+      "text": "deal 1 damage to an enemy unit.\nif you control an endor base, you may attack with a unit. it gets +2/+0 for this attack.",
+      "set": "HMW",
+      "number": "193"
+    },
+    {
+      "id": "swu-HMW-202",
+      "image": "Inferno Squad - We Can Grieve Later",
+      "name": "Inferno Squad",
+      "subtitle": "We Can Grieve Later",
+      "type": "Unit",
+      "aspects": [
+        "Cunning",
+        "Villainy"
+      ],
+      "cost": 5,
+      "traits": [
+        "Imperial",
+        "Trooper"
+      ],
+      "text": "when played/when defeated: you may deal 1 damage to a unit and give a weakness token to it.",
+      "set": "HMW",
+      "number": "202",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-HMW-203",
+      "image": "Victor Squadron - In Attack Formation",
+      "name": "Victor Squadron",
+      "subtitle": "In Attack Formation",
+      "type": "Unit",
+      "aspects": [
+        "Cunning",
+        "Villainy"
+      ],
+      "cost": 6,
+      "traits": [
+        "Imperial",
+        "Vehicle",
+        "Fighter"
+      ],
+      "text": "this unit enters play ready.",
+      "set": "HMW",
+      "number": "203",
+      "arena": "Space"
+    },
+    {
+      "id": "swu-HMW-204",
+      "image": "Nightbrother - Maul's Gauntlet",
+      "name": "Nightbrother",
+      "subtitle": "Maul's Gauntlet",
+      "type": "Unit",
+      "aspects": [
+        "Cunning",
+        "Villainy"
+      ],
+      "cost": 7,
+      "traits": [
+        "Vehicle",
+        "Transport"
+      ],
+      "text": "when played: you may play a unit from your discard pile. it costs 3 less and enters play ready. at the start of the next regroup phase, defeat it.",
+      "set": "HMW",
+      "number": "204",
+      "arena": "Space"
+    },
+    {
+      "id": "swu-HMW-208",
+      "image": "Luke Skywalker - Dreaming Farmboy",
+      "name": "Luke Skywalker",
+      "subtitle": "Dreaming Farmboy",
+      "type": "Unit",
+      "aspects": [
+        "Cunning",
+        "Heroism"
+      ],
+      "cost": 1,
+      "traits": [
+        "Force",
+        "Fringe"
+      ],
+      "text": "raid 1\nwhile it's the first round of the game, this unit enters play ready.",
+      "set": "HMW",
+      "number": "208",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-HMW-210",
+      "image": "Sol - Compassionate Guardian",
+      "name": "Sol",
+      "subtitle": "Compassionate Guardian",
+      "type": "Unit",
+      "aspects": [
+        "Cunning",
+        "Heroism"
+      ],
+      "cost": 2,
+      "traits": [
+        "Force",
+        " Jedi"
+      ],
+      "text": "shielded\non attack: this unit gains sentinel for this phase.",
+      "set": "HMW",
+      "number": "210",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-HMW-211",
+      "image": "Tech - I Thought It Was Obvious",
+      "name": "Tech",
+      "subtitle": "I Thought It Was Obvious",
+      "type": "Unit",
+      "aspects": [
+        "Cunning",
+        "Heroism"
+      ],
+      "cost": 3,
+      "traits": [
+        "Clone"
+      ],
+      "text": "when this unit is dealt damage and survives: you may exhaust a unit.",
+      "set": "HMW",
+      "number": "211",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-HMW-218",
+      "image": "New Tactics",
+      "name": "New Tactics",
+      "type": "Event",
+      "aspects": [
+        "Cunning",
+        "Heroism"
+      ],
+      "cost": 5,
+      "traits": [
+        "Learned",
+        "Tactic"
+      ],
+      "text": "choose a non-leader unit. its owner puts it on the top or bottom of their deck.",
+      "set": "HMW",
+      "number": "218"
+    },
+    {
+      "id": "swu-HMW-219",
+      "image": "Jaxxon - I Can Hear You Breathing!",
+      "name": "Jaxxon",
+      "subtitle": "I Can Hear You Breathing!",
+      "type": "Unit",
+      "aspects": [
+        "Cunning",
+        "Cunning"
+      ],
+      "cost": 1,
+      "traits": [
+        "Underworld"
+      ],
+      "text": "",
+      "set": "HMW",
+      "number": "219",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-HMW-232",
+      "image": "Mon Cal Cruiser",
+      "name": "Mon Cal Cruiser",
+      "type": "Unit",
+      "aspects": [
+        "Cunning"
+      ],
+      "cost": 6,
+      "traits": [
+        "Rebel",
+        "Vehicle",
+        "Capital Ship"
+      ],
+      "text": "when played: choose one:\n• attack with a unit. it gets +2/+0 for this attack.\n• look at an opponent's hand. you may discard a card from it. if you do, they draw a card.",
+      "set": "HMW",
+      "number": "232",
+      "arena": "Space"
+    },
+    {
+      "id": "swu-HMW-235",
+      "image": "Gaderffii Stick",
+      "name": "Gaderffii Stick",
+      "type": "Upgrade",
+      "aspects": [
+        "Cunning"
+      ],
+      "cost": 1,
+      "traits": [
+        "Item",
+        "Weapon"
+      ],
+      "text": "attach to a non-vehicle unit with 3 or less power.",
+      "set": "HMW",
+      "number": "235"
+    },
+    {
+      "id": "swu-HMW-238",
+      "image": "Exploit Confidence",
+      "name": "Exploit Confidence",
+      "type": "Event",
+      "aspects": [
+        "Cunning"
+      ],
+      "cost": 2,
+      "traits": [
+        "Tactic"
+      ],
+      "text": "return a non-leader unit with 6 or more power to it's owner's hand.",
+      "set": "HMW",
+      "number": "238"
+    },
+    {
+      "id": "swu-HMW-247",
+      "image": "Surveillance Cruiser",
+      "name": "Surveillance Cruiser",
+      "type": "Unit",
+      "aspects": [
+        "Villainy"
+      ],
+      "cost": 4,
+      "traits": [
+        "Imperial",
+        "Vehicle",
+        "Capital Ship"
+      ],
+      "text": "when played: if an opponent controls an endor, kashyyyk, naboo, or tatooine base, draw a card.",
+      "set": "HMW",
+      "number": "247",
+      "arena": "Space"
+    },
+    {
+      "id": "swu-HMW-254",
+      "image": "Captain Tarpals - Grand Army Captain",
+      "name": "Captain Tarpals",
+      "subtitle": "Grand Army Captain",
+      "type": "Unit",
+      "aspects": [
+        "Heroism"
+      ],
+      "cost": 1,
+      "traits": [
+        "Gungan",
+        "Trooper"
+      ],
+      "text": "shielded\nraid 2",
+      "set": "HMW",
+      "number": "254",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-IC27-003",
+      "image": "Kylo Ren - Supreme Leader",
+      "back": "Kylo Ren - Supreme Leader (unit)",
+      "name": "Kylo Ren",
+      "subtitle": "Supreme Leader",
+      "type": "Leader",
+      "aspects": [
+        "Command",
+        "Villainy"
+      ],
+      "cost": 5,
+      "traits": [
+        "Force",
+        "First Order",
+        "Official"
+      ],
+      "text": "action arrow, discard a card from your hand: give an experience token to a unit.",
+      "set": "IC27",
+      "number": "003",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-IC27-004",
+      "image": "Mace Windu - Here With Backup",
+      "back": "Mace Windu - Here With Backup (unit)",
+      "name": "Mace Windu",
+      "subtitle": "Here With Backup",
+      "type": "Leader",
+      "aspects": [
+        "Command",
+        "Heroism"
+      ],
+      "cost": 6,
+      "traits": [
+        "Force",
+        "Jedi",
+        "Republic"
+      ],
+      "text": "action 1, arrow: attack with a unit. it gains restore 2 for this attack.",
+      "set": "IC27",
+      "number": "004",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-IC27-006",
+      "image": "Luke Skywalker - I Have to Face Him",
+      "back": "Luke Skywalker - I Have to Face Him (unit)",
+      "name": "Luke Skywalker",
+      "subtitle": "I Have to Face Him",
+      "type": "Leader",
+      "aspects": [
+        "Aggression",
+        "Heroism"
+      ],
+      "cost": 6,
+      "traits": [
+        "Force",
+        "Jedi",
+        "Rebel"
+      ],
+      "text": "draw 2 more cards in your starting hand.",
+      "set": "IC27",
+      "number": "006",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-IC27-032",
+      "image": "Kaydel Connix - Keep Going!",
+      "name": "Kaydel Connix",
+      "subtitle": "Keep Going!",
+      "type": "Unit",
+      "aspects": [
+        "Vigilance",
+        "Heroism"
+      ],
+      "cost": 2,
+      "traits": [
+        "Resistance"
+      ],
+      "text": "sentinel",
+      "set": "IC27",
+      "number": "032",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-IC27-035",
+      "image": "Yoda - A Disturbing Puzzle",
+      "name": "Yoda",
+      "subtitle": "A Disturbing Puzzle",
+      "type": "Unit",
+      "aspects": [
+        "Vigilance",
+        "Heroism"
+      ],
+      "cost": 3,
+      "traits": [
+        "Force",
+        "Jedi",
+        "Republic"
+      ],
+      "text": "on attack: you may choose an enemy unit. prevent all combat damage that would be dealt to and dealt by that unit for this phase.",
+      "set": "IC27",
+      "number": "035",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-IC27-037",
+      "image": "Finn - Stand and Fight",
+      "name": "Finn",
+      "subtitle": "Stand and Fight",
+      "type": "Unit",
+      "aspects": [
+        "Vigilance",
+        "Heroism"
+      ],
+      "cost": 4,
+      "traits": [
+        "Resistance"
+      ],
+      "text": "sentinel\nwhile this unit is upgraded, he gains restore 2.",
+      "set": "IC27",
+      "number": "037",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-IC27-039",
+      "image": "Ahsoka Tano - Not on My Death Watch",
+      "name": "Ahsoka Tano",
+      "subtitle": "Not on My Death Watch",
+      "type": "Unit",
+      "aspects": [
+        "Vigilance",
+        "Heroism"
+      ],
+      "cost": 5,
+      "traits": [
+        "Force",
+        "Jedi",
+        "Republic"
+      ],
+      "text": "when played: you may defeat a unit that costs 3 or less.",
+      "set": "IC27",
+      "number": "039",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-IC27-041",
+      "image": "Captain Rex - Staunch Advocate",
+      "name": "Captain Rex",
+      "subtitle": "Staunch Advocate",
+      "type": "Unit",
+      "aspects": [
+        "Vigilance",
+        "Heroism"
+      ],
+      "cost": 7,
+      "traits": [
+        "Republic",
+        "Clone",
+        "Trooper"
+      ],
+      "text": "sentinel\nshielded\nrestore 3",
+      "set": "IC27",
+      "number": "041",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-IC27-042",
+      "image": "Obi-Wan Kenobi - I Sense a Trap",
+      "name": "Obi-Wan Kenobi",
+      "subtitle": "I Sense a Trap",
+      "type": "Unit",
+      "aspects": [
+        "Vigilance",
+        "Heroism"
+      ],
+      "cost": 8,
+      "traits": [
+        "Force",
+        "Jedi",
+        "Republic"
+      ],
+      "text": "when played: you may choose one:\n• play a unit that was defeated this phase from your discard pile. it costs 5 less.\n• choose a unit that entered play this phase. it gets -5/-5 for this phase.",
+      "set": "IC27",
+      "number": "042",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-IC27-043",
+      "image": "Raddus - Hope of the Resistance",
+      "name": "Raddus",
+      "subtitle": "Hope of the Resistance",
+      "type": "Unit",
+      "aspects": [
+        "Vigilance",
+        "Heroism"
+      ],
+      "cost": 9,
+      "traits": [
+        "Resistance",
+        "Vehicle",
+        "Capital Ship"
+      ],
+      "text": "restore 3\nwhile this unit is exhausted, cards your opponents play cost 3 more.",
+      "set": "IC27",
+      "number": "043",
+      "arena": "Space"
+    },
+    {
+      "id": "swu-IC27-056",
+      "image": "Allegiant General Pryde - Heartless Efficiency",
+      "name": "Allegiant General Pryde",
+      "subtitle": "Heartless Efficiency",
+      "type": "Unit",
+      "aspects": [
+        "Command",
+        "Villainy"
+      ],
+      "cost": 1,
+      "traits": [
+        "First Order",
+        "Official"
+      ],
+      "text": "when defeated: give an experience token to the friendly unit with the most power.",
+      "set": "IC27",
+      "number": "056",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-IC27-058",
+      "image": "General Veers - Prepared",
+      "name": "General Veers",
+      "subtitle": "Prepared",
+      "type": "Unit",
+      "aspects": [
+        "Command",
+        "Villainy"
+      ],
+      "cost": 2,
+      "traits": [
+        "Imperial",
+        "Official"
+      ],
+      "text": "overwhelm",
+      "set": "IC27",
+      "number": "058",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-IC27-063",
+      "image": "Kylo's TIE Silencer - Follow My Lead",
+      "name": "Kylo's TIE Silencer",
+      "subtitle": "Follow My Lead",
+      "type": "Unit",
+      "aspects": [
+        "Command",
+        "Villainy"
+      ],
+      "cost": 4,
+      "traits": [
+        "First Order",
+        "Vehicle",
+        "Fighter"
+      ],
+      "text": "restore 1\nwhen this unit is discarded from your hand: for this phase, you may play it from your discard pile (paying its cost).",
+      "set": "IC27",
+      "number": "063",
+      "arena": "Space"
+    },
+    {
+      "id": "swu-IC27-068",
+      "image": "Devastator - Lord Vader's Flagship",
+      "name": "Devastator",
+      "subtitle": "Lord Vader's Flagship",
+      "type": "Unit",
+      "aspects": [
+        "Command",
+        "Villainy"
+      ],
+      "cost": 10,
+      "traits": [
+        "Imperial",
+        "Vehicle",
+        "Capital Ship"
+      ],
+      "text": "overwhelm\nwhen played: search the top 5 cards of your deck for a villainy unit that costs 12 or less and play it for free.",
+      "set": "IC27",
+      "number": "068",
+      "arena": "Space"
+    },
+    {
+      "id": "swu-IC27-070",
+      "image": "C-3PO - Impulse Buy",
+      "name": "C-3PO",
+      "subtitle": "Impulse Buy",
+      "type": "Unit",
+      "aspects": [
+        "Command",
+        "Heroism"
+      ],
+      "cost": 1,
+      "traits": [
+        "Rebel",
+        "Droid"
+      ],
+      "text": "action arrow: give an experience token to another unit. then, if it has 6 or more power, draw a card.",
+      "set": "IC27",
+      "number": "070",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-IC27-075",
+      "image": "Red Leader - Wait For My Signal",
+      "name": "Red Leader",
+      "subtitle": "Wait For My Signal",
+      "type": "Unit",
+      "aspects": [
+        "Command",
+        "Heroism"
+      ],
+      "cost": 3,
+      "traits": [
+        "Rebel",
+        "Vehicle",
+        "Fighter"
+      ],
+      "text": "sentinel\nrestore 2",
+      "set": "IC27",
+      "number": "075",
+      "arena": "Space"
+    },
+    {
+      "id": "swu-IC27-079",
+      "image": "Qui-Gon Jinn - Unwavering Belief",
+      "name": "Qui-Gon Jinn",
+      "subtitle": "Unwavering Belief",
+      "type": "Unit",
+      "aspects": [
+        "Command",
+        "Heroism"
+      ],
+      "cost": 5,
+      "traits": [
+        "Force",
+        "Jedi",
+        "Republic"
+      ],
+      "text": "sentinel\nwhen played: give another friendly unit +2/+2 for this phase.",
+      "set": "IC27",
+      "number": "079",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-IC27-081",
+      "image": "Mace Windu - Dropping By",
+      "name": "Mace Windu",
+      "subtitle": "Dropping By",
+      "type": "Unit",
+      "aspects": [
+        "Command",
+        "Heroism"
+      ],
+      "cost": 6,
+      "traits": [
+        "Force",
+        "Jedi",
+        "Republic"
+      ],
+      "text": "ambush\non attack: give an experience token to this unit.",
+      "set": "IC27",
+      "number": "081",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-IC27-086",
+      "image": "Enfys Nest - No More!",
+      "name": "Enfys Nest",
+      "subtitle": "No More!",
+      "type": "Unit",
+      "aspects": [
+        "Command",
+        "Command"
+      ],
+      "cost": 5,
+      "traits": [
+        "Underworld"
+      ],
+      "text": "ambush\nwhile attacking a unit that costs 3 or less, this unit gets +2/+0 and gains overwhelm.",
+      "set": "IC27",
+      "number": "086",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-IC27-087",
+      "image": "Issue a Command",
+      "name": "Issue a Command",
+      "type": "Event",
+      "aspects": [
+        "Command",
+        "Command"
+      ],
+      "cost": 4,
+      "traits": [
+        "Plan"
+      ],
+      "text": "reveal the top card of your deck. if it's a unit, draw it.\ngive an experience token to a friendly unit.\nresource this event.",
+      "set": "IC27",
+      "number": "087"
+    },
+    {
+      "id": "swu-IC27-114",
+      "image": "Cassian Andor - Blending In",
+      "name": "Cassian Andor",
+      "subtitle": "Blending In",
+      "type": "Unit",
+      "aspects": [
+        "Aggression",
+        "Heroism"
+      ],
+      "cost": 2,
+      "traits": [
+        "Rebel"
+      ],
+      "text": "hidden",
+      "set": "IC27",
+      "number": "114",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-IC27-115",
+      "image": "Poe Dameron - Hero of the Resistance",
+      "name": "Poe Dameron",
+      "subtitle": "Hero of the Resistance",
+      "type": "Unit",
+      "aspects": [
+        "Aggression",
+        "Heroism"
+      ],
+      "cost": 2,
+      "traits": [
+        "Resistance"
+      ],
+      "text": "when you play another resistance card: this unit gets +1/+0 for this phase.",
+      "set": "IC27",
+      "number": "115",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-IC27-117",
+      "image": "Hera Syndulla - Against the Odds",
+      "name": "Hera Syndulla",
+      "subtitle": "Against the Odds",
+      "type": "Unit",
+      "aspects": [
+        "Aggression",
+        "Heroism"
+      ],
+      "cost": 3,
+      "traits": [
+        "Rebel",
+        "Twi'lek",
+        "Spectre"
+      ],
+      "text": "when you play another rebel card: deal 1 damage to a base.",
+      "set": "IC27",
+      "number": "117",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-IC27-119",
+      "image": "Sabine Wren - Liberator of Krownest",
+      "name": "Sabine Wren",
+      "subtitle": "Liberator of Krownest",
+      "type": "Unit",
+      "aspects": [
+        "Aggression",
+        "Heroism"
+      ],
+      "cost": 4,
+      "traits": [
+        "Mandalorian",
+        "Rebel",
+        "Spectre"
+      ],
+      "text": "saboteur\nwhen played: discard 2 cards from a deck. you may deal damage to a unit equal to the difference in those cards' costs.",
+      "set": "IC27",
+      "number": "119",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-IC27-120",
+      "image": "Rey - Embracing Destiny",
+      "name": "Rey",
+      "subtitle": "Embracing Destiny",
+      "type": "Unit",
+      "aspects": [
+        "Aggression",
+        "Heroism"
+      ],
+      "cost": 5,
+      "traits": [
+        "Force"
+      ],
+      "text": "action 1, discard a card from your hand: attack with a unit. it gets +2/+0 for this attack.",
+      "set": "IC27",
+      "number": "120",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-IC27-123",
+      "image": "Jyn Erso - Her Father's Revenge",
+      "name": "Jyn Erso",
+      "subtitle": "Her Father's Revenge",
+      "type": "Unit",
+      "aspects": [
+        "Aggression",
+        "Heroism"
+      ],
+      "cost": 8,
+      "traits": [
+        "Rebel"
+      ],
+      "text": "saboteur\nwhen played: ready up to 3 units with combined cost 7 or less. they each gain saboteur for this phase.",
+      "set": "IC27",
+      "number": "123",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-IC27-127",
+      "image": "Act of Aggression",
+      "name": "Act of Aggression",
+      "type": "Event",
+      "aspects": [
+        "Aggression",
+        "Aggression"
+      ],
+      "cost": 4,
+      "traits": [
+        "Innate"
+      ],
+      "text": "draw a card.\nyou may deal 3 damage to a unit.\ngive a friendly unit +3/+0 and overwhelm for this phase.",
+      "set": "IC27",
+      "number": "127"
+    },
+    {
+      "id": "swu-IC27-129",
+      "image": "DRK-1 Probe Droid",
+      "name": "DRK-1 Probe Droid",
+      "type": "Unit",
+      "aspects": [
+        "Aggression"
+      ],
+      "cost": 2,
+      "traits": [
+        "Droid"
+      ],
+      "text": "when played: you may defeat a non-unique upgrade.",
+      "set": "IC27",
+      "number": "129",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-IC27-136",
+      "image": "Open Fire",
+      "name": "Open Fire",
+      "type": "Event",
+      "aspects": [
+        "Aggression"
+      ],
+      "cost": 3,
+      "traits": [
+        "Tactic"
+      ],
+      "text": "deal 4 damage to a unit.",
+      "set": "IC27",
+      "number": "136"
+    },
+    {
+      "id": "swu-IC27-148",
+      "image": "Count Dooku - Silver-Tongued",
+      "name": "Count Dooku",
+      "subtitle": "Silver-Tongued",
+      "type": "Unit",
+      "aspects": [
+        "Cunning",
+        "Villainy"
+      ],
+      "cost": 7,
+      "traits": [
+        "Force",
+        "Separatist",
+        "Sith",
+        "Official"
+      ],
+      "text": "each opponent can't ready more than 1 ground unit and 1 space unit during the regroup phase.\nwhen played: you may exhaust a unit.",
+      "set": "IC27",
+      "number": "148",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-IC27-151",
+      "image": "R2-D2 - The First Protagonist",
+      "name": "R2-D2",
+      "subtitle": "The First Protagonist",
+      "type": "Unit",
+      "aspects": [
+        "Cunning",
+        "Heroism"
+      ],
+      "cost": 1,
+      "traits": [
+        "Rebel",
+        "Droid"
+      ],
+      "text": "on attack: choose one:\n• ready a resource.\n• deal 1 damage to a ground unit.\n• look at the top card of your deck. you may discard it.",
+      "set": "IC27",
+      "number": "151",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-IC27-155",
+      "image": "Han Solo - Gamblin' Man",
+      "name": "Han Solo",
+      "subtitle": "Gamblin' Man",
+      "type": "Unit",
+      "aspects": [
+        "Cunning",
+        "Heroism"
+      ],
+      "cost": 3,
+      "traits": [
+        "Rebel"
+      ],
+      "text": "saboteur\nwhen played: search the top 10 cards of your deck for a card and draw it, then discard a random card from your hand.",
+      "set": "IC27",
+      "number": "155",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-IC27-157",
+      "image": "The Mandalorian - From the Shadows",
+      "name": "The Mandalorian",
+      "subtitle": "From the Shadows",
+      "type": "Unit",
+      "aspects": [
+        "Cunning",
+        "Heroism"
+      ],
+      "cost": 4,
+      "traits": [
+        "Mandalorian",
+        "Bounty Hunter"
+      ],
+      "text": "shielded\non attack: if the defending unit is exhausted, it gets -4/-0 for this attack.",
+      "set": "IC27",
+      "number": "157",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-IC27-159",
+      "image": "Princess Leia - Calculated Distraction",
+      "name": "Princess Leia",
+      "subtitle": "Calculated Distraction",
+      "type": "Unit",
+      "aspects": [
+        "Cunning",
+        "Heroism"
+      ],
+      "cost": 5,
+      "traits": [
+        "Rebel",
+        "Official"
+      ],
+      "text": "when played/on attack: exhaust up to 2 units in the same arena with combined cost 4 or less.",
+      "set": "IC27",
+      "number": "159",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-IC27-160",
+      "image": "Tantive IV - For Alderaan",
+      "name": "Tantive IV",
+      "subtitle": "For Alderaan",
+      "type": "Unit",
+      "aspects": [
+        "Cunning",
+        "Heroism"
+      ],
+      "cost": 5,
+      "traits": [
+        "Rebel",
+        "Vehicle",
+        "Capital Ship"
+      ],
+      "text": "each other friendly rebel unit gains raid 2 and saboteur.",
+      "set": "IC27",
+      "number": "160",
+      "arena": "Space"
+    },
+    {
+      "id": "swu-IC27-163",
+      "image": "Bo-Katan Kryze - Right Place, Right Time",
+      "name": "Bo-Katan Kryze",
+      "subtitle": "Right Place, Right Time",
+      "type": "Unit",
+      "aspects": [
+        "Cunning",
+        "Heroism"
+      ],
+      "cost": 7,
+      "traits": [
+        "Mandalorian"
+      ],
+      "text": "shielded\nwhen played: give each enemy unit -7/-0 for this phase.",
+      "set": "IC27",
+      "number": "163",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-IC27-165",
+      "image": "Luke Skywalker - Overplaying His Hand",
+      "name": "Luke Skywalker",
+      "subtitle": "Overplaying His Hand",
+      "type": "Unit",
+      "aspects": [
+        "Cunning",
+        "Heroism"
+      ],
+      "cost": 8,
+      "traits": [
+        "Force",
+        "Rebel"
+      ],
+      "text": "when played: you may put an enemy non-leader unit on the bottom of its owner's deck. its owner draws 2 cards.",
+      "set": "IC27",
+      "number": "165",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-IC27-166",
+      "image": "I've Got A Bad Feeling",
+      "name": "I've Got A Bad Feeling",
+      "type": "Event",
+      "aspects": [
+        "Cunning",
+        "Heroism"
+      ],
+      "cost": 4,
+      "traits": [
+        "Innate"
+      ],
+      "text": "return a non-leader unit to its owner's hand.\ngive a shield token to a friendly unit.",
+      "set": "IC27",
+      "number": "166"
+    },
+    {
+      "id": "swu-IC27-168",
+      "image": "Cunning Ploy",
+      "name": "Cunning Ploy",
+      "type": "Event",
+      "aspects": [
+        "Cunning",
+        "Cunning"
+      ],
+      "cost": 4,
+      "traits": [
+        "Trick"
+      ],
+      "text": "look at an opponent's hand. you may discard a card from it. if you do, that player draws a card.\nexhaust an enemy unit.\nyou may attack with a unit. it gets +3/+0 for this attack.",
+      "set": "IC27",
+      "number": "168"
+    },
+    {
+      "id": "swu-JTL-002",
+      "image": "Grand Admiral Thrawn - ...How Unfortunate",
+      "back": "Grand Admiral Thrawn - ...How Unfortunate (unit)",
+      "name": "Grand Admiral Thrawn",
+      "subtitle": "...How Unfortunate",
+      "type": "Leader",
+      "aspects": [
+        "Vigilance",
+        "Villainy"
+      ],
+      "cost": 6,
+      "traits": [
+        "Imperial",
+        "Official"
+      ],
+      "text": "when you use a \"when defeated\" ability: you may exhaust this leader. if you do, use that ability again.",
+      "set": "JTL",
+      "number": "002",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-JTL-005",
+      "image": "Admiral Piett - Commanding the Armada",
+      "back": "Admiral Piett - Commanding the Armada (unit)",
+      "name": "Admiral Piett",
+      "subtitle": "Commanding the Armada",
+      "type": "Leader",
+      "aspects": [
+        "Command",
+        "Villainy"
+      ],
+      "cost": 5,
+      "traits": [
+        "Imperial",
+        "Official"
+      ],
+      "text": "action arrow: play a capital ship unit from your hand. it costs 1 less.",
+      "set": "JTL",
+      "number": "005",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-JTL-024",
+      "image": "Data Vault",
+      "name": "Data Vault",
+      "type": "Base",
+      "aspects": [
+        "Command"
+      ],
+      "traits": [
+        "Scarif"
+      ],
+      "text": "your minimum deck size is increased by 10 cards.",
+      "set": "JTL",
+      "number": "024"
+    },
+    {
+      "id": "swu-JTL-025",
+      "image": "Thermal Oscillator",
+      "name": "Thermal Oscillator",
+      "type": "Base",
+      "aspects": [
+        "Aggression"
+      ],
+      "traits": [
+        "Starkiller Base"
+      ],
+      "text": "your minimum deck size is decreased by 5 cards.",
+      "set": "JTL",
+      "number": "025"
+    },
+    {
+      "id": "swu-JTL-030",
+      "image": "Mos Eisley",
+      "name": "Mos Eisley",
+      "type": "Base",
+      "aspects": [
+        "Cunning"
+      ],
+      "traits": [
+        "Tatooine"
+      ],
+      "text": "",
+      "set": "JTL",
+      "number": "030"
+    },
+    {
+      "id": "swu-JTL-032",
+      "image": "Director Krennic - On the Verge of Greatness",
+      "name": "Director Krennic",
+      "subtitle": "On the Verge of Greatness",
+      "type": "Unit",
+      "aspects": [
+        "Vigilance",
+        "Villainy"
+      ],
+      "cost": 2,
+      "traits": [
+        "Imperial",
+        "Official"
+      ],
+      "text": "shielded\nthe first unit you play each round that has a \"when defeated \" ability costs 1 less.",
+      "set": "JTL",
+      "number": "032",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-JTL-033",
+      "image": "Onyx Squadron Brute",
+      "name": "Onyx Squadron Brute",
+      "type": "Unit",
+      "aspects": [
+        "Vigilance",
+        "Villainy"
+      ],
+      "cost": 2,
+      "traits": [
+        "Imperial",
+        "Vehicle",
+        "Fighter"
+      ],
+      "text": "when defeated: heal 2 damage from a base.",
+      "set": "JTL",
+      "number": "033",
+      "arena": "Space"
+    },
+    {
+      "id": "swu-JTL-039",
+      "image": "Chimaera - Reinforcing the Center",
+      "name": "Chimaera",
+      "subtitle": "Reinforcing the Center",
+      "type": "Unit",
+      "aspects": [
+        "Vigilance",
+        "Villainy"
+      ],
+      "cost": 6,
+      "traits": [
+        "Imperial",
+        "Vehicle",
+        "Capital Ship"
+      ],
+      "text": "when played: you may use a \"when defeated \" ability on another friendly unit.\nwhen defeated: create 2 tie fighter tokens.",
+      "set": "JTL",
+      "number": "039",
+      "arena": "Space"
+    },
+    {
+      "id": "swu-JTL-041",
+      "image": "Annihilator - Tagge's Flagship",
+      "name": "Annihilator",
+      "subtitle": "Tagge's Flagship",
+      "type": "Unit",
+      "aspects": [
+        "Vigilance",
+        "Villainy"
+      ],
+      "cost": 11,
+      "traits": [
+        "Imperial",
+        "Vehicle",
+        "Capital Ship"
+      ],
+      "text": "when played/when defeated: you may defeat an enemy unit. if you do, search its controller's deck and hand for each card with that unit's name and discard them.",
+      "set": "JTL",
+      "number": "041",
+      "arena": "Space"
+    },
+    {
+      "id": "swu-JTL-043",
+      "image": "No Glory, Only Results",
+      "name": "No Glory, Only Results",
+      "type": "Event",
+      "aspects": [
+        "Vigilance",
+        "Villainy"
+      ],
+      "cost": 5,
+      "traits": [
+        "Tactic"
+      ],
+      "text": "take control of a non-leader unit, then defeat it.",
+      "set": "JTL",
+      "number": "043"
+    },
+    {
+      "id": "swu-JTL-060",
+      "image": "Desperate Commando",
+      "name": "Desperate Commando",
+      "type": "Unit",
+      "aspects": [
+        "Vigilance"
+      ],
+      "cost": 2,
+      "traits": [
+        "Resistance",
+        "Trooper"
+      ],
+      "text": "when defeated: you may give a unit -1/-1 for this phase.",
+      "set": "JTL",
+      "number": "060",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-JTL-088",
+      "image": "Captain Phasma - On My Command",
+      "name": "Captain Phasma",
+      "subtitle": "On My Command",
+      "type": "Unit",
+      "aspects": [
+        "Command",
+        "Villainy"
+      ],
+      "cost": 5,
+      "traits": [
+        "First Order",
+        "Trooper"
+      ],
+      "text": "when played/on attack: you may give another first order unit +2/+2 for this phase.",
+      "set": "JTL",
+      "number": "088",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-JTL-089",
+      "image": "The Invisible Hand - Crawling with Vultures",
+      "name": "The Invisible Hand",
+      "subtitle": "Crawling with Vultures",
+      "type": "Unit",
+      "aspects": [
+        "Command",
+        "Villainy"
+      ],
+      "cost": 6,
+      "traits": [
+        "Separatist",
+        "Vehicle",
+        "Capital Ship"
+      ],
+      "text": "when played/when this unit completes an attack: you may search the top 8 cards of your deck for a droid unit, reveal it, and draw it. if it costs 2 or less, you may play it for free.",
+      "set": "JTL",
+      "number": "089",
+      "arena": "Space"
+    },
+    {
+      "id": "swu-JTL-096",
+      "image": "Blue Leader - Scarif Air Support",
+      "name": "Blue Leader",
+      "subtitle": "Scarif Air Support",
+      "type": "Unit",
+      "aspects": [
+        "Command",
+        "Heroism"
+      ],
+      "cost": 3,
+      "traits": [
+        "Rebel",
+        "Vehicle",
+        "Fighter"
+      ],
+      "text": "ambush\nwhen played: you may pay 2. if you do, move this unit to the ground arena and give 2 experience tokens to it.",
+      "set": "JTL",
+      "number": "096",
+      "arena": "Space"
+    },
+    {
+      "id": "swu-JTL-118",
+      "image": "MC30 Assault Frigate",
+      "name": "MC30 Assault Frigate",
+      "type": "Unit",
+      "aspects": [
+        "Command"
+      ],
+      "cost": 5,
+      "traits": [
+        "Rebel",
+        "Vehicle",
+        "Capital Ship"
+      ],
+      "text": "overwhelm\nraid 1",
+      "set": "JTL",
+      "number": "118",
+      "arena": "Space"
+    },
+    {
+      "id": "swu-JTL-131",
+      "image": "Turbolaser Salvo",
+      "name": "Turbolaser Salvo",
+      "type": "Event",
+      "aspects": [
+        "Command"
+      ],
+      "cost": 7,
+      "traits": [
+        "Tactic"
+      ],
+      "text": "choose an arena. a friendly space unit deals damage equal to its power to each enemy unit in that arena.",
+      "set": "JTL",
+      "number": "131"
+    },
+    {
+      "id": "swu-JTL-143",
+      "image": "Devastator - Hunting the Rebellion",
+      "name": "Devastator",
+      "subtitle": "Hunting the Rebellion",
+      "type": "Unit",
+      "aspects": [
+        "Aggression",
+        "Villainy"
+      ],
+      "cost": 8,
+      "traits": [
+        "Imperial",
+        "Vehicle",
+        "Capital Ship"
+      ],
+      "text": "you assign all indirect damage you deal to opponents.\nwhen played: deal 4 indirect damage to each opponent.",
+      "set": "JTL",
+      "number": "143",
+      "arena": "Space"
+    },
+    {
+      "id": "swu-JTL-147",
+      "image": "Black One - Straight At Them",
+      "name": "Black One",
+      "subtitle": "Straight At Them",
+      "type": "Unit",
+      "aspects": [
+        "Aggression",
+        "Heroism"
+      ],
+      "cost": 2,
+      "traits": [
+        "Resistance",
+        "Vehicle",
+        "Fighter"
+      ],
+      "text": "while this unit is upgraded, it gets +1/+0.\non attack: if you control poe dameron, you may deal 1 damage to a unit.",
+      "set": "JTL",
+      "number": "147",
+      "arena": "Space"
+    },
+    {
+      "id": "swu-JTL-151",
+      "image": "Red Five - Running the Trench",
+      "name": "Red Five",
+      "subtitle": "Running the Trench",
+      "type": "Unit",
+      "aspects": [
+        "Aggression",
+        "Heroism"
+      ],
+      "cost": 3,
+      "traits": [
+        "Rebel",
+        "Vehicle",
+        "Fighter"
+      ],
+      "text": "on attack: you may deal 2 damage to a damaged unit.",
+      "set": "JTL",
+      "number": "151",
+      "arena": "Space"
+    },
+    {
+      "id": "swu-JTL-153",
+      "image": "Rebellious Hammerhead",
+      "name": "Rebellious Hammerhead",
+      "type": "Unit",
+      "aspects": [
+        "Aggression",
+        "Heroism"
+      ],
+      "cost": 6,
+      "traits": [
+        "Rebel",
+        "Vehicle",
+        "Capital Ship"
+      ],
+      "text": "when played: you may deal damage to a unit equal to the number of cards in your hand.",
+      "set": "JTL",
+      "number": "153",
+      "arena": "Space"
+    },
+    {
+      "id": "swu-JTL-155",
+      "image": "They Hate That Ship",
+      "name": "They Hate That Ship",
+      "type": "Event",
+      "aspects": [
+        "Aggression",
+        "Heroism"
+      ],
+      "cost": 1,
+      "traits": [
+        "Innate"
+      ],
+      "text": "an opponent creates 2 tie fighter tokens and readies them. then, play a vehicle unit from your hand. it costs 3 less.",
+      "set": "JTL",
+      "number": "155"
+    },
+    {
+      "id": "swu-JTL-164",
+      "image": "Cham Syndulla - Rallying Ryloth",
+      "name": "Cham Syndulla",
+      "subtitle": "Rallying Ryloth",
+      "type": "Unit",
+      "aspects": [
+        "Aggression"
+      ],
+      "cost": 4,
+      "traits": [
+        "Rebel",
+        "Twi'lek"
+      ],
+      "text": "when played: if you control fewer resources than an opponent, you may resource the top card of your deck.",
+      "set": "JTL",
+      "number": "164",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-JTL-181",
+      "image": "Planetary Bombardment",
+      "name": "Planetary Bombardment",
+      "type": "Event",
+      "aspects": [
+        "Aggression"
+      ],
+      "cost": 6,
+      "traits": [
+        "Tactic"
+      ],
+      "text": "deal 8 indirect damage to a player. if you control a capital ship unit, deal 12 indirect damage instead.",
+      "set": "JTL",
+      "number": "181"
+    },
+    {
+      "id": "swu-JTL-201",
+      "image": "Ahsoka Tano - Chasing Whispers",
+      "name": "Ahsoka Tano",
+      "subtitle": "Chasing Whispers",
+      "type": "Unit",
+      "aspects": [
+        "Cunning",
+        "Heroism"
+      ],
+      "cost": 4,
+      "traits": [
+        "Fringe",
+        "Force"
+      ],
+      "text": "when played: an opponent discards a card from their hand. if it's a unit, you may exhaust a unit.",
+      "set": "JTL",
+      "number": "201",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-JTL-203",
+      "image": "Han Solo - Has His Moments",
+      "name": "Han Solo",
+      "subtitle": "Has His Moments",
+      "type": "Unit",
+      "aspects": [
+        "Cunning",
+        "Heroism"
+      ],
+      "cost": 5,
+      "traits": [
+        "Rebel",
+        "Pilot"
+      ],
+      "text": "ambush",
+      "set": "JTL",
+      "number": "203",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-JTL-207",
+      "image": "Jam Communications",
+      "name": "Jam Communications",
+      "type": "Event",
+      "aspects": [
+        "Cunning",
+        "Heroism"
+      ],
+      "cost": 1,
+      "traits": [
+        "Trick"
+      ],
+      "text": "look at an opponent's hand and discard an event from it.",
+      "set": "JTL",
+      "number": "207"
+    },
+    {
+      "id": "swu-JTL-235",
+      "image": "Commandeer",
+      "name": "Commandeer",
+      "type": "Event",
+      "aspects": [
+        "Cunning"
+      ],
+      "cost": 5,
+      "traits": [
+        "Trick"
+      ],
+      "text": "take control of a non-leader vehicle unit that costs 6 or less without a pilot on it. if you do, ready it. at the start of the next regroup phase, return that unit to its owner's hand.",
+      "set": "JTL",
+      "number": "235"
+    },
+    {
+      "id": "swu-JTL-249",
+      "image": "Millennium Falcon - Get Out And Push",
+      "name": "Millennium Falcon",
+      "subtitle": "Get Out And Push",
+      "type": "Unit",
+      "aspects": [
+        "Heroism"
+      ],
+      "cost": 3,
+      "traits": [
+        "Rebel",
+        "Vehicle",
+        "Transport"
+      ],
+      "text": "you may play or deploy 1 additional pilot on this unit.\nthis unit gets +1/+0 for each pilot on it.",
+      "set": "JTL",
+      "number": "249",
+      "arena": "Space"
+    },
+    {
+      "id": "swu-JTL-250",
+      "image": "Sabine's Masterpiece - Crazy Colorful",
+      "name": "Sabine's Masterpiece",
+      "subtitle": "Crazy Colorful",
+      "type": "Unit",
+      "aspects": [
+        "Heroism"
+      ],
+      "cost": 3,
+      "traits": [
+        "Rebel",
+        "Vehicle",
+        "Fighter",
+        "Spectre"
+      ],
+      "text": "on attack: if you control a:\n• vigilance unit, heal 2 damage from a base.\n• command unit, give an experience token to a unit.\n• aggression unit, deal 1 damage to a unit or base.\n• cunning unit, exhaust or ready a resource.",
+      "set": "JTL",
+      "number": "250",
+      "arena": "Space"
+    },
+    {
+      "id": "swu-LAW-018",
+      "image": "Lando Calrissian - Full Sabacc",
+      "back": "Lando Calrissian - Full Sabacc (unit)",
+      "name": "Lando Calrissian",
+      "subtitle": "Full Sabacc",
+      "type": "Leader",
+      "aspects": [
+        "Cunning",
+        "Heroism"
+      ],
+      "cost": 6,
+      "traits": [
+        "Underworld"
+      ],
+      "text": "action 1, arrow: choose an aspect, then discard a card from a deck. if it has the chosen aspect, create a credit token.",
+      "set": "LAW",
+      "number": "018",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-LAW-022",
+      "image": "Aldhani Garrison",
+      "name": "Aldhani Garrison",
+      "type": "Base",
+      "aspects": [
+        "Command"
+      ],
+      "traits": [
+        "Aldhani"
+      ],
+      "text": "epic action: play a card from your hand, ignoring 1 of its vigilance, command, aggression, or cunning aspect penalties.",
+      "set": "LAW",
+      "number": "022"
+    },
+    {
+      "id": "swu-LAW-039",
+      "image": "Latts Razzi - Deadly Whipmaster",
+      "name": "Latts Razzi",
+      "subtitle": "Deadly Whipmaster",
+      "type": "Unit",
+      "aspects": [
+        "Vigilance",
+        "Command"
+      ],
+      "cost": 3,
+      "traits": [
+        "Underworld",
+        "Bounty Hunter"
+      ],
+      "text": "when played: give a shield token or an experience token to this unit. then, she deals damage equal to her power to an enemy ground unit.",
+      "set": "LAW",
+      "number": "039",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-LAW-041",
+      "image": "Nothing Left to Fear",
+      "name": "Nothing Left to Fear",
+      "type": "Event",
+      "aspects": [
+        "Vigilance",
+        "Command"
+      ],
+      "cost": 5,
+      "traits": [
+        "Innate"
+      ],
+      "text": "choose a friendly unit and give it +2/+2 for this phase. then, you may defeat a non-leader unit with power equal to or less than the chosen unit.",
+      "set": "LAW",
+      "number": "041"
+    },
+    {
+      "id": "swu-LAW-058",
+      "image": "Honor-Bound Partisan",
+      "name": "Honor-Bound Partisan",
+      "type": "Unit",
+      "aspects": [
+        "Command",
+        "Aggression"
+      ],
+      "cost": 2,
+      "traits": [
+        "Rebel",
+        "Twi'lek"
+      ],
+      "text": "when played: deal 1 damage to a base.\nwhen defeated: the next unit you play this phase costs 1 less.",
+      "set": "LAW",
+      "number": "058",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-LAW-067",
+      "image": "Jyn Erso - Take the Next Chance",
+      "name": "Jyn Erso",
+      "subtitle": "Take the Next Chance",
+      "type": "Unit",
+      "aspects": [
+        "Command",
+        "Cunning",
+        "Heroism"
+      ],
+      "cost": 2,
+      "traits": [
+        "Rebel"
+      ],
+      "text": "when played: either give an experience token to a unit or exhaust a unit.",
+      "set": "LAW",
+      "number": "067",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-LAW-068",
+      "image": "Millennium Falcon - Dodging Patrols",
+      "name": "Millennium Falcon",
+      "subtitle": "Dodging Patrols",
+      "type": "Unit",
+      "aspects": [
+        "Command",
+        "Cunning",
+        "Heroism"
+      ],
+      "cost": 3,
+      "traits": [
+        "Rebel",
+        "Vehicle",
+        "Transport"
+      ],
+      "text": "on attack: you may give a space unit -2/-0 for this phase. you may give a ground unit +2/+0 for this phase.",
+      "set": "LAW",
+      "number": "068",
+      "arena": "Space"
+    },
+    {
+      "id": "swu-LAW-075",
+      "image": "Interrogation Droid",
+      "name": "Interrogation Droid",
+      "type": "Unit",
+      "aspects": [
+        "Aggression",
+        "Cunning",
+        "Villainy"
+      ],
+      "cost": 2,
+      "traits": [
+        "Imperial",
+        "Droid"
+      ],
+      "text": "when played: exhaust an enemy unit. if you do, and that unit costs 3 or less, its controller discards a card from their hand.",
+      "set": "LAW",
+      "number": "075",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-LAW-078",
+      "image": "Sabine Wren - Spectre Five",
+      "name": "Sabine Wren",
+      "subtitle": "Spectre Five",
+      "type": "Unit",
+      "aspects": [
+        "Aggression",
+        "Cunning",
+        "Heroism"
+      ],
+      "cost": 3,
+      "traits": [
+        "Mandalorian",
+        "Rebel",
+        "Spectre"
+      ],
+      "text": "ambush\nwhen played: you may defeat a non-unique upgrade. if you control a vigilance or command unit, you may defeat an upgrade instead.",
+      "set": "LAW",
+      "number": "078",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-LAW-079",
+      "image": "K-2SO - Locking the Vault",
+      "name": "K-2SO",
+      "subtitle": "Locking the Vault",
+      "type": "Unit",
+      "aspects": [
+        "Aggression",
+        "Cunning",
+        "Heroism"
+      ],
+      "cost": 5,
+      "traits": [
+        "Rebel",
+        "Droid"
+      ],
+      "text": "ambush\non attack: you may deal 3 damage to a damaged ground unit.",
+      "set": "LAW",
+      "number": "079",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-LAW-086",
+      "image": "The Stranger - No Survivors",
+      "name": "The Stranger",
+      "subtitle": "No Survivors",
+      "type": "Unit",
+      "aspects": [
+        "Cunning",
+        "Vigilance",
+        "Villainy"
+      ],
+      "cost": 5,
+      "traits": [
+        "Force",
+        "Sith"
+      ],
+      "text": "ambush\ngrit\nwhile attacking, you may have the defending unit deal combat damage before this unit.",
+      "set": "LAW",
+      "number": "086",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-LAW-089",
+      "image": "Kanan Jarrus - Spectre One",
+      "name": "Kanan Jarrus",
+      "subtitle": "Spectre One",
+      "type": "Unit",
+      "aspects": [
+        "Cunning",
+        "Vigilance",
+        "Heroism"
+      ],
+      "cost": 4,
+      "traits": [
+        "Force",
+        "Jedi",
+        "Rebel",
+        "Spectre"
+      ],
+      "text": "restore 1\nwhen played: you may return a non-leader unit that costs 2 or less to its owner's hand. if you control a command or aggression unit, you may return a non-leader unit that costs 4 or less instead.",
+      "set": "LAW",
+      "number": "089",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-LAW-129",
+      "image": "Mastery",
+      "name": "Mastery",
+      "type": "Upgrade",
+      "aspects": [
+        "Vigilance"
+      ],
+      "cost": 4,
+      "traits": [
+        "Learned"
+      ],
+      "text": "this upgrade costs 1 less to play on a unique unit.",
+      "set": "LAW",
+      "number": "129"
+    },
+    {
+      "id": "swu-LAW-133",
+      "image": "Lost and Forgotten",
+      "name": "Lost and Forgotten",
+      "type": "Event",
+      "aspects": [
+        "Vigilance"
+      ],
+      "cost": 6,
+      "traits": [
+        "Innate"
+      ],
+      "text": "defeat a non-leader unit. if you do, heal 3 damage from your base.",
+      "set": "LAW",
+      "number": "133"
+    },
+    {
+      "id": "swu-LAW-135",
+      "image": "Pirate Snub Fighter",
+      "name": "Pirate Snub Fighter",
+      "type": "Unit",
+      "aspects": [
+        "Command",
+        "Villainy"
+      ],
+      "cost": 2,
+      "traits": [
+        "Underworld",
+        "Vehicle",
+        "Fighter"
+      ],
+      "text": "ambush",
+      "set": "LAW",
+      "number": "135",
+      "arena": "Space"
+    },
+    {
+      "id": "swu-LAW-149",
+      "image": "Rey - Skywalker",
+      "name": "Rey",
+      "subtitle": "Skywalker",
+      "type": "Unit",
+      "aspects": [
+        "Command",
+        "Heroism"
+      ],
+      "cost": 8,
+      "traits": [
+        "Force",
+        "Jedi",
+        "Resistance"
+      ],
+      "text": "opponents can't take control of this unit.\nthis unit can't be defeated by enemy card abilities.",
+      "set": "LAW",
+      "number": "149",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-LAW-168",
+      "image": "Haymaker",
+      "name": "Haymaker",
+      "type": "Event",
+      "aspects": [
+        "Command"
+      ],
+      "cost": 4,
+      "traits": [
+        "Tactic"
+      ],
+      "text": "give an experience token to a friendly unit. that unit deals damage equal to its power to an enemy unit in the same arena.",
+      "set": "LAW",
+      "number": "168"
+    },
+    {
+      "id": "swu-LAW-180",
+      "image": "Inspired Recruit",
+      "name": "Inspired Recruit",
+      "type": "Unit",
+      "aspects": [
+        "Aggression",
+        "Heroism"
+      ],
+      "cost": 1,
+      "traits": [
+        "Rebel",
+        "Trooper"
+      ],
+      "text": "",
+      "set": "LAW",
+      "number": "180",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-LAW-183",
+      "image": "B-Wing Skirmisher",
+      "name": "B-Wing Skirmisher",
+      "type": "Unit",
+      "aspects": [
+        "Aggression",
+        "Heroism"
+      ],
+      "cost": 4,
+      "traits": [
+        "Rebel",
+        "Vehicle",
+        "Fighter"
+      ],
+      "text": "when played: deal 1 damage to each of up to 2 space units.",
+      "set": "LAW",
+      "number": "183",
+      "arena": "Space"
+    },
+    {
+      "id": "swu-LAW-191",
+      "image": "Arvel Skeen - Win and Walk Away",
+      "name": "Arvel Skeen",
+      "subtitle": "Win and Walk Away",
+      "type": "Unit",
+      "aspects": [
+        "Aggression"
+      ],
+      "cost": 3,
+      "traits": [
+        "Rebel"
+      ],
+      "text": "when played/on attack: you may defeat a credit token. if you do, deal 1 damage to a unit or base.",
+      "set": "LAW",
+      "number": "191",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-LAW-217",
+      "image": "Hold For Questioning",
+      "name": "Hold For Questioning",
+      "type": "Event",
+      "aspects": [
+        "Cunning",
+        "Villainy"
+      ],
+      "cost": 3,
+      "traits": [
+        "Law"
+      ],
+      "text": "exhaust an enemy unit. if you do, look at its controller's hand and discard a card form it that shares an aspect with that unit.",
+      "set": "LAW",
+      "number": "217"
+    },
+    {
+      "id": "swu-LAW-219",
+      "image": "Anakin's Podracer - So Wizard!",
+      "name": "Anakin's Podracer",
+      "subtitle": "So Wizard!",
+      "type": "Unit",
+      "aspects": [
+        "Cunning",
+        "Heroism"
+      ],
+      "cost": 3,
+      "traits": [
+        "Vehicle",
+        "Speeder"
+      ],
+      "text": "ambush\nwhile attacking, if no other units have attacked this phase, this unit deals combat damage before the defending unit.",
+      "set": "LAW",
+      "number": "219",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-LAW-221",
+      "image": "Lieutenant Gorn - I Deserve Worse",
+      "name": "Lieutenant Gorn",
+      "subtitle": "I Deserve Worse",
+      "type": "Unit",
+      "aspects": [
+        "Cunning",
+        "Heroism"
+      ],
+      "cost": 3,
+      "traits": [
+        "Imperial",
+        "Rebel"
+      ],
+      "text": "on attack: take control of an enemy credit token.",
+      "set": "LAW",
+      "number": "221",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-LAW-222",
+      "image": "Rebel Blockade Runner",
+      "name": "Rebel Blockade Runner",
+      "type": "Unit",
+      "aspects": [
+        "Cunning",
+        "Heroism"
+      ],
+      "cost": 4,
+      "traits": [
+        "Rebel",
+        "Vehicle",
+        "Transport"
+      ],
+      "text": "saboteur",
+      "set": "LAW",
+      "number": "222",
+      "arena": "Space"
+    },
+    {
+      "id": "swu-LAW-224",
+      "image": "Liberty - Draw Their Fire!",
+      "name": "Liberty",
+      "subtitle": "Draw Their Fire!",
+      "type": "Unit",
+      "aspects": [
+        "Cunning",
+        "Heroism"
+      ],
+      "cost": 8,
+      "traits": [
+        "Rebel",
+        "Vehicle",
+        "Capital Ship"
+      ],
+      "text": "sentinel\nwhen played/on attack: exhaust an enemy unit and return all upgrades on it that cost 4 or less to their owner's hands.",
+      "set": "LAW",
+      "number": "224",
+      "arena": "Space"
+    },
+    {
+      "id": "swu-LOF-002",
+      "image": "Mother Talzin - Power Through Magick",
+      "back": "Mother Talzin - Power Through Magick (unit)",
+      "name": "Mother Talzin",
+      "subtitle": "Power Through Magick",
+      "type": "Leader",
+      "aspects": [
+        "Vigilance",
+        "Villainy"
+      ],
+      "cost": 5,
+      "traits": [
+        "Force",
+        "Night"
+      ],
+      "text": "action arrow, use the force: give a unit -1/-1 for this phase.",
+      "set": "LOF",
+      "number": "002",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-LOF-008",
+      "image": "Obi-Wan Kenobi - Courage Makes Heroes",
+      "back": "Obi-Wan Kenobi - Courage Makes Heroes (unit)",
+      "name": "Obi-Wan Kenobi",
+      "subtitle": "Courage Makes Heroes",
+      "type": "Leader",
+      "aspects": [
+        "Command",
+        "Heroism"
+      ],
+      "cost": 5,
+      "traits": [
+        "Force",
+        "Jedi",
+        "Republic"
+      ],
+      "text": "action arrow, use the force: give an experience token to a unit without an experience token on it.",
+      "set": "LOF",
+      "number": "008",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-LOF-020",
+      "image": "Nightsister Lair",
+      "name": "Nightsister Lair",
+      "type": "Base",
+      "aspects": [
+        "Vigilance"
+      ],
+      "traits": [
+        "Dathomir"
+      ],
+      "text": "when a friendly force unit attacks: the force is with you.",
+      "set": "LOF",
+      "number": "020"
+    },
+    {
+      "id": "swu-LOF-029",
+      "image": "Crystal Caves",
+      "name": "Crystal Caves",
+      "type": "Base",
+      "aspects": [
+        "Cunning"
+      ],
+      "traits": [
+        "Ilum"
+      ],
+      "text": "when a friendly force unit attacks: the force is with you.",
+      "set": "LOF",
+      "number": "029"
+    },
+    {
+      "id": "swu-LOF-031",
+      "image": "Karis - We Don't Like Strangers",
+      "name": "Karis",
+      "subtitle": "We Don't Like Strangers",
+      "type": "Unit",
+      "aspects": [
+        "Vigilance",
+        "Villainy"
+      ],
+      "cost": 2,
+      "traits": [
+        "Force",
+        "Night"
+      ],
+      "text": "when defeated: you may use the force. if you do, give a unit -2/-2 for this phase.",
+      "set": "LOF",
+      "number": "031",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-LOF-035",
+      "image": "Talzin's Assassin",
+      "name": "Talzin's Assassin",
+      "type": "Unit",
+      "aspects": [
+        "Vigilance",
+        "Villainy"
+      ],
+      "cost": 4,
+      "traits": [
+        "Force",
+        "Night"
+      ],
+      "text": "when played: you may use the force. if you do, give a unit -3/-3 for this phase.",
+      "set": "LOF",
+      "number": "035",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-LOF-045",
+      "image": "Yaddle - A Chance To Make Things Right",
+      "name": "Yaddle",
+      "subtitle": "A Chance To Make Things Right",
+      "type": "Unit",
+      "aspects": [
+        "Vigilance",
+        "Heroism"
+      ],
+      "cost": 2,
+      "traits": [
+        "Force",
+        "Jedi",
+        "Republic"
+      ],
+      "text": "restore 1\non attack: each other friendly jedi unit gains restore 1 for this phase.",
+      "set": "LOF",
+      "number": "045",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-LOF-059",
+      "image": "Nightsister Warrior",
+      "name": "Nightsister Warrior",
+      "type": "Unit",
+      "aspects": [
+        "Vigilance"
+      ],
+      "cost": 2,
+      "traits": [
+        "Force",
+        "Night"
+      ],
+      "text": "when defeated: draw a card.",
+      "set": "LOF",
+      "number": "059",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-LOF-061",
+      "image": "Secretive Sage",
+      "name": "Secretive Sage",
+      "type": "Unit",
+      "aspects": [
+        "Vigilance"
+      ],
+      "cost": 2,
+      "traits": [
+        "Force",
+        "Fringe"
+      ],
+      "text": "shielded",
+      "set": "LOF",
+      "number": "061",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-LOF-062",
+      "image": "Axe Woves - Accomplished Warrior",
+      "name": "Axe Woves",
+      "subtitle": "Accomplished Warrior",
+      "type": "Unit",
+      "aspects": [
+        "Vigilance"
+      ],
+      "cost": 3,
+      "traits": [
+        "Mandalorian",
+        "Trooper"
+      ],
+      "text": "shielded\nthis unit gets +1/+1 for each upgrade on him.",
+      "set": "LOF",
+      "number": "062",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-LOF-070",
+      "image": "Anakin Skywalker - Champion of Mortis",
+      "name": "Anakin Skywalker",
+      "subtitle": "Champion of Mortis",
+      "type": "Unit",
+      "aspects": [
+        "Vigilance"
+      ],
+      "cost": 6,
+      "traits": [
+        "Force",
+        "Jedi",
+        "Republic"
+      ],
+      "text": "when played: if there is a heroism card in your discard pile, you may give a unit -3/-3 for this phase.\nwhen played: if there is a villainy card in your discard pile, you may give a unit -3/-3 for this phase.",
+      "set": "LOF",
+      "number": "070",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-LOF-082",
+      "image": "Vaneé - I Live to Serve",
+      "name": "Vaneé",
+      "subtitle": "I Live to Serve",
+      "type": "Unit",
+      "aspects": [
+        "Command",
+        "Villainy"
+      ],
+      "cost": 2,
+      "traits": [
+        "Imperial",
+        "Sith",
+        "Official"
+      ],
+      "text": "when played/on attack: you may defeat an experience token on a friendly unit. if you do, give an experience token to a friendly unit.",
+      "set": "LOF",
+      "number": "082",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-LOF-091",
+      "image": "Craving Power",
+      "name": "Craving Power",
+      "type": "Upgrade",
+      "aspects": [
+        "Command",
+        "Villainy"
+      ],
+      "cost": 5,
+      "traits": [
+        "Innate"
+      ],
+      "text": "attach to a friendly unit.\nwhen played: deal damage to an enemy unit equal to attached unit's power.",
+      "set": "LOF",
+      "number": "091"
+    },
+    {
+      "id": "swu-LOF-093",
+      "image": "Gungi - Finding Himself",
+      "name": "Gungi",
+      "subtitle": "Finding Himself",
+      "type": "Unit",
+      "aspects": [
+        "Command",
+        "Heroism"
+      ],
+      "cost": 2,
+      "traits": [
+        "Force",
+        "Jedi",
+        "Wookiee"
+      ],
+      "text": "",
+      "set": "LOF",
+      "number": "093",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-LOF-096",
+      "image": "Obi-Wan Kenobi - Protective Padawan",
+      "name": "Obi-Wan Kenobi",
+      "subtitle": "Protective Padawan",
+      "type": "Unit",
+      "aspects": [
+        "Command",
+        "Heroism"
+      ],
+      "cost": 3,
+      "traits": [
+        "Force",
+        "Jedi",
+        "Republic"
+      ],
+      "text": "when you play a force unit: this unit gains sentinel for this phase.",
+      "set": "LOF",
+      "number": "096",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-LOF-100",
+      "image": "Kelleran Beq - The Sabered Hand",
+      "name": "Kelleran Beq",
+      "subtitle": "The Sabered Hand",
+      "type": "Unit",
+      "aspects": [
+        "Command",
+        "Heroism"
+      ],
+      "cost": 7,
+      "traits": [
+        "Force",
+        "Jedi",
+        "Republic"
+      ],
+      "text": "when played: search the top 7 cards of your deck for a unit, reveal it, and play it. it costs 3 less.",
+      "set": "LOF",
+      "number": "100",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-LOF-102",
+      "image": "Yoda's Lightsaber",
+      "name": "Yoda's Lightsaber",
+      "type": "Upgrade",
+      "aspects": [
+        "Command",
+        "Heroism"
+      ],
+      "cost": 2,
+      "traits": [
+        "Item",
+        "Weapon",
+        "Lightsaber"
+      ],
+      "text": "attach to a non-vehicle unit.\nwhen played: you may use the force. if you do, heal 3 damage from a base.",
+      "set": "LOF",
+      "number": "102"
+    },
+    {
+      "id": "swu-LOF-105",
+      "image": "Oppo Rancisis - Ancient Councilor",
+      "name": "Oppo Rancisis",
+      "subtitle": "Ancient Councilor",
+      "type": "Unit",
+      "aspects": [
+        "Command",
+        "Command"
+      ],
+      "cost": 3,
+      "traits": [
+        "Force",
+        "Jedi",
+        "Republic"
+      ],
+      "text": "this unit gains ambush while another friendly unit has ambush. the same is true for grit, hidden, overwhelm, saboteur, sentinel, and shielded.\nthis unit gains raid 2 while another friendly unit has keywordraid/keyword. the same is true for keywordrestore/keyword.",
+      "set": "LOF",
+      "number": "105",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-LOF-111",
+      "image": "Maz Kanata - The Light Guides",
+      "name": "Maz Kanata",
+      "subtitle": "The Light Guides",
+      "type": "Unit",
+      "aspects": [
+        "Command"
+      ],
+      "cost": 3,
+      "traits": [
+        "Underworld"
+      ],
+      "text": "when played: you may attack with a force unit. it gets +2/+0 for this attack.",
+      "set": "LOF",
+      "number": "111",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-LOF-138",
+      "image": "Sith Holocron",
+      "name": "Sith Holocron",
+      "type": "Upgrade",
+      "aspects": [
+        "Aggression",
+        "Villainy"
+      ],
+      "cost": 1,
+      "traits": [
+        "Sith",
+        "Item"
+      ],
+      "text": "attach to a force unit.\nattached unit gains: \"on attack: you may deal 2 damage to a friendly unit. if you do, this unit gets +2/+0 for this attack.\"",
+      "set": "LOF",
+      "number": "138"
+    },
+    {
+      "id": "swu-LOF-142",
+      "image": "Adi Gallia - Stern and Focused",
+      "name": "Adi Gallia",
+      "subtitle": "Stern and Focused",
+      "type": "Unit",
+      "aspects": [
+        "Aggression",
+        "Heroism"
+      ],
+      "cost": 2,
+      "traits": [
+        "Force",
+        "Jedi",
+        "Republic"
+      ],
+      "text": "when an opponent plays an event: deal 1 damage to that player's base.",
+      "set": "LOF",
+      "number": "142",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-LOF-147",
+      "image": "Kit Fisto's Aethersprite - Good Hunting",
+      "name": "Kit Fisto's Aethersprite",
+      "subtitle": "Good Hunting",
+      "type": "Unit",
+      "aspects": [
+        "Aggression",
+        "Heroism"
+      ],
+      "cost": 5,
+      "traits": [
+        "Jedi",
+        "Republic",
+        "Vehicle",
+        "Fighter"
+      ],
+      "text": "saboteur\nwhen played: you may defeat any number of upgrades on a unit.",
+      "set": "LOF",
+      "number": "147",
+      "arena": "Space"
+    },
+    {
+      "id": "swu-LOF-151",
+      "image": "Knight's Saber",
+      "name": "Knight's Saber",
+      "type": "Upgrade",
+      "aspects": [
+        "Aggression",
+        "Heroism"
+      ],
+      "cost": 2,
+      "traits": [
+        "Item",
+        "Weapon",
+        "Lightsaber"
+      ],
+      "text": "attach to a jedi non-vehicle unit.",
+      "set": "LOF",
+      "number": "151"
+    },
+    {
+      "id": "swu-LOF-153",
+      "image": "Paz Vizsla - Unyielding Warrior",
+      "name": "Paz Vizsla",
+      "subtitle": "Unyielding Warrior",
+      "type": "Unit",
+      "aspects": [
+        "Aggression",
+        "Aggression"
+      ],
+      "cost": 5,
+      "traits": [
+        "Mandalorian"
+      ],
+      "text": "this unit gets +2/+0 for each damage on him.",
+      "set": "LOF",
+      "number": "153",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-LOF-183",
+      "image": "Shin Hati - Overeager Apprentice",
+      "name": "Shin Hati",
+      "subtitle": "Overeager Apprentice",
+      "type": "Unit",
+      "aspects": [
+        "Cunning",
+        "Villainy"
+      ],
+      "cost": 3,
+      "traits": [
+        "Force",
+        "Fringe"
+      ],
+      "text": "hidden\nshielded",
+      "set": "LOF",
+      "number": "183",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-LOF-192",
+      "image": "N-1 Starfighter",
+      "name": "N-1 Starfighter",
+      "type": "Unit",
+      "aspects": [
+        "Cunning",
+        "Heroism"
+      ],
+      "cost": 2,
+      "traits": [
+        "Naboo",
+        "Vehicle",
+        "Fighter"
+      ],
+      "text": "",
+      "set": "LOF",
+      "number": "192",
+      "arena": "Space"
+    },
+    {
+      "id": "swu-LOF-193",
+      "image": "Youngling Padawan",
+      "name": "Youngling Padawan",
+      "type": "Unit",
+      "aspects": [
+        "Cunning",
+        "Heroism"
+      ],
+      "cost": 2,
+      "traits": [
+        "Force",
+        "Jedi"
+      ],
+      "text": "when played: the force is with you.",
+      "set": "LOF",
+      "number": "193",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-LOF-195",
+      "image": "Vernestra Rwoh - Precocious Knight",
+      "name": "Vernestra Rwoh",
+      "subtitle": "Precocious Knight",
+      "type": "Unit",
+      "aspects": [
+        "Cunning",
+        "Heroism"
+      ],
+      "cost": 3,
+      "traits": [
+        "Force",
+        "Jedi"
+      ],
+      "text": "when played: you may use the force. if you do, ready this unit.",
+      "set": "LOF",
+      "number": "195",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-LOF-199",
+      "image": "Depa Billaba - A Higher Purpose",
+      "name": "Depa Billaba",
+      "subtitle": "A Higher Purpose",
+      "type": "Unit",
+      "aspects": [
+        "Cunning",
+        "Heroism"
+      ],
+      "cost": 6,
+      "traits": [
+        "Force",
+        "Jedi",
+        "Republic"
+      ],
+      "text": "ambush\nsaboteur",
+      "set": "LOF",
+      "number": "199",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-LOF-200",
+      "image": "Qui-Gon Jinn - The Negotiations Will Be Short",
+      "name": "Qui-Gon Jinn",
+      "subtitle": "The Negotiations Will Be Short",
+      "type": "Unit",
+      "aspects": [
+        "Cunning",
+        "Heroism"
+      ],
+      "cost": 7,
+      "traits": [
+        "Force",
+        "Jedi",
+        "Republic"
+      ],
+      "text": "ambush\nwhen defeated: you may choose a non-leader ground unit. its owner puts it on the top or bottom of their deck.",
+      "set": "LOF",
+      "number": "200",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-LOF-213",
+      "image": "The Legacy Run - Doomed Debris",
+      "name": "The Legacy Run",
+      "subtitle": "Doomed Debris",
+      "type": "Unit",
+      "aspects": [
+        "Cunning"
+      ],
+      "cost": 5,
+      "traits": [
+        "Republic",
+        "Vehicle",
+        "Transport"
+      ],
+      "text": "when defeated: deal 6 damage divided as you choose among enemy units.",
+      "set": "LOF",
+      "number": "213",
+      "arena": "Space"
+    },
+    {
+      "id": "swu-LOF-215",
+      "image": "Ascension Cable",
+      "name": "Ascension Cable",
+      "type": "Upgrade",
+      "aspects": [
+        "Cunning"
+      ],
+      "cost": 2,
+      "traits": [
+        "Item"
+      ],
+      "text": "attach to a non-vehicle unit.\nattached unit gains saboteur.",
+      "set": "LOF",
+      "number": "215"
+    },
+    {
+      "id": "swu-LOF-227",
+      "image": "The Will of the Force",
+      "name": "The Will of the Force",
+      "type": "Event",
+      "aspects": [
+        "Cunning"
+      ],
+      "cost": 4,
+      "traits": [
+        "Force"
+      ],
+      "text": "return a non-leader unit to its owner's hand. you may use the force. if you do, that player discards a random card from their hand.",
+      "set": "LOF",
+      "number": "227"
+    },
+    {
+      "id": "swu-LOF-229",
+      "image": "Kylo Ren - I Know Your Story",
+      "name": "Kylo Ren",
+      "subtitle": "I Know Your Story",
+      "type": "Unit",
+      "aspects": [
+        "Villainy"
+      ],
+      "cost": 2,
+      "traits": [
+        "Force",
+        "First Order"
+      ],
+      "text": "overwhelm\nwhen you play an upgrade on this unit: you may use the force. if you do, draw a card.",
+      "set": "LOF",
+      "number": "229",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-LOF-231",
+      "image": "Darth Tyranus - Servant of Sidious",
+      "name": "Darth Tyranus",
+      "subtitle": "Servant of Sidious",
+      "type": "Unit",
+      "aspects": [
+        "Villainy"
+      ],
+      "cost": 4,
+      "traits": [
+        "Force",
+        "Separatist",
+        "Sith"
+      ],
+      "text": "shielded\nwhile the force is with you, this unit gains ambush.",
+      "set": "LOF",
+      "number": "231",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-LOF-261",
+      "image": "Constructed Lightsaber",
+      "name": "Constructed Lightsaber",
+      "type": "Upgrade",
+      "aspects": [],
+      "cost": 3,
+      "traits": [
+        "Item",
+        "Weapon",
+        "Lightsaber"
+      ],
+      "text": "attach to a force unit.\nif attached unit is a heroism unit, it gains restore 2.\nif attached unit is a villainy unit, it gains raid 2.\nif attached unit is a non-heroism, non-villainy unit, it gains sentinel.",
+      "set": "LOF",
+      "number": "261"
+    },
+    {
+      "id": "swu-SEC-028",
+      "image": "Trayus Acolyte",
+      "name": "Trayus Acolyte",
+      "type": "Unit",
+      "aspects": [
+        "Vigilance",
+        "Villainy"
+      ],
+      "cost": 2,
+      "traits": [
+        "Force",
+        "Sith"
+      ],
+      "text": "",
+      "set": "SEC",
+      "number": "028",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-SEC-038",
+      "image": "Condemn",
+      "name": "Condemn",
+      "type": "Upgrade",
+      "aspects": [
+        "Vigilance",
+        "Villainy"
+      ],
+      "cost": 3,
+      "traits": [
+        "Condition"
+      ],
+      "text": "while attached unit is attacking, it gains: \"on attack: the defending player may disclose vigilancevillainy. if they do, this unit gets -6/-0 for this attack\" and loses all other abilities.",
+      "set": "SEC",
+      "number": "038"
+    },
+    {
+      "id": "swu-SEC-046",
+      "image": "Galen Erso - You'll Never Win",
+      "name": "Galen Erso",
+      "subtitle": "You'll Never Win",
+      "type": "Unit",
+      "aspects": [
+        "Vigilance",
+        "Heroism"
+      ],
+      "cost": 4,
+      "traits": [
+        "Imperial"
+      ],
+      "text": "when played: name a card. while this unit is in play, each non-leader card an opponent owns with that name, including those not in play, loses all abilities.\nplot",
+      "set": "SEC",
+      "number": "046",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-SEC-051",
+      "image": "Bo-Katan Kryze - Alone",
+      "name": "Bo-Katan Kryze",
+      "subtitle": "Alone",
+      "type": "Unit",
+      "aspects": [
+        "Vigilance",
+        "Heroism"
+      ],
+      "cost": 9,
+      "traits": [
+        "Mandalorian"
+      ],
+      "text": "when played: give each enemy unit -3/-3 for this phase.\nwhen an enemy unit is defeated: give an experience token to a friendly unit.",
+      "set": "SEC",
+      "number": "051",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-SEC-052",
+      "image": "Diplomatic Immunity",
+      "name": "Diplomatic Immunity",
+      "type": "Upgrade",
+      "aspects": [
+        "Vigilance",
+        "Heroism"
+      ],
+      "cost": 2,
+      "traits": [
+        "Law"
+      ],
+      "text": "attached unit gains: \"when this unit is attacked: you may disclose vigilancevigilanceheroismheroism (reveal cards from your hand with these aspect icons among them). if you do, the attacker gets -2/-0 for this attack.\"",
+      "set": "SEC",
+      "number": "052"
+    },
+    {
+      "id": "swu-SEC-078",
+      "image": "Hyperspace Disaster",
+      "name": "Hyperspace Disaster",
+      "type": "Event",
+      "aspects": [
+        "Vigilance"
+      ],
+      "cost": 7,
+      "traits": [
+        "Disaster"
+      ],
+      "text": "defeat all space units.",
+      "set": "SEC",
+      "number": "078"
+    },
+    {
+      "id": "swu-SEC-080",
+      "image": "Imperial Dark Trooper",
+      "name": "Imperial Dark Trooper",
+      "type": "Unit",
+      "aspects": [
+        "Command",
+        "Villainy"
+      ],
+      "cost": 2,
+      "traits": [
+        "Imperial",
+        "Droid",
+        "Trooper"
+      ],
+      "text": "",
+      "set": "SEC",
+      "number": "080",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-SEC-082",
+      "image": "Chancellor Palpatine - I Am The Senate",
+      "name": "Chancellor Palpatine",
+      "subtitle": "I Am The Senate",
+      "type": "Unit",
+      "aspects": [
+        "Command",
+        "Villainy"
+      ],
+      "cost": 3,
+      "traits": [
+        "Republic",
+        "Official"
+      ],
+      "text": "when played: if you control a leader unit, create 2 spy tokens and give those tokens sentinel for this phase.\nplot",
+      "set": "SEC",
+      "number": "082",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-SEC-094",
+      "image": "Mina Bonteri - Stop This War",
+      "name": "Mina Bonteri",
+      "subtitle": "Stop This War",
+      "type": "Unit",
+      "aspects": [
+        "Command",
+        "Heroism"
+      ],
+      "cost": 2,
+      "traits": [
+        "Separatist",
+        "Official"
+      ],
+      "text": "restore 1\nwhen defeated: you may disclose commandcommandheroism. if you do, draw a card.",
+      "set": "SEC",
+      "number": "094",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-SEC-098",
+      "image": "Captain Typho - All Necessary Precautions",
+      "name": "Captain Typho",
+      "subtitle": "All Necessary Precautions",
+      "type": "Unit",
+      "aspects": [
+        "Command",
+        "Heroism"
+      ],
+      "cost": 4,
+      "traits": [
+        "Naboo",
+        "Republic",
+        "Trooper"
+      ],
+      "text": "sentinel\nwhen this unit is attacked: you may disclose commandheroism. if you do, heal 1 damage from your base.",
+      "set": "SEC",
+      "number": "098",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-SEC-101",
+      "image": "Queen Amidala - Championing Her People",
+      "name": "Queen Amidala",
+      "subtitle": "Championing Her People",
+      "type": "Unit",
+      "aspects": [
+        "Command",
+        "Heroism"
+      ],
+      "cost": 5,
+      "traits": [
+        "Naboo",
+        "Official"
+      ],
+      "text": "when played: create 2 spy tokens.\nif damage would be dealt to this unit, you may defeat another friendly unit that shares a trait with this unit. if you do, prevent that damage.",
+      "set": "SEC",
+      "number": "101",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-SEC-104",
+      "image": "Figure of Unity",
+      "name": "Figure of Unity",
+      "type": "Upgrade",
+      "aspects": [
+        "Command",
+        "Heroism"
+      ],
+      "cost": 3,
+      "traits": [
+        "Innate"
+      ],
+      "text": "attach to a unique unit.\nattached unit gains: \"while this unit is ready, each other friendly unit gains overwhelm, raid 1, and restore 1.\"",
+      "set": "SEC",
+      "number": "104"
+    },
+    {
+      "id": "swu-SEC-110",
+      "image": "GNK Power Droid",
+      "name": "GNK Power Droid",
+      "type": "Unit",
+      "aspects": [
+        "Command"
+      ],
+      "cost": 2,
+      "traits": [
+        "Droid"
+      ],
+      "text": "on attack: the next unit you play this phase costs 1 less.",
+      "set": "SEC",
+      "number": "110",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-SEC-111",
+      "image": "Jar Jar Binks - Mesa Propose…",
+      "name": "Jar Jar Binks",
+      "subtitle": "Mesa Propose…",
+      "type": "Unit",
+      "aspects": [
+        "Command"
+      ],
+      "cost": 2,
+      "traits": [
+        "Naboo",
+        "Republic",
+        "Gungan",
+        "Official"
+      ],
+      "text": "when played: you may give another friendly unit +2/+2 for this phase.\nplot",
+      "set": "SEC",
+      "number": "111",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-SEC-123",
+      "image": "Unveiled Might",
+      "name": "Unveiled Might",
+      "type": "Upgrade",
+      "aspects": [
+        "Command"
+      ],
+      "cost": 4,
+      "traits": [
+        "Innate"
+      ],
+      "text": "plot",
+      "set": "SEC",
+      "number": "123"
+    },
+    {
+      "id": "swu-SEC-146",
+      "image": "Rebellious Functionary",
+      "name": "Rebellious Functionary",
+      "type": "Unit",
+      "aspects": [
+        "Aggression",
+        "Heroism"
+      ],
+      "cost": 1,
+      "traits": [
+        "Rebel",
+        "Official"
+      ],
+      "text": "hidden",
+      "set": "SEC",
+      "number": "146",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-SEC-148",
+      "image": "Karis Nemik - Freedom Is a Pure Idea",
+      "name": "Karis Nemik",
+      "subtitle": "Freedom Is a Pure Idea",
+      "type": "Unit",
+      "aspects": [
+        "Aggression",
+        "Heroism"
+      ],
+      "cost": 2,
+      "traits": [
+        "Rebel"
+      ],
+      "text": "hidden\nwhen defeated: you may disclose aggressionheroism. if you do, create a spy token and ready it.",
+      "set": "SEC",
+      "number": "148",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-SEC-160",
+      "image": "Reckless Rebel",
+      "name": "Reckless Rebel",
+      "type": "Unit",
+      "aspects": [
+        "Aggression"
+      ],
+      "cost": 1,
+      "traits": [
+        "Rebel",
+        "Twi'lek"
+      ],
+      "text": "saboteur",
+      "set": "SEC",
+      "number": "160",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-SEC-163",
+      "image": "Outer Rim Constable",
+      "name": "Outer Rim Constable",
+      "type": "Unit",
+      "aspects": [
+        "Aggression"
+      ],
+      "cost": 2,
+      "traits": [
+        "Fringe",
+        "Official"
+      ],
+      "text": "when played: you may defeat an upgrade.",
+      "set": "SEC",
+      "number": "163",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-SEC-164",
+      "image": "Warrior of Clan Ordo",
+      "name": "Warrior of Clan Ordo",
+      "type": "Unit",
+      "aspects": [
+        "Aggression"
+      ],
+      "cost": 2,
+      "traits": [
+        "Mandalorian"
+      ],
+      "text": "on attack: you may disclose aggression. if you don't, deal 2 damage to your base.",
+      "set": "SEC",
+      "number": "164",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-SEC-172",
+      "image": "Cinta Kaz - The Struggle Comes First",
+      "name": "Cinta Kaz",
+      "subtitle": "The Struggle Comes First",
+      "type": "Unit",
+      "aspects": [
+        "Aggression"
+      ],
+      "cost": 6,
+      "traits": [
+        "Rebel"
+      ],
+      "text": "when played: you may attack with a unit.\nplot",
+      "set": "SEC",
+      "number": "172",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-SEC-176",
+      "image": "Sudden Ferocity",
+      "name": "Sudden Ferocity",
+      "type": "Upgrade",
+      "aspects": [
+        "Aggression"
+      ],
+      "cost": 3,
+      "traits": [
+        "Innate"
+      ],
+      "text": "plot",
+      "set": "SEC",
+      "number": "176"
+    },
+    {
+      "id": "swu-SEC-180",
+      "image": "Let's Call It War",
+      "name": "Let's Call It War",
+      "type": "Event",
+      "aspects": [
+        "Aggression"
+      ],
+      "cost": 3,
+      "traits": [
+        "Tactic"
+      ],
+      "text": "deal 3 damage to a unit. then, if you have the initiative, you may deal 2 damage to another unit in the same arena.",
+      "set": "SEC",
+      "number": "180"
+    },
+    {
+      "id": "swu-SEC-186",
+      "image": "Garindan - Information Broker",
+      "name": "Garindan",
+      "subtitle": "Information Broker",
+      "type": "Unit",
+      "aspects": [
+        "Cunning",
+        "Villainy"
+      ],
+      "cost": 2,
+      "traits": [
+        "Underworld"
+      ],
+      "text": "when played: name a card. look at an opponent's hand and discard a card with that name from it.\nplot",
+      "set": "SEC",
+      "number": "186",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-SEC-198",
+      "image": "Bail Organa - Responding to Catastrophe",
+      "name": "Bail Organa",
+      "subtitle": "Responding to Catastrophe",
+      "type": "Unit",
+      "aspects": [
+        "Cunning",
+        "Heroism"
+      ],
+      "cost": 2,
+      "traits": [
+        "Republic",
+        "Official"
+      ],
+      "text": "on attack: you may discard a card from your hand. if you do, create a spy token.",
+      "set": "SEC",
+      "number": "198",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-SEC-204",
+      "image": "Blue Ace - Colorful Racer",
+      "name": "Blue Ace",
+      "subtitle": "Colorful Racer",
+      "type": "Unit",
+      "aspects": [
+        "Cunning",
+        "Heroism"
+      ],
+      "cost": 4,
+      "traits": [
+        "Resistance",
+        "Vehicle",
+        "Fighter"
+      ],
+      "text": "ambush\non attack: ready an exhausted enemy unit.",
+      "set": "SEC",
+      "number": "204",
+      "arena": "Space"
+    },
+    {
+      "id": "swu-SEC-207",
+      "image": "Lightmaker - I Have An Idea",
+      "name": "Lightmaker",
+      "subtitle": "I Have An Idea",
+      "type": "Unit",
+      "aspects": [
+        "Cunning",
+        "Heroism"
+      ],
+      "cost": 5,
+      "traits": [
+        "Rebel",
+        "Vehicle",
+        "Capital Ship"
+      ],
+      "text": "raid 4\nwhen defeated: choose an arena. exhaust each enemy unit in that arena.",
+      "set": "SEC",
+      "number": "207",
+      "arena": "Space"
+    },
+    {
+      "id": "swu-SEC-209",
+      "image": "The Mandalorian - Cleaning Up Nevarro",
+      "name": "The Mandalorian",
+      "subtitle": "Cleaning Up Nevarro",
+      "type": "Unit",
+      "aspects": [
+        "Cunning",
+        "Heroism"
+      ],
+      "cost": 8,
+      "traits": [
+        "Mandalorian",
+        "Bounty Hunter"
+      ],
+      "text": "ambush\nwhen this unit attacks and defeats a unit: you may choose an enemy non-leader unit. this unit captures it.",
+      "set": "SEC",
+      "number": "209",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-SEC-211",
+      "image": "Faith in Your Friends",
+      "name": "Faith in Your Friends",
+      "type": "Event",
+      "aspects": [
+        "Cunning",
+        "Heroism"
+      ],
+      "cost": 2,
+      "traits": [
+        "Gambit"
+      ],
+      "text": "search the top 3 cards of your deck for a card and draw it. then, you may disclose cunningcunningcunningheroismheroism. if you do, create 2 spy tokens.",
+      "set": "SEC",
+      "number": "211"
+    },
+    {
+      "id": "swu-SEC-233",
+      "image": "Beguile",
+      "name": "Beguile",
+      "type": "Event",
+      "aspects": [
+        "Cunning"
+      ],
+      "cost": 3,
+      "traits": [
+        "Trick"
+      ],
+      "text": "look at an opponent's hand. then, choose a non-leader unit that opponent controls that costs 6 or less and return it to its owner's hand.",
+      "set": "SEC",
+      "number": "233"
+    },
+    {
+      "id": "swu-SEC-238",
+      "image": "Sith Assassin",
+      "name": "Sith Assassin",
+      "type": "Unit",
+      "aspects": [
+        "Villainy"
+      ],
+      "cost": 2,
+      "traits": [
+        "Force",
+        "Sith"
+      ],
+      "text": "hidden",
+      "set": "SEC",
+      "number": "238",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-SEC-252",
+      "image": "Maarva Andor - We've Been Sleeping",
+      "name": "Maarva Andor",
+      "subtitle": "We've Been Sleeping",
+      "type": "Unit",
+      "aspects": [
+        "Heroism"
+      ],
+      "cost": 3,
+      "traits": [
+        "Rebel"
+      ],
+      "text": "when defeated: give an experience token to each friendly rebel unit.",
+      "set": "SEC",
+      "number": "252",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-SOR-236",
+      "image": "R2-D2 - Ignoring Protocol",
+      "name": "R2-D2",
+      "subtitle": "Ignoring Protocol",
+      "type": "Unit",
+      "aspects": [
+        "Heroism"
+      ],
+      "cost": 1,
+      "traits": [
+        "Rebel",
+        "Droid"
+      ],
+      "text": "when played/on attack: look at the top card of your deck. you may put it on the bottom of your deck.",
+      "set": "SOR",
+      "number": "236",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-TASH-T01",
+      "image": "Mandalorian",
+      "name": "Mandalorian",
+      "type": "Token",
+      "aspects": [
+        "Vigilance"
+      ],
+      "cost": 0,
+      "traits": [
+        "Mandalorian"
+      ],
+      "text": "shielded",
+      "set": "TASH",
+      "number": "T01",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-TASH-T02",
+      "image": "Advantage",
+      "name": "Advantage",
+      "type": "Token",
+      "aspects": [],
+      "cost": 0,
+      "traits": [
+        "Innate"
+      ],
+      "text": "when attached unit's attack or defense ends: defeat this upgrade.",
+      "set": "TASH",
+      "number": "T02"
+    },
+    {
+      "id": "swu-THMW-T01",
+      "image": "Shield",
+      "name": "Shield",
+      "type": "Token",
+      "aspects": [],
+      "cost": 0,
+      "traits": [
+        "Armor"
+      ],
+      "text": "if damage would be dealt to attached unit, prevent that damage. if you do, defeat a shield token on it.",
+      "set": "THMW",
+      "number": "T01"
+    },
+    {
+      "id": "swu-THMW-T02",
+      "image": "Weakness",
+      "name": "Weakness",
+      "type": "Token",
+      "aspects": [],
+      "cost": 0,
+      "traits": [
+        "Condition"
+      ],
+      "text": "",
+      "set": "THMW",
+      "number": "T02"
+    },
+    {
+      "id": "swu-THMW-T03",
+      "image": "Beast",
+      "name": "Beast",
+      "type": "Token",
+      "aspects": [],
+      "cost": 0,
+      "traits": [
+        "Creature"
+      ],
+      "text": "",
+      "set": "THMW",
+      "number": "T03",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-TJTL-T01",
+      "image": "TIE Fighter",
+      "name": "TIE Fighter",
+      "type": "Token",
+      "aspects": [
+        "Villainy"
+      ],
+      "cost": 0,
+      "traits": [
+        "Vehicle",
+        "Fighter"
+      ],
+      "text": "",
+      "set": "TJTL",
+      "number": "T01",
+      "arena": "Space"
+    },
+    {
+      "id": "swu-TLAW-T01",
+      "image": "Credit",
+      "name": "Credit",
+      "type": "Token",
+      "aspects": [],
+      "cost": 0,
+      "traits": [
+        "Supply"
+      ],
+      "text": "while paying resources, you may defeat this token. if you do, pay 1 less.",
+      "set": "TLAW",
+      "number": "T01"
+    },
+    {
+      "id": "swu-TLAW-T02",
+      "image": "Experience",
+      "name": "Experience",
+      "type": "Token",
+      "aspects": [],
+      "cost": 0,
+      "traits": [
+        "Learned"
+      ],
+      "text": "",
+      "set": "TLAW",
+      "number": "T02"
+    },
+    {
+      "id": "swu-TSEC-T01",
+      "image": "Spy",
+      "name": "Spy",
+      "type": "Token",
+      "aspects": [],
+      "cost": 0,
+      "traits": [
+        "Official"
+      ],
+      "text": "raid 2",
+      "set": "TSEC",
+      "number": "T01",
+      "arena": "Ground"
+    },
+    {
+      "id": "swu-TWI-153",
+      "image": "Bold Resistance",
+      "name": "Bold Resistance",
+      "type": "Event",
+      "aspects": [
+        "Aggression",
+        "Heroism"
+      ],
+      "cost": 3,
+      "traits": [
+        "Tactic"
+      ],
+      "text": "choose up to 3 units that share the same trait. each of those units gets +2/+0 for this phase.",
+      "set": "TWI",
+      "number": "153"
+    },
+    {
+      "id": "swu-TWI-174",
+      "image": "Open Fire",
+      "name": "Open Fire",
+      "type": "Event",
+      "aspects": [
+        "Aggression"
+      ],
+      "cost": 3,
+      "traits": [
+        "Tactic"
+      ],
+      "text": "deal 4 damage to a unit.",
+      "set": "TWI",
+      "number": "174"
+    },
+    {
+      "id": "swu-TWI-224",
+      "image": "Breaking In",
+      "name": "Breaking In",
+      "type": "Event",
+      "aspects": [
+        "Cunning"
+      ],
+      "cost": 2,
+      "traits": [
+        "Tactic"
+      ],
+      "text": "attack with a unit. it gets +2/+0 and gains saboteur for this attack.",
+      "set": "TWI",
+      "number": "224"
+    }
+  ]
+}

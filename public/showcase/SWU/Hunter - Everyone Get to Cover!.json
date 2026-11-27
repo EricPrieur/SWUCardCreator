@@ -1,0 +1,15 @@
+{
+  "id": "swu-HMW-035",
+  "frameId": "unit-vigilance-command-heroism",
+  "name": "Hunter",
+  "subtitle": "Everyone Get to Cover!",
+  "trait": "Clone",
+  "text": "[When Played:] Choose two. You may choose the same option more than once:\n• Give a Shield token to a unit.\n• Attack with a unit, even if it's exhausted. It can't attack bases for this attack.",
+  "unique": true,
+  "cost": 6,
+  "power": 4,
+  "hp": 7,
+  "setCode": "HMW",
+  "number": "035",
+  "rarity": "L"
+}

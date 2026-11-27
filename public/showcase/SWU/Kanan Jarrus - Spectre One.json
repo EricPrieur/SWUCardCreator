@@ -1,0 +1,15 @@
+{
+  "id": "swu-LAW-089",
+  "frameId": "unit-cunning-vigilance-heroism",
+  "name": "Kanan Jarrus",
+  "subtitle": "Spectre One",
+  "trait": "Force, Jedi, Rebel, Spectre",
+  "text": "[Restore 1]\n[When Played:] You may return a non-leader unit that costs 2 or less to its owner's hand. If you control a [Command] or [Aggression] unit, you may return a non-leader unit that costs 4 or less instead.",
+  "unique": true,
+  "cost": 4,
+  "power": 3,
+  "hp": 4,
+  "setCode": "LAW",
+  "number": "089",
+  "rarity": "U"
+}

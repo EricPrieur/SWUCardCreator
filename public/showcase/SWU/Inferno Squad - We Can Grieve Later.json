@@ -1,0 +1,15 @@
+{
+  "id": "swu-HMW-202",
+  "frameId": "unit-cunning-villainy",
+  "name": "Inferno Squad",
+  "subtitle": "We Can Grieve Later",
+  "trait": "Imperial, Trooper",
+  "text": "[When Played/When Defeated:] You may deal 1 damage to a unit and give a Weakness token to it.",
+  "unique": true,
+  "cost": 5,
+  "power": 3,
+  "hp": 6,
+  "setCode": "HMW",
+  "number": "202",
+  "rarity": "U"
+}

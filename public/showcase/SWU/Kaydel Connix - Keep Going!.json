@@ -1,0 +1,15 @@
+{
+  "id": "swu-IC27-032",
+  "frameId": "unit-vigilance-heroism",
+  "name": "Kaydel Connix",
+  "subtitle": "Keep Going!",
+  "trait": "Resistance",
+  "text": "[Sentinel]",
+  "unique": true,
+  "cost": 2,
+  "power": 1,
+  "hp": 5,
+  "setCode": "IC27",
+  "number": "032",
+  "rarity": "U"
+}

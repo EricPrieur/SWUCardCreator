@@ -1,0 +1,12 @@
+{
+  "id": "swu-TWI-153",
+  "frameId": "event-aggression-heroism",
+  "name": "Bold Resistance",
+  "trait": "Tactic",
+  "text": "Choose up to 3 units that share the same [{Trait}]. Each of those units gets [+2/+0] for this phase.",
+  "unique": false,
+  "cost": 3,
+  "setCode": "TWI",
+  "number": "153",
+  "rarity": "U"
+}

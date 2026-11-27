@@ -4344,3 +4344,36 @@ input.picker-button::placeholder {
   outline: 2px solid var(--spice);
   outline-offset: 2px;
 }
+
+/* A newer version of the site out: offered, at the bottom of the screen (UpdateBanner.tsx) */
+.update-banner {
+  position: fixed;
+  left: 50%;
+  bottom: 1rem;
+  z-index: 1000;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: max-content;
+  max-width: calc(100vw - 2rem);
+  padding: 0.6rem 0.75rem 0.6rem 1rem;
+  border: 1px solid var(--spice);
+  border-radius: 10px;
+  background: var(--dune);
+  color: var(--sand);
+  box-shadow: 0 6px 24px rgb(0 0 0 / 0.5);
+}
+
+.update-close {
+  border: none;
+  background: none;
+  color: var(--sand-dim);
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.update-close:hover {
+  color: var(--sand);
+}

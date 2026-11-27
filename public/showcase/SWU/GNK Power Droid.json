@@ -1,0 +1,14 @@
+{
+  "id": "swu-SEC-110",
+  "frameId": "unit-command",
+  "name": "GNK Power Droid",
+  "trait": "Droid",
+  "text": "[On Attack:] The next unit you play this phase costs [1] less.",
+  "unique": false,
+  "cost": 2,
+  "power": 1,
+  "hp": 3,
+  "setCode": "SEC",
+  "number": "110",
+  "rarity": "C"
+}

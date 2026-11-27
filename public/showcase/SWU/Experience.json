@@ -1,0 +1,14 @@
+{
+  "id": "swu-TLAW-T02",
+  "frameId": "token-upgrade",
+  "name": "Experience",
+  "trait": "Learned",
+  "text": "",
+  "unique": false,
+  "cost": 0,
+  "power": 1,
+  "hp": 1,
+  "setCode": "TLAW",
+  "number": "T02",
+  "rarity": "C"
+}

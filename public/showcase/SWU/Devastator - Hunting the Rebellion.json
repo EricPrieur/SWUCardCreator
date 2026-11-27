@@ -1,0 +1,15 @@
+{
+  "id": "swu-JTL-143",
+  "frameId": "unit-aggression-villainy-space",
+  "name": "Devastator",
+  "subtitle": "Hunting the Rebellion",
+  "trait": "Imperial, Vehicle, Capital Ship",
+  "text": "You assign all indirect damage you deal to opponents.\n[When Played:] Deal 4 indirect damage to each opponent.",
+  "unique": true,
+  "cost": 8,
+  "power": 9,
+  "hp": 6,
+  "setCode": "JTL",
+  "number": "143",
+  "rarity": "L"
+}

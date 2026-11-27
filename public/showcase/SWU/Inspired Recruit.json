@@ -1,0 +1,14 @@
+{
+  "id": "swu-LAW-180",
+  "frameId": "unit-aggression-heroism",
+  "name": "Inspired Recruit",
+  "trait": "Rebel, Trooper",
+  "text": "",
+  "unique": false,
+  "cost": 1,
+  "power": 3,
+  "hp": 1,
+  "setCode": "LAW",
+  "number": "180",
+  "rarity": "C"
+}

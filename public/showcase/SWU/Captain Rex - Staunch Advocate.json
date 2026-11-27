@@ -1,0 +1,15 @@
+{
+  "id": "swu-IC27-041",
+  "frameId": "unit-vigilance-heroism",
+  "name": "Captain Rex",
+  "subtitle": "Staunch Advocate",
+  "trait": "Republic, Clone, Trooper",
+  "text": "[Sentinel]\n[Shielded]\n[Restore 3]",
+  "unique": true,
+  "cost": 7,
+  "power": 7,
+  "hp": 5,
+  "setCode": "IC27",
+  "number": "041",
+  "rarity": "R"
+}

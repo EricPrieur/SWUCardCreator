@@ -1,0 +1,12 @@
+{
+  "id": "swu-HMW-193",
+  "frameId": "event-aggression",
+  "name": "Nightfall",
+  "trait": "Disaster",
+  "text": "Deal 1 damage to an enemy unit.\nIf you control an [{Endor}] base, you may attack with a unit. It gets +2/+0 for this attack.",
+  "unique": false,
+  "cost": 2,
+  "setCode": "HMW",
+  "number": "193",
+  "rarity": "C"
+}

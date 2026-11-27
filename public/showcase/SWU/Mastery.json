@@ -1,0 +1,14 @@
+{
+  "id": "swu-LAW-129",
+  "frameId": "upgrade-vigilance",
+  "name": "Mastery",
+  "trait": "Learned",
+  "text": "This upgrade costs [1] less to play on a [{Unique}] unit.",
+  "unique": false,
+  "cost": 4,
+  "power": 3,
+  "hp": 3,
+  "setCode": "LAW",
+  "number": "129",
+  "rarity": "C"
+}

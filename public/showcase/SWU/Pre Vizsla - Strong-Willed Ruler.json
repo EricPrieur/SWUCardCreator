@@ -1,0 +1,15 @@
+{
+  "id": "swu-ASH-053",
+  "frameId": "unit-vigilance-villainy",
+  "name": "Pre Vizsla",
+  "subtitle": "Strong-Willed Ruler",
+  "trait": "Mandalorian, Official",
+  "text": "[When Played:] Defeat any number of non-leader units with a total of 6 or less remaining HP. Create a Mandalorian token for each unit defeated this way.",
+  "unique": true,
+  "cost": 8,
+  "power": 6,
+  "hp": 6,
+  "setCode": "ASH",
+  "number": "053",
+  "rarity": "L"
+}

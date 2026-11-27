@@ -1,0 +1,15 @@
+{
+  "id": "swu-IC27-151",
+  "frameId": "unit-cunning-heroism",
+  "name": "R2-D2",
+  "subtitle": "The First Protagonist",
+  "trait": "Rebel, Droid",
+  "text": "[On Attack:] Choose one:\n• Ready a resource.\n• Deal 1 damage to a ground unit.\n• Look at the top card of your deck. You may discard it.",
+  "unique": true,
+  "cost": 1,
+  "power": 1,
+  "hp": 3,
+  "setCode": "IC27",
+  "number": "151",
+  "rarity": "R"
+}

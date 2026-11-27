@@ -1,0 +1,15 @@
+{
+  "id": "swu-SEC-252",
+  "frameId": "unit-heroism",
+  "name": "Maarva Andor",
+  "subtitle": "We've Been Sleeping",
+  "trait": "Rebel",
+  "text": "[When Defeated:] Give an Experience token to each friendly [{Rebel}] unit.",
+  "unique": true,
+  "cost": 3,
+  "power": 3,
+  "hp": 4,
+  "setCode": "SEC",
+  "number": "252",
+  "rarity": "U"
+}

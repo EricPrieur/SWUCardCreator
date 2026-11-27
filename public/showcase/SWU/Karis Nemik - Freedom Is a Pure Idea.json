@@ -1,0 +1,15 @@
+{
+  "id": "swu-SEC-148",
+  "frameId": "unit-aggression-heroism",
+  "name": "Karis Nemik",
+  "subtitle": "Freedom Is a Pure Idea",
+  "trait": "Rebel",
+  "text": "[Hidden]\n[When Defeated:] You may disclose [Aggression][Heroism]. If you do, create a Spy token and ready it.",
+  "unique": true,
+  "cost": 2,
+  "power": 3,
+  "hp": 2,
+  "setCode": "SEC",
+  "number": "148",
+  "rarity": "R"
+}

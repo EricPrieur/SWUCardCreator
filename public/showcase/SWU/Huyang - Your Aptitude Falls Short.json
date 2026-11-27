@@ -1,0 +1,15 @@
+{
+  "id": "swu-ASH-056",
+  "frameId": "unit-vigilance-heroism",
+  "name": "Huyang",
+  "subtitle": "Your Aptitude Falls Short",
+  "trait": "Jedi, Droid",
+  "text": "[On Attack:] You may give an upgraded unit -4/-0 for this phase.",
+  "unique": true,
+  "cost": 2,
+  "power": 2,
+  "hp": 4,
+  "setCode": "ASH",
+  "number": "056",
+  "rarity": "U"
+}

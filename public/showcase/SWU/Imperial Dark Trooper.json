@@ -1,0 +1,14 @@
+{
+  "id": "swu-SEC-080",
+  "frameId": "unit-command-villainy",
+  "name": "Imperial Dark Trooper",
+  "trait": "Imperial, Droid, Trooper",
+  "text": "",
+  "unique": false,
+  "cost": 2,
+  "power": 3,
+  "hp": 3,
+  "setCode": "SEC",
+  "number": "080",
+  "rarity": "C"
+}

@@ -1,0 +1,14 @@
+{
+  "id": "swu-HMW-038",
+  "frameId": "upgrade-vigilance-command",
+  "name": "Bestial Bond",
+  "trait": "Innate",
+  "text": "[When Played:] If attached unit is a [{Creature}] or a [{Force}] unit, create a Beast token.",
+  "unique": false,
+  "cost": 3,
+  "power": 2,
+  "hp": 2,
+  "setCode": "HMW",
+  "number": "038",
+  "rarity": "U"
+}

@@ -1,0 +1,14 @@
+{
+  "id": "swu-SEC-028",
+  "frameId": "unit-vigilance-villainy",
+  "name": "Trayus Acolyte",
+  "trait": "Force, Sith",
+  "text": "",
+  "unique": false,
+  "cost": 2,
+  "power": 2,
+  "hp": 4,
+  "setCode": "SEC",
+  "number": "028",
+  "rarity": "C"
+}

@@ -1,0 +1,14 @@
+{
+  "id": "swu-ASH-157",
+  "frameId": "unit-aggression-heroism-space",
+  "name": "Danger Squadron Wingmen",
+  "trait": "Rebel, Vehicle, Fighter",
+  "text": "[On Attack:] You may give an Advantage token to another unit.",
+  "unique": false,
+  "cost": 4,
+  "power": 4,
+  "hp": 5,
+  "setCode": "ASH",
+  "number": "157",
+  "rarity": "C"
+}

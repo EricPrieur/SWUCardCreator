@@ -1,0 +1,12 @@
+{
+  "id": "swu-LOF-227",
+  "frameId": "event-cunning",
+  "name": "The Will of the Force",
+  "trait": "Force",
+  "text": "Return a non-leader unit to its owner's hand. You may use the Force. If you do, that player discards a random card from their hand.",
+  "unique": false,
+  "cost": 4,
+  "setCode": "LOF",
+  "number": "227",
+  "rarity": "C"
+}

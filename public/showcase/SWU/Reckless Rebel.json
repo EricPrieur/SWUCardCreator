@@ -1,0 +1,14 @@
+{
+  "id": "swu-SEC-160",
+  "frameId": "unit-aggression",
+  "name": "Reckless Rebel",
+  "trait": "Rebel, Twi'lek",
+  "text": "[Saboteur]",
+  "unique": false,
+  "cost": 1,
+  "power": 2,
+  "hp": 1,
+  "setCode": "SEC",
+  "number": "160",
+  "rarity": "C"
+}

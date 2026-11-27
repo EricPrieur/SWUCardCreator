@@ -1,0 +1,15 @@
+{
+  "id": "swu-IC27-068",
+  "frameId": "unit-command-villainy-space",
+  "name": "Devastator",
+  "subtitle": "Lord Vader's Flagship",
+  "trait": "Imperial, Vehicle, Capital Ship",
+  "text": "[Overwhelm]\n[When Played:] Search the top 5 cards of your deck for a [Villainy] unit that costs 12 or less and play it for free.",
+  "unique": true,
+  "cost": 10,
+  "power": 9,
+  "hp": 9,
+  "setCode": "IC27",
+  "number": "068",
+  "rarity": "L"
+}

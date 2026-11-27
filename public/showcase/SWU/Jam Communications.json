@@ -1,0 +1,12 @@
+{
+  "id": "swu-JTL-207",
+  "frameId": "event-cunning-heroism",
+  "name": "Jam Communications",
+  "trait": "Trick",
+  "text": "Look at an opponent's hand and discard an event from it.",
+  "unique": false,
+  "cost": 1,
+  "setCode": "JTL",
+  "number": "207",
+  "rarity": "R"
+}

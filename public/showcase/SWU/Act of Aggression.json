@@ -1,0 +1,12 @@
+{
+  "id": "swu-IC27-127",
+  "frameId": "event-aggression",
+  "name": "Act of Aggression",
+  "trait": "Innate",
+  "text": "Draw a card.\nYou may deal 3 damage to a unit.\nGive a friendly unit +3/+0 and [Overwhelm] for this phase.",
+  "unique": false,
+  "cost": 4,
+  "setCode": "IC27",
+  "number": "127",
+  "rarity": "U"
+}

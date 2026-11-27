@@ -1,0 +1,14 @@
+{
+  "id": "swu-TASH-T02",
+  "frameId": "token-upgrade",
+  "name": "Advantage",
+  "trait": "Innate",
+  "text": "[When attached unit's attack or defense ends:] Defeat this upgrade.",
+  "unique": false,
+  "cost": 0,
+  "power": 1,
+  "hp": 0,
+  "setCode": "TASH",
+  "number": "T02",
+  "rarity": "C"
+}

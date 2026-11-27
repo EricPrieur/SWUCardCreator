@@ -1,0 +1,14 @@
+{
+  "id": "swu-HMW-247",
+  "frameId": "unit-villainy-space",
+  "name": "Surveillance Cruiser",
+  "trait": "Imperial, Vehicle, Capital Ship",
+  "text": "[When Played:] If an opponent controls an [{Endor}], [{Kashyyyk}], [{Naboo}], or [{Tatooine}] base, draw a card.",
+  "unique": false,
+  "cost": 4,
+  "power": 4,
+  "hp": 4,
+  "setCode": "HMW",
+  "number": "247",
+  "rarity": "C"
+}

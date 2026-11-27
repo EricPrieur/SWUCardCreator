@@ -1,0 +1,15 @@
+{
+  "id": "swu-JTL-088",
+  "frameId": "unit-command-villainy",
+  "name": "Captain Phasma",
+  "subtitle": "On My Command",
+  "trait": "First Order, Trooper",
+  "text": "[When Played/On Attack:] You may give another {first order} unit [+2/+2] for this phase.",
+  "unique": true,
+  "cost": 5,
+  "power": 5,
+  "hp": 6,
+  "setCode": "JTL",
+  "number": "088",
+  "rarity": "U"
+}

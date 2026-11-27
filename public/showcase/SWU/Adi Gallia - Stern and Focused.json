@@ -1,0 +1,15 @@
+{
+  "id": "swu-LOF-142",
+  "frameId": "unit-aggression-heroism",
+  "name": "Adi Gallia",
+  "subtitle": "Stern and Focused",
+  "trait": "Force, Jedi, Republic",
+  "text": "[When an opponent plays an event:] Deal 1 damage to that player's base.",
+  "unique": true,
+  "cost": 2,
+  "power": 2,
+  "hp": 4,
+  "setCode": "LOF",
+  "number": "142",
+  "rarity": "R"
+}

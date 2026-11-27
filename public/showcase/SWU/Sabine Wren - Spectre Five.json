@@ -1,0 +1,15 @@
+{
+  "id": "swu-LAW-078",
+  "frameId": "unit-aggression-cunning-heroism",
+  "name": "Sabine Wren",
+  "subtitle": "Spectre Five",
+  "trait": "Mandalorian, Rebel, Spectre",
+  "text": "[Ambush]\n[When Played:] You may defeat a non-[{Unique}] upgrade. If you control a [Vigilance] or [Command] unit, you may defeat an upgrade instead.",
+  "unique": true,
+  "cost": 3,
+  "power": 3,
+  "hp": 3,
+  "setCode": "LAW",
+  "number": "078",
+  "rarity": "U"
+}

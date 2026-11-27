@@ -1,0 +1,15 @@
+{
+  "id": "swu-LAW-079",
+  "frameId": "unit-aggression-cunning-heroism",
+  "name": "K-2SO",
+  "subtitle": "Locking the Vault",
+  "trait": "Rebel, Droid",
+  "text": "[Ambush]\n[On Attack:] You may deal 3 damage to a damaged ground unit.",
+  "unique": true,
+  "cost": 5,
+  "power": 3,
+  "hp": 5,
+  "setCode": "LAW",
+  "number": "079",
+  "rarity": "R"
+}

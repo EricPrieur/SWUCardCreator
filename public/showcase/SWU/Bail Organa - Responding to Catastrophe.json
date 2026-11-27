@@ -1,0 +1,15 @@
+{
+  "id": "swu-SEC-198",
+  "frameId": "unit-cunning-heroism",
+  "name": "Bail Organa",
+  "subtitle": "Responding to Catastrophe",
+  "trait": "Republic, Official",
+  "text": "[On Attack:] You may discard a card from your hand. If you do, create a Spy token.",
+  "unique": true,
+  "cost": 2,
+  "power": 2,
+  "hp": 4,
+  "setCode": "SEC",
+  "number": "198",
+  "rarity": "U"
+}

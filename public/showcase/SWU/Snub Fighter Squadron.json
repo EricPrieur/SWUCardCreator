@@ -1,0 +1,14 @@
+{
+  "id": "swu-ASH-194",
+  "frameId": "unit-cunning-villainy-space",
+  "name": "Snub Fighter Squadron",
+  "trait": "Underworld, Vehicle, Fighter",
+  "text": "[Ambush]\n[When Played:] Deal 1 damage to a space unit.",
+  "unique": false,
+  "cost": 4,
+  "power": 4,
+  "hp": 3,
+  "setCode": "ASH",
+  "number": "194",
+  "rarity": "U"
+}

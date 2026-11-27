@@ -1,0 +1,15 @@
+{
+  "id": "swu-LOF-093",
+  "frameId": "unit-command-heroism",
+  "name": "Gungi",
+  "subtitle": "Finding Himself",
+  "trait": "Force, Jedi, Wookiee",
+  "text": "",
+  "unique": true,
+  "cost": 2,
+  "power": 2,
+  "hp": 5,
+  "setCode": "LOF",
+  "number": "093",
+  "rarity": "U"
+}

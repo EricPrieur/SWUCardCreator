@@ -1,0 +1,14 @@
+{
+  "id": "swu-ASH-116",
+  "frameId": "unit-command",
+  "name": "Ant Droid",
+  "trait": "Droid",
+  "text": "[When Defeated:] Draw a card.",
+  "unique": false,
+  "cost": 1,
+  "power": 1,
+  "hp": 2,
+  "setCode": "ASH",
+  "number": "116",
+  "rarity": "C"
+}

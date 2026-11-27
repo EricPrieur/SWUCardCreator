@@ -1,0 +1,14 @@
+{
+  "id": "swu-ASH-253",
+  "frameId": "unit-heroism-space",
+  "name": "Yellow Aces Bomber",
+  "trait": "New Republic, Vehicle, Fighter",
+  "text": "[Support]\n[On Attack:] If this unit is upgraded, deal 2 damage to a base.",
+  "unique": false,
+  "cost": 3,
+  "power": 2,
+  "hp": 4,
+  "setCode": "ASH",
+  "number": "253",
+  "rarity": "U"
+}

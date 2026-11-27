@@ -42,5 +42,6 @@ server/.localdata
 # Game records the tools write (server/tools)
 server/records
 
-# Real SWU cards for the dev-only SWU tab (server/tools/swu-import.ts): official cards and images, never committed
-public/showcase/SWU/
+# The SWU tab's cards (server/tools/swu-import.ts) ship with the site (the user, 2026-11-27); only
+# the importer's cache of swudb's answers stays here
+public/showcase/SWU/raw/

@@ -1,0 +1,15 @@
+{
+  "id": "swu-HMW-045",
+  "frameId": "unit-command-aggression",
+  "name": "Logray",
+  "subtitle": "Bright Tree Shaman",
+  "trait": "Ewok",
+  "text": "[When another friendly unit that costs 3 or less is dealt damage:] You may deal 1 damage to an enemy unit.",
+  "unique": true,
+  "cost": 2,
+  "power": 1,
+  "hp": 5,
+  "setCode": "HMW",
+  "number": "045",
+  "rarity": "U"
+}

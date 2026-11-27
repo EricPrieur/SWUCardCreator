@@ -1,0 +1,15 @@
+{
+  "id": "swu-SEC-046",
+  "frameId": "unit-vigilance-heroism",
+  "name": "Galen Erso",
+  "subtitle": "You'll Never Win",
+  "trait": "Imperial",
+  "text": "[When Played:] Name a card. While this unit is in play, each non-leader card an opponent owns with that name, including those not in play, loses all abilities.\n[Plot]",
+  "unique": true,
+  "cost": 4,
+  "power": 3,
+  "hp": 5,
+  "setCode": "SEC",
+  "number": "046",
+  "rarity": "R"
+}

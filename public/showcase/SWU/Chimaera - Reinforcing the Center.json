@@ -1,0 +1,15 @@
+{
+  "id": "swu-JTL-039",
+  "frameId": "unit-vigilance-villainy-space",
+  "name": "Chimaera",
+  "subtitle": "Reinforcing the Center",
+  "trait": "Imperial, Vehicle, Capital Ship",
+  "text": "[When Played:] You may use a \"[When Defeated] \" ability on another friendly unit.\n[When Defeated:] Create 2 TIE Fighter tokens.",
+  "unique": true,
+  "cost": 6,
+  "power": 5,
+  "hp": 6,
+  "setCode": "JTL",
+  "number": "039",
+  "rarity": "U"
+}

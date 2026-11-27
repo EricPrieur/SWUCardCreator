@@ -1,0 +1,14 @@
+{
+  "id": "swu-SEC-104",
+  "frameId": "upgrade-command-heroism",
+  "name": "Figure of Unity",
+  "trait": "Innate",
+  "text": "Attach to a [{Unique}] unit.\nAttached unit gains: \"While this unit is ready, each other friendly unit gains [Overwhelm], [Raid 1], and [Restore 1].\"",
+  "unique": true,
+  "cost": 3,
+  "power": 2,
+  "hp": 2,
+  "setCode": "SEC",
+  "number": "104",
+  "rarity": "L"
+}

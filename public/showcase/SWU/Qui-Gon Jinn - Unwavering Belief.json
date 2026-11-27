@@ -1,0 +1,15 @@
+{
+  "id": "swu-IC27-079",
+  "frameId": "unit-command-heroism",
+  "name": "Qui-Gon Jinn",
+  "subtitle": "Unwavering Belief",
+  "trait": "Force, Jedi, Republic",
+  "text": "[Sentinel]\n[When Played:] Give another friendly unit +2/+2 for this phase.",
+  "unique": true,
+  "cost": 5,
+  "power": 5,
+  "hp": 5,
+  "setCode": "IC27",
+  "number": "079",
+  "rarity": "U"
+}

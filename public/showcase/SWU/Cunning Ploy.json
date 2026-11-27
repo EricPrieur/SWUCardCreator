@@ -1,0 +1,12 @@
+{
+  "id": "swu-IC27-168",
+  "frameId": "event-cunning",
+  "name": "Cunning Ploy",
+  "trait": "Trick",
+  "text": "Look at an opponent's hand. You may discard a card from it. If you do, that player draws a card.\nExhaust an enemy unit.\nYou may attack with a unit. It gets +3/+0 for this attack.",
+  "unique": false,
+  "cost": 4,
+  "setCode": "IC27",
+  "number": "168",
+  "rarity": "U"
+}

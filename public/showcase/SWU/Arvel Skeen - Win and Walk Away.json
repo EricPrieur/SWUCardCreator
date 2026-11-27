@@ -1,0 +1,15 @@
+{
+  "id": "swu-LAW-191",
+  "frameId": "unit-aggression",
+  "name": "Arvel Skeen",
+  "subtitle": "Win and Walk Away",
+  "trait": "Rebel",
+  "text": "[When Played/On Attack:] You may defeat a Credit token. If you do, deal 1 damage to a unit or base.",
+  "unique": true,
+  "cost": 3,
+  "power": 4,
+  "hp": 3,
+  "setCode": "LAW",
+  "number": "191",
+  "rarity": "U"
+}

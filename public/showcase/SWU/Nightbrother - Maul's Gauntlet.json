@@ -1,0 +1,15 @@
+{
+  "id": "swu-HMW-204",
+  "frameId": "unit-cunning-villainy-space",
+  "name": "Nightbrother",
+  "subtitle": "Maul's Gauntlet",
+  "trait": "Vehicle, Transport",
+  "text": "[When Played:] You may play a unit from your discard pile. It costs [3] less and enters play ready. At the start of the next regroup phase, defeat it.",
+  "unique": true,
+  "cost": 7,
+  "power": 6,
+  "hp": 7,
+  "setCode": "HMW",
+  "number": "204",
+  "rarity": "L"
+}

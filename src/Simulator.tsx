@@ -84,7 +84,7 @@ const prescientImage = (set: SetCards, id: string, drawCard: (card: Card) => Pro
   set.prescient?.[id] ? Promise.resolve(set.prescient[id]) : drawCard(set.cards[id])
 const BACK_SIDE = '#back'
 
-// folder: DUNE's, or SWU (the dev-only SWU tab's real cards, their images found by their path)
+// folder: DUNE's, or SWU (the SWU tab's real cards, their images found by their path)
 export async function loadSet(folder = SET): Promise<SetCards> {
   // Asked again of the server each time, so a new export shows at once
   const response = await fetch(asset(`/showcase/${folder}/showcase.json`), { cache: 'no-cache' })
@@ -164,7 +164,7 @@ export async function loadCommunitySet(): Promise<SetCards> {
 }
 
 // Which cards a Simulator plays, and where its decks are: DUNE's, the community's, or the real SWU
-// cards of the dev-only SWU tab (no online games, no Sealed, its games kept on this computer's server only)
+// cards of the SWU tab (no online games, no Sealed; games against the AI only)
 export type SimPool = 'DUNE' | 'community' | 'SWU'
 const poolKey = (pool: SimPool, key: string) => (pool === 'DUNE' ? key : `${key}.${pool}`)
 

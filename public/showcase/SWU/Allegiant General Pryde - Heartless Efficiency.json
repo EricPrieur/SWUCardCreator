@@ -1,0 +1,15 @@
+{
+  "id": "swu-IC27-056",
+  "frameId": "unit-command-villainy",
+  "name": "Allegiant General Pryde",
+  "subtitle": "Heartless Efficiency",
+  "trait": "First Order, Official",
+  "text": "[When Defeated:] Give an Experience token to the friendly unit with the most power.",
+  "unique": true,
+  "cost": 1,
+  "power": 2,
+  "hp": 2,
+  "setCode": "IC27",
+  "number": "056",
+  "rarity": "U"
+}

@@ -1,0 +1,12 @@
+{
+  "id": "swu-SEC-211",
+  "frameId": "event-cunning-heroism",
+  "name": "Faith in Your Friends",
+  "trait": "Gambit",
+  "text": "Search the top 3 cards of your deck for a card and draw it. Then, you may disclose [Cunning][Cunning][Cunning][Heroism][Heroism]. If you do, create 2 Spy tokens.",
+  "unique": false,
+  "cost": 2,
+  "setCode": "SEC",
+  "number": "211",
+  "rarity": "U"
+}

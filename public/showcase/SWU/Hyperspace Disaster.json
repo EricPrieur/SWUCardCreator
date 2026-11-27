@@ -1,0 +1,12 @@
+{
+  "id": "swu-SEC-078",
+  "frameId": "event-vigilance",
+  "name": "Hyperspace Disaster",
+  "trait": "Disaster",
+  "text": "Defeat all space units.",
+  "unique": false,
+  "cost": 7,
+  "setCode": "SEC",
+  "number": "078",
+  "rarity": "R"
+}

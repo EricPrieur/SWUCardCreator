@@ -1,0 +1,15 @@
+{
+  "id": "swu-IC27-165",
+  "frameId": "unit-cunning-heroism",
+  "name": "Luke Skywalker",
+  "subtitle": "Overplaying His Hand",
+  "trait": "Force, Rebel",
+  "text": "[When Played:] You may put an enemy non-leader unit on the bottom of its owner's deck. Its owner draws 2 cards.",
+  "unique": true,
+  "cost": 8,
+  "power": 9,
+  "hp": 9,
+  "setCode": "IC27",
+  "number": "165",
+  "rarity": "L"
+}

@@ -1,0 +1,14 @@
+{
+  "id": "swu-HMW-118",
+  "frameId": "unit-command-heroism",
+  "name": "Ryyk Blademaster",
+  "trait": "Wookiee",
+  "text": "While you control 6 or more resources, this unit gains [Ambush] and [Overwhelm].",
+  "unique": false,
+  "cost": 4,
+  "power": 5,
+  "hp": 4,
+  "setCode": "HMW",
+  "number": "118",
+  "rarity": "C"
+}

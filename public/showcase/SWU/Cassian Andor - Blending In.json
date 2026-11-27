@@ -1,0 +1,15 @@
+{
+  "id": "swu-IC27-114",
+  "frameId": "unit-aggression-heroism",
+  "name": "Cassian Andor",
+  "subtitle": "Blending In",
+  "trait": "Rebel",
+  "text": "[Hidden]",
+  "unique": true,
+  "cost": 2,
+  "power": 4,
+  "hp": 2,
+  "setCode": "IC27",
+  "number": "114",
+  "rarity": "U"
+}

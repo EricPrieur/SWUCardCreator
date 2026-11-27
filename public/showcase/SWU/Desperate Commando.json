@@ -1,0 +1,14 @@
+{
+  "id": "swu-JTL-060",
+  "frameId": "unit-vigilance",
+  "name": "Desperate Commando",
+  "trait": "Resistance, Trooper",
+  "text": "[When Defeated:] You may give a unit -1/-1 for this phase.",
+  "unique": false,
+  "cost": 2,
+  "power": 2,
+  "hp": 2,
+  "setCode": "JTL",
+  "number": "060",
+  "rarity": "C"
+}

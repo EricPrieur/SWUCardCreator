@@ -1,0 +1,15 @@
+{
+  "id": "swu-IC27-039",
+  "frameId": "unit-vigilance-heroism",
+  "name": "Ahsoka Tano",
+  "subtitle": "Not on My Death Watch",
+  "trait": "Force, Jedi, Republic",
+  "text": "[When Played:] You may defeat a unit that costs 3 or less.",
+  "unique": true,
+  "cost": 5,
+  "power": 4,
+  "hp": 5,
+  "setCode": "IC27",
+  "number": "039",
+  "rarity": "L"
+}

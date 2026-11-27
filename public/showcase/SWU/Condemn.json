@@ -1,0 +1,14 @@
+{
+  "id": "swu-SEC-038",
+  "frameId": "upgrade-vigilance-villainy",
+  "name": "Condemn",
+  "trait": "Condition",
+  "text": "While attached unit is attacking, it gains: \"[On Attack:] The defending player may disclose [Vigilance][Villainy]. If they do, this unit gets -6/-0 for this attack\" and loses all other abilities.",
+  "unique": false,
+  "cost": 3,
+  "power": 0,
+  "hp": 0,
+  "setCode": "SEC",
+  "number": "038",
+  "rarity": "R"
+}

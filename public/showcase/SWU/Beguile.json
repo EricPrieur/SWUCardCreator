@@ -1,0 +1,12 @@
+{
+  "id": "swu-SEC-233",
+  "frameId": "event-cunning",
+  "name": "Beguile",
+  "trait": "Trick",
+  "text": "Look at an opponent's hand. Then, choose a non-leader unit that opponent controls that costs 6 or less and return it to its owner's hand.",
+  "unique": false,
+  "cost": 3,
+  "setCode": "SEC",
+  "number": "233",
+  "rarity": "C"
+}

@@ -1,0 +1,16 @@
+{
+  "id": "swu-IC27-004",
+  "frameId": "leader-command-heroism",
+  "name": "Mace Windu",
+  "subtitle": "Here With Backup",
+  "trait": "Force, Jedi, Republic",
+  "text": "[Action [[1], Arrow]:] Attack with a unit. It gains [Restore 2] for this attack.",
+  "backText": "[Restore 2]\n[When Deployed:] Resource the top card of your deck.",
+  "unique": true,
+  "cost": 6,
+  "power": 4,
+  "hp": 7,
+  "setCode": "IC27",
+  "number": "004",
+  "rarity": "C"
+}

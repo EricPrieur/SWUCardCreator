@@ -1,0 +1,15 @@
+{
+  "id": "swu-ASH-153",
+  "frameId": "unit-aggression-heroism-space",
+  "name": "Green Leader",
+  "subtitle": "Crynyd's Sacrifice",
+  "trait": "Rebel, Vehicle, Fighter",
+  "text": "[When Defeated:] You may deal 2 damage to a unit.",
+  "unique": true,
+  "cost": 2,
+  "power": 3,
+  "hp": 1,
+  "setCode": "ASH",
+  "number": "153",
+  "rarity": "R"
+}

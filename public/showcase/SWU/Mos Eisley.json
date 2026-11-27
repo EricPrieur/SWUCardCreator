@@ -1,0 +1,12 @@
+{
+  "id": "swu-JTL-030",
+  "frameId": "base-cunning-text",
+  "name": "Mos Eisley",
+  "trait": "Tatooine",
+  "text": "",
+  "unique": false,
+  "hp": 30,
+  "setCode": "JTL",
+  "number": "030",
+  "rarity": "C"
+}

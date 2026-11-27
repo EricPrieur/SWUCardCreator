@@ -1,0 +1,12 @@
+{
+  "id": "swu-ASH-115",
+  "frameId": "event-command-heroism",
+  "name": "The Student Guides the Master",
+  "trait": "Learned",
+  "text": "Give a friendly unit +1/+0 for this phase for each other friendly unit with less power than it.",
+  "unique": false,
+  "cost": 1,
+  "setCode": "ASH",
+  "number": "115",
+  "rarity": "U"
+}

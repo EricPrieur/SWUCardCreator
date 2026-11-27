@@ -1,0 +1,12 @@
+{
+  "id": "swu-JTL-181",
+  "frameId": "event-aggression",
+  "name": "Planetary Bombardment",
+  "trait": "Tactic",
+  "text": "Deal 8 indirect damage to a player. If you control a {capital ship} unit, deal 12 indirect damage instead.",
+  "unique": false,
+  "cost": 6,
+  "setCode": "JTL",
+  "number": "181",
+  "rarity": "L"
+}

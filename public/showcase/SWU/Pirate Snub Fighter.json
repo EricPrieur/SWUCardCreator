@@ -1,0 +1,14 @@
+{
+  "id": "swu-LAW-135",
+  "frameId": "unit-command-villainy-space",
+  "name": "Pirate Snub Fighter",
+  "trait": "Underworld, Vehicle, Fighter",
+  "text": "[Ambush]",
+  "unique": false,
+  "cost": 2,
+  "power": 2,
+  "hp": 3,
+  "setCode": "LAW",
+  "number": "135",
+  "rarity": "C"
+}

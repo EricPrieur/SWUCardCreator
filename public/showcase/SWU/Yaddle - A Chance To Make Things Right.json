@@ -1,0 +1,15 @@
+{
+  "id": "swu-LOF-045",
+  "frameId": "unit-vigilance-heroism",
+  "name": "Yaddle",
+  "subtitle": "A Chance To Make Things Right",
+  "trait": "Force, Jedi, Republic",
+  "text": "[Restore 1]\n[On Attack:] Each other friendly [{Jedi}] unit gains [Restore 1] for this phase.",
+  "unique": true,
+  "cost": 2,
+  "power": 2,
+  "hp": 4,
+  "setCode": "LOF",
+  "number": "045",
+  "rarity": "R"
+}

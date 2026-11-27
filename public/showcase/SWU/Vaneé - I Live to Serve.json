@@ -1,0 +1,15 @@
+{
+  "id": "swu-LOF-082",
+  "frameId": "unit-command-villainy",
+  "name": "Vaneé",
+  "subtitle": "I Live to Serve",
+  "trait": "Imperial, Sith, Official",
+  "text": "[When Played/On Attack:] You may defeat an Experience token on a friendly unit. If you do, give an Experience token to a friendly unit.",
+  "unique": true,
+  "cost": 2,
+  "power": 2,
+  "hp": 4,
+  "setCode": "LOF",
+  "number": "082",
+  "rarity": "U"
+}

@@ -1,0 +1,15 @@
+{
+  "id": "swu-IC27-037",
+  "frameId": "unit-vigilance-heroism",
+  "name": "Finn",
+  "subtitle": "Stand and Fight",
+  "trait": "Resistance",
+  "text": "[Sentinel]\nWhile this unit is upgraded, he gains [Restore 2].",
+  "unique": true,
+  "cost": 4,
+  "power": 4,
+  "hp": 5,
+  "setCode": "IC27",
+  "number": "037",
+  "rarity": "R"
+}

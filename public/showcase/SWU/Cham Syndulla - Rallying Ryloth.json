@@ -1,0 +1,15 @@
+{
+  "id": "swu-JTL-164",
+  "frameId": "unit-aggression",
+  "name": "Cham Syndulla",
+  "subtitle": "Rallying Ryloth",
+  "trait": "Rebel, Twi'lek",
+  "text": "[When Played:] If you control fewer resources than an opponent, you may resource the top card of your deck.",
+  "unique": true,
+  "cost": 4,
+  "power": 5,
+  "hp": 4,
+  "setCode": "JTL",
+  "number": "164",
+  "rarity": "U"
+}

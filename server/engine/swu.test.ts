@@ -184,6 +184,14 @@ const defs: CardDef[] = [
   swu('swu-SEC-110', { cost: 2, power: 1, hp: 3, unique: false, traits: ['Droid'], aspects: ['Command'] }),
   swu('swu-LAW-086', { cost: 5, power: 1, hp: 7, traits: ['Force', 'Sith'], keywords: { ambush: true, grit: true } }),
   swu('swu-ASH-053', { cost: 8, power: 6, hp: 6, traits: ['Mandalorian', 'Official'] }),
+  // Thrawn4 HMW: When Defeated, used again
+  swu('swu-JTL-002', { type: 'leader', cost: 6, traits: ['Imperial', 'Official'], unit: { power: 4, hp: 7, arena: 'ground', keywords: {} } }),
+  swu('swu-LOF-213', { cost: 5, power: 3, hp: 3, arena: 'space', traits: ['Republic', 'Vehicle', 'Transport'] }),
+  swu('swu-JTL-039', { cost: 6, power: 5, hp: 6, arena: 'space', traits: ['Imperial', 'Vehicle', 'Capital Ship'] }),
+  swu('swu-JTL-041', { cost: 11, power: 12, hp: 12, arena: 'space', traits: ['Imperial', 'Vehicle', 'Capital Ship'] }),
+  swu('swu-JTL-033', { cost: 2, power: 2, hp: 3, arena: 'space', unique: false, traits: ['Imperial', 'Vehicle', 'Fighter'] }),
+  swu('swu-SEC-078', { type: 'event', cost: 7, arena: undefined, unique: false, traits: ['Disaster'] }),
+  card('tie', { name: 'TIE Fighter', token: true, power: 1, hp: 1, arena: 'space', traits: ['Imperial', 'Vehicle', 'Fighter'] }),
   card('swu-TASH-T01', { name: 'Mandalorian', token: true, power: 2, hp: 2, traits: ['Mandalorian'] }),
   swu('swu-JTL-181', { type: 'event', cost: 6, arena: undefined, aspects: ['Aggression'] }),
   swu('swu-JTL-143', { cost: 8, power: 9, hp: 6, arena: 'space', unique: true, traits: ['Imperial', 'Vehicle', 'Capital Ship'], aspects: [] }),
@@ -1406,4 +1414,49 @@ test('Pre Vizsla, Strong-Willed Ruler: defeats units with 6 HP left in total, a 
   // Two units (2 + 4 HP left) and two tokens, over the 5/5 alone
   assert.deepEqual(state.players[1].units.map((u) => u.def), ['big'])
   assert.deepEqual(state.players[0].units.map((u) => state.defs[u.def].name), ['Pre Vizsla', 'Mandalorian', 'Mandalorian'])
+})
+
+// Thrawn4 HMW
+const playOut = (state: GameState) => {
+  while (state.prompt) state = act(state, state.prompt.player, chooseAction(state, state.prompt.player)!)
+  return state
+}
+const damageOn = (state: GameState, p: PlayerId) => state.players[p].units.reduce((sum, u) => sum + u.damage, 0)
+const logged = (state: GameState, re: RegExp) => state.log.some((l) => re.test(typeof l === 'string' ? l : (l as { text: string }).text))
+
+test("Chimaera uses The Legacy Run's When Defeated, and Thrawn exhausts to use it again: 12 damage, The Legacy Run kept", () => {
+  let state = table({ leader0: 'swu-JTL-002', units0: ['swu-LOF-213'], units1: ['big', 'big', 'big'], hand0: ['swu-JTL-039'] })
+  state = playOut(act(state, 0, { type: 'play', card: 'h0' }))
+  assert.equal(state.players[1].units.length, 1, 'two 5/5s defeated')
+  assert.equal(damageOn(state, 1), 2)
+  assert.ok(state.players[0].units.some((u) => u.def === 'swu-LOF-213'), 'The Legacy Run still in play')
+  assert.equal(state.players[0].leader.exhausted, true)
+})
+
+test('Thrawn keeps his exhaust for The Legacy Run over a small When Defeated defeated with it (Hyperspace Disaster)', () => {
+  let state = table({ leader0: 'swu-JTL-002', units0: ['swu-JTL-033', 'swu-LOF-213'], units1: ['big', 'big', 'big'], hand0: ['swu-SEC-078'] })
+  state.players[0].base.damage = 6
+  state = playOut(act(state, 0, { type: 'play', card: 'h0' }))
+  assert.equal(state.players[1].units.length, 1, 'The Legacy Run twice: two 5/5s defeated')
+  assert.ok(logged(state, /Grand Admiral Thrawn: The Legacy Run's When Defeated ability again/))
+})
+
+test("Annihilator: an enemy unit defeated, then each card with its name from its controller's hand and deck", () => {
+  let state = table({ units1: ['big', 'cheap'], hand0: ['swu-JTL-041'] })
+  for (const pl of state.players) pl.resources = Array.from({ length: 12 }, (_, i) => ({ card: { id: `r${pl.name}${i}`, def: 'big' }, exhausted: false }))
+  const before = [...state.players[1].deck, ...state.players[1].hand].filter((c) => c.def === 'big').length
+  state = playOut(act(state, 0, { type: 'play', card: 'h0' }))
+  assert.deepEqual(state.players[1].units.map((u) => u.def), ['cheap'])
+  assert.equal([...state.players[1].deck, ...state.players[1].hand].filter((c) => c.def === 'big').length, 0)
+  assert.equal(state.players[1].discard.filter((c) => c.def === 'big').length, before + 1)
+})
+
+test("The Legacy Run's 6 damage is dealt at once: a shielded unit gets 1 (its Shield gone), the rest defeats other units", () => {
+  let state = table({ units0: ['swu-LOF-213'], units1: ['big', 'cheap', 'cheap'], hand0: ['swu-SEC-078'] })
+  state.players[1].units[0].upgrades.push({ id: 'sh1', def: 'shield', owner: 1 })
+  state = playOut(act(state, 0, { type: 'play', card: 'h0' }))
+  const big = unit(state, 'u10')!
+  assert.deepEqual(state.players[1].units.map((u) => u.id), ['u10'], 'both 2/2s defeated')
+  assert.equal(big.damage, 0, "the Shield prevented that unit's whole share")
+  assert.equal(big.upgrades.length, 0, 'its Shield gone')
 })

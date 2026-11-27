@@ -1,0 +1,15 @@
+{
+  "id": "swu-SEC-094",
+  "frameId": "unit-command-heroism",
+  "name": "Mina Bonteri",
+  "subtitle": "Stop This War",
+  "trait": "Separatist, Official",
+  "text": "[Restore 1]\n[When Defeated:] You may disclose [Command][Command][Heroism]. If you do, draw a card.",
+  "unique": true,
+  "cost": 2,
+  "power": 2,
+  "hp": 4,
+  "setCode": "SEC",
+  "number": "094",
+  "rarity": "U"
+}

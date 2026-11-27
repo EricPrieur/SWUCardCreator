@@ -1,0 +1,15 @@
+{
+  "id": "swu-SOR-236",
+  "frameId": "unit-heroism",
+  "name": "R2-D2",
+  "subtitle": "Ignoring Protocol",
+  "trait": "Rebel, Droid",
+  "text": "[When Played/On Attack:] Look at the top card of your deck. You may put it on the bottom of your deck.",
+  "unique": true,
+  "cost": 1,
+  "power": 1,
+  "hp": 4,
+  "setCode": "SOR",
+  "number": "236",
+  "rarity": "S"
+}

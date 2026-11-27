@@ -1,0 +1,978 @@
+[
+  {
+    "id": "swudb-bzfAdNnzUAHd",
+    "name": "Veiled Icons Mace",
+    "leader": "swu-IC27-004",
+    "base": "swu-HMW-021",
+    "cards": [
+      {
+        "id": "swu-LAW-039",
+        "count": 3
+      },
+      {
+        "id": "swu-LOF-100",
+        "count": 3
+      },
+      {
+        "id": "swu-IC27-079",
+        "count": 1
+      },
+      {
+        "id": "swu-IC27-039",
+        "count": 3
+      },
+      {
+        "id": "swu-SEC-051",
+        "count": 3
+      },
+      {
+        "id": "swu-HMW-038",
+        "count": 3
+      },
+      {
+        "id": "swu-HMW-035",
+        "count": 3
+      },
+      {
+        "id": "swu-IC27-032",
+        "count": 3
+      },
+      {
+        "id": "swu-SEC-098",
+        "count": 3
+      },
+      {
+        "id": "swu-IC27-081",
+        "count": 1
+      },
+      {
+        "id": "swu-ASH-056",
+        "count": 3
+      },
+      {
+        "id": "swu-HMW-151",
+        "count": 3
+      },
+      {
+        "id": "swu-LOF-096",
+        "count": 3
+      },
+      {
+        "id": "swu-SEC-094",
+        "count": 3
+      },
+      {
+        "id": "swu-ASH-109",
+        "count": 1
+      },
+      {
+        "id": "swu-IC27-041",
+        "count": 1
+      },
+      {
+        "id": "swu-LAW-133",
+        "count": 1
+      },
+      {
+        "id": "swu-LAW-041",
+        "count": 2
+      },
+      {
+        "id": "swu-IC27-075",
+        "count": 3
+      },
+      {
+        "id": "swu-LOF-093",
+        "count": 3
+      },
+      {
+        "id": "swu-JTL-096",
+        "count": 1
+      }
+    ]
+  },
+  {
+    "id": "swudb-hcNlcrHdrlgn",
+    "name": "Wicket Green",
+    "leader": "swu-HMW-014",
+    "base": "swu-HMW-023",
+    "cards": [
+      {
+        "id": "swu-JTL-153",
+        "count": 2
+      },
+      {
+        "id": "swu-JTL-250",
+        "count": 2
+      },
+      {
+        "id": "swu-HMW-126",
+        "count": 3
+      },
+      {
+        "id": "swu-SEC-163",
+        "count": 1
+      },
+      {
+        "id": "swu-HMW-130",
+        "count": 2
+      },
+      {
+        "id": "swu-SEC-104",
+        "count": 2
+      },
+      {
+        "id": "swu-ASH-034",
+        "count": 3
+      },
+      {
+        "id": "swu-HMW-193",
+        "count": 3
+      },
+      {
+        "id": "swu-HMW-177",
+        "count": 3
+      },
+      {
+        "id": "swu-SEC-101",
+        "count": 2
+      },
+      {
+        "id": "swu-ASH-168",
+        "count": 3
+      },
+      {
+        "id": "swu-JTL-151",
+        "count": 3
+      },
+      {
+        "id": "swu-JTL-096",
+        "count": 2
+      },
+      {
+        "id": "swu-HMW-045",
+        "count": 3
+      },
+      {
+        "id": "swu-SEC-148",
+        "count": 3
+      },
+      {
+        "id": "swu-HMW-115",
+        "count": 3
+      },
+      {
+        "id": "swu-HMW-254",
+        "count": 3
+      },
+      {
+        "id": "swu-ASH-163",
+        "count": 1
+      },
+      {
+        "id": "swu-SOR-236",
+        "count": 3
+      },
+      {
+        "id": "swu-IC27-119",
+        "count": 3
+      }
+    ]
+  },
+  {
+    "id": "swudb-TBXCVdKhz",
+    "name": "Luke Rebels",
+    "leader": "swu-IC27-006",
+    "base": "swu-HMW-034",
+    "cards": [
+      {
+        "id": "swu-HMW-232",
+        "count": 2
+      },
+      {
+        "id": "swu-JTL-151",
+        "count": 3
+      },
+      {
+        "id": "swu-SEC-148",
+        "count": 3
+      },
+      {
+        "id": "swu-LAW-078",
+        "count": 3
+      },
+      {
+        "id": "swu-ASH-153",
+        "count": 3
+      },
+      {
+        "id": "swu-IC27-119",
+        "count": 3
+      },
+      {
+        "id": "swu-IC27-155",
+        "count": 3
+      },
+      {
+        "id": "swu-ASH-163",
+        "count": 3
+      },
+      {
+        "id": "swu-IC27-160",
+        "count": 3
+      },
+      {
+        "id": "swu-HMW-193",
+        "count": 3
+      },
+      {
+        "id": "swu-SEC-204",
+        "count": 1
+      },
+      {
+        "id": "swu-JTL-203",
+        "count": 3
+      },
+      {
+        "id": "swu-ASH-222",
+        "count": 3
+      },
+      {
+        "id": "swu-LAW-222",
+        "count": 3
+      },
+      {
+        "id": "swu-IC27-114",
+        "count": 3
+      },
+      {
+        "id": "swu-ASH-203",
+        "count": 3
+      },
+      {
+        "id": "swu-SEC-172",
+        "count": 3
+      },
+      {
+        "id": "swu-ASH-159",
+        "count": 2
+      }
+    ]
+  },
+  {
+    "id": "swudb-AjbssNCt",
+    "name": "Mace-bleu (Kashyyyk) [IC27]",
+    "leader": "swu-IC27-004",
+    "base": "swu-HMW-021",
+    "cards": [
+      {
+        "id": "swu-LAW-041",
+        "count": 2
+      },
+      {
+        "id": "swu-ASH-133",
+        "count": 2
+      },
+      {
+        "id": "swu-LAW-039",
+        "count": 3
+      },
+      {
+        "id": "swu-ASH-065",
+        "count": 2
+      },
+      {
+        "id": "swu-IC27-075",
+        "count": 3
+      },
+      {
+        "id": "swu-LOF-045",
+        "count": 3
+      },
+      {
+        "id": "swu-HMW-151",
+        "count": 3
+      },
+      {
+        "id": "swu-LOF-096",
+        "count": 3
+      },
+      {
+        "id": "swu-SEC-051",
+        "count": 3
+      },
+      {
+        "id": "swu-ASH-056",
+        "count": 3
+      },
+      {
+        "id": "swu-LOF-100",
+        "count": 2
+      },
+      {
+        "id": "swu-HMW-035",
+        "count": 3
+      },
+      {
+        "id": "swu-ASH-062",
+        "count": 3
+      },
+      {
+        "id": "swu-SEC-098",
+        "count": 3
+      },
+      {
+        "id": "swu-IC27-039",
+        "count": 2
+      },
+      {
+        "id": "swu-SEC-094",
+        "count": 3
+      },
+      {
+        "id": "swu-IC27-037",
+        "count": 2
+      },
+      {
+        "id": "swu-LOF-093",
+        "count": 3
+      },
+      {
+        "id": "swu-LAW-133",
+        "count": 1
+      },
+      {
+        "id": "swu-IC27-081",
+        "count": 1
+      }
+    ]
+  },
+  {
+    "id": "swudb-ffrxjspp",
+    "name": "Lando7-Bleu Heroïsme [IC27]",
+    "leader": "swu-LAW-018",
+    "base": "swu-HMW-020",
+    "cards": [
+      {
+        "id": "swu-HMW-218",
+        "count": 2
+      },
+      {
+        "id": "swu-SOR-236",
+        "count": 3
+      },
+      {
+        "id": "swu-LAW-089",
+        "count": 3
+      },
+      {
+        "id": "swu-IC27-037",
+        "count": 3
+      },
+      {
+        "id": "swu-IC27-157",
+        "count": 3
+      },
+      {
+        "id": "swu-ASH-062",
+        "count": 3
+      },
+      {
+        "id": "swu-SEC-204",
+        "count": 2
+      },
+      {
+        "id": "swu-IC27-035",
+        "count": 3
+      },
+      {
+        "id": "swu-IC27-151",
+        "count": 3
+      },
+      {
+        "id": "swu-LAW-224",
+        "count": 3
+      },
+      {
+        "id": "swu-SEC-046",
+        "count": 3
+      },
+      {
+        "id": "swu-IC27-043",
+        "count": 3
+      },
+      {
+        "id": "swu-IC27-039",
+        "count": 3
+      },
+      {
+        "id": "swu-IC27-165",
+        "count": 2
+      },
+      {
+        "id": "swu-LOF-200",
+        "count": 2
+      },
+      {
+        "id": "swu-SEC-051",
+        "count": 3
+      },
+      {
+        "id": "swu-IC27-166",
+        "count": 2
+      },
+      {
+        "id": "swu-HMW-078",
+        "count": 2
+      },
+      {
+        "id": "swu-IC27-163",
+        "count": 2
+      }
+    ]
+  },
+  {
+    "id": "swudb-gKHKsrhobp",
+    "name": "Kylo10 force blue reforge",
+    "leader": "swu-IC27-003",
+    "base": "swu-LOF-020",
+    "cards": [
+      {
+        "id": "swu-HMW-038",
+        "count": 3
+      },
+      {
+        "id": "swu-LAW-039",
+        "count": 2
+      },
+      {
+        "id": "swu-ASH-135",
+        "count": 3
+      },
+      {
+        "id": "swu-LOF-091",
+        "count": 3
+      },
+      {
+        "id": "swu-LOF-062",
+        "count": 2
+      },
+      {
+        "id": "swu-ASH-090",
+        "count": 3
+      },
+      {
+        "id": "swu-SEC-028",
+        "count": 3
+      },
+      {
+        "id": "swu-HMW-064",
+        "count": 2
+      },
+      {
+        "id": "swu-SEC-082",
+        "count": 3
+      },
+      {
+        "id": "swu-LAW-129",
+        "count": 2
+      },
+      {
+        "id": "swu-SEC-111",
+        "count": 3
+      },
+      {
+        "id": "swu-LOF-059",
+        "count": 3
+      },
+      {
+        "id": "swu-LOF-061",
+        "count": 3
+      },
+      {
+        "id": "swu-LOF-031",
+        "count": 3
+      },
+      {
+        "id": "swu-LOF-070",
+        "count": 2
+      },
+      {
+        "id": "swu-ASH-114",
+        "count": 3
+      },
+      {
+        "id": "swu-LOF-035",
+        "count": 3
+      },
+      {
+        "id": "swu-LOF-231",
+        "count": 3
+      },
+      {
+        "id": "swu-LOF-102",
+        "count": 1
+      }
+    ]
+  },
+  {
+    "id": "forge-cmwm1475n0kbw01k6pk7tz53d",
+    "name": "Thorrk's Lando data vault",
+    "leader": "swu-LAW-018",
+    "base": "swu-JTL-024",
+    "cards": [
+      {
+        "id": "swu-ASH-109",
+        "count": 2
+      },
+      {
+        "id": "swu-HMW-115",
+        "count": 3
+      },
+      {
+        "id": "swu-HMW-124",
+        "count": 1
+      },
+      {
+        "id": "swu-HMW-210",
+        "count": 2
+      },
+      {
+        "id": "swu-HMW-218",
+        "count": 3
+      },
+      {
+        "id": "swu-HMW-048",
+        "count": 1
+      },
+      {
+        "id": "swu-IC27-155",
+        "count": 3
+      },
+      {
+        "id": "swu-IC27-165",
+        "count": 2
+      },
+      {
+        "id": "swu-IC27-070",
+        "count": 3
+      },
+      {
+        "id": "swu-IC27-075",
+        "count": 3
+      },
+      {
+        "id": "swu-IC27-079",
+        "count": 2
+      },
+      {
+        "id": "swu-JTL-201",
+        "count": 3
+      },
+      {
+        "id": "swu-JTL-207",
+        "count": 3
+      },
+      {
+        "id": "swu-JTL-096",
+        "count": 3
+      },
+      {
+        "id": "swu-LAW-149",
+        "count": 2
+      },
+      {
+        "id": "swu-LAW-224",
+        "count": 3
+      },
+      {
+        "id": "swu-LAW-067",
+        "count": 3
+      },
+      {
+        "id": "swu-LOF-100",
+        "count": 3
+      },
+      {
+        "id": "swu-LOF-200",
+        "count": 1
+      },
+      {
+        "id": "swu-LOF-096",
+        "count": 3
+      },
+      {
+        "id": "swu-SEC-101",
+        "count": 3
+      },
+      {
+        "id": "swu-SEC-209",
+        "count": 2
+      },
+      {
+        "id": "swu-SEC-094",
+        "count": 3
+      },
+      {
+        "id": "swu-SEC-098",
+        "count": 3
+      }
+    ]
+  },
+  {
+    "id": "forge-cmwt6zc640jlc01o1qaldkkpx",
+    "name": "Thorrk's Piett Red",
+    "leader": "swu-JTL-005",
+    "base": "swu-HMW-029",
+    "cards": [
+      {
+        "id": "swu-ASH-118",
+        "count": 3
+      },
+      {
+        "id": "swu-ASH-097",
+        "count": 3
+      },
+      {
+        "id": "swu-ASH-099",
+        "count": 3
+      },
+      {
+        "id": "swu-HMW-247",
+        "count": 3
+      },
+      {
+        "id": "swu-IC27-129",
+        "count": 2
+      },
+      {
+        "id": "swu-IC27-136",
+        "count": 3
+      },
+      {
+        "id": "swu-IC27-068",
+        "count": 3
+      },
+      {
+        "id": "swu-JTL-118",
+        "count": 3
+      },
+      {
+        "id": "swu-JTL-131",
+        "count": 2
+      },
+      {
+        "id": "swu-JTL-143",
+        "count": 3
+      },
+      {
+        "id": "swu-JTL-181",
+        "count": 2
+      },
+      {
+        "id": "swu-JTL-089",
+        "count": 3
+      },
+      {
+        "id": "swu-LAW-058",
+        "count": 3
+      },
+      {
+        "id": "swu-LAW-075",
+        "count": 3
+      },
+      {
+        "id": "swu-LOF-091",
+        "count": 3
+      },
+      {
+        "id": "swu-SEC-110",
+        "count": 3
+      },
+      {
+        "id": "swu-SEC-180",
+        "count": 2
+      },
+      {
+        "id": "swu-SEC-080",
+        "count": 3
+      }
+    ]
+  },
+  {
+    "id": "hub-39228",
+    "name": "Mother Talzin (LOF) / Yellow Force – Dipa02 (3)",
+    "leader": "swu-LOF-002",
+    "base": "swu-LOF-029",
+    "cards": [
+      {
+        "id": "swu-SEC-186",
+        "count": 3
+      },
+      {
+        "id": "swu-LOF-031",
+        "count": 3
+      },
+      {
+        "id": "swu-LOF-059",
+        "count": 2
+      },
+      {
+        "id": "swu-LOF-061",
+        "count": 3
+      },
+      {
+        "id": "swu-SEC-028",
+        "count": 3
+      },
+      {
+        "id": "swu-ASH-219",
+        "count": 2
+      },
+      {
+        "id": "swu-HMW-055",
+        "count": 3
+      },
+      {
+        "id": "swu-LOF-183",
+        "count": 3
+      },
+      {
+        "id": "swu-LOF-231",
+        "count": 3
+      },
+      {
+        "id": "swu-LOF-035",
+        "count": 3
+      },
+      {
+        "id": "swu-LAW-086",
+        "count": 2
+      },
+      {
+        "id": "swu-ASH-224",
+        "count": 1
+      },
+      {
+        "id": "swu-ASH-053",
+        "count": 2
+      },
+      {
+        "id": "swu-ASH-194",
+        "count": 2
+      },
+      {
+        "id": "swu-HMW-203",
+        "count": 3
+      },
+      {
+        "id": "swu-HMW-204",
+        "count": 2
+      },
+      {
+        "id": "swu-LAW-217",
+        "count": 2
+      },
+      {
+        "id": "swu-JTL-043",
+        "count": 2
+      },
+      {
+        "id": "swu-LOF-215",
+        "count": 2
+      },
+      {
+        "id": "swu-SEC-038",
+        "count": 2
+      },
+      {
+        "id": "swu-LOF-261",
+        "count": 3
+      }
+    ]
+  },
+  {
+    "id": "hub-39226",
+    "name": "Wicket (HMW) / Data Vault – AleSpo (1)",
+    "leader": "swu-HMW-014",
+    "base": "swu-JTL-024",
+    "cards": [
+      {
+        "id": "swu-ASH-116",
+        "count": 3
+      },
+      {
+        "id": "swu-HMW-254",
+        "count": 3
+      },
+      {
+        "id": "swu-HMW-175",
+        "count": 3
+      },
+      {
+        "id": "swu-HMW-115",
+        "count": 3
+      },
+      {
+        "id": "swu-ASH-034",
+        "count": 3
+      },
+      {
+        "id": "swu-SEC-148",
+        "count": 3
+      },
+      {
+        "id": "swu-HMW-045",
+        "count": 3
+      },
+      {
+        "id": "swu-ASH-168",
+        "count": 3
+      },
+      {
+        "id": "swu-LAW-191",
+        "count": 2
+      },
+      {
+        "id": "swu-LOF-096",
+        "count": 2
+      },
+      {
+        "id": "swu-SEC-098",
+        "count": 3
+      },
+      {
+        "id": "swu-SEC-101",
+        "count": 2
+      },
+      {
+        "id": "swu-ASH-112",
+        "count": 2
+      },
+      {
+        "id": "swu-HMW-124",
+        "count": 3
+      },
+      {
+        "id": "swu-JTL-096",
+        "count": 3
+      },
+      {
+        "id": "swu-JTL-151",
+        "count": 3
+      },
+      {
+        "id": "swu-JTL-250",
+        "count": 2
+      },
+      {
+        "id": "swu-ASH-109",
+        "count": 2
+      },
+      {
+        "id": "swu-LOF-147",
+        "count": 2
+      },
+      {
+        "id": "swu-JTL-153",
+        "count": 3
+      },
+      {
+        "id": "swu-HMW-126",
+        "count": 3
+      },
+      {
+        "id": "swu-SEC-104",
+        "count": 3
+      },
+      {
+        "id": "swu-ASH-183",
+        "count": 1
+      }
+    ]
+  },
+  {
+    "id": "swudb-kPKADbQzcMj",
+    "name": "Thrawn4 HMW - Post Ban",
+    "leader": "swu-JTL-002",
+    "base": "swu-JTL-030",
+    "cards": [
+      {
+        "id": "swu-LOF-213",
+        "count": 3
+      },
+      {
+        "id": "swu-HMW-204",
+        "count": 3
+      },
+      {
+        "id": "swu-ASH-048",
+        "count": 3
+      },
+      {
+        "id": "swu-JTL-043",
+        "count": 3
+      },
+      {
+        "id": "swu-JTL-033",
+        "count": 3
+      },
+      {
+        "id": "swu-LOF-059",
+        "count": 3
+      },
+      {
+        "id": "swu-JTL-060",
+        "count": 3
+      },
+      {
+        "id": "swu-HMW-202",
+        "count": 3
+      },
+      {
+        "id": "swu-ASH-053",
+        "count": 3
+      },
+      {
+        "id": "swu-ASH-192",
+        "count": 2
+      },
+      {
+        "id": "swu-ASH-050",
+        "count": 2
+      },
+      {
+        "id": "swu-SEC-078",
+        "count": 2
+      },
+      {
+        "id": "swu-JTL-039",
+        "count": 3
+      },
+      {
+        "id": "swu-LAW-217",
+        "count": 3
+      },
+      {
+        "id": "swu-SEC-186",
+        "count": 3
+      },
+      {
+        "id": "swu-JTL-041",
+        "count": 1
+      },
+      {
+        "id": "swu-ASH-247",
+        "count": 2
+      },
+      {
+        "id": "swu-JTL-032",
+        "count": 3
+      },
+      {
+        "id": "swu-IC27-148",
+        "count": 2
+      }
+    ]
+  }
+]

@@ -1,0 +1,15 @@
+{
+  "id": "swu-IC27-081",
+  "frameId": "unit-command-heroism",
+  "name": "Mace Windu",
+  "subtitle": "Dropping By",
+  "trait": "Force, Jedi, Republic",
+  "text": "[Ambush]\n[On Attack:] Give an Experience token to this unit.",
+  "unique": true,
+  "cost": 6,
+  "power": 5,
+  "hp": 5,
+  "setCode": "IC27",
+  "number": "081",
+  "rarity": "L"
+}

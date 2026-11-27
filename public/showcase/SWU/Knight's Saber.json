@@ -1,0 +1,14 @@
+{
+  "id": "swu-LOF-151",
+  "frameId": "upgrade-aggression-heroism",
+  "name": "Knight's Saber",
+  "trait": "Item, Weapon, Lightsaber",
+  "text": "Attach to a [{Jedi}] non-[{Vehicle}] unit.",
+  "unique": false,
+  "cost": 2,
+  "power": 3,
+  "hp": 2,
+  "setCode": "LOF",
+  "number": "151",
+  "rarity": "C"
+}

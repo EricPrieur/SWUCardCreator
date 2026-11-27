@@ -1,0 +1,12 @@
+{
+  "id": "swu-HMW-023",
+  "frameId": "base-command-text",
+  "name": "Bright Tree Village",
+  "trait": "Endor",
+  "text": "",
+  "unique": false,
+  "hp": 30,
+  "setCode": "HMW",
+  "number": "023",
+  "rarity": "C"
+}

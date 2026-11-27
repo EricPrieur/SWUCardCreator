@@ -1,0 +1,14 @@
+{
+  "id": "swu-SEC-163",
+  "frameId": "unit-aggression",
+  "name": "Outer Rim Constable",
+  "trait": "Fringe, Official",
+  "text": "[When Played:] You may defeat an upgrade.",
+  "unique": false,
+  "cost": 2,
+  "power": 3,
+  "hp": 1,
+  "setCode": "SEC",
+  "number": "163",
+  "rarity": "C"
+}

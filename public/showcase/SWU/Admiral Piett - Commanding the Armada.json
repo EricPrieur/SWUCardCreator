@@ -1,0 +1,16 @@
+{
+  "id": "swu-JTL-005",
+  "frameId": "leader-command-villainy",
+  "name": "Admiral Piett",
+  "subtitle": "Commanding the Armada",
+  "trait": "Imperial, Official",
+  "text": "[Action [Arrow]:] Play a {capital ship} unit from your hand. It costs [1] less.",
+  "backText": "Each {capital ship} unit you play costs [2] less.",
+  "unique": true,
+  "cost": 5,
+  "power": 2,
+  "hp": 7,
+  "setCode": "JTL",
+  "number": "005",
+  "rarity": "R"
+}

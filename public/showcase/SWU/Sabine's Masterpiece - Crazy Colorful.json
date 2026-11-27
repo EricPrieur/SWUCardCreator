@@ -1,0 +1,15 @@
+{
+  "id": "swu-JTL-250",
+  "frameId": "unit-heroism-space",
+  "name": "Sabine's Masterpiece",
+  "subtitle": "Crazy Colorful",
+  "trait": "Rebel, Vehicle, Fighter, Spectre",
+  "text": "[On Attack:] If you control a:\n• {Vigilance} unit, heal 2 damage from a base.\n• {Command} unit, give an Experience token to a unit.\n• {Aggression} unit, deal 1 damage to a unit or base.\n• {Cunning} unit, exhaust or ready a resource.",
+  "unique": true,
+  "cost": 3,
+  "power": 3,
+  "hp": 3,
+  "setCode": "JTL",
+  "number": "250",
+  "rarity": "R"
+}

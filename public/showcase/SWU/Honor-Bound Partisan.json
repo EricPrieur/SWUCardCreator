@@ -1,0 +1,14 @@
+{
+  "id": "swu-LAW-058",
+  "frameId": "unit-command-aggression",
+  "name": "Honor-Bound Partisan",
+  "trait": "Rebel, Twi'lek",
+  "text": "[When Played:] Deal 1 damage to a base.\n[When Defeated:] The next unit you play this phase costs [1] less.",
+  "unique": false,
+  "cost": 2,
+  "power": 2,
+  "hp": 2,
+  "setCode": "LAW",
+  "number": "058",
+  "rarity": "U"
+}

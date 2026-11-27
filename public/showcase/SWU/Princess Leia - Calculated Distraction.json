@@ -1,0 +1,15 @@
+{
+  "id": "swu-IC27-159",
+  "frameId": "unit-cunning-heroism",
+  "name": "Princess Leia",
+  "subtitle": "Calculated Distraction",
+  "trait": "Rebel, Official",
+  "text": "[When Played/On Attack:] Exhaust up to 2 units in the same arena with combined cost 4 or less.",
+  "unique": true,
+  "cost": 5,
+  "power": 5,
+  "hp": 5,
+  "setCode": "IC27",
+  "number": "159",
+  "rarity": "L"
+}

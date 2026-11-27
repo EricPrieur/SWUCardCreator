@@ -1,0 +1,15 @@
+{
+  "id": "swu-SEC-186",
+  "frameId": "unit-cunning-villainy",
+  "name": "Garindan",
+  "subtitle": "Information Broker",
+  "trait": "Underworld",
+  "text": "[When Played:] Name a card. Look at an opponent's hand and discard a card with that name from it.\n[Plot]",
+  "unique": true,
+  "cost": 2,
+  "power": 1,
+  "hp": 3,
+  "setCode": "SEC",
+  "number": "186",
+  "rarity": "U"
+}

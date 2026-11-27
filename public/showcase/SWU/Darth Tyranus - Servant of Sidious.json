@@ -1,0 +1,15 @@
+{
+  "id": "swu-LOF-231",
+  "frameId": "unit-villainy",
+  "name": "Darth Tyranus",
+  "subtitle": "Servant of Sidious",
+  "trait": "Force, Separatist, Sith",
+  "text": "[Shielded]\nWhile the Force is with you, this unit gains [Ambush].",
+  "unique": true,
+  "cost": 4,
+  "power": 4,
+  "hp": 3,
+  "setCode": "LOF",
+  "number": "231",
+  "rarity": "S"
+}

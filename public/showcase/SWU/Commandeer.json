@@ -1,0 +1,12 @@
+{
+  "id": "swu-JTL-235",
+  "frameId": "event-cunning",
+  "name": "Commandeer",
+  "trait": "Trick",
+  "text": "Take control of a non-leader [{Vehicle}] unit that costs 6 or less without a [{Pilot}] on it. If you do, ready it. At the start of the next regroup phase, return that unit to its owner's hand.",
+  "unique": false,
+  "cost": 5,
+  "setCode": "JTL",
+  "number": "235",
+  "rarity": "R"
+}

@@ -1,0 +1,15 @@
+{
+  "id": "swu-LAW-068",
+  "frameId": "unit-command-cunning-heroism-space",
+  "name": "Millennium Falcon",
+  "subtitle": "Dodging Patrols",
+  "trait": "Rebel, Vehicle, Transport",
+  "text": "[On Attack:] You may give a space unit -2/-0 for this phase. You may give a ground unit +2/+0 for this phase.",
+  "unique": true,
+  "cost": 3,
+  "power": 2,
+  "hp": 5,
+  "setCode": "LAW",
+  "number": "068",
+  "rarity": "U"
+}

@@ -1,0 +1,16 @@
+{
+  "id": "swu-JTL-002",
+  "frameId": "leader-vigilance-villainy",
+  "name": "Grand Admiral Thrawn",
+  "subtitle": "...How Unfortunate",
+  "trait": "Imperial, Official",
+  "text": "[When you use a \"When Defeated\" ability:] You may exhaust this leader. If you do, use that ability again.",
+  "backText": "[When you use a \"When Defeated\" ability:] You may use that ability again. Use this ability only once each round.",
+  "unique": true,
+  "cost": 6,
+  "power": 4,
+  "hp": 7,
+  "setCode": "JTL",
+  "number": "002",
+  "rarity": "C"
+}

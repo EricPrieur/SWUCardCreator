@@ -1,0 +1,14 @@
+{
+  "id": "swu-ASH-099",
+  "frameId": "unit-command-villainy-space",
+  "name": "Gozanti Assault Carrier",
+  "trait": "Imperial, Vehicle, Capital Ship",
+  "text": "[Support]\n[On Attack:] This unit gains [Sentinel] for this phase.",
+  "unique": false,
+  "cost": 5,
+  "power": 4,
+  "hp": 6,
+  "setCode": "ASH",
+  "number": "099",
+  "rarity": "U"
+}

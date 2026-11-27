@@ -1,0 +1,14 @@
+{
+  "id": "swu-LOF-261",
+  "frameId": "upgrade-neutral",
+  "name": "Constructed Lightsaber",
+  "trait": "Item, Weapon, Lightsaber",
+  "text": "Attach to a [{Force}] unit.\nIf attached unit is a [Heroism] unit, it gains [Restore 2].\nIf attached unit is a [Villainy] unit, it gains [Raid 2].\nIf attached unit is a non-[Heroism], non-[Villainy] unit, it gains [Sentinel].",
+  "unique": false,
+  "cost": 3,
+  "power": 2,
+  "hp": 3,
+  "setCode": "LOF",
+  "number": "261",
+  "rarity": "L"
+}

@@ -1,0 +1,15 @@
+{
+  "id": "swu-ASH-168",
+  "frameId": "unit-aggression",
+  "name": "Migs Mayfeld",
+  "subtitle": "How About a Toast?",
+  "trait": "Fringe",
+  "text": "[Support]\n[On Attack:] Deal 1 damage to the defending unit. If this unit is upgraded, deal 2 damage to the defending unit instead.",
+  "unique": true,
+  "cost": 2,
+  "power": 2,
+  "hp": 3,
+  "setCode": "ASH",
+  "number": "168",
+  "rarity": "R"
+}

@@ -1,0 +1,15 @@
+{
+  "id": "swu-HMW-128",
+  "frameId": "unit-command",
+  "name": "Mace Windu",
+  "subtitle": "Austere Centrist",
+  "trait": "Force, Jedi",
+  "text": "",
+  "unique": true,
+  "cost": 3,
+  "power": 4,
+  "hp": 5,
+  "setCode": "HMW",
+  "number": "128",
+  "rarity": "R"
+}

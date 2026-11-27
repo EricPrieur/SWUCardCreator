@@ -1,0 +1,12 @@
+{
+  "id": "swu-SEC-180",
+  "frameId": "event-aggression",
+  "name": "Let's Call It War",
+  "trait": "Tactic",
+  "text": "Deal 3 damage to a unit. Then, if you have the initiative, you may deal 2 damage to another unit in the same arena.",
+  "unique": false,
+  "cost": 3,
+  "setCode": "SEC",
+  "number": "180",
+  "rarity": "C"
+}

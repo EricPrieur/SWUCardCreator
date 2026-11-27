@@ -1,0 +1,12 @@
+{
+  "id": "swu-ASH-163",
+  "frameId": "event-aggression-heroism",
+  "name": "Reckless Sacrifice",
+  "trait": "Gambit",
+  "text": "Discard a unit from your hand. Deal 5 damage to a unit that costs more than the discarded card.",
+  "unique": false,
+  "cost": 2,
+  "setCode": "ASH",
+  "number": "163",
+  "rarity": "R"
+}

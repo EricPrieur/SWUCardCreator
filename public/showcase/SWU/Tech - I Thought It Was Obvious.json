@@ -1,0 +1,15 @@
+{
+  "id": "swu-HMW-211",
+  "frameId": "unit-cunning-heroism",
+  "name": "Tech",
+  "subtitle": "I Thought It Was Obvious",
+  "trait": "Clone",
+  "text": "[When this unit is dealt damage and survives:] You may exhaust a unit.",
+  "unique": true,
+  "cost": 3,
+  "power": 3,
+  "hp": 5,
+  "setCode": "HMW",
+  "number": "211",
+  "rarity": "U"
+}

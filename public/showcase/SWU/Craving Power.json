@@ -1,0 +1,14 @@
+{
+  "id": "swu-LOF-091",
+  "frameId": "upgrade-command-villainy",
+  "name": "Craving Power",
+  "trait": "Innate",
+  "text": "Attach to a friendly unit.\n[When Played:] Deal damage to an enemy unit equal to attached unit's power.",
+  "unique": false,
+  "cost": 5,
+  "power": 2,
+  "hp": 2,
+  "setCode": "LOF",
+  "number": "091",
+  "rarity": "R"
+}

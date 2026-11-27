@@ -1,0 +1,15 @@
+{
+  "id": "swu-LOF-195",
+  "frameId": "unit-cunning-heroism",
+  "name": "Vernestra Rwoh",
+  "subtitle": "Precocious Knight",
+  "trait": "Force, Jedi",
+  "text": "[When Played:] You may use the Force. If you do, ready this unit.",
+  "unique": true,
+  "cost": 3,
+  "power": 3,
+  "hp": 4,
+  "setCode": "LOF",
+  "number": "195",
+  "rarity": "R"
+}

@@ -1,0 +1,15 @@
+{
+  "id": "swu-IC27-115",
+  "frameId": "unit-aggression-heroism",
+  "name": "Poe Dameron",
+  "subtitle": "Hero of the Resistance",
+  "trait": "Resistance",
+  "text": "[When you play another [{Resistance}] card:] This unit gets +1/+0 for this phase.",
+  "unique": true,
+  "cost": 2,
+  "power": 2,
+  "hp": 4,
+  "setCode": "IC27",
+  "number": "115",
+  "rarity": "R"
+}

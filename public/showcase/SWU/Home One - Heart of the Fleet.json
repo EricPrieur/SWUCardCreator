@@ -1,0 +1,15 @@
+{
+  "id": "swu-ASH-065",
+  "frameId": "unit-vigilance-heroism-space",
+  "name": "Home One",
+  "subtitle": "Heart of the Fleet",
+  "trait": "Rebel, Vehicle, Capital Ship",
+  "text": "[Sentinel]\n[When Played:] Heal all damage from each friendly unit.",
+  "unique": true,
+  "cost": 8,
+  "power": 7,
+  "hp": 10,
+  "setCode": "ASH",
+  "number": "065",
+  "rarity": "U"
+}

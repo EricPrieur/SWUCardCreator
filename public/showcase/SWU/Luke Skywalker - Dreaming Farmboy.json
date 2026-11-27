@@ -1,0 +1,15 @@
+{
+  "id": "swu-HMW-208",
+  "frameId": "unit-cunning-heroism",
+  "name": "Luke Skywalker",
+  "subtitle": "Dreaming Farmboy",
+  "trait": "Force, Fringe",
+  "text": "[Raid 1]\nWhile it's the first round of the game, this unit enters play ready.",
+  "unique": true,
+  "cost": 1,
+  "power": 1,
+  "hp": 3,
+  "setCode": "HMW",
+  "number": "208",
+  "rarity": "R"
+}

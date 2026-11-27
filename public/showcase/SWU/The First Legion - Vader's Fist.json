@@ -1,0 +1,15 @@
+{
+  "id": "swu-HMW-108",
+  "frameId": "unit-command-villainy",
+  "name": "The First Legion",
+  "subtitle": "Vader's Fist",
+  "trait": "Imperial, Trooper",
+  "text": "[On Attack:] Name a [{Trait}]. Enemy cards, including those not in play, lose that [{Trait}] for this phase.",
+  "unique": true,
+  "cost": 4,
+  "power": 5,
+  "hp": 5,
+  "setCode": "HMW",
+  "number": "108",
+  "rarity": "R"
+}

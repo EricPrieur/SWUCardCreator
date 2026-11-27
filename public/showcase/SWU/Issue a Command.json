@@ -1,0 +1,12 @@
+{
+  "id": "swu-IC27-087",
+  "frameId": "event-command",
+  "name": "Issue a Command",
+  "trait": "Plan",
+  "text": "Reveal the top card of your deck. If it's a unit, draw it.\nGive an Experience token to a friendly unit.\nResource this event.",
+  "unique": false,
+  "cost": 4,
+  "setCode": "IC27",
+  "number": "087",
+  "rarity": "U"
+}

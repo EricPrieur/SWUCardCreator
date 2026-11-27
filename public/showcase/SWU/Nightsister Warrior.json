@@ -1,0 +1,14 @@
+{
+  "id": "swu-LOF-059",
+  "frameId": "unit-vigilance",
+  "name": "Nightsister Warrior",
+  "trait": "Force, Night",
+  "text": "[When Defeated:] Draw a card.",
+  "unique": false,
+  "cost": 2,
+  "power": 2,
+  "hp": 2,
+  "setCode": "LOF",
+  "number": "059",
+  "rarity": "C"
+}

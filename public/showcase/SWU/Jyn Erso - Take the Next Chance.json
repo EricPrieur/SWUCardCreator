@@ -1,0 +1,15 @@
+{
+  "id": "swu-LAW-067",
+  "frameId": "unit-command-cunning-heroism",
+  "name": "Jyn Erso",
+  "subtitle": "Take the Next Chance",
+  "trait": "Rebel",
+  "text": "[When Played:] Either give an Experience token to a unit or exhaust a unit.",
+  "unique": true,
+  "cost": 2,
+  "power": 2,
+  "hp": 2,
+  "setCode": "LAW",
+  "number": "067",
+  "rarity": "R"
+}

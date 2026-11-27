@@ -1,0 +1,15 @@
+{
+  "id": "swu-LOF-070",
+  "frameId": "unit-vigilance",
+  "name": "Anakin Skywalker",
+  "subtitle": "Champion of Mortis",
+  "trait": "Force, Jedi, Republic",
+  "text": "[When Played:] If there is a [Heroism] card in your discard pile, you may give a unit -3/-3 for this phase.\n[When Played:] If there is a [Villainy] card in your discard pile, you may give a unit -3/-3 for this phase.",
+  "unique": true,
+  "cost": 6,
+  "power": 5,
+  "hp": 7,
+  "setCode": "LOF",
+  "number": "070",
+  "rarity": "L"
+}

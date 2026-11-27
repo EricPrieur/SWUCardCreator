@@ -1,0 +1,12 @@
+{
+  "id": "swu-TWI-224",
+  "frameId": "event-cunning",
+  "name": "Breaking In",
+  "trait": "Tactic",
+  "text": "Attack with a unit. It gets [+2/+0] and gains [Saboteur] for this attack.",
+  "unique": false,
+  "cost": 2,
+  "setCode": "TWI",
+  "number": "224",
+  "rarity": "C"
+}

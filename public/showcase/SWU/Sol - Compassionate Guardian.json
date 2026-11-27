@@ -1,0 +1,15 @@
+{
+  "id": "swu-HMW-210",
+  "frameId": "unit-cunning-heroism",
+  "name": "Sol",
+  "subtitle": "Compassionate Guardian",
+  "trait": "Force,  Jedi",
+  "text": "[Shielded]\n[On Attack:] This unit gains [Sentinel] for this phase.",
+  "unique": true,
+  "cost": 2,
+  "power": 2,
+  "hp": 2,
+  "setCode": "HMW",
+  "number": "210",
+  "rarity": "U"
+}

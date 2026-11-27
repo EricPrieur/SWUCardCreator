@@ -1,0 +1,16 @@
+{
+  "id": "swu-IC27-003",
+  "frameId": "leader-command-villainy",
+  "name": "Kylo Ren",
+  "subtitle": "Supreme Leader",
+  "trait": "Force, First Order, Official",
+  "text": "[Action [Arrow, discard a card from your hand]:] Give an Experience token to a unit.",
+  "backText": "[When Deployed:] You may return a unit from your discard pile to your hand.",
+  "unique": true,
+  "cost": 5,
+  "power": 5,
+  "hp": 3,
+  "setCode": "IC27",
+  "number": "003",
+  "rarity": "C"
+}

@@ -1,0 +1,12 @@
+{
+  "id": "swu-HMW-114",
+  "frameId": "event-command-villainy",
+  "name": "Breach",
+  "trait": "Tactic",
+  "text": "A friendly unit deals damage equal to its power to an enemy unit in its arena. If the friendly unit has [Overwhelm], deal deal excess damage to an enemy base.",
+  "unique": false,
+  "cost": 2,
+  "setCode": "HMW",
+  "number": "114",
+  "rarity": "R"
+}

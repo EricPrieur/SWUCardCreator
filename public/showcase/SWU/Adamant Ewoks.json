@@ -1,0 +1,14 @@
+{
+  "id": "swu-HMW-177",
+  "frameId": "unit-aggression",
+  "name": "Adamant Ewoks",
+  "trait": "Ewok",
+  "text": "[When Played:] If you control another [{Ewok}] unit or an [{Endor}] base, you may deal 1 damage to a base and 1 damage to an enemy unit.",
+  "unique": false,
+  "cost": 2,
+  "power": 3,
+  "hp": 2,
+  "setCode": "HMW",
+  "number": "177",
+  "rarity": "C"
+}

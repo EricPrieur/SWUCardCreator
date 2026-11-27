@@ -1,0 +1,14 @@
+{
+  "id": "swu-HMW-163",
+  "frameId": "unit-aggression-heroism",
+  "name": "Champions of Endor",
+  "trait": "Ewok",
+  "text": "",
+  "unique": false,
+  "cost": 2,
+  "power": 3,
+  "hp": 3,
+  "setCode": "HMW",
+  "number": "163",
+  "rarity": "C"
+}

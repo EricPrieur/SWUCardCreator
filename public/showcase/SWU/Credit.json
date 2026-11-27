@@ -1,0 +1,12 @@
+{
+  "id": "swu-TLAW-T01",
+  "frameId": "credit-token",
+  "name": "Credit",
+  "trait": "Supply",
+  "text": "While paying resources, you may defeat this token. If you do, pay 1 less.",
+  "unique": false,
+  "cost": 0,
+  "setCode": "TLAW",
+  "number": "T01",
+  "rarity": "C"
+}

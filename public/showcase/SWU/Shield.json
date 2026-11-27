@@ -1,0 +1,14 @@
+{
+  "id": "swu-THMW-T01",
+  "frameId": "token-upgrade",
+  "name": "Shield",
+  "trait": "Armor",
+  "text": "If damage would be dealt to attached unit, prevent that damage. If you do, defeat a Shield token on it.",
+  "unique": false,
+  "cost": 0,
+  "power": 0,
+  "hp": 0,
+  "setCode": "THMW",
+  "number": "T01",
+  "rarity": "C"
+}

@@ -1,0 +1,15 @@
+{
+  "id": "swu-HMW-166",
+  "frameId": "unit-aggression-heroism",
+  "name": "Gungi",
+  "subtitle": "Fighting for Kashyyyk",
+  "trait": "Force, Jedi, Wookiee",
+  "text": "[Grit]\n[When this unit is dealt damage and survives:] You may discard a card from your hand. If you do, ready this unit.",
+  "unique": true,
+  "cost": 3,
+  "power": 2,
+  "hp": 5,
+  "setCode": "HMW",
+  "number": "166",
+  "rarity": "U"
+}

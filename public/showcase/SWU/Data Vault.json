@@ -1,0 +1,12 @@
+{
+  "id": "swu-JTL-024",
+  "frameId": "base-command-text",
+  "name": "Data Vault",
+  "trait": "Scarif",
+  "text": "Your minimum deck size is increased by 10 cards.",
+  "unique": false,
+  "hp": 33,
+  "setCode": "JTL",
+  "number": "024",
+  "rarity": "R"
+}

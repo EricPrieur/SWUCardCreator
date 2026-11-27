@@ -1,0 +1,15 @@
+{
+  "id": "swu-IC27-157",
+  "frameId": "unit-cunning-heroism",
+  "name": "The Mandalorian",
+  "subtitle": "From the Shadows",
+  "trait": "Mandalorian, Bounty Hunter",
+  "text": "[Shielded]\n[On Attack:] If the defending unit is exhausted, it gets -4/-0 for this attack.",
+  "unique": true,
+  "cost": 4,
+  "power": 5,
+  "hp": 3,
+  "setCode": "IC27",
+  "number": "157",
+  "rarity": "R"
+}

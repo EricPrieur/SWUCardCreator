@@ -1,0 +1,15 @@
+{
+  "id": "swu-ASH-050",
+  "frameId": "unit-vigilance-villainy",
+  "name": "Morgan Elsbeth",
+  "subtitle": "Life Abandoned",
+  "trait": "Force, Night",
+  "text": "[Support]\n[When Defeated:] You may give a unit -2/-2 for this phase.",
+  "unique": true,
+  "cost": 6,
+  "power": 5,
+  "hp": 6,
+  "setCode": "ASH",
+  "number": "050",
+  "rarity": "U"
+}

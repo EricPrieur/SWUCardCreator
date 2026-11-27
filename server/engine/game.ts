@@ -535,7 +535,8 @@ class Pause extends Error {
 // last: an ability that counts what happened this phase (Fedaykin Strike Leader), which the AI
 // resolves after the others
 // later: whether the AI resolves it after the others, asked as it orders them (Abilities.aiLater)
-type Trigger = { player: PlayerId; label: string; run: () => void; same?: unknown[]; last?: boolean; later?: () => boolean; automatic?: boolean }
+// defeated: a When Defeated's card, while it waits (Thrawn's AI looks at what's to come)
+type Trigger = { player: PlayerId; label: string; run: () => void; same?: unknown[]; last?: boolean; later?: () => boolean; automatic?: boolean; defeated?: CardDef }
 
 // The action being played: the answers it has, the next to hand out, the abilities triggered.
 // One action at a time, start to end in one go, so it can live outside the game state.
@@ -556,12 +557,28 @@ function queue(state: GameState, player: PlayerId, source: string, what: string,
   current.queue.push({
     player,
     label: `${source}: ${what}`,
-    run: () => ability(new Game(state, player), self),
+    run: () => {
+      const before = state.log.length
+      ability(new Game(state, player), self)
+      if (what === 'When Defeated') usedWhenDefeated(state, player, ability, self, state.log.length > before)
+    },
     same: [ability, self.id],
     last,
     ...(later && { later: () => later(new Game(state, player), self) }),
     ...(automatic && { automatic }),
+    ...(what === 'When Defeated' && { defeated: self.def }),
   })
+}
+
+// "When you use a "When Defeated" ability: … use that ability again." (Grand Admiral Thrawn):
+// a card on the user's side that says yes uses it again, once (the second use isn't repeated).
+// did: whether the first use did something (it logged), for the AI's answer
+function usedWhenDefeated(state: GameState, p: PlayerId, ability: Ability, self: Self, did: boolean) {
+  const g = new Game(state, p)
+  const again = holders(state, p).find(({ self: by, abilities }) => abilities.repeatsWhenDefeated?.(g, by, self, did))
+  if (!again) return
+  log(state, `${again.self.def.name}: ${self.def.name}'s When Defeated ability again`, p)
+  ability(new Game(state, p), self)
 }
 
 // The abilities a card has where it is: a unit's, a leader's unit side's once deployed, a
@@ -1219,8 +1236,9 @@ function regroupResource(state: GameState, p: PlayerId, cards: string[]) {
   player.regroupDone = true
   if (cards.length) log(state, `${player.name} resources a card`, p)
   if (!state.players.every((pl) => pl.regroupDone)) return
-  for (const pl of state.players) {
-    for (const unit of pl.units) if (!state.held?.includes(unit.id)) unit.exhausted = false
+  for (const [i, pl] of state.players.entries()) {
+    const limited = holders(state, other(i as PlayerId)).find(({ abilities }) => abilities.limitsRegroupReady)
+    for (const unit of limited ? readiedUnder(state, pl, limited.self.def.name) : pl.units) if (!state.held?.includes(unit.id)) unit.exhausted = false
     for (const resource of pl.resources) resource.exhausted = false
     pl.leader.exhausted = false
   }
@@ -1228,6 +1246,18 @@ function regroupResource(state: GameState, p: PlayerId, cards: string[]) {
   state.usedThisRound = []
   state.held = []
   startActionPhase(state)
+}
+
+// "Each opponent can't ready more than 1 ground unit and 1 space unit during the regroup phase."
+// (Count Dooku, Silver-Tongued): the exhausted units of each arena, the strongest readied (the
+// player doesn't choose)
+function readiedUnder(state: GameState, player: PlayerState, by: string) {
+  const exhausted = player.units.filter((u) => u.exhausted && !state.held?.includes(u.id))
+  const picks = (['ground', 'space'] as const).map((arena) =>
+    exhausted.filter((u) => u.arena === arena).sort((a, b) => powerOf(state, b) - powerOf(state, a))[0],
+  ).filter((u): u is UnitState => !!u)
+  if (exhausted.length > picks.length) log(state, `${by}: ${player.name} readies only ${picks.map((u) => nameOf(state, u)).join(' and ')}`)
+  return picks
 }
 
 function moveToResources(player: PlayerState, cards: string[], exhausted: boolean) {
@@ -2688,6 +2718,40 @@ export class Game {
     for (const upgrade of unit.upgrades) discardUpgrade(this.state, upgrade)
     if (!this.def(unit).token) this.state.players[unit.owner].hand.push({ id: unit.id, def: unit.def })
     this.log(`${nameOf(this.state, unit)} returns to ${this.state.players[unit.owner].name}'s hand`, p)
+  }
+  // "You may use a "When Defeated" ability on another friendly unit." (Chimaera): that unit's own
+  // ability, as if it were defeated, and used again if something says so (Thrawn)
+  // The cards whose When Defeated abilities wait to resolve for a player (defeated at once with
+  // the one resolving: a sweeper's, Hyperspace Disaster's)
+  waitingWhenDefeated(p: PlayerId): CardDef[] {
+    return (current?.queue ?? []).filter((t) => t.player === p && t.defeated).map((t) => t.defeated!)
+  }
+  hasWhenDefeated(unitId: string) {
+    const unit = this.unit(unitId)
+    return !!unit && !!unitScript(this.state, unit).whenDefeated
+  }
+  useWhenDefeated(unitId: string) {
+    const unit = this.unit(unitId)
+    const ability = unit && unitScript(this.state, unit).whenDefeated
+    if (!unit || !ability) return
+    const p = controllerOf(this.state, unit)
+    const self = { id: unit.id, controller: p, def: def(this.state, unit), upgrades: unit.upgrades.map((u) => u.id) }
+    this.log(`${nameOf(this.state, unit)}'s When Defeated ability is used`, p)
+    const before = this.state.log.length
+    ability(new Game(this.state, p), self)
+    usedWhenDefeated(this.state, p, ability, self, this.state.log.length > before)
+  }
+  // Every card with this name from a player's hand and deck to their discard pile, the deck
+  // shuffled after (Annihilator)
+  discardNamed(p: PlayerId, name: string) {
+    const player = this.state.players[p]
+    const named = (c: { def: string }) => def(this.state, c).name === name
+    const gone = [...player.hand.filter(named), ...player.deck.filter(named)]
+    player.hand = player.hand.filter((c) => !named(c))
+    player.deck = player.deck.filter((c) => !named(c))
+    player.discard.push(...gone)
+    shuffle(this.state, player.deck)
+    this.log(`${player.name} discards ${gone.length} ${name} from their hand and deck`, p)
   }
   // From a discard pile to its hand
   fromDiscard(p: PlayerId, cardId: string) {

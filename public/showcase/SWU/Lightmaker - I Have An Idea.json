@@ -1,0 +1,15 @@
+{
+  "id": "swu-SEC-207",
+  "frameId": "unit-cunning-heroism-space",
+  "name": "Lightmaker",
+  "subtitle": "I Have An Idea",
+  "trait": "Rebel, Vehicle, Capital Ship",
+  "text": "[Raid 4]\n[When Defeated:] Choose an arena. Exhaust each enemy unit in that arena.",
+  "unique": true,
+  "cost": 5,
+  "power": 3,
+  "hp": 4,
+  "setCode": "SEC",
+  "number": "207",
+  "rarity": "L"
+}

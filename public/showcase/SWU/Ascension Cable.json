@@ -1,0 +1,14 @@
+{
+  "id": "swu-LOF-215",
+  "frameId": "upgrade-cunning",
+  "name": "Ascension Cable",
+  "trait": "Item",
+  "text": "Attach to a non-[{Vehicle}] unit.\nAttached unit gains [Saboteur].",
+  "unique": false,
+  "cost": 2,
+  "power": 1,
+  "hp": 3,
+  "setCode": "LOF",
+  "number": "215",
+  "rarity": "C"
+}

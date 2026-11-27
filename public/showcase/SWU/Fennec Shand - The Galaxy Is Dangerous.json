@@ -1,0 +1,15 @@
+{
+  "id": "swu-ASH-192",
+  "frameId": "unit-cunning-villainy",
+  "name": "Fennec Shand",
+  "subtitle": "The Galaxy Is Dangerous",
+  "trait": "Underworld, Bounty Hunter",
+  "text": "[Ambush]\n[Saboteur]",
+  "unique": true,
+  "cost": 3,
+  "power": 3,
+  "hp": 3,
+  "setCode": "ASH",
+  "number": "192",
+  "rarity": "U"
+}

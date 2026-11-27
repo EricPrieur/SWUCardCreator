@@ -1,0 +1,15 @@
+{
+  "id": "swu-SEC-051",
+  "frameId": "unit-vigilance-heroism",
+  "name": "Bo-Katan Kryze",
+  "subtitle": "Alone",
+  "trait": "Mandalorian",
+  "text": "[When Played:] Give each enemy unit -3/-3 for this phase.\n[When an enemy unit is defeated:] Give an Experience token to a friendly unit.",
+  "unique": true,
+  "cost": 9,
+  "power": 8,
+  "hp": 8,
+  "setCode": "SEC",
+  "number": "051",
+  "rarity": "R"
+}

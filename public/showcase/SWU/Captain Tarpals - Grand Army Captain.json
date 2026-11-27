@@ -1,0 +1,15 @@
+{
+  "id": "swu-HMW-254",
+  "frameId": "unit-heroism",
+  "name": "Captain Tarpals",
+  "subtitle": "Grand Army Captain",
+  "trait": "Gungan, Trooper",
+  "text": "[Shielded]\n[Raid 2]",
+  "unique": true,
+  "cost": 1,
+  "power": 0,
+  "hp": 2,
+  "setCode": "HMW",
+  "number": "254",
+  "rarity": "U"
+}

@@ -1,0 +1,18 @@
+{
+  "id": "swu-JTL-203",
+  "frameId": "pilot-cunning-heroism",
+  "name": "Han Solo",
+  "subtitle": "Has His Moments",
+  "trait": "Rebel, Pilot",
+  "text": "[Ambush]",
+  "pilotText": "[Piloting] [[2 Cunning Heroism]]\n[When played as an upgrade:] You may attack with attached unit. If it's the Millennium Falcon, it deals its combat damage before the defender.",
+  "unique": true,
+  "cost": 5,
+  "power": 4,
+  "hp": 5,
+  "upgradePower": 2,
+  "upgradeHp": 3,
+  "setCode": "JTL",
+  "number": "203",
+  "rarity": "L"
+}

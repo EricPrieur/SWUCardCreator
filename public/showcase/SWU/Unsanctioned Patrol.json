@@ -1,0 +1,14 @@
+{
+  "id": "swu-ASH-222",
+  "frameId": "unit-cunning-space",
+  "name": "Unsanctioned Patrol",
+  "trait": "Resistance, Vehicle, Fighter",
+  "text": "[Support]\n[Saboteur]",
+  "unique": false,
+  "cost": 4,
+  "power": 4,
+  "hp": 4,
+  "setCode": "ASH",
+  "number": "222",
+  "rarity": "C"
+}

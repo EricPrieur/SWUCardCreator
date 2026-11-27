@@ -1,0 +1,14 @@
+{
+  "id": "swu-ASH-133",
+  "frameId": "unit-command",
+  "name": "Trask Walker",
+  "trait": "Vehicle, Walker",
+  "text": "[When Played/On Attack:] Choose a unit in your discard pile that costs 7 or less. Either put that card on the bottom of your deck and heal 3 damage from your base or return it to your hand.",
+  "unique": false,
+  "cost": 8,
+  "power": 5,
+  "hp": 9,
+  "setCode": "ASH",
+  "number": "133",
+  "rarity": "U"
+}

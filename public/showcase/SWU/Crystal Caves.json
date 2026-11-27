@@ -1,0 +1,12 @@
+{
+  "id": "swu-LOF-029",
+  "frameId": "base-cunning-text",
+  "name": "Crystal Caves",
+  "trait": "Ilum",
+  "text": "[When a friendly [{Force}] unit attacks:] The [{Force}] is with you.",
+  "unique": false,
+  "hp": 28,
+  "setCode": "LOF",
+  "number": "029",
+  "rarity": "C"
+}

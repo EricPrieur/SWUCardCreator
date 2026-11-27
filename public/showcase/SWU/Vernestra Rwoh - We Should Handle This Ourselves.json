@@ -1,0 +1,15 @@
+{
+  "id": "swu-HMW-048",
+  "frameId": "unit-command-cunning",
+  "name": "Vernestra Rwoh",
+  "subtitle": "We Should Handle This Ourselves",
+  "trait": "Force, Jedi",
+  "text": "[Sentinel]\nAs an additional cost to play this unit, put up to 2 units that each cost 5 or less from your discard pile on the bottom of your deck. This unit gains those units' [\"When Played\"] abilities for this phase.",
+  "unique": true,
+  "cost": 6,
+  "power": 5,
+  "hp": 5,
+  "setCode": "HMW",
+  "number": "048",
+  "rarity": "L"
+}

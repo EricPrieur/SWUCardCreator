@@ -1,0 +1,15 @@
+{
+  "id": "swu-JTL-147",
+  "frameId": "unit-aggression-heroism-space",
+  "name": "Black One",
+  "subtitle": "Straight At Them",
+  "trait": "Resistance, Vehicle, Fighter",
+  "text": "While this unit is upgraded, it gets [+1/+0].\n[On Attack:] If you control Poe Dameron, you may deal 1 damage to a unit.",
+  "unique": true,
+  "cost": 2,
+  "power": 2,
+  "hp": 3,
+  "setCode": "JTL",
+  "number": "147",
+  "rarity": "R"
+}

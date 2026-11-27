@@ -1,0 +1,15 @@
+{
+  "id": "swu-ASH-208",
+  "frameId": "unit-cunning-heroism",
+  "name": "Sabine Wren",
+  "subtitle": "I Learned the Hard Way",
+  "trait": "Jedi, Mandalorian, Spectre",
+  "text": "[Shielded]\n[When 1 or more upgrades attach to this unit:] You may exhaust a ground unit.",
+  "unique": true,
+  "cost": 5,
+  "power": 4,
+  "hp": 5,
+  "setCode": "ASH",
+  "number": "208",
+  "rarity": "U"
+}

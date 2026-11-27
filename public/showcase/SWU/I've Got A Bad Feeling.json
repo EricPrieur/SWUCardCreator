@@ -1,0 +1,12 @@
+{
+  "id": "swu-IC27-166",
+  "frameId": "event-cunning-heroism",
+  "name": "I've Got A Bad Feeling",
+  "trait": "Innate",
+  "text": "Return a non-leader unit to its owner's hand.\nGive a Shield token to a friendly unit.",
+  "unique": false,
+  "cost": 4,
+  "setCode": "IC27",
+  "number": "166",
+  "rarity": "U"
+}

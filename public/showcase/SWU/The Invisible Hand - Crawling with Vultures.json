@@ -1,0 +1,15 @@
+{
+  "id": "swu-JTL-089",
+  "frameId": "unit-command-villainy-space",
+  "name": "The Invisible Hand",
+  "subtitle": "Crawling with Vultures",
+  "trait": "Separatist, Vehicle, Capital Ship",
+  "text": "[When Played/When this unit completes an attack:] You may search the top 8 cards of your deck for a [{Droid}] unit, reveal it, and draw it. If it costs 2 or less, you may play it for free.",
+  "unique": true,
+  "cost": 6,
+  "power": 6,
+  "hp": 6,
+  "setCode": "JTL",
+  "number": "089",
+  "rarity": "R"
+}

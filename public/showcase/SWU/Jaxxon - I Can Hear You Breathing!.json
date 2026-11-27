@@ -1,0 +1,15 @@
+{
+  "id": "swu-HMW-219",
+  "frameId": "unit-cunning",
+  "name": "Jaxxon",
+  "subtitle": "I Can Hear You Breathing!",
+  "trait": "Underworld",
+  "text": "",
+  "unique": true,
+  "cost": 1,
+  "power": 3,
+  "hp": 3,
+  "setCode": "HMW",
+  "number": "219",
+  "rarity": "R"
+}

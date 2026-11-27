@@ -1,0 +1,15 @@
+{
+  "id": "swu-ASH-040",
+  "frameId": "unit-aggression-cunning-heroism",
+  "name": "Poe Dameron",
+  "subtitle": "I'll Come Back For You",
+  "trait": "Resistance",
+  "text": "All units lose [Sentinel].",
+  "unique": true,
+  "cost": 2,
+  "power": 3,
+  "hp": 3,
+  "setCode": "ASH",
+  "number": "040",
+  "rarity": "R"
+}

@@ -1,0 +1,14 @@
+{
+  "id": "swu-LOF-192",
+  "frameId": "unit-cunning-heroism-space",
+  "name": "N-1 Starfighter",
+  "trait": "Naboo, Vehicle, Fighter",
+  "text": "",
+  "unique": false,
+  "cost": 2,
+  "power": 3,
+  "hp": 2,
+  "setCode": "LOF",
+  "number": "192",
+  "rarity": "C"
+}
