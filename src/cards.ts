@@ -127,6 +127,8 @@ export type Card = {
   // Shown as its Prescient version wherever the card is shown: the Showroom, its public image,
   // the Deck Builder, Export and Print files (see shownOf)
   showPrescient?: boolean
+  // Printed in the Standard frame (the regular printing's), not Hyperspace: left out, Hyperspace
+  frameStyle?: 'standard'
   // The Prescient version, a booster's full-art card: its own art or placing of the art,
   // and its own look. Left out, it is the card's art with prescientLook (see prescientOf).
   prescient?: Prescient

@@ -58,6 +58,7 @@ import {
   epicText,
   frames,
   isUnique,
+  styledFrame,
   type Arena,
   type Aspect,
   type Frame,
@@ -119,6 +120,25 @@ const stats = [
 
 // The editor opens on a blank Command and Heroism ground unit
 const blankDraft: Draft = { frameId: 'unit-command-heroism', name: '', trait: '', text: '' }
+
+// The version a new card starts as, Hyperspace, Standard or Prescient: the account's choice when
+// signed in, else this browser's (set with "Default for new cards" in the Creator)
+type StartVersion = 'hyperspace' | 'standard' | 'prescient'
+const VERSION_KEY = 'creator.default-version'
+function defaultVersion(user?: User | null): StartVersion {
+  if (user?.frameStyle) return user.frameStyle
+  if (user && user.frameStyle === null) return 'hyperspace'
+  try {
+    const kept = localStorage.getItem(VERSION_KEY)
+    if (kept === 'standard' || kept === 'prescient') return kept
+  } catch {
+    // No storage: Hyperspace
+  }
+  return 'hyperspace'
+}
+// A new card in that version
+const asVersion = (version: StartVersion): Partial<Draft> =>
+  version === 'standard' ? { frameStyle: 'standard' } : version === 'prescient' ? { showPrescient: true } : {}
 
 // A Leader side has no power or HP icon, but prints both numbers in its Epic Action box
 const hasStat = (frame: Frame, kind: (typeof stats)[number]['kind']) =>
@@ -205,6 +225,12 @@ const isTwoSidedBase = (card: Draft) => findFrame(card.frameId).type === 'Base' 
 // Every other card only has a front. "mirrors" is true on a side whose name, trait
 // and text are the other side's.
 function cardSide(card: Draft, back: boolean) {
+  const side = unstyledSide(card, back)
+  // In the Standard frame when the card asks for it: the same frame, its other images
+  return { ...side, frame: styledFrame(side.frame, card.frameStyle) }
+}
+
+function unstyledSide(card: Draft, back: boolean) {
   const front = findFrame(card.frameId)
   const shared = { name: card.name, subtitle: card.subtitle, trait: card.trait, mirrors: false }
   if (front.type === 'Base') {
@@ -6325,6 +6351,32 @@ function CardCreator(props: {
   const prescientable = canBePrescient(front.type)
   const onPrescient = prescientTab && prescientable
   const shownCard = onPrescient ? prescientOf(draft) : draft
+  // The version being edited, and the one new cards start as (the account's, else this browser's)
+  const version: StartVersion = onPrescient ? 'prescient' : (draft.frameStyle ?? 'hyperspace')
+  const account = useAccount()
+  const [browserDefault, setBrowserDefault] = useState(() => defaultVersion(null))
+  const newCardsAs = account ? defaultVersion(account.user) : browserDefault
+  const [defaultError, setDefaultError] = useState<string | null>(null)
+  const makeDefault = async (version: StartVersion) => {
+    setDefaultError(null)
+    try {
+      localStorage.setItem(VERSION_KEY, version)
+    } catch {
+      // Kept on the account alone, then
+    }
+    setBrowserDefault(version)
+    if (!account) return
+    try {
+      const data = await api<{ user: User }>('/api/auth/me/frame-style', { method: 'PUT', body: { style: version }, token: account.token })
+      setSession({ ...account, user: data.user })
+    } catch (err) {
+      setDefaultError(err instanceof Error ? err.message : 'Could not save it to your account')
+    }
+  }
+  const pickStyle = (style?: 'standard') => {
+    setPrescientTab(false)
+    if (draft.frameStyle !== style) onChange({ ...draft, frameStyle: style })
+  }
   const side = cardSide(shownCard, back)
   const { frame } = side
   const bothSides = backFrameOf(draft) ? [front, cardSide(draft, true).frame] : [front]
@@ -6425,16 +6477,36 @@ function CardCreator(props: {
     <div className="creator">
       <section className="editor">
         <div className="editor-fields editor-side">
-          {prescientable && (
-            <div className="side-toggle" title="A booster's Prescient card: this card in full art">
-              <button className="chip" type="button" aria-pressed={!onPrescient} onClick={() => setPrescientTab(false)}>
-                Card
+          <div className="side-toggle version-toggle">
+            {(
+              [
+                ['hyperspace', 'Hyperspace', 'The card in the Hyperspace frame', () => pickStyle(undefined)],
+                ['standard', 'Standard', 'The card in the Standard frame, the regular printing’s', () => pickStyle('standard')],
+                ...(prescientable
+                  ? [['prescient', 'Prescient', 'A booster’s Prescient card: this card in full art', () => setPrescientTab(true)] as const]
+                  : []),
+              ] as const
+            ).map(([key, label, about, pick]) => (
+              // A click shows the card in that version; a double-click also makes it the version new
+              // cards start as, which wears a frame
+              <button
+                key={key}
+                className={`chip${key === newCardsAs ? ' version-default' : ''}`}
+                type="button"
+                aria-pressed={version === key}
+                title={
+                  key === newCardsAs
+                    ? `${about}. New cards start as ${label}${account ? ' (your account’s choice)' : ' (in this browser)'}`
+                    : `${about}. Double-click to make it the default for new cards`
+                }
+                onClick={pick}
+                onDoubleClick={() => key !== newCardsAs && makeDefault(key)}
+              >
+                {label}
               </button>
-              <button className="chip" type="button" aria-pressed={onPrescient} onClick={() => setPrescientTab(true)}>
-                Prescient
-              </button>
-            </div>
-          )}
+            ))}
+          </div>
+          {defaultError && <p className="error-note">{defaultError}</p>}
           {onPrescient && (
             <p className="empty-note prescient-note">
               {draft.prescient
@@ -6816,7 +6888,7 @@ function CardCreator(props: {
                   aria-pressed={candidate.id === frame.id}
                   onClick={() => pickFrame(candidate)}
                 >
-                  <CardView frame={candidate} thumb />
+                  <CardView frame={styledFrame(candidate, draft.frameStyle)} thumb />
                   <span className="card-caption">
                     {candidate.name}
                     <span>
@@ -7450,7 +7522,7 @@ function App() {
   const [showcase, setShowcase] = useState(showcaseFromHash)
   const [viewing, setViewing] = useState(showroomOwnerFromHash)
   const [cards, setCards] = useState<Card[]>(loadCards)
-  const [draft, setDraft] = useState<Draft>(() => loadDraft() ?? { ...blankDraft, ...loadCardLine() })
+  const [draft, setDraft] = useState<Draft>(() => loadDraft() ?? { ...blankDraft, ...loadCardLine(), ...asVersion(defaultVersion(null)) })
   const [saved, setSaved] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
 
@@ -7986,7 +8058,8 @@ function App() {
           onChange={changeDraft}
           onSave={saveDraft}
           // A new card starts with the card line last typed, but for its number
-          onNew={() => changeDraft({ frameId: draft.frameId, name: '', trait: '', text: '', ...loadCardLine() })}
+          // and in the version new cards start as
+          onNew={() => changeDraft({ frameId: draft.frameId, name: '', trait: '', text: '', ...loadCardLine(), ...asVersion(defaultVersion(account?.user)) })}
         />
       )}
       {leaveModal}

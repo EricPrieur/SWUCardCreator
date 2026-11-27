@@ -4332,3 +4332,15 @@ input.picker-button::placeholder {
   margin: 0.4rem 0 0.6rem;
   cursor: pointer;
 }
+
+/* Hyperspace / Standard / Prescient. The version new cards start as wears a frame: a ring
+   just outside the chip, in the spice colour */
+.version-toggle {
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.chip.version-default {
+  outline: 2px solid var(--spice);
+  outline-offset: 2px;
+}

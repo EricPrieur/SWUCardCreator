@@ -785,3 +785,19 @@ export const frames: Frame[] = [...allFrames, ...pilotFrames].map((frame) => ({
   ...frame,
   thumb: frame.src.replace('/templates/', '/templates/thumb/'),
 }))
+
+// A frame in the Standard style (the regular printing's frame, not Hyperspace): the same frame,
+// its images from public/templates-standard/, which has every Hyperspace template under the same
+// name (tools/compose_frames.py --standard). A Legends card's gold bar is drawn over the frame
+// from templates/legends/ (CardView), the same in both styles.
+export type FrameStyle = 'hyperspace' | 'standard'
+export function styledFrame(frame: Frame, style?: FrameStyle | 'prescient'): Frame {
+  if (style !== 'standard' || !frame.src.startsWith('/templates/')) return frame
+  const swap = (src: string) => src.replace(/^\/templates\//, '/templates-standard/')
+  return {
+    ...frame,
+    src: swap(frame.src),
+    thumb: frame.thumb && swap(frame.thumb),
+    ...(frame.subtitle && { subtitle: { ...frame.subtitle, src: frame.subtitle.src && swap(frame.subtitle.src) } }),
+  }
+}

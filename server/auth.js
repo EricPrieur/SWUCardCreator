@@ -16,7 +16,7 @@ function secret() {
 }
 
 const USER_COLUMNS =
-  'id, username, is_admin, is_tester, quota_bytes, can_publish, showroom_public, donated_cents, card_back, created_at, discord_username, (password_hash IS NOT NULL) AS has_password'
+  'id, username, is_admin, is_tester, quota_bytes, can_publish, showroom_public, donated_cents, card_back, frame_style, created_at, discord_username, (password_hash IS NOT NULL) AS has_password'
 
 // The sites allowed to call this server: the app on GitHub Pages and the dev server
 const DEFAULT_ORIGINS = ['https://ericprieur.github.io', 'http://localhost:5173']
@@ -48,6 +48,8 @@ export function userPublic(user) {
     tier: tierOf({ isAdmin: !!user.is_admin, donatedCents: user.donated_cents ?? 0 }),
     // A Supporter's card back: one of its images, null for the set's
     cardBack: user.card_back ?? null,
+    // The frame a new card starts with: hyperspace (null), standard or prescient
+    frameStyle: user.frame_style ?? null,
     // The Discord account it signs in with; null when none is linked
     discordName: user.discord_username ?? null,
     // A Discord account can only be unlinked from one that also has a password
@@ -376,6 +378,21 @@ router.put('/me/card-back', verifyToken, async (req, res) => {
     res.json({ user: userPublic(rows[0]) })
   } catch (err) {
     console.error('Card back error:', err)
+    res.status(500).json({ error: 'Server error' })
+  }
+})
+
+// The frame a new card starts with: { style } 'hyperspace', 'standard' or 'prescient'
+router.put('/me/frame-style', verifyToken, async (req, res) => {
+  const { style } = req.body ?? {}
+  if (!['hyperspace', 'standard', 'prescient'].includes(style))
+    return res.status(400).json({ error: "style must be 'hyperspace', 'standard' or 'prescient'" })
+  try {
+    const { rows } = await query(`UPDATE ${SCHEMA}.users SET frame_style = $2 WHERE id = $1 RETURNING ${USER_COLUMNS}`, [req.user.id, style === 'hyperspace' ? null : style])
+    if (!rows.length) return res.status(404).json({ error: 'User not found' })
+    res.json({ user: userPublic(rows[0]) })
+  } catch (err) {
+    console.error('Frame style error:', err)
     res.status(500).json({ error: 'Server error' })
   }
 })

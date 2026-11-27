@@ -23,6 +23,8 @@ export type User = {
   tier?: 'member' | 'supporter'
   // A Supporter's card back: one of its images; null for the set's own
   cardBack?: string | null
+  // The frame a new card starts with: null is Hyperspace (missing on older sessions)
+  frameStyle?: 'standard' | 'prescient' | null
   // The Discord account it signs in with; null when none is linked
   discordName: string | null
   // Discord can only be unlinked from an account that also has a password

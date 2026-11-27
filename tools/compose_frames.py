@@ -13,16 +13,25 @@ It also publishes the extracted frames themselves, converting the PNG masters in
 frames/ to WebP in public/templates/.
 
 Usage: python tools/compose_frames.py   (after tools/extract_frames.py)
+       python tools/compose_frames.py --standard   (after tools/extract_standard.py)
+
+--standard: the Standard frames (the regular printing's, not Hyperspace), from frames-standard/
+to public/templates-standard/, the same names. A master the Standard set lacks (a unique unit's
+subtitle bar, the tokens: the same on both) is copied from frames/ first. src/generatedFrames.ts
+is left as it is: the same frames exist in both.
 """
 import json
+import shutil
+import sys
 from pathlib import Path
 
 import numpy as np
 from PIL import Image
 
 ROOT = Path(__file__).resolve().parent.parent
-MASTERS = ROOT / "frames"  # lossless PNGs written by extract_frames.py
-OUT = ROOT / "public" / "templates"  # what the site serves: WebP
+STANDARD = "--standard" in sys.argv
+MASTERS = ROOT / ("frames-standard" if STANDARD else "frames")  # lossless PNGs written by extract_frames.py
+OUT = ROOT / "public" / ("templates-standard" if STANDARD else "templates")  # what the site serves: WebP
 COLOURS = ["vigilance", "command", "aggression", "cunning"]
 ALLEGIANCES = ["heroism", "villainy"]
 # Two-colour pairs in the order real cards print them: first colour on top and on the left
@@ -241,7 +250,21 @@ def thumbnails():
     return count
 
 
+def borrow_hyperspace():
+    """The Standard set's missing masters, the same on both: copied from the Hyperspace set."""
+    count = 0
+    for path in sorted((ROOT / "frames").glob("*/*.png")):
+        target = MASTERS / path.parent.name / path.name
+        if not target.exists():
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(path, target)
+            count += 1
+    return count
+
+
 if __name__ == "__main__":
+    if STANDARD:
+        print("borrowed from Hyperspace:", borrow_hyperspace())
     print("published:", publish())
     made = []
     for kind in VARIANTS:
@@ -254,6 +277,7 @@ if __name__ == "__main__":
     lines += ["  " + json.dumps(f).replace('"type"', "type").replace('"key"', "key").replace('"aspects"', "aspects")
               .replace('"paper"', "paper").replace('"', "'") + "," for f in made]
     lines += ["] as const", ""]
-    (ROOT / "src" / "generatedFrames.ts").write_text("\n".join(lines), encoding="utf-8")
+    if not STANDARD:
+        (ROOT / "src" / "generatedFrames.ts").write_text("\n".join(lines), encoding="utf-8")
     print("pilots:", compose_pilots(), "leader pilots:", compose_leader_pilots())
     print("thumbnails:", thumbnails())

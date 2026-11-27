@@ -60,6 +60,8 @@ export async function initDB() {
   // a Supporter's card back, one of its images, shown in the Simulator
   await query(`ALTER TABLE ${SCHEMA}.users ADD COLUMN IF NOT EXISTS donated_cents INTEGER NOT NULL DEFAULT 0`)
   await query(`ALTER TABLE ${SCHEMA}.users ADD COLUMN IF NOT EXISTS card_back CHAR(64)`)
+  // The frame a new card starts with: 'hyperspace', 'standard' or 'prescient'; null is Hyperspace
+  await query(`ALTER TABLE ${SCHEMA}.users ADD COLUMN IF NOT EXISTS frame_style VARCHAR(16)`)
   // The Discord account it signs in with, if any, and its name there
   await query(`ALTER TABLE ${SCHEMA}.users ADD COLUMN IF NOT EXISTS discord_id VARCHAR(32)`)
   await query(`ALTER TABLE ${SCHEMA}.users ADD COLUMN IF NOT EXISTS discord_username VARCHAR(64)`)
