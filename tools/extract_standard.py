@@ -25,6 +25,7 @@ SIZE = (718, 1000)
 LANDSCAPE = (1000, 718)
 
 AGREE = 30.0  # spread across the cards (per channel, max - min) below which a pixel is frame
+CORNER = 48  # the outer corners squared off (px), well past the printed rounding
 SHIFT = 4  # how far a scan may sit off the first, in pixels, each way
 # Per type: its size, the art window (see-through, whatever the cards agree on in it), and the
 # artist / copyright / set number strip cut off below (see-through, as on the Hyperspace masters).
@@ -39,6 +40,15 @@ KINDS = {
     "leader": dict(size=SIZE, window=(72, 152, 646, 634), cut=944),
     "leader-side": dict(size=LANDSCAPE, window=(74, 60, 456, 590), cut=662),
     "base": dict(size=LANDSCAPE, window=(74, 122, 938, 602), cut=662),
+    # Tokens (one scan each, from the token sets: TTWI, TJTL, THMW, TSEC, TASH): a token unit's art
+    # runs to its bottom bar, or to its trait bar when it has a text box (Spy, Mandalorian); a
+    # token upgrade's (Shield, Advantage) to its text box
+    "token-unit": dict(size=SIZE, window=(72, 118, 646, 868), cut=944),
+    "token-text": dict(size=SIZE, window=(72, 118, 649, 708), cut=944),
+    "token": dict(size=SIZE, window=(72, 100, 648, 640), cut=944),
+    # The Credit token (LAW T01, swuforge's scan: swudb has none), smaller like its Hyperspace
+    # master; the Spice token is the same frame, its label wiped by its own master
+    "token-credit": dict(size=(501, 700), window=(50, 44, 452, 446), cut=662),
 }
 # Lining scans up: the black outer border, the same on every type
 def probes(size):
@@ -75,8 +85,23 @@ def extract(kind, key):
     # The border is set by the colour and Heroism / Villainy: a doubled colour (Command-Command,
     # rarely printed) borrows its single twin's scans, the second icon coming from the master
     words = key.split("-")
-    cfg = KINDS["leader-side" if kind == "leader" and "unit" not in words else kind]
+    if kind == "token" and key in ("credit", "spice"):
+        cfg = KINDS["token-credit"]
+    elif kind == "unit" and key.startswith("token"):
+        cfg = KINDS["token-text" if "text" in words else "token-unit"]
+    else:
+        cfg = KINDS["leader-side" if kind == "leader" and "unit" not in words else kind]
     size = cfg["size"]
+    # Cut at the Hyperspace master's own size (the token frames are 716 wide, not 718): its bars
+    # and icons go on top unstretched, and both versions line up on the card (the user,
+    # 2026-11-27: the token's bottom bar moved between Hyperspace and Standard)
+    hyper = HYPER / kind / (key + ".png")
+    if hyper.exists() and Image.open(hyper).size != size:
+        master = Image.open(hyper).size
+        sx, sy = master[0] / size[0], master[1] / size[1]
+        window = cfg["window"] and tuple(round(v * (sx, sy)[i % 2]) for i, v in enumerate(cfg["window"]))
+        cfg = dict(cfg, size=master, window=window, cut=round(cfg["cut"] * sy))
+        size = master
     twin = "-".join(w for i, w in enumerate(words) if not (i and w == words[i - 1]))
     files = sorted((SRC / kind / key).glob("*.png")) + (sorted((SRC / kind / twin).glob("*.png")) if twin != key else [])
     if cfg.get("borrow"):
@@ -121,7 +146,6 @@ def extract(kind, key):
     frame[..., 3] = np.minimum(np.maximum(frame[..., 3], 0), alpha)
     # The Hyperspace master on top: its name, trait and text panels, icons and bars are the
     # Standard frame's too, clean; only the border around the art comes from the scans
-    hyper = HYPER / kind / (key + ".png")
     if hyper.exists():
         h = load(hyper, size)
         a = h[..., 3:] / 255.0
@@ -133,8 +157,19 @@ def extract(kind, key):
     # (Hyperspace leaves it see-through, the art running to the edge.)
     cut = cfg["cut"]
     # the scans' own artist and copyright line wiped, in the black of the frame's own side border
-    frame[cut:, :, :3] = np.median(frame[cut - 40:cut, 3:12, :3].reshape(-1, 3), 0)
-    frame[cut:, :, 3] = outline[cut:]
+    black = np.median(frame[cut - 40:cut, 3:12, :3].reshape(-1, 3), 0)
+    frame[cut:, :, :3] = black
+    frame[cut:, :, 3] = 255
+    # The outer corners square and black: the printed card's corners are rounder than the site's
+    # card, whose own rounding cuts them; left see-through, the card's backdrop showed through
+    # them (a yellow sliver at the top corners; the user, 2026-11-27)
+    h, w = frame.shape[:2]
+    for ys in (slice(0, CORNER), slice(h - CORNER, h)):
+        for xs in (slice(0, CORNER), slice(w - CORNER, w)):
+            corner = frame[ys, xs]
+            thin = corner[..., 3] < 255
+            corner[..., :3][thin] = black
+            corner[..., 3][thin] = 255
     to = OUT / kind / (key + ".png")
     to.parent.mkdir(parents=True, exist_ok=True)
     Image.fromarray(frame.round().clip(0, 255).astype(np.uint8), "RGBA").save(to)

@@ -43,6 +43,9 @@ def fits(p, kind, aspects, variant):
     # A Fortification (an upgrade with a Fortify block under its text) has frames of its own
     if kind in ("upgrade", "fortification") and ("Fortification" in (p["traits"] or "")) != (kind == "fortification"):
         return False
+    # A unique upgrade's text box has a gold line across its foot: the frame's without it
+    if kind in ("upgrade", "fortification") and p["isUnique"]:
+        return False
     if not p["isToken"] and p["expansionAbbreviation"] not in MAIN_SETS:
         return False
     if sorted(ASPECTS[a] for a in p["aspectIds"]) != aspects:

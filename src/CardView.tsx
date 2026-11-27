@@ -943,15 +943,20 @@ function CardLine(props: { frame: Frame; line: CardLine }) {
   // Where the band sits, as on the printed cards
   const box = landscape
     ? { x: 30 / 1000, y: 660 / 718, w: 940 / 1000, h: 31 / 718 }
-    : { x: 32 / 718, y: 937 / 1000, w: 651 / 718, h: 35 / 1000 }
-  // The text is the same size on every card, measured on its short side
-  const shortSide = Math.min(frame.width, frame.height)
+    : {
+        x: 32 / 718,
+        y: frame.cardLine ? frame.cardLine.y / frame.height : 937 / 1000,
+        w: 651 / 718,
+        h: frame.cardLine ? frame.cardLine.h / frame.height : 35 / 1000,
+      }
+  // The text is the same size on every card, measured on its short side: 17 px where that is
+  // 718 (the Credit and Spice tokens' frames are smaller images of the same card)
   const style: CSSProperties = {
     left: `${box.x * 100}%`,
     top: `${box.y * 100}%`,
     width: `${box.w * 100}%`,
     height: `${box.h * 100}%`,
-    fontSize: `${(17 / shortSide) * (shortSide / frame.width) * 100}cqw`,
+    fontSize: `${(17 / 718) * (Math.min(frame.width, frame.height) / frame.width) * 100}cqw`,
   }
   const value = (key: (typeof cardLineKeys)[number]) => line[key]?.trim() ?? ''
   const where = [value('setCode'), value('language')].filter(Boolean).join(' \u2022 ')

@@ -72,6 +72,9 @@ export type Frame = {
   modifiers?: boolean
   // Type label printed by the site, for frames whose bar was wiped clean
   label?: { text: string; box: TextBox }
+  // Where the card line (artist, set, rarity, number) sits, in the frame's pixels, when not where
+  // the units print it (the Credit and Spice tokens: lower, under their shorter bottom panel)
+  cardLine?: { y: number; h: number }
   notes?: string
 }
 
@@ -552,6 +555,9 @@ const composedFrames: Frame[] = generatedFrames.flatMap(({ type, key, aspects, p
   return made.map((frame) => ({ ...frame, notes: 'Composed' }))
 })
 
+// The Credit token's card line, as LAW's prints it: under the bottom panel (which ends at 657)
+const creditLine = { y: 658, h: 23 }
+
 // Frames are transparent where the art goes. Rebuild them with tools/extract_frames.py.
 const allFrames: Frame[] = [
   {
@@ -568,6 +574,7 @@ const allFrames: Frame[] = [
     panels: tokenPanels,
     paper: greyPaper,
     label: { text: 'Spice Token', box: { x: 58, y: 24.5, w: 206, h: 14, size: 13.5 } },
+    cardLine: creditLine,
     notes: 'The Credit Token frame, relabelled. No stats.',
   },
   {
@@ -737,6 +744,7 @@ const allFrames: Frame[] = [
     textBox: tokenTextBox,
     panels: tokenPanels,
     paper: greyPaper,
+    cardLine: creditLine,
     notes: 'No stats.',
   },
   ...vigilanceFrames,
