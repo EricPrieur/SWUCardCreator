@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { applyAction, createGame, keywordsOf, legalActions, powerOf, hpOf } from './game.ts'
-import { chooseAction } from './ai.ts'
+import { Game, applyAction, createGame, handPrice, keywordsOf, legalActions, powerOf, hpOf } from './game.ts'
+import { chooseAction, resourcePicks } from './ai.ts'
 import { readText } from './cards.ts'
 import { swuScripts } from './swu.ts'
 import { scriptStatus } from './scripts.ts'
@@ -130,6 +130,67 @@ const defs: CardDef[] = [
   swu('swu-IC27-160', { cost: 5, power: 3, hp: 5, arena: 'space', traits: ['Rebel', 'Vehicle', 'Capital Ship'] }),
   swu('swu-TWI-153', { type: 'event', cost: 3, arena: undefined, unique: false, traits: ['Tactic'] }),
   card('rebel', { cost: 1, power: 2, hp: 2, traits: ['Rebel'] }),
+  // Single cards
+  swu('swu-ASH-159', { cost: 5, power: 5, hp: 6, arena: 'space', unique: false, traits: ['Rebel', 'Vehicle', 'Transport'] }),
+  swu('swu-IC27-166', { type: 'event', cost: 4, arena: undefined, unique: false, traits: ['Innate'] }),
+  swu('swu-HMW-238', { type: 'event', cost: 2, arena: undefined, unique: false, traits: ['Tactic'] }),
+  card('huge', { cost: 7, power: 7, hp: 7 }),
+  swu('swu-ASH-013', { type: 'leader', cost: 5, traits: ['Force', 'Jedi', 'Rebel', 'Spectre'], unit: { power: 3, hp: 6, arena: 'ground', keywords: { saboteur: true } } }),
+  swu('swu-JTL-164', { cost: 4, power: 5, hp: 4, traits: ['Rebel', "Twi'lek"] }),
+  swu('swu-JTL-249', { cost: 3, power: 3, hp: 4, arena: 'space', traits: ['Rebel', 'Vehicle', 'Transport'] }),
+  swu('swu-LOF-151', { type: 'upgrade', cost: 2, power: 3, hp: 2, arena: undefined, unique: false, traits: ['Item', 'Weapon', 'Lightsaber'] }),
+  card('jediFighter', { cost: 3, power: 2, hp: 3, arena: 'space', traits: ['Jedi', 'Vehicle'] }),
+  swu('swu-SEC-252', { cost: 3, power: 3, hp: 4, traits: ['Rebel'] }),
+  swu('swu-LAW-068', { cost: 3, power: 2, hp: 5, arena: 'space', traits: ['Rebel', 'Vehicle', 'Transport'] }),
+  swu('swu-HMW-211', { cost: 3, power: 3, hp: 5, traits: ['Clone'] }),
+  card('ship', { cost: 3, power: 3, hp: 6, arena: 'space' }),
+  swu('swu-SEC-172', { cost: 6, power: 5, hp: 5, traits: ['Rebel'], keywords: { plot: true } }),
+  swu('swu-LOF-142', { cost: 2, power: 2, hp: 4, traits: ['Force', 'Jedi', 'Republic'] }),
+  swu('swu-SEC-198', { cost: 2, power: 2, hp: 4, traits: ['Republic', 'Official'] }),
+  swu('swu-JTL-147', { cost: 2, power: 2, hp: 3, arena: 'space', traits: ['Resistance', 'Vehicle', 'Fighter'] }),
+  swu('swu-ASH-203', { cost: 2, power: 1, hp: 3, arena: 'space', traits: ['Mandalorian', 'Vehicle', 'Fighter'] }),
+  swu('swu-IC27-115', { cost: 2, power: 2, hp: 4, traits: ['Resistance'] }),
+  swu('swu-ASH-040', { cost: 2, power: 3, hp: 3, traits: ['Resistance'] }),
+  swu('swu-SEC-164', { cost: 2, power: 3, hp: 3, unique: false, traits: ['Mandalorian'], aspects: ['Aggression'] }),
+  card('resistance', { cost: 1, power: 1, hp: 1, traits: ['Resistance'] }),
+  card('guard', { cost: 2, power: 1, hp: 5, text: '[Sentinel]' }),
+  card('enemyEvent', { type: 'event', cost: 0, arena: undefined }),
+  card('wingman', { cost: 3, power: 2, hp: 2, traits: ['Pilot'], piloting: 1, upgrade: { power: 1, hp: 1 } }),
+  card('credit', { name: 'Credit', type: 'token', token: true, power: undefined, hp: undefined, arena: undefined }),
+  // Lando7
+  swu('swu-LAW-018', { type: 'leader', cost: 6, traits: ['Underworld'], unit: { power: 4, hp: 7, arena: 'ground', keywords: {} } }),
+  swu('swu-IC27-043', { cost: 9, power: 8, hp: 9, arena: 'space', traits: ['Resistance', 'Vehicle', 'Capital Ship'] }),
+  swu('swu-IC27-035', { cost: 3, power: 3, hp: 4, traits: jedi }),
+  swu('swu-SEC-046', { cost: 4, power: 3, hp: 5, traits: ['Imperial'] }),
+  swu('swu-HMW-218', { type: 'event', cost: 5, arena: undefined, unique: false, traits: ['Learned', 'Tactic'] }),
+  // Kylo10
+  swu('swu-IC27-003', { type: 'leader', cost: 5, aspects: ['Command', 'Villainy'], traits: ['Force', 'First Order', 'Official'], unit: { power: 5, hp: 3, arena: 'ground', keywords: {} } }),
+  swu('swu-LAW-022', { type: 'base', hp: 27, aspects: ['Command'], traits: ['Aldhani'], unique: false }),
+  card('vigilant', { cost: 3, power: 3, hp: 3, aspects: ['Vigilance'] }),
+  swu('swu-IC27-063', { cost: 4, power: 4, hp: 4, arena: 'space', traits: ['First Order', 'Vehicle', 'Fighter'] }),
+  swu('swu-HMW-108', { cost: 4, power: 5, hp: 5, traits: ['Imperial', 'Trooper'] }),
+  card('rebelGiver', { cost: 3, power: 2, hp: 5, traits: ['Rebel'] }),
+  swu('swu-HMW-114', { type: 'event', cost: 2, arena: undefined, unique: false, traits: ['Tactic'] }),
+  card('trampler', { cost: 4, power: 6, hp: 6, text: '[Overwhelm]', keywords: { overwhelm: true } }),
+  swu('swu-LOF-091', { type: 'upgrade', cost: 5, power: 2, hp: 2, arena: undefined, unique: false, traits: ['Innate'] }),
+  // Kylo10 blue reforge
+  swu('swu-ASH-090', { type: 'event', cost: 2, arena: undefined, unique: false, traits: ['Supply'] }),
+  swu('swu-LOF-062', { cost: 3, power: 2, hp: 2, traits: ['Mandalorian', 'Trooper'] }),
+  swu('swu-LOF-070', { cost: 6, power: 5, hp: 7, traits: jedi }),
+  swu('swu-LOF-231', { cost: 4, power: 4, hp: 3, traits: ['Force', 'Separatist', 'Sith'], aspects: ['Villainy'], unique: true }),
+  card('wall24', { cost: 3, power: 2, hp: 4 }),
+  card('four', { cost: 4, power: 4, hp: 4 }),
+  card('three2', { cost: 2, power: 3, hp: 2 }),
+  swu('swu-SEC-110', { cost: 2, power: 1, hp: 3, unique: false, traits: ['Droid'], aspects: ['Command'] }),
+  swu('swu-LAW-086', { cost: 5, power: 1, hp: 7, traits: ['Force', 'Sith'], keywords: { ambush: true, grit: true } }),
+  swu('swu-ASH-053', { cost: 8, power: 6, hp: 6, traits: ['Mandalorian', 'Official'] }),
+  card('swu-TASH-T01', { name: 'Mandalorian', token: true, power: 2, hp: 2, traits: ['Mandalorian'] }),
+  swu('swu-JTL-181', { type: 'event', cost: 6, arena: undefined, aspects: ['Aggression'] }),
+  swu('swu-JTL-143', { cost: 8, power: 9, hp: 6, arena: 'space', unique: true, traits: ['Imperial', 'Vehicle', 'Capital Ship'], aspects: [] }),
+  swu('swu-SEC-209', { cost: 8, power: 6, hp: 8, unique: true, traits: ['Mandalorian', 'Bounty Hunter'], aspects: ['Cunning', 'Heroism'] }),
+  card('bond3', { type: 'upgrade', cost: 3, power: 2, hp: 2, arena: undefined }),
+  swu('swu-SEC-052', { type: 'upgrade', cost: 2, power: 2, hp: 2, arena: undefined, aspects: ['Vigilance', 'Heroism'] }),
+  card('villainy', { type: 'event', cost: 1, arena: undefined, aspects: ['Villainy'] }),
 ]
 
 const act = (state: GameState, p: PlayerId, action: Action) => applyAction(state, p, action)
@@ -924,4 +985,425 @@ test('Bold Resistance, AI: not played when no unit can still attack', () => {
   for (const u of state.players[0].units) u.exhausted = true
   const move = chooseAction(state, 0)!
   assert.notDeepEqual(move, { type: 'play', card: 'h0' })
+})
+
+test("I've Got A Bad Feeling, AI: an enemy unit back to hand, a Shield on a friendly unit", () => {
+  let state = table({ units0: ['cheap'], units1: ['big'], hand0: ['swu-IC27-166'] })
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  for (let i = 0; i < 4 && state.prompt; i++) state = act(state, state.prompt.player, chooseAction(state, state.prompt.player)!)
+  assert.equal(state.players[1].units.length, 0, 'the enemy unit returned')
+  assert.equal(tokensOn(state, 'u00', 'Shield'), 1)
+})
+
+test('Exploit Confidence: only a non-leader unit with 6 or more power returns', () => {
+  let state = table({ units0: ['cheap'], units1: ['big', 'huge'], hand0: ['swu-HMW-238'] })
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  if (state.prompt) state = act(state, 0, chooseAction(state, 0)!)
+  assert.deepEqual(state.players[1].units.map((u) => u.def), ['big'], 'the 7-power unit returned, the 5-power one stays')
+})
+
+test('Alphabet Squadron U-Wing: an Advantage token on a unit as the regroup phase starts', () => {
+  let state = table({ units0: ['swu-ASH-159', 'big'] })
+  state = act(state, 0, { type: 'pass' })
+  state = act(state, 1, { type: 'pass' })
+  for (let i = 0; i < 4 && state.prompt; i++) state = act(state, state.prompt.player, chooseAction(state, state.prompt.player)!)
+  const total = state.players[0].units.reduce((n, u) => n + tokensOn(state, u.id, 'Advantage'), 0)
+  assert.equal(total, 1)
+})
+
+test('Ezra Bridger (leader): 3 or more combat damage to a base, exhausted for an Advantage token on a different unit', () => {
+  let state = table({ leader0: 'swu-ASH-013', units0: ['cheap', 'big'] })
+  state = act(state, 0, { type: 'attack', attacker: 'u00', target: 'base' })
+  for (let i = 0; i < 4 && state.prompt; i++) state = act(state, 0, chooseAction(state, 0)!)
+  assert.equal(tokensOn(state, 'u01', 'Advantage'), 0, '2 damage: nothing')
+  state.active = 0
+  state = act(state, 0, { type: 'attack', attacker: 'u01', target: 'base' })
+  for (let i = 0; i < 4 && state.prompt; i++) state = act(state, 0, chooseAction(state, 0)!)
+  assert.equal(tokensOn(state, 'u00', 'Advantage'), 1, '5 damage: the token on the other unit')
+  assert.equal(state.players[0].leader.exhausted, true)
+})
+
+test('Cham Syndulla: fewer resources than the opponent, the top card of the deck resourced', () => {
+  let state = table({ hand0: ['swu-JTL-164', 'swu-JTL-164'] })
+  state.players[0].resources = state.players[0].resources.slice(0, 8)
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  if (state.prompt) state = yes(state)
+  assert.equal(state.players[0].resources.length, 9)
+  state.active = 0
+  state.players[0].resources.forEach((r) => (r.exhausted = false))
+  state = act(state, 0, { type: 'play', card: 'h1' })
+  assert.equal(state.players[0].resources.length, 9, 'not fewer any more')
+})
+
+test('Millennium Falcon (Get Out And Push): 2 Pilots, +1/+0 for each', () => {
+  let state = table({ units0: ['swu-JTL-249'], hand0: ['swu-JTL-203', 'wingman', 'wingman'] })
+  assert.equal(powerOf(state, unit(state, 'u00')!), 3)
+  state = act(state, 0, { type: 'play', card: 'h0', attachTo: 'u00', pilot: true })
+  while (state.prompt) state = answer(state, 'no')
+  state.active = 0
+  assert.ok(legalActions(state, 0).some((a) => a.type === 'play' && a.attachTo === 'u00'), 'room for a second Pilot')
+  state = act(state, 0, { type: 'play', card: 'h1', attachTo: 'u00', pilot: true })
+  while (state.prompt) state = answer(state, 'no')
+  state.active = 0
+  assert.equal(powerOf(state, unit(state, 'u00')!), 3 + 2 + 1 + 2, '+2 from Han, +1 from the other, +1 for each Pilot')
+  assert.ok(!legalActions(state, 0).some((a) => a.type === 'play' && a.card === 'h2' && a.attachTo === 'u00'), 'no third')
+})
+
+test('A Vehicle takes 1 Pilot only', () => {
+  const state = table({ units0: ['fighter'], hand0: ['swu-JTL-203', 'swu-JTL-203'] })
+  const next = act(state, 0, { type: 'play', card: 'h0', attachTo: 'u00', pilot: true })
+  let s2 = next
+  while (s2.prompt) s2 = answer(s2, 'no')
+  s2.active = 0
+  assert.ok(!legalActions(s2, 0).some((a) => a.type === 'play' && a.attachTo === 'u00'))
+})
+
+test('Migs Mayfeld: 1 damage to the defending unit as he attacks, 2 when upgraded', () => {
+  let state = table({ units0: ['swu-ASH-168'], units1: ['brute'] })
+  state = act(state, 0, { type: 'attack', attacker: 'u00', target: 'u10' })
+  assert.equal(unit(state, 'u10')!.damage, 1 + 2)
+  state = table({ units0: ['swu-ASH-168'], units1: ['brute'] })
+  state.players[0].units[0].upgrades.push({ id: 'x1', def: 'xp', owner: 0 } as never)
+  state = act(state, 0, { type: 'attack', attacker: 'u00', target: 'u10' })
+  assert.equal(unit(state, 'u10')!.damage, 2 + 3)
+})
+
+test("Knight's Saber: only on a Jedi unit that isn't a Vehicle", () => {
+  const state = table({ units0: ['forceUnit', 'cheap', 'jediFighter'], hand0: ['swu-LOF-151'] })
+  const onto = legalActions(state, 0).flatMap((a) => (a.type === 'play' && a.card === 'h0' && a.attachTo ? [a.attachTo] : []))
+  assert.ok(onto.includes('u00'), 'the Jedi')
+  assert.ok(!onto.includes('u01'), 'not a Jedi')
+  assert.ok(!onto.includes('u02'), 'a Jedi Vehicle')
+})
+
+test('Maarva Andor: defeated, an Experience token on each other friendly Rebel unit', () => {
+  let state = table({ units0: ['swu-SEC-252', 'rebel', 'cheap'], units1: ['huge'] })
+  state = act(state, 0, { type: 'attack', attacker: 'u00', target: 'u10' })
+  assert.equal(unit(state, 'u00'), undefined)
+  assert.equal(tokensOn(state, 'u01', 'Experience'), 1, 'the Rebel')
+  assert.equal(tokensOn(state, 'u02', 'Experience'), 0, 'not a Rebel')
+})
+
+test('Millennium Falcon (Dodging Patrols), AI: -2/-0 on the space unit it attacks, +2/+0 on a ready ground unit', () => {
+  let state = table({ units0: ['swu-LAW-068', 'cheap'], units1: ['ship'] })
+  state = act(state, 0, { type: 'attack', attacker: 'u00', target: 'u10' })
+  for (let i = 0; i < 4 && state.prompt; i++) state = act(state, 0, chooseAction(state, 0)!)
+  assert.equal(unit(state, 'u00')!.damage, 1, '3 power -2 back')
+  assert.equal(powerOf(state, unit(state, 'u01')!), 4)
+})
+
+test('Tech: dealt damage and survives, may exhaust a unit; the AI picks a ready enemy', () => {
+  let state = table({ units0: ['swu-HMW-211'], units1: ['cheap', 'big'] })
+  state = act(state, 0, { type: 'attack', attacker: 'u00', target: 'u10' })
+  for (let i = 0; i < 4 && state.prompt; i++) state = act(state, 0, chooseAction(state, 0)!)
+  assert.equal(unit(state, 'u00')!.damage, 2)
+  assert.equal(unit(state, 'u11')!.exhausted, true, 'the 5/5 exhausted')
+  // Defeated: nothing
+  state = table({ units0: ['swu-HMW-211'], units1: ['huge', 'big'] })
+  state = act(state, 0, { type: 'attack', attacker: 'u00', target: 'u10' })
+  assert.ok(!state.prompt)
+  assert.equal(unit(state, 'u11')!.exhausted, false)
+})
+
+test('Cinta Kaz: played, another unit may attack', () => {
+  let state = table({ units0: ['big'], hand0: ['swu-SEC-172'] })
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  for (let i = 0; i < 4 && state.prompt; i++) state = act(state, 0, chooseAction(state, 0)!)
+  assert.equal(state.players[1].base.damage, 5, 'the 5/5 attacked the base')
+  assert.equal(unit(state, 'u00')!.exhausted, true)
+})
+
+test('Adi Gallia: an opponent plays an event, 1 damage to their base; a unit, nothing', () => {
+  let state = table({ units0: ['swu-LOF-142'] })
+  state.active = 1
+  state.players[1].hand = [{ id: 'e1', def: 'enemyEvent' }, { id: 'e2', def: 'cheap' }]
+  state.players[1].resources.forEach((r) => (r.exhausted = false))
+  state = act(state, 1, { type: 'play', card: 'e1' })
+  assert.equal(state.players[1].base.damage, 1)
+  state.active = 1
+  state = act(state, 1, { type: 'play', card: 'e2' })
+  assert.equal(state.players[1].base.damage, 1)
+})
+
+test('Bail Organa, AI: with 3 cards in hand, the cheapest discarded for a Spy token', () => {
+  let state = table({ units0: ['swu-SEC-198'], hand0: ['big', 'cheap', 'huge'] })
+  state = act(state, 0, { type: 'attack', attacker: 'u00', target: 'base' })
+  for (let i = 0; i < 4 && state.prompt; i++) state = act(state, 0, chooseAction(state, 0)!)
+  assert.deepEqual(state.players[0].discard.map((c) => c.def), ['cheap'])
+  assert.ok(state.players[0].units.some((u) => state.defs[u.def].name === 'Spy'))
+})
+
+test('Black One: +1/+0 while upgraded; 1 damage on attack with Poe Dameron', () => {
+  let state = table({ units0: ['swu-JTL-147', 'swu-IC27-115'], units1: ['ship'] })
+  assert.equal(powerOf(state, unit(state, 'u00')!), 2)
+  state.players[0].units[0].upgrades.push({ id: 'x1', def: 'xp', owner: 0 } as never)
+  assert.equal(powerOf(state, unit(state, 'u00')!), 4, '+1 Experience, +1 upgraded')
+  state = act(state, 0, { type: 'attack', attacker: 'u00', target: 'base' })
+  for (let i = 0; i < 4 && state.prompt; i++) state = act(state, 0, chooseAction(state, 0)!)
+  assert.equal(unit(state, 'u10')!.damage, 1)
+})
+
+test("Mando's N-1 Starfighter: the leader exhausted for +2/+0", () => {
+  let state = table({ units0: ['swu-ASH-203'] })
+  state = act(state, 0, { type: 'attack', attacker: 'u00', target: 'base' })
+  for (let i = 0; i < 4 && state.prompt; i++) state = act(state, 0, chooseAction(state, 0)!)
+  assert.equal(state.players[1].base.damage, 3)
+  assert.equal(state.players[0].leader.exhausted, true)
+})
+
+test('Poe Dameron (Hero of the Resistance): +1/+0 for each other Resistance card played', () => {
+  let state = table({ units0: ['swu-IC27-115'], hand0: ['resistance', 'cheap'] })
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  state.active = 0
+  state = act(state, 0, { type: 'play', card: 'h1' })
+  assert.equal(powerOf(state, unit(state, 'u00')!), 3)
+})
+
+test("Poe Dameron (I'll Come Back For You): all units lose Sentinel", () => {
+  const state = table({ units0: ['swu-ASH-040'], units1: ['guard', 'cheap'] })
+  assert.equal(keywordsOf(state, unit(state, 'u10')!).sentinel, undefined)
+  const targets = legalActions(state, 0).flatMap((a) => (a.type === 'attack' && a.attacker === 'u00' ? [a.target] : []))
+  assert.ok(targets.includes('base') && targets.includes('u11'))
+})
+
+test('Warrior of Clan Ordo: 2 damage to your base unless you disclose Aggression', () => {
+  let state = table({ units0: ['swu-SEC-164'], hand0: ['aggressive'] })
+  state = act(state, 0, { type: 'attack', attacker: 'u00', target: 'base' })
+  for (let i = 0; i < 4 && state.prompt; i++) state = act(state, 0, chooseAction(state, 0)!)
+  assert.equal(state.players[0].base.damage, 0, 'disclosed')
+  state = table({ units0: ['swu-SEC-164'], hand0: ['cheap'] })
+  state = act(state, 0, { type: 'attack', attacker: 'u00', target: 'base' })
+  for (let i = 0; i < 4 && state.prompt; i++) state = act(state, 0, chooseAction(state, 0)!)
+  assert.equal(state.players[0].base.damage, 2, 'nothing to disclose')
+})
+
+test('Credit tokens: resources pay first, Credit tokens for the rest; or Credit tokens first when asked', () => {
+  let state = table({ hand0: ['big', 'big'] })
+  for (const r of state.players[0].resources.slice(3)) r.exhausted = true
+  state.players[0].credits = [
+    { id: 'c1', def: 'credit' },
+    { id: 'c2', def: 'credit' },
+  ]
+  // 3 resources and 2 Credit tokens: a 5-cost card can be played
+  assert.ok(legalActions(state, 0).some((a) => a.type === 'play' && a.card === 'h0'))
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  assert.equal(ready(state, 0), 0)
+  assert.equal(state.players[0].credits!.length, 0)
+  // Credit tokens first: they go, and the resources they save stay ready
+  state = table({ hand0: ['cheap'] })
+  state.players[0].credits = [{ id: 'c1', def: 'credit' }]
+  state = act(state, 0, { type: 'play', card: 'h0', creditsFirst: true })
+  assert.equal(state.players[0].credits!.length, 0)
+  assert.equal(ready(state, 0), 9)
+  // By default, resources first
+  state = table({ hand0: ['cheap'] })
+  state.players[0].credits = [{ id: 'c1', def: 'credit' }]
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  assert.equal(state.players[0].credits!.length, 1)
+  assert.equal(ready(state, 0), 8)
+})
+
+test('Lando Calrissian (Full Sabacc): deployed, a Credit token defeated for 3', () => {
+  let state = table({ leader0: 'swu-LAW-018' })
+  state.players[0].credits = [{ id: 'c1', def: 'credit' }]
+  state = act(state, 0, { type: 'deploy' })
+  if (state.prompt) state = yes(state)
+  assert.equal(state.players[0].credits!.length, 3)
+})
+
+test('Raddus: while exhausted, cards the opponent plays cost 3 more', () => {
+  const state = table({ units0: ['swu-IC27-043'] })
+  const big = state.defs.big
+  assert.equal(handPrice(state, 1, big), 5)
+  state.players[0].units[0].exhausted = true
+  assert.equal(handPrice(state, 1, big), 8)
+})
+
+test('Yoda (A Disturbing Puzzle): combat damage dealt to and by the chosen unit is prevented this phase', () => {
+  let state = table({ units0: ['swu-IC27-035'], units1: ['big'] })
+  state = act(state, 0, { type: 'attack', attacker: 'u00', target: 'u10' })
+  state = answer(state, 'u10')
+  assert.equal(unit(state, 'u10')!.damage, 0)
+  assert.equal(unit(state, 'u00')!.damage, 0)
+})
+
+test('Galen Erso: the named card the opponent owns loses all abilities', () => {
+  let state = table({ hand0: ['swu-SEC-046'], units1: ['guard'] })
+  assert.ok(keywordsOf(state, unit(state, 'u10')!).sentinel)
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  const named = state.prompt!.options.find((o) => o.label === 'guard')!
+  state = answer(state, named.id)
+  assert.ok(!keywordsOf(state, unit(state, 'u10')!).sentinel)
+})
+
+test('New Tactics: its owner puts the unit on top of their deck', () => {
+  let state = table({ hand0: ['swu-HMW-218'], units1: ['huge'] })
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  while (state.prompt) state = act(state, state.prompt.player, chooseAction(state, state.prompt.player)!)
+  assert.equal(state.players[1].units.length, 0)
+  assert.equal(state.players[1].deck[0].def, 'huge')
+})
+
+test('Aldhani Garrison: once a game, a card played ignoring 1 aspect penalty', () => {
+  let state = table({ base0: 'swu-LAW-022', hand0: ['vigilant', 'vigilant'] })
+  const epic = () => legalActions(state, 0).find((a) => a.type === 'ability' && a.source === 'base0')
+  assert.ok(epic())
+  state = act(state, 0, epic()!)
+  if (state.prompt) state = answer(state, 'h0')
+  assert.equal(ready(state, 0), 7, 'paid 3, not 5')
+  state.active = 0
+  assert.ok(!epic(), 'once a game')
+})
+
+test("Kylo Ren: discard Kylo's TIE Silencer for an Experience token, then play it from the discard pile", () => {
+  let state = table({ leader0: 'swu-IC27-003', units0: ['cheap'], hand0: ['swu-IC27-063', 'big'] })
+  state = act(state, 0, { type: 'ability', source: 'leader', index: 0 })
+  while (state.prompt) state = act(state, state.prompt.player, chooseAction(state, state.prompt.player)!)
+  assert.ok(state.players[0].discard.some((c) => c.id === 'h0'), 'the TIE Silencer discarded')
+  assert.equal(tokensOn(state, 'u00', 'Experience'), 1)
+  state.active = 0
+  assert.ok(legalActions(state, 0).some((a) => a.type === 'play' && a.card === 'h0'))
+})
+
+test('The First Legion: enemy cards lose the named trait for this phase', () => {
+  let state = table({ units0: ['swu-HMW-108'], units1: ['rebelGiver'] })
+  state = act(state, 0, { type: 'attack', attacker: 'u00', target: 'base' })
+  const rebel = state.prompt?.options.find((o) => o.label === 'Rebel')
+  if (rebel) state = answer(state, rebel.id)
+  while (state.prompt) state = act(state, state.prompt.player, chooseAction(state, state.prompt.player)!)
+  assert.ok(state.lostTraits?.some((l) => l.owner === 1 && l.trait === 'Rebel'))
+})
+
+test('Breach: an Overwhelm unit deals its excess damage to the enemy base', () => {
+  let state = table({ units0: ['trampler'], units1: ['cheap'], hand0: ['swu-HMW-114'] })
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  while (state.prompt) state = act(state, state.prompt.player, chooseAction(state, state.prompt.player)!)
+  assert.equal(state.players[1].units.length, 0)
+  assert.equal(state.players[1].base.damage, 4)
+})
+
+test("Craving Power: on a friendly unit, damage to an enemy unit equal to that unit's power", () => {
+  let state = table({ units0: ['big'], units1: ['huge'], hand0: ['swu-LOF-091'] })
+  state = act(state, 0, { type: 'play', card: 'h0', attachTo: 'u00' })
+  while (state.prompt) state = act(state, state.prompt.player, chooseAction(state, state.prompt.player)!)
+  assert.equal(state.players[1].units.length, 0, '5 + 2 damage defeats the 7/7')
+  assert.ok(state.log.some((l) => l.text === 'Craving Power deals 7 damage to huge'))
+})
+
+test('Reforge: an upgrade defeated, an upgrade from the top 8 played on that unit for 4 less', () => {
+  let state = table({ units0: ['big'], units1: ['huge'], hand0: ['swu-ASH-090'] })
+  state.players[0].deck = ['big', 'big', 'swu-LOF-091', 'big', 'big', 'big', 'big', 'big', 'big', 'big'].map((def, i) => ({ id: `d${i}`, def }))
+  state.players[0].units[0].upgrades.push({ id: 'xp0', def: 'xp', owner: 0 })
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  while (state.prompt) state = act(state, state.prompt.player, chooseAction(state, state.prompt.player)!)
+  const u = unit(state, 'u00')!
+  assert.equal(tokensOn(state, 'u00', 'Experience'), 0)
+  assert.ok(u.upgrades.some((x) => x.def === 'swu-LOF-091'), 'Craving Power on it')
+  assert.equal(ready(state, 0), 10 - 2 - 1, 'Reforge 2, Craving Power 5 - 4')
+  assert.equal(state.players[1].units.length, 0, "Craving Power's 7 damage")
+})
+
+test('Axe Woves gets +1/+1 for each upgrade on him', () => {
+  const state = table({ units0: ['swu-LOF-062'] })
+  const axe = unit(state, 'u00')!
+  axe.upgrades.push({ id: 'xp0', def: 'xp', owner: 0 }, { id: 'sh0', def: 'shield', owner: 0 })
+  assert.equal(powerOf(state, axe), 2 + 1 + 2)
+  assert.equal(hpOf(state, axe), 2 + 1 + 2)
+})
+
+test('Anakin Skywalker, Champion of Mortis: both -3/-3 on the unit they defeat together', () => {
+  let state = table({ units1: ['big', 'cheap'], hand0: ['swu-LOF-070'] })
+  state.players[0].discard = [{ id: 'dh', def: 'commandHeroism' }, { id: 'dv', def: 'villainy' }]
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  while (state.prompt) state = act(state, state.prompt.player, chooseAction(state, state.prompt.player)!)
+  assert.deepEqual(state.players[1].units.map((u) => u.def), ['cheap'], 'the 5/5 defeated, not the 2/2')
+})
+
+test('Diplomatic Immunity: disclose 2 Vigilance 2 Heroism as the unit is attacked, the attacker gets -2/-0', () => {
+  let state = table({ units0: ['big'], units1: ['big'], hand0: ['swu-SEC-052', 'swu-SEC-052'] })
+  state.players[0].units[0].upgrades.push({ id: 'di', def: 'swu-SEC-052', owner: 0 })
+  state.active = 1
+  state = act(state, 1, { type: 'attack', attacker: 'u10', target: 'u00' })
+  while (state.prompt) state = act(state, state.prompt.player, chooseAction(state, state.prompt.player)!)
+  assert.equal(unit(state, 'u00')!.damage, 5 - 2)
+})
+
+test('Darth Tyranus: Ambush with the Force, a 2/4 defeated, the Shield token given after the attack', () => {
+  let state = table({ units1: ['wall24'], hand0: ['swu-LOF-231'] })
+  state.force = [true, false]
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  while (state.prompt) state = act(state, state.prompt.player, chooseAction(state, state.prompt.player)!)
+  const t = state.players[0].units[0]
+  assert.equal(state.players[1].units.length, 0, 'the 2/4 defeated')
+  assert.equal(t.damage, 2)
+  assert.equal(tokensOn(state, t.id, 'Shield'), 1, 'the Shield token kept')
+})
+
+test('A deck built for a turn-1 unit keeps its turn 1, 2 and 3 plays out of the opening resources', () => {
+  const state = table()
+  const pl = state.players[0]
+  pl.resources = []
+  pl.deck = Array.from({ length: 20 }, (_, i) => ({ id: `dk${i}`, def: 'cheap' }))
+  pl.hand = ['cheap', 'forceUnit', 'four', 'bond3', 'big', 'big'].map((def, i) => ({ id: `o${i}`, def }))
+  const picks = resourcePicks(state, 0, 2)
+  assert.deepEqual([...picks].sort(), ['o3', 'o4', 'o5'].filter((id) => picks.includes(id)).sort())
+  for (const id of ['o0', 'o1', 'o2']) assert.ok(!picks.includes(id), `${id} kept`)
+})
+
+test('The Mandalorian, Cleaning Up Nevarro: defeats a unit attacking, captures another; rescued when he leaves play', () => {
+  let state = table({ units0: ['swu-SEC-209'], units1: ['cheap', 'big'] })
+  state = act(state, 0, { type: 'attack', attacker: 'u00', target: 'u10' })
+  while (state.prompt) state = act(state, state.prompt.player, chooseAction(state, state.prompt.player)!)
+  assert.deepEqual(state.players[1].units.map((u) => u.id), [], 'cheap defeated, big captured')
+  assert.deepEqual(unit(state, 'u00')!.captured?.map((c) => c.id), ['u11'])
+  const g = new Game(state)
+  g.defeat('u00')
+  assert.deepEqual(state.players[1].units.map((u) => [u.id, u.exhausted]), [['u11', true]], 'rescued, exhausted')
+})
+
+test('Indirect damage: the player hit divides it, Shield tokens ignored and kept', () => {
+  let state = table({ units1: ['cheap'], hand0: ['swu-JTL-181'] })
+  state.players[1].units[0].upgrades.push({ id: 'sh1', def: 'shield', owner: 1 })
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  state = act(state, 0, { type: 'answer', picks: ['0'] })
+  // Player 1 divides: 1 to the unit through its Shield token, 7 to the base
+  const answers: [string, string[]][] = [['u10', []], ['base1', ['6']]]
+  for (const [pick] of answers) {
+    assert.equal(state.prompt?.player, 1)
+    state = act(state, 1, { type: 'answer', picks: [pick] })
+    if (state.prompt?.text.startsWith('How much')) state = act(state, 1, { type: 'answer', picks: [pick === 'u10' ? '0' : '6'] })
+  }
+  assert.equal(state.players[1].base.damage, 7)
+  assert.equal(unit(state, 'u10')!.damage, 1)
+  assert.equal(tokensOn(state, 'u10', 'Shield'), 1, 'the Shield token is kept')
+})
+
+test('Devastator, Hunting the Rebellion: its player divides the 4 indirect damage, defeating units', () => {
+  let state = table({ units1: ['cheap', 'big'], hand0: ['swu-JTL-143'] })
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  while (state.prompt) state = act(state, state.prompt.player, chooseAction(state, state.prompt.player)!)
+  assert.deepEqual(state.players[1].units.map((u) => u.def), ['big'], 'the 2/2 defeated')
+  assert.equal(state.players[1].base.damage, 2)
+})
+
+test('The AI defeats an enemy GNK Power Droid still ready to attack, rather than hit the base', () => {
+  const state = table({ units0: ['three2'], units1: ['swu-SEC-110'] })
+  assert.deepEqual(chooseAction(state, 0), { type: 'attack', attacker: 'u00', target: 'u10' })
+})
+
+test('The Stranger, No Survivors: the defender deals its combat damage first, then Grit makes his hit defeat it', () => {
+  let state = table({ units0: ['swu-LAW-086'], units1: ['big'] })
+  state = act(state, 0, { type: 'attack', attacker: 'u00', target: 'u10' })
+  while (state.prompt) state = act(state, state.prompt.player, chooseAction(state, state.prompt.player)!)
+  assert.equal(unit(state, 'u10'), undefined, 'the 5/5 defeated by 1 + 5 power')
+  assert.equal(unit(state, 'u00')!.damage, 5)
+})
+
+test('Pre Vizsla, Strong-Willed Ruler: defeats units with 6 HP left in total, a Mandalorian token for each', () => {
+  let state = table({ units1: ['cheap', 'small', 'big'], hand0: ['swu-ASH-053'] })
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  while (state.prompt) state = act(state, state.prompt.player, chooseAction(state, state.prompt.player)!)
+  // Two units (2 + 4 HP left) and two tokens, over the 5/5 alone
+  assert.deepEqual(state.players[1].units.map((u) => u.def), ['big'])
+  assert.deepEqual(state.players[0].units.map((u) => state.defs[u.def].name), ['Pre Vizsla', 'Mandalorian', 'Mandalorian'])
 })

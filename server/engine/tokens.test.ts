@@ -304,6 +304,9 @@ test('Plot cards are played from the resources when the leader deploys', () => {
   state = act(state, 0, { type: 'deploy' })
   assert.deepEqual(state.prompt?.options.map((o) => o.id), ['pl'])
   state = answer(state, 'pl')
+  // Planned, then played (7.5.19b)
+  assert.deepEqual(state.prompt?.options.map((o) => o.id), ['pl'])
+  state = answer(state, 'pl')
   assert.ok(state.players[0].units.some((u) => u.id === 'pl'))
   assert.equal(state.players[0].resources[0].card.def, 'big')
 })
@@ -2182,4 +2185,14 @@ test('Turned Asset: the AI gives up its Spy token for the enemy unit', () => {
   state = settle(act(state, 0, { type: 'play', card: 'h0' }))
   assert.ok(state.players[0].units.some((u) => u.def === 'soldier'))
   assert.ok(state.players[0].units.some((u) => u.def === 'turnedAsset'), 'not itself')
+})
+
+test('Plot: a Plot card that replaces one played cannot be played in the same deploy (7.5.19d)', () => {
+  let state = table({ deck0: ['plotter', 'big'] })
+  state.players[0].resources[0].card = { id: 'pl', def: 'plotter' }
+  state = act(state, 0, { type: 'deploy' })
+  state = answer(state, 'pl')
+  state = answer(state, 'pl')
+  assert.equal(state.players[0].resources[0].card.def, 'plotter', 'the replacement has Plot')
+  assert.ok(!state.prompt?.options.some((o) => o.id === state.players[0].resources[0].card.id))
 })

@@ -265,6 +265,8 @@
 }
 .sim-picker-label {
   display: grid;
+  /* A long deck name is cut short (…), not widening the panel past its edge */
+  grid-template-columns: minmax(0, 1fr);
   gap: 0.35rem;
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -305,6 +307,7 @@
 /* The deck menu: a saved deck's aspects after its name */
 .sim-deck-menu {
   position: relative;
+  min-width: 0;
 }
 .sim-deck-menu > button,
 .sim-deck-options button {
@@ -758,6 +761,48 @@
   font-size: 1.4rem;
   font-weight: 700;
   color: var(--spice);
+}
+/* Credit tokens (SWU): a gold coin with a $, the count beside it; yours toggles how they pay */
+.sim-credits {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex: none;
+  padding: 0.15rem 0.4rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: none;
+  color: #f3c64f;
+  font: inherit;
+  cursor: pointer;
+}
+.sim-credits:disabled {
+  cursor: default;
+}
+.sim-credits.first {
+  border-color: #f3c64f;
+  box-shadow: 0 0 0.6rem rgba(243, 198, 79, 0.6);
+}
+.sim-credit-coin {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #ffe9a0, #e0a923 55%, #9a6b0c);
+  border: 2px solid #7a520a;
+  color: #5a3a04;
+  font-weight: 800;
+  font-size: 1.15rem;
+  box-shadow: inset 0 0 0 2px rgba(255, 240, 190, 0.5);
+}
+.sim-credits b {
+  font-size: 1.4rem;
+}
+.sim-credits small {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  opacity: 0.8;
 }
 
 .sim-hand {
@@ -2099,6 +2144,10 @@
   font: inherit;
   font-weight: 700;
 }
+.sim-type-in {
+  min-width: 14rem;
+  max-width: 100%;
+}
 
 /* Phones and small screens: the board takes the whole width, the chat and the log open over it */
 .sim-panel-toggles,
@@ -2230,4 +2279,11 @@
   to {
     background-position: -150% 0;
   }
+}
+
+/* An upgrade's cost onto a unit it may go on, when that differs by unit (Mastery) */
+.sim-price.onto {
+  top: 0.4vh;
+  left: 0.4vh;
+  z-index: 3;
 }

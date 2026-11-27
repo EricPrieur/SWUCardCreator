@@ -21,6 +21,11 @@ const top = Number(process.env.TOP ?? 10)
 const defs = loadDefs()
 if (process.env.VARIANT) (await import(pathToFileURL(process.env.VARIANT).href)).default(defs, scripts)
 const nameOf = (id: string) => defs.find((d) => d.id === id)?.name ?? id
+const labelOf = (id: string, deck: string[]) => {
+  const shared = new Set(deck.filter((other) => nameOf(other) === nameOf(id))).size > 1
+  const subtitle = defs.find((d) => d.id === id)?.subtitle
+  return shared && subtitle ? `${nameOf(id)}, ${subtitle}` : nameOf(id)
+}
 // ALT_VARIANT: the cards as some games were played, when a card changed during the run; a game
 // that won't replay with the cards as they are now is replayed with those. One that replays with
 // neither is left out (and counted).
@@ -54,10 +59,12 @@ for (const file of files) {
       const won = state.winner === p
       deck.games++
       if (won) deck.wins++
-      const mine = state.log.filter((l) => l.player === p).map((l) => l.text)
-      for (const name of new Set(list.deck.map(nameOf))) {
+      const mine = state.log.filter((l) => l.player === p)
+      for (const id of new Set(list.deck)) {
+        // Two cards that share a name (Han Solo) are told apart by subtitle
+        const name = labelOf(id, list.deck)
         // Upgrades and Fortifications are logged as attached, not played
-        const plays = mine.filter((text) => text.includes(` plays ${name}`) || text.includes(` attaches ${name} to `)).length
+        const plays = mine.filter((l) => (l.card ? l.card === id : l.text.includes(` plays ${nameOf(id)}`) || l.text.includes(` attaches ${nameOf(id)} to `))).length
         const count = (deck.cards[name] ??= { plays: 0, games: 0, wins: 0 })
         count.plays += plays
         if (plays) {

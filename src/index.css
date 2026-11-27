@@ -8,6 +8,11 @@
   font-family: 'Segoe UI', system-ui, sans-serif;
   color: var(--sand);
   color-scheme: dark;
+  /* No text autosizing on phones: Safari on iOS enlarged one paragraph of a card's text and not
+     the next, after the card had fitted it to its box ("On Attack:" printed small under a large
+     "When Deployed:", a user's report, 2026-11-27) */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 * {

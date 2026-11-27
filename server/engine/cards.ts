@@ -80,7 +80,7 @@ const smuggleLine = /^\[Smuggle\]?\s*\[\[(\d+)[^\]]*\]\]\]?$/i
 const arrakisLine = /^While you control an \[\{?Arrakis\}?\] base, this unit gains (.+)\.$/i
 const spiceCostLine = /^As an additional cost to play this unit, defeat (a|\d+) friendly Spice tokens?\.$/i
 const startSpiceLine = /^You start the game with (a|\d+) \[?Spice Tokens?\]?\.$/i
-const attachLine = /^Attach to an? ((?:(?:friendly|enemy|non-leader|\[\{?Unique\}?\]|non-\[\{?[^}\]]+\}?\]),? )*)unit(?: with (\d+) or less power)?\.$/i
+const attachLine = /^Attach to an? ((?:(?:friendly|enemy|non-leader|\[\{?[^}\]]+\}?\]|non-\[\{?[^}\]]+\}?\]),? )*)unit(?: with (\d+) or less power)?\.$/i
 const attachedGainsLine = /^Attached unit gains ((?:\[[^\]]+\](?:,? and |, )?)+)\.$/i
 // A pilot's Piloting box: "[Piloting] [[2 Command Villainy]]", its cost and aspects;
 // "Attached unit is a leader unit."
@@ -117,10 +117,13 @@ export function readText(text = '') {
     else if ((match = line.match(attachLine))) {
       const words = match[1]
       const not = [...words.matchAll(/non-\[\{?([^}\]]+)\}?\]/gi)].map((m) => m[1])
+      // "Attach to a [{Jedi}] non-[{Vehicle}] unit." (Knight's Saber): the traits it must have
+      const only = [...words.matchAll(/(?<!non-)\[\{([^}\]]+)\}\]/gi)].map((m) => m[1]).filter((t) => !/^unique$/i.test(t))
       read.attach = {
         ...(/friendly/i.test(words) && { friendly: true }),
         ...(/enemy/i.test(words) && { enemy: true }),
         ...(not.length && { not }),
+        ...(only.length && { only }),
         ...(/non-leader/i.test(words) && { nonLeader: true }),
         ...(/\[\{?Unique\}?\]/i.test(words) && { unique: true }),
         ...(match[2] && { maxPower: Number(match[2]) }),
@@ -197,6 +200,8 @@ export function cardDef(card: SavedCard): CardDef | undefined {
     if (attached) def.attachedKeywords = attached
     if (card.pilotText.split('\n').some((line) => makesLeaderLine.test(unboxed(line)))) def.makesLeader = true
   }
+  // An upgrade's "Attached unit is a leader unit and gains …" (The Darksaber)
+  if (front.type === 'upgrade' && (card.text ?? '').split('\n').some((line: string) => /^Attached unit is a leader unit\b/i.test(unboxed(line)))) def.makesLeader = true
   if (front.type === 'leader') {
     const back = readText(card.backText)
     def.unit = {
@@ -241,6 +246,8 @@ export const builtInTokens: CardDef[] = [
   },
   // DUNE's Spy token is a Spy (SWU's is an Official)
   { name: 'Spy', type: 'unit', power: 0, hp: 2, arena: 'ground', traits: ['Spy'], text: '[Raid 2]', keywords: { raid: 2 } },
+  // SWU's TIE Fighter token (They Hate That Ship)
+  { name: 'TIE Fighter', type: 'unit', power: 1, hp: 1, arena: 'space', traits: ['Imperial', 'Vehicle', 'Fighter'], text: '' },
 ].map((token) => ({
   id: `token-${token.name.toLowerCase()}`,
   cost: 0,

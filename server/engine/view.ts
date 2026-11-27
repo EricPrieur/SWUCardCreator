@@ -1,4 +1,4 @@
-import { abilityLabel, handPrice, handRevealed, hpOf, isHidden, keywordsOf, legalActions, powerOf, seesTopCard, waitingFor } from './game.ts'
+import { abilityLabel, handPrice, attachPrices, handRevealed, hpOf, isHidden, keywordsOf, legalActions, powerOf, seesTopCard, waitingFor } from './game.ts'
 import { scriptStatus } from './scripts.ts'
 import type { Action, CardDef, GameState, Inst, Keywords, LogEntry, Phase, PlayerId, Printing, Prompt, UnitState, Revealed } from './types.ts'
 
@@ -23,12 +23,16 @@ export type SideView = {
   // hidden: Hidden keeps it from being attacked now, the phase it entered play
   units: (UnitState & { power: number; hp: number; keywords: Keywords; hidden: boolean })[]
   spice: Inst[]
+  // Their Credit tokens (SWU), in their resource zone
+  credits: number
   // Their Force token (SWU): the Force is with them
   force?: boolean
   // The cards they revealed last (from their deck, say), and the card that revealed them
   revealed: Revealed | null
   // Yours: what each card in your hand costs you to play now
   prices?: Record<string, number>
+  // Yours: an upgrade's cost onto each unit it can go on, when that differs between them
+  attachPrices?: Record<string, Record<string, number>>
 }
 
 export type PlayerView = {
@@ -74,9 +78,17 @@ export function viewFor(state: GameState, you: PlayerId, watching = false): Play
       resources: player.resources.map((r) => ({ card: mine ? { ...r.card } : null, exhausted: r.exhausted })),
       units: player.units.map((u) => ({ ...structuredClone(u), power: powerOf(state, u), hp: hpOf(state, u), keywords: keywordsOf(state, u), hidden: isHidden(state, u) })),
       spice: player.spice.map((t) => ({ ...t })),
+      credits: player.credits?.length ?? 0,
       ...(state.force?.[p as PlayerId] && { force: true }),
       revealed: state.revealed?.[p as PlayerId] ?? null,
       ...(mine && { prices: Object.fromEntries(player.hand.map((c) => [c.id, handPrice(state, p as PlayerId, state.defs[c.def])])) }),
+      ...(mine && {
+        attachPrices: Object.fromEntries(
+          player.hand
+            .map((c) => [c.id, attachPrices(state, p as PlayerId, state.defs[c.def])] as const)
+            .filter(([, prices]) => new Set(Object.values(prices)).size > 1),
+        ),
+      }),
     }
   }) as [SideView, SideView]
 

@@ -78,6 +78,21 @@ function migsAttack(g: Game, self: Self) {
   g.damage(target, g.unit(self.id)?.upgrades.length ? 2 : 1, self)
 }
 
+// Mando's N-1 Starfighter's On Attack: its own, or the one a unit it supports gains. The AI
+// exhausts the leader while it isn't deployed (deploying doesn't need it ready), not a leader unit
+function n1Attack(g: Game, self: Self) {
+  const p = self.controller
+  const leaderUnit = friendly(g, self, (u) => !!u.leader && !u.exhausted && u.id !== self.id)[0]
+  if (g.leaderReady(p)) {
+    if (!g.may(p, "Mando's N-1 Starfighter: exhaust your leader for +2/+0 for this attack?", { yes: 'Exhaust', no: 'Skip', ai: true, source: 'swu-ASH-203' })) return
+    g.exhaustLeader(p)
+  } else if (leaderUnit) {
+    if (!g.may(p, `Mando's N-1 Starfighter: exhaust ${g.name(leaderUnit)} for +2/+0 for this attack?`, { yes: 'Exhaust', no: 'Skip', ai: false, source: 'swu-ASH-203' })) return
+    g.exhaust(leaderUnit)
+  } else return
+  g.buff(self.id, 2, 0, 'attack')
+}
+
 // Greef Karga's: "When you play or create a unit:" an Advantage token to it, the leader side
 // exhausting for it (the AI always does), the unit side for free
 function greefLeader(g: Game, self: Self) {
@@ -169,20 +184,144 @@ function readyThreat(g: Game, id: string) {
   return g.power(unit) + (keywords.raid ?? 0) + RESTORE_THREAT * (keywords.restore ?? 0)
 }
 
-// Luke Skywalker's +2 on the base: always worth a card once the opponent's base has this little left
-const LUKE_FINISH = 12
+// Ezra Bridger: an Advantage token on a different unit, after an attack that dealt 3 or more
+// combat damage to a base. The AI: its strongest ready unit, which attacks next; else its strongest
+function ezraAdvantage(g: Game, self: Self, leader: boolean) {
+  const p = self.controller
+  const ids = all(g, (u) => u.id !== self.other)
+  if (!ids.length) return
+  const byPower = (list: string[]) => [...list].sort((a, b) => g.power(g.unit(b)!) - g.power(g.unit(a)!))
+  const mine = friendly(g, self, (u) => u.id !== self.other)
+  const best = byPower(friendly(g, self, (u) => u.id !== self.other && !u.exhausted))[0] ?? byPower(mine)[0]
+  if (leader) {
+    if (!g.leaderReady(p)) return
+    if (!g.may(p, 'Ezra Bridger: exhaust this leader to give an Advantage token to a different unit?', { yes: 'Exhaust', no: 'Skip', ai: !!best, source: self.def.id })) return
+    g.exhaustLeader(p)
+  }
+  const pick = g.chooseOne(p, 'Ezra Bridger: give an Advantage token to a different unit', ids, { optional: !leader, ai: best ?? null, source: self.def.id })
+  if (pick) g.giveToken(pick, 'Advantage')
+}
+const ezraIf = (_g: Game, self: Self) => (self.baseDamage ?? 0) >= 3
 
 // "Deal N damage to a unit": the enemy unit the AI hits. One the damage defeats, the dearest;
 // else the one that would do the most. None when there's no enemy unit among them (it may pass).
+// Damage that defeats nothing pops the Shield token on the strongest shielded enemy unit, unless
+// an unshielded one threatens clearly more (the user, 2026-11-25: a legit use of a ping)
+const SHIELD_POP_EDGE = 2
 function bestHit(g: Game, self: Self, ids: string[], amount: number) {
   const foes = ids.map((id) => g.unit(id)!).filter((u) => u && g.controller(u) !== self.controller)
-  const lethal = foes.filter((u) => g.hp(u) - u.damage <= amount && !g.tokens(u.id, 'Shield')).sort((a, b) => g.cost(b) - g.cost(a))
+  const shielded = (u: UnitState) => g.tokens(u.id, 'Shield') > 0
+  const lethal = foes.filter((u) => g.hp(u) - u.damage <= amount && !shielded(u)).sort((a, b) => g.cost(b) - g.cost(a))
   if (lethal.length) return lethal[0].id
-  return foes.sort((a, b) => readyThreat(g, b.id) - readyThreat(g, a.id))[0]?.id ?? null
+  const byThreat = (list: UnitState[]) => [...list].sort((a, b) => readyThreat(g, b.id) - readyThreat(g, a.id))[0]
+  const pop = byThreat(foes.filter(shielded))
+  const chip = byThreat(foes.filter((u) => !shielded(u)))
+  if (pop && (!chip || readyThreat(g, chip.id) < readyThreat(g, pop.id) + SHIELD_POP_EDGE)) return pop.id
+  return chip?.id ?? null
+}
+
+// Kylo Ren's cost, a card discarded: Kylo's TIE Silencer when it can then be played from the
+// discard pile this phase, else the card the AI needs least
+function kyloDiscard(g: Game, p: PlayerId, source: string) {
+  const hand = g.player(p).hand
+  const tie = hand.find((c) => g.def(c).name === "Kylo's TIE Silencer" && g.price(p, c.id) <= g.readyResources(p))
+  // A Heroism card for Anakin Skywalker, Champion of Mortis, while one is still to come and the
+  // discard pile has none: both his -3/-3 then (the user, 2026-11-25)
+  const pl = g.player(p)
+  const anakin = [...pl.hand, ...pl.deck, ...pl.resources.map((r) => r.card)].some((c) => g.def(c).name === 'Anakin Skywalker' && /Champion of Mortis/.test(g.def(c).subtitle ?? ''))
+  const heroism = (c: { def: string }) => g.def(c).aspects.includes('Heroism')
+  const forAnakin = anakin && !pl.discard.some(heroism) ? hand.filter((c) => heroism(c) && g.def(c).name !== 'Anakin Skywalker').sort((a, b) => g.def(a).cost - g.def(b).cost)[0] : undefined
+  const wanted = tie ?? forAnakin
+  const pick = g.chooseOne(p, 'Kylo Ren: discard a card from your hand', hand.map((c) => c.id), { ai: wanted?.id ?? 'discard', firm: !!wanted, source })
+  if (pick) g.discard(p, pick)
+}
+
+// Aldhani Garrison: the cards in hand with an aspect penalty that it lets be played
+function garrisonCards(g: Game, p: PlayerId) {
+  return g.player(p).hand.filter((c) => g.penalty(p, c.id) > 0 && g.canPlay(p, c.id, { discount: 2 })).map((c) => c.id)
+}
+// The splash it was built for: Latts Razzi first, Nothing Left to Fear next (the user, 2026-11-25)
+const garrisonWorth = (g: Game, id: string) => {
+  const d = g.def(g.card(id)!)
+  return (d.name === 'Latts Razzi' ? 100 : 0) + (d.name === 'Nothing Left to Fear' ? 50 : 0) + d.cost
+}
+
+// Oppo Rancisis looks at the other friendly units' keywords, not at its own
+let oppoLooking = false
+
+// Vaneé: an Experience token moved, the AI from the weakest unit with one to the strongest unit
+// that can attack (the attacking Vaneé herself On Attack)
+function vanee(g: Game, self: Self) {
+  const p = self.controller
+  const holders = friendly(g, self, (u) => g.tokens(u.id, 'Experience') > 0)
+  if (!holders.length) return
+  const worth = (id: string) => readyThreat(g, id) + (g.attack?.attacker === id ? 5 : 0) + (g.canAttack(id) ? 2 : 0)
+  const from = [...holders].sort((a, b) => worth(a) - worth(b))[0]
+  const to = [...friendly(g, self)].sort((a, b) => worth(b) - worth(a))[0]
+  const move = to !== from && worth(to) > worth(from) + 2
+  const pick = g.chooseOne(p, 'Vaneé: you may defeat an Experience token on a friendly unit', holders, { optional: true, ai: move ? from : undefined, source: self.def.id })
+  if (!pick) return
+  const token = g.unit(pick)!.upgrades.find((x) => g.def(x).token && g.def(x).name === 'Experience')
+  if (!token) return
+  g.defeatUpgrade(token.id)
+  const target = g.chooseOne(p, 'Vaneé: give an Experience token to a friendly unit', friendly(g, self), { ai: to, source: self.def.id })
+  if (target) g.giveToken(target, 'Experience')
+}
+
+// "Give a unit -N/-N for this phase": the AI's enemy unit, the dearest it defeats (its HP left, no
+// Shield token matters), else none
+function shrinkTarget(g: Game, self: Self, amount: number) {
+  const lethal = enemy(g, self, (u) => g.hp(u) - u.damage <= amount).map((id) => g.unit(id)!)
+  return lethal.sort((a, b) => g.cost(b) - g.cost(a))[0]?.id
+}
+// Anakin Skywalker's -3/-3s, planned together (the user, 2026-11-25): two units each defeated, or
+// one unit with 6 HP or less left defeated by both, the best of these; else the -3s on the enemy
+// unit that threatens most, so it can't trade back or hit as hard. Space units too.
+function anakinPlan(g: Game, self: Self, count: number): (string | undefined)[] {
+  if (!count) return []
+  const foes = enemy(g, self).map((id) => g.unit(id)!)
+  const left = (u: UnitState) => g.hp(u) - u.damage
+  const worth = (u: UnitState) => g.cost(u) + (u.exhausted ? 0 : 0.5 * g.power(u)) + (g.isLeader(u) ? 3 : 0)
+  const singles = foes.filter((u) => left(u) <= 3).sort((a, b) => worth(b) - worth(a))
+  const top = mostThreat(g, foes.map((u) => u.id))
+  if (count === 1) return [singles[0]?.id ?? top]
+  const doubles = foes.filter((u) => left(u) > 3 && left(u) <= 6).sort((a, b) => worth(b) - worth(a))
+  const two = singles.length >= 2 ? worth(singles[0]) + worth(singles[1]) : -1
+  const both = doubles.length ? worth(doubles[0]) : -1
+  const one = singles.length ? worth(singles[0]) : -1
+  if (both > two && both > one) return [doubles[0].id, doubles[0].id]
+  if (two >= 0) return [singles[0].id, singles[1].id]
+  if (one >= 0) return [singles[0].id, mostThreat(g, foes.filter((u) => u !== singles[0]).map((u) => u.id)) ?? undefined]
+  return [top, top]
+}
+function shrinkOn(g: Game, self: Self, amount: number, text: string, target: string | undefined) {
+  const pick = g.chooseOne(self.controller, text, all(g), { optional: true, ai: target, firm: !!target, source: self.def.id })
+  if (!pick) return
+  g.log(`${g.name(pick)} gets -${amount}/-${amount} for this phase`, self.controller)
+  g.buff(pick, -amount, -amount, 'phase')
+}
+function shrink(g: Game, self: Self, amount: number, text: string, optional = true) {
+  const target = shrinkTarget(g, self, amount) ?? (optional ? undefined : mostThreat(g, enemy(g, self)))
+  const pick = g.chooseOne(self.controller, text, all(g), { optional, ai: target, source: self.def.id })
+  if (!pick) return
+  g.log(`${g.name(pick)} gets -${amount}/-${amount} for this phase`, self.controller)
+  g.buff(pick, -amount, -amount, 'phase')
+}
+
+// Captain Phasma: +2/+2 for this phase on another First Order unit, the AI's the one about to
+// attack (Kylo Ren first), else the strongest
+function phasma(g: Game, self: Self) {
+  const ids = friendly(g, self, (u) => u.id !== self.id && g.hasTrait(u, 'First Order'))
+  if (!ids.length) return
+  const worth = (id: string) => (g.canAttack(id) ? 20 : 0) + (g.isLeader(g.unit(id)!) ? 10 : 0) + g.power(g.unit(id)!)
+  const best = [...ids].sort((a, b) => worth(b) - worth(a))[0]
+  const pick = g.chooseOne(self.controller, 'Captain Phasma: you may give another First Order unit +2/+2 for this phase', ids, { optional: true, ai: best, firm: true, source: self.def.id })
+  if (pick) g.buff(pick, 2, 2, 'phase')
 }
 
 // "Look at an opponent's hand. You may discard a card from it. If you do, they draw a card."
 // The AI takes the card whose play would help them most (its 'strip')
+const MON_CAL_STRIP = 6
 function stripHand(g: Game, self: Self, name: string) {
   const p = self.controller
   const foe = p === 0 ? 1 : 0
@@ -197,6 +336,212 @@ function stripHand(g: Game, self: Self, name: string) {
   if (!discard) return
   g.discard(foe, discard)
   g.draw(foe, 1)
+}
+
+// --- Mace-bleu and Lando7's helpers ---
+
+// Trask Walker: a unit in your discard pile costing 7 or less, to the bottom of your deck (heal 3
+// from your base) or back to your hand. The AI takes the dearest back to its hand, or heals with
+// its base at half its HP or worse.
+function traskWalker(g: Game, self: Self) {
+  const p = self.controller
+  const ids = g.player(p).discard.filter((c) => g.def(c).type === 'unit' && g.def(c).cost <= 7).map((c) => c.id)
+  if (!ids.length) return
+  const costOf = (id: string) => g.def(g.player(p).discard.find((c) => c.id === id)!).cost
+  const dearest = [...ids].sort((a, b) => costOf(b) - costOf(a))[0]
+  const pick = g.chooseOne(p, 'Trask Walker: choose a unit in your discard pile that costs 7 or less', ids, { ai: dearest, source: self.def.id })
+  if (!pick) return
+  const base = g.player(p).base
+  const low = base.damage * 2 >= g.def(base).hp
+  const how = g.option(p, `Trask Walker: ${g.name(pick)}`, ['Return it to your hand', 'Put it on the bottom of your deck and heal 3 damage from your base'], {
+    ai: low ? 1 : 0,
+    source: self.def.id,
+  })
+  if (how === 0) g.fromDiscard(p, pick)
+  else {
+    g.discardToBottom(p, pick)
+    g.heal(baseOf(p), 3, self)
+  }
+}
+
+// Obi-Wan Kenobi (I Sense a Trap). The AI: an enemy unit -5/-5 that defeats it, else the dearest
+// unit back, else an enemy unit weakened
+function senseATrap(g: Game, self: Self) {
+  const p = self.controller
+  const discard = g.player(p).discard
+  const fallen = discard.filter((c) => g.def(c).type === 'unit' && g.defeatedThisPhase(c.id) && g.canPlay(p, c.id, { discount: 5 })).map((c) => c.id)
+  const fresh = all(g, (u) => u.id !== self.id && g.enteredThisPhase(u))
+  const enemies = fresh.filter((id) => g.controller(g.unit(id)!) !== p)
+  const kills = enemies.filter((id) => g.hp(g.unit(id)!) - g.unit(id)!.damage <= 5)
+  const costOf = (id: string) => g.def(discard.find((c) => c.id === id)!).cost
+  const dearest = [...fallen].sort((a, b) => costOf(b) - costOf(a))[0]
+  const ai = kills.length ? 2 : dearest ? 1 : enemies.length ? 2 : 0
+  const pick = g.option(
+    p,
+    'Obi-Wan Kenobi: you may choose one',
+    ['Nothing', 'Play a unit defeated this phase from your discard pile, for 5 less', 'A unit that entered play this phase gets -5/-5 for this phase'],
+    { ai, source: self.def.id },
+  )
+  if (pick === 1 && fallen.length) {
+    const card = g.chooseOne(p, 'Obi-Wan Kenobi: play a unit defeated this phase, for 5 less', fallen, { ai: dearest, source: self.def.id })
+    if (card) g.playCard(p, card, { discount: 5 })
+  } else if (pick === 2 && fresh.length) {
+    const target = g.chooseOne(p, 'Obi-Wan Kenobi: a unit that entered play this phase gets -5/-5', fresh, {
+      ai: kills[0] ?? mostThreat(g, enemies) ?? 'harm',
+      source: self.def.id,
+    })
+    if (target) g.buff(target, -5, -5, 'phase')
+  }
+}
+
+// "Its owner puts it on the top or bottom of their deck": the AI owner keeps its card on top
+function ownerToDeck(g: Game, self: Self, unitId: string) {
+  const unit = g.unit(unitId)
+  if (!unit) return
+  const where = g.option(unit.owner, `${self.def.name}: put ${g.name(unitId)} on the top or the bottom of your deck?`, ['Top', 'Bottom'], {
+    ai: 0,
+    source: self.def.id,
+  })
+  g.toDeck(unitId, where === 0 ? 'top' : 'bottom')
+}
+
+// "Look at the top card of your deck. You may put it on the bottom of your deck." The AI keeps a
+// card it can play by next round
+function topToBottom(g: Game, self: Self) {
+  const p = self.controller
+  const top = g.top(p, 1)[0]
+  if (!top) return
+  const keep = g.def(top).cost <= g.player(p).resources.length + 1
+  if (
+    g.may(p, `${self.def.name}: the top card of your deck is ${g.def(top).name}. Put it on the bottom of your deck?`, {
+      yes: 'Bottom',
+      no: 'Keep it',
+      ai: !keep,
+      source: self.def.id,
+    })
+  )
+    g.toBottom(p, top.id)
+}
+
+const ASPECT_NAMES: Aspect[] = ['Vigilance', 'Command', 'Aggression', 'Cunning', 'Heroism', 'Villainy']
+// Lando Calrissian: choose an aspect, discard the top card of a deck, a Credit token if it has
+// that aspect. The AI calls the aspect its own deck is built around, on its own deck: the share
+// of its whole list with that aspect, a deck built on one call with a few exceptions (Lando7
+// Bleu Heroïsme: Heroism) (the user, 2026-11-24)
+function landoCall(g: Game, p: PlayerId) {
+  const pl = g.player(p)
+  const cards = [...pl.deck, ...pl.hand, ...pl.discard, ...pl.resources.map((r) => r.card), ...g.units((u) => u.owner === p && !u.leader && !g.def(u).token)]
+  const counts = ASPECT_NAMES.map((a) => cards.filter((c) => g.def(c).aspects.includes(a)).length)
+  return counts.indexOf(Math.max(...counts))
+}
+function landoSabacc(g: Game, self: Self) {
+  const p = self.controller
+  const aspect = g.option(p, 'Lando Calrissian: choose an aspect', ASPECT_NAMES, { ai: landoCall(g, p), source: self.def.id })
+  const deck = g.option(p, 'Lando Calrissian: discard the top card of which deck?', ['Your deck', "Your opponent's deck"], { ai: 0, source: self.def.id })
+  const q = deck === 0 ? p : g.other(p)
+  const top = g.top(q, 1)[0]
+  if (!top) return
+  g.mill(q, top.id)
+  if (g.def(top).aspects.includes(ASPECT_NAMES[aspect])) g.createCredit(p)
+}
+
+// Kanan Jarrus. The AI: the enemy unit it costs them most to lose (a token is gone for good)
+function kanan(g: Game, self: Self) {
+  const most = friendly(g, self, (u) => g.def(u).aspects.some((a) => a === 'Command' || a === 'Aggression')).length ? 4 : 2
+  const fits = (u: UnitState) => !g.isLeader(u) && g.cost(u) <= most
+  const worth = (id: string) => (g.def(g.unit(id)!).token ? 3 : g.cost(g.unit(id)!)) + threat(g, id)
+  const best = [...enemy(g, self, fits)].sort((a, b) => worth(b) - worth(a))[0]
+  const pick = g.chooseOne(self.controller, `Kanan Jarrus: you may return a non-leader unit that costs ${most} or less to its owner's hand`, all(g, fits), {
+    optional: true,
+    ai: best ?? 'none',
+    source: self.def.id,
+  })
+  if (pick) g.returnToHand(pick)
+}
+
+// Yoda (A Disturbing Puzzle). The AI: the strongest enemy unit still to attack this phase; else
+// the defender, when its damage back would defeat Yoda
+function yodaPuzzle(g: Game, self: Self) {
+  const target = self.attack?.target
+  const me = g.unit(self.id)
+  const later = enemy(g, self, (u) => u.id !== target && !u.exhausted && g.power(u) > 0)
+  const defender = target && target !== 'base' ? g.unit(target) : undefined
+  const saves = defender && me && g.power(defender) >= g.hp(me) - me.damage ? defender.id : undefined
+  const pick = g.chooseOne(self.controller, 'Yoda: you may choose an enemy unit; combat damage dealt to and by it is prevented this phase', enemy(g, self), {
+    optional: true,
+    ai: mostThreat(g, later) ?? saves ?? 'none',
+    source: self.def.id,
+  })
+  if (pick) g.preventCombat(pick)
+}
+
+// R2-D2 (The First Protagonist). The AI readies a resource it has spent when that resource gets
+// used: its leader's ability that costs [1] (Lando's Credit token), or a card in hand just 1 short
+// (the user, 2026-11-25: resources all spent first, R2 attacks, Lando makes a Credit with the one
+// readied); else it defeats a ground unit with the 1 damage; else readies one anyway; else looks
+function r2Protagonist(g: Game, self: Self) {
+  const p = self.controller
+  const pl = g.player(p)
+  const kill = enemy(g, self, (u) => u.arena === 'ground' && g.hp(u) - u.damage <= 1)
+  const spent = pl.resources.some((r) => r.exhausted)
+  const canPay = pl.resources.filter((r) => !r.exhausted).length + g.credits(p)
+  const leaderUse = !pl.leader.deployed && g.leaderReady(p) && /^\[Action \[\[1\], Arrow\]:\]/.test(g.def(pl.leader).text ?? '')
+  const oneShort = pl.hand.some((c) => g.price(p, c.id) === canPay + 1)
+  const ready = spent && (leaderUse || oneShort)
+  const pick = g.option(p, 'R2-D2: choose one', ['Ready a resource', 'Deal 1 damage to a ground unit', 'Look at the top card of your deck; you may discard it'], {
+    ai: ready ? 0 : kill.length ? 1 : spent ? 0 : 2,
+    // The board score doesn't see what the resource readied pays for
+    firm: ready,
+    source: self.def.id,
+  })
+  if (pick === 0) {
+    const r = g.player(p).resources.find((x) => x.exhausted)
+    if (r) {
+      r.exhausted = false
+      g.log(`${g.player(p).name} readies a resource`, p)
+    }
+  } else if (pick === 1) {
+    const target = g.chooseOne(p, 'R2-D2: deal 1 damage to a ground unit', all(g, (u) => u.arena === 'ground'), { ai: kill[0] ?? 'harm', source: self.def.id })
+    if (target) g.damage(target, 1, self)
+  } else {
+    const top = g.top(p, 1)[0]
+    if (!top) return
+    const keep = g.def(top).cost <= g.player(p).resources.length + 1
+    if (g.may(p, `R2-D2: the top card of your deck is ${g.def(top).name}. Discard it?`, { yes: 'Discard', no: 'Keep it', ai: !keep, source: self.def.id })) g.mill(p, top.id)
+  }
+}
+
+// Galen Erso: a card named, among those the opponent owns. The AI weighs each name by every copy
+// still to matter: in play (twice), in hand or deck, in the resources with Plot; each by what its
+// text does: a card that gives its abilities to others most (Tantive IV: Raid 2 and Saboteur to
+// each other Rebel), keywords, its cost. A card with no text loses nothing (the user, 2026-11-25)
+const GIVES_OTHERS = /each other friendly|other friendly [^.]*(gain|get)s/i
+function galenWorth(g: Game, c: { def: string }) {
+  const d = g.def(c)
+  const text = d.text ?? ''
+  if (!text.trim()) return 0
+  const keywords = Object.keys(d.keywords ?? {}).length
+  return 1 + 0.3 * d.cost + 0.5 * keywords + (GIVES_OTHERS.test(text) ? 4 : 0)
+}
+function galenErso(g: Game, self: Self) {
+  const foe = g.other(self.controller)
+  const pl = g.player(foe)
+  const inPlay = g.units((u) => u.owner === foe && !u.leader)
+  const cards = [...pl.hand, ...pl.deck, ...pl.discard, ...pl.resources.map((r) => r.card), ...inPlay]
+  const names = [...new Set(cards.filter((c) => g.def(c).type !== 'leader' && !g.def(c).token).map((c) => g.def(c).name))].sort()
+  if (!names.length) return
+  const score: Record<string, number> = {}
+  const add = (c: { def: string }, times: number) => {
+    const d = g.def(c)
+    if (d.type === 'leader' || d.token) return
+    score[d.name] = (score[d.name] ?? 0) + times * galenWorth(g, c)
+  }
+  for (const u of inPlay) add(u, 2)
+  for (const c of [...pl.hand, ...pl.deck]) add(c, 1)
+  for (const r of pl.resources) if (g.def(r.card).keywords?.plot) add(r.card, 1)
+  const wanted = [...names].sort((a, b) => (score[b] ?? 0) - (score[a] ?? 0))[0]
+  const pick = g.option(self.controller, 'Galen Erso: name a card', names, { ai: Math.max(0, names.indexOf(wanted)), source: self.def.id })
+  g.nameCard(self, names[pick])
 }
 
 export const swuScripts: (CardScript & { card: string })[] = [
@@ -532,6 +877,7 @@ export const swuScripts: (CardScript & { card: string })[] = [
         },
       },
       whenFriendlyAttacks: (g, self) => g.forceIsWith(self.controller),
+      automatic: { whenFriendlyAttacks: true },
     },
   },
   {
@@ -1037,6 +1383,13 @@ export const swuScripts: (CardScript & { card: string })[] = [
     front: {},
   },
   {
+    // The Shield token (THMW T01, for its image): the engine prevents the damage and defeats it
+    card: 'swu-THMW-T01',
+    name: 'Shield',
+    text: 'If damage would be dealt to attached unit, prevent that damage. If you do, defeat a Shield token on it.',
+    front: {},
+  },
+  {
     card: 'swu-ASH-017',
     name: 'Greef Karga',
     subtitle: 'Gracious Magistrate',
@@ -1269,19 +1622,13 @@ export const swuScripts: (CardScript & { card: string })[] = [
         const me = g.unit(self.id)
         const target = self.attack?.target
         if (!hand.length || !me || !target) return
-        // The AI pays a card when the +2 counts: when it lets him defeat the defender; on a base
-        // (Overwhelm carries it there too) with cards to spare, a unique card in hand it already
-        // has in play, or the opponent's base low enough that the game is a race to the end (the
-        // user, 2026-11-23: about to win, 2 more on the base is worth far more than a card)
-        const defender = target === 'base' ? undefined : g.unit(target)
-        const left = defender ? g.hp(defender) - defender.damage : 0
-        const foe = p === 0 ? 1 : 0
-        const baseLeft = g.def(g.player(foe).base).hp - g.player(foe).base.damage
+        // The AI pays a card for the +2 nearly always: Overwhelm carries it to the base. Not its
+        // last card when it can play that one next round, unless that one is a unique copy
+        // already in play (the user, 2026-11-24)
         const inPlay = (c: { def: string }) => g.def(c).unique && friendly(g, self, (u) => g.def(u).name === g.def(c).name).length > 0
-        const worth = defender
-          ? g.power(me) < left && g.power(me) + 2 >= left
-          : hand.length >= 3 || baseLeft <= LUKE_FINISH || hand.some(inPlay)
-        if (!g.may(p, 'Luke Skywalker: discard a card from your hand for +2/+0 for this attack?', { yes: 'Discard', no: 'Skip', ai: worth, source: self.def.id })) return
+        const last = hand.length === 1 ? hand[0] : undefined
+        const worth = !last || inPlay(last) || g.def(last).cost > g.player(p).resources.length
+        if (!g.may(p, 'Luke Skywalker: discard a card from your hand for +2/+0 for this attack?', { yes: 'Discard', no: 'Skip', ai: worth, firm: true, source: self.def.id })) return
         const pick = g.chooseOne(p, 'Luke Skywalker: discard a card from your hand', hand.map((c) => c.id), { ai: 'discard', source: self.def.id })
         if (!pick) return
         g.discard(p, pick)
@@ -1297,9 +1644,18 @@ export const swuScripts: (CardScript & { card: string })[] = [
       whenPlayed: (g, self) => {
         const p = self.controller
         const attackers = friendly(g, self, (u) => g.canAttack(u.id))
-        // The AI attacks when it has a unit that can
+        // The AI attacks when it has a unit that can; but against an opponent with 6 or more
+        // resources and Credit tokens ready and cards in hand, it strips their big play first,
+        // unless the +2 wins (the user, 2026-11-25: Lando about to play Bo-Katan)
+        const foe = g.other(p)
+        const fp = g.player(foe)
+        const theirs = fp.resources.filter((r) => !r.exhausted).length + g.credits(foe)
+        const baseLeft = g.def(fp.base).hp - fp.base.damage
+        const wins = attackers.some((id) => g.attackable(id).includes('base') && g.power(g.unit(id)!) + 2 >= baseLeft)
+        const strip = fp.hand.length > 0 && theirs >= MON_CAL_STRIP && !wins
         const pick = g.option(p, 'Mon Cal Cruiser: choose one', ['Attack with a unit (+2/+0)', "Look at an opponent's hand and discard a card from it"], {
-          ai: attackers.length ? 0 : 1,
+          ai: attackers.length && !strip ? 0 : 1,
+          firm: strip,
           source: self.def.id,
         })
         if (pick === 0) {
@@ -1460,4 +1816,1995 @@ export const swuScripts: (CardScript & { card: string })[] = [
       },
     },
   },
+  // --- Single cards, imported 2026-11-24 ---
+  {
+    card: 'swu-LAW-222',
+    name: 'Rebel Blockade Runner',
+    text: '[Saboteur]',
+    front: {},
+  },
+  {
+    card: 'swu-ASH-159',
+    name: 'Alphabet Squadron U-Wing',
+    subtitle: 'Quiet Devotion',
+    text: '[Overwhelm]\n[When the regroup phase starts:] Give an Advantage token to a unit.',
+    front: {
+      regroupStart: (g, self) => {
+        const ids = all(g)
+        if (!ids.length) return
+        // The AI: its strongest friendly unit, which attacks first next round
+        const best = friendly(g, self).sort((a, b) => g.power(g.unit(b)!) - g.power(g.unit(a)!))[0] ?? ids[0]
+        const pick = g.chooseOne(self.controller, 'Alphabet Squadron U-Wing: give an Advantage token to a unit', ids, { ai: best, source: self.def.id })
+        if (pick) g.giveToken(pick, 'Advantage')
+      },
+    },
+  },
+  {
+    card: 'swu-IC27-166',
+    name: "I've Got A Bad Feeling",
+    text: "Return a non-leader unit to its owner's hand.\nGive a Shield token to a friendly unit.",
+    front: {
+      play: (g, self) => {
+        const p = self.controller
+        const ids = all(g, (u) => !g.isLeader(u))
+        const pick = ids.length ? g.chooseOne(p, "I've Got A Bad Feeling: return a non-leader unit to its owner's hand", ids, { ai: 'harm', source: self.def.id }) : null
+        if (pick) g.returnToHand(pick)
+        const mine = friendly(g, self)
+        if (!mine.length) return
+        // The AI: its strongest unit
+        const best = [...mine].sort((a, b) => g.power(g.unit(b)!) + g.hp(g.unit(b)!) - g.power(g.unit(a)!) - g.hp(g.unit(a)!))[0]
+        const shield = g.chooseOne(p, "I've Got A Bad Feeling: give a Shield token to a friendly unit", mine, { ai: best, source: self.def.id })
+        if (shield) g.giveToken(shield, 'Shield')
+      },
+    },
+  },
+  {
+    card: 'swu-HMW-238',
+    name: 'Exploit Confidence',
+    text: "Return a non-leader unit with 6 or more power to it's owner's hand.",
+    front: {
+      play: (g, self) => {
+        const ids = all(g, (u) => !g.isLeader(u) && g.power(u) >= 6)
+        if (!ids.length) return
+        const pick = g.chooseOne(self.controller, "Exploit Confidence: return a non-leader unit with 6 or more power to its owner's hand", ids, { ai: 'harm', source: self.def.id })
+        if (pick) g.returnToHand(pick)
+      },
+    },
+  },
+  {
+    card: 'swu-ASH-013',
+    name: 'Ezra Bridger',
+    subtitle: "It's Now or Never",
+    text: "[When a friendly unit's attack ends:] If it dealt 3 or more combat damage to a base, you may exhaust this leader. If you do, give an Advantage token to a different unit.",
+    backText: "[Saboteur]\n[When a friendly unit's attack ends:] If it dealt 3 or more combat damage to a base, you may give an Advantage token to a different unit.",
+    front: {
+      triggersIf: { whenFriendlyAttackEnds: (g, self) => ezraIf(g, self) && g.leaderReady(self.controller) },
+      whenFriendlyAttackEnds: (g, self) => ezraAdvantage(g, self, true),
+    },
+    back: {
+      triggersIf: { whenFriendlyAttackEnds: ezraIf },
+      whenFriendlyAttackEnds: (g, self) => ezraAdvantage(g, self, false),
+    },
+  },
+  {
+    card: 'swu-JTL-164',
+    name: 'Cham Syndulla',
+    subtitle: 'Rallying Ryloth',
+    text: '[When Played:] If you control fewer resources than an opponent, you may resource the top card of your deck.',
+    front: {
+      whenPlayed: (g, self) => {
+        const p = self.controller
+        if (g.player(p).resources.length >= g.player(p === 0 ? 1 : 0).resources.length) return
+        if (g.may(p, 'Cham Syndulla: resource the top card of your deck?', { yes: 'Resource', no: 'Skip', ai: true, source: self.def.id })) g.resourceFromDeck(p)
+      },
+    },
+  },
+  {
+    card: 'swu-JTL-249',
+    name: 'Millennium Falcon',
+    subtitle: 'Get Out And Push',
+    text: 'You may play or deploy 1 additional [{Pilot}] on this unit.\nThis unit gets [+1/+0] for each [{Pilot}] on it.',
+    front: {
+      pilots: 2,
+      gives: (g, self, unit) => {
+        if (unit.id !== self.id) return undefined
+        const pilots = unit.upgrades.filter((u) => ['unit', 'leader'].includes(g.def(u).type) || g.def(u).traits.includes('Pilot')).length
+        return pilots ? { power: pilots } : undefined
+      },
+    },
+  },
+  {
+    card: 'swu-LOF-151',
+    name: "Knight's Saber",
+    text: 'Attach to a [{Jedi}] non-[{Vehicle}] unit.',
+    front: {},
+  },
+  {
+    card: 'swu-SEC-176',
+    name: 'Sudden Ferocity',
+    text: '[Plot]',
+    front: {},
+  },
+  {
+    card: 'swu-SEC-252',
+    name: 'Maarva Andor',
+    subtitle: "We've Been Sleeping",
+    text: '[When Defeated:] Give an Experience token to each friendly [{Rebel}] unit.',
+    front: {
+      whenDefeated: (g, self) => {
+        for (const id of friendly(g, self, (u) => u.id !== self.id && g.hasTrait(u, 'Rebel'))) g.giveToken(id, 'Experience')
+      },
+    },
+  },
+  {
+    card: 'swu-LAW-068',
+    name: 'Millennium Falcon',
+    subtitle: 'Dodging Patrols',
+    text: '[On Attack:] You may give a space unit -2/-0 for this phase. You may give a ground unit +2/+0 for this phase.',
+    front: {
+      onAttack: (g, self) => {
+        const p = self.controller
+        const byPower = (list: string[]) => [...list].sort((a, b) => g.power(g.unit(b)!) - g.power(g.unit(a)!))
+        // The AI: -2 on the space unit it attacks (less damage back), else the strongest ready enemy one
+        const target = self.attack?.target
+        const defender = target && target !== 'base' && g.unit(target)?.arena === 'space' ? target : undefined
+        const weaken = defender ?? byPower(enemy(g, self, (u) => u.arena === 'space' && !u.exhausted))[0] ?? byPower(enemy(g, self, (u) => u.arena === 'space'))[0]
+        const space = g.chooseOne(p, 'Millennium Falcon: you may give a space unit -2/-0 for this phase', all(g, (u) => u.arena === 'space'), { optional: true, ai: weaken ?? null, source: self.def.id })
+        if (space) g.buff(space, -2, 0, 'phase')
+        // +2 on the strongest friendly ground unit that can still attack
+        const strong = byPower(friendly(g, self, (u) => u.arena === 'ground' && !u.exhausted))[0] ?? null
+        const ground = g.chooseOne(p, 'Millennium Falcon: you may give a ground unit +2/+0 for this phase', all(g, (u) => u.arena === 'ground'), { optional: true, ai: strong, source: self.def.id })
+        if (ground) g.buff(ground, 2, 0, 'phase')
+      },
+    },
+  },
+  {
+    // Credit tokens aren't in the engine yet (no deck here makes them): a 4/4 until they are
+    card: 'swu-LAW-221',
+    name: 'Lieutenant Gorn',
+    subtitle: 'I Deserve Worse',
+    text: '[On Attack:] Take control of an enemy Credit token.',
+    front: {},
+  },
+  {
+    card: 'swu-HMW-211',
+    name: 'Tech',
+    subtitle: 'I Thought It Was Obvious',
+    text: '[When this unit is dealt damage and survives:] You may exhaust a unit.',
+    front: {
+      whenDealtDamage: (g, self) => {
+        if (!g.unit(self.id)) return
+        const ready = enemy(g, self, (u) => !u.exhausted)
+        const pick = g.chooseOne(self.controller, 'Tech: you may exhaust a unit', all(g), { optional: true, ai: mostThreat(g, ready) ?? null, source: self.def.id })
+        if (pick) g.exhaust(pick)
+      },
+    },
+  },
+  {
+    card: 'swu-SEC-172',
+    name: 'Cinta Kaz',
+    subtitle: 'The Struggle Comes First',
+    text: '[When Played:] You may attack with a unit.\n[Plot]',
+    front: {
+      whenPlayed: (g, self) => {
+        const ready = friendly(g, self, (u) => g.canAttack(u.id))
+        if (!ready.length) return
+        // The AI attacks with its leader unit (Luke Skywalker, deployed as Plot plays her)
+        const leader = ready.find((id) => g.unit(id)?.leader)
+        const attacker = g.chooseOne(self.controller, 'Cinta Kaz: you may attack with a unit', ready, { optional: true, ai: leader ?? 'help', firm: !!leader, source: self.def.id })
+        if (attacker) g.attackWith(attacker)
+      },
+    },
+  },
+  {
+    card: 'swu-LOF-142',
+    name: 'Adi Gallia',
+    subtitle: 'Stern and Focused',
+    text: "[When an opponent plays an event:] Deal 1 damage to that player's base.",
+    front: {
+      triggersIf: { whenOpponentPlays: (_g, self) => self.otherDef?.type === 'event' },
+      whenOpponentPlays: (g, self) => g.damage(baseOf(self.controller === 0 ? 1 : 0), 1, self),
+    },
+  },
+  {
+    card: 'swu-SEC-198',
+    name: 'Bail Organa',
+    subtitle: 'Responding to Catastrophe',
+    text: '[On Attack:] You may discard a card from your hand. If you do, create a Spy token.',
+    front: {
+      onAttack: (g, self) => {
+        const p = self.controller
+        const hand = g.player(p).hand
+        if (!hand.length) return
+        // The AI: its cheapest card, with 3 or more in hand
+        const cheapest = [...hand].sort((a, b) => g.def(a).cost - g.def(b).cost)[0]
+        const pick = g.chooseOne(p, 'Bail Organa: you may discard a card from your hand to create a Spy token', hand.map((c) => c.id), {
+          optional: true,
+          ai: hand.length >= 3 ? cheapest.id : 'none',
+          source: self.def.id,
+        })
+        if (!pick) return
+        g.discard(p, pick)
+        g.createToken(p, 'Spy')
+      },
+    },
+  },
+  {
+    card: 'swu-JTL-147',
+    name: 'Black One',
+    subtitle: 'Straight At Them',
+    text: 'While this unit is upgraded, it gets [+1/+0].\n[On Attack:] If you control Poe Dameron, you may deal 1 damage to a unit.',
+    front: {
+      gives: (_g, self, unit) => (unit.id === self.id && unit.upgrades.length ? { power: 1 } : undefined),
+      onAttack: (g, self) => {
+        const poe = g.units((u) => g.controller(u) === self.controller && (g.def(u).name === 'Poe Dameron' || u.upgrades.some((x) => g.def(x).name === 'Poe Dameron')))
+        if (!poe.length) return
+        const ids = all(g)
+        const pick = g.chooseOne(self.controller, 'Black One: you may deal 1 damage to a unit', ids, { optional: true, ai: bestHit(g, self, ids, 1) ?? null, source: self.def.id })
+        if (pick) g.damage(pick, 1, self)
+      },
+    },
+  },
+  {
+    card: 'swu-ASH-203',
+    name: "Mando's N-1 Starfighter",
+    subtitle: 'Faster than a Fathier',
+    text: '[Support]\n[On Attack:] You may exhaust a friendly leader. If you do, this unit gets +2/+0 for this attack.',
+    front: {
+      whenPlayed: (g, self) => support(g, self, { onAttack: n1Attack }),
+      onAttack: n1Attack,
+    },
+  },
+  {
+    card: 'swu-IC27-115',
+    name: 'Poe Dameron',
+    subtitle: 'Hero of the Resistance',
+    text: '[When you play another [{Resistance}] card:] This unit gets +1/+0 for this phase.',
+    front: {
+      triggersIf: { whenYouPlay: (_g, self) => self.other !== self.id && !!self.otherDef?.traits.includes('Resistance') },
+      whenYouPlay: (g, self) => g.buff(self.id, 1, 0, 'phase'),
+    },
+  },
+  {
+    card: 'swu-ASH-040',
+    name: 'Poe Dameron',
+    subtitle: "I'll Come Back For You",
+    text: 'All units lose [Sentinel].',
+    front: {
+      gives: () => ({ loses: ['sentinel'] }),
+    },
+  },
+  {
+    card: 'swu-SEC-164',
+    name: 'Warrior of Clan Ordo',
+    text: "[On Attack:] You may disclose [Aggression]. If you don't, deal 2 damage to your base.",
+    front: {
+      onAttack: (g, self) => {
+        if (!disclose(g, self, ['Aggression'])) g.damage(baseOf(self.controller), 2, self)
+      },
+    },
+  },
+  // --- Mace-bleu (swudb.com/deck/AjbssNCt) ---
+  {
+    card: 'swu-ASH-133',
+    name: 'Trask Walker',
+    text: '[When Played/On Attack:] Choose a unit in your discard pile that costs 7 or less. Either put that card on the bottom of your deck and heal 3 damage from your base or return it to your hand.',
+    front: { whenPlayed: traskWalker, onAttack: traskWalker },
+  },
+  {
+    card: 'swu-ASH-065',
+    name: 'Home One',
+    subtitle: 'Heart of the Fleet',
+    text: '[Sentinel]\n[When Played:] Heal all damage from each friendly unit.',
+    front: {
+      whenPlayed: (g, self) => {
+        for (const id of friendly(g, self)) {
+          const u = g.unit(id)
+          if (u?.damage) g.heal(id, u.damage, self)
+        }
+      },
+    },
+  },
+  {
+    card: 'swu-LOF-045',
+    name: 'Yaddle',
+    subtitle: 'A Chance To Make Things Right',
+    text: '[Restore 1]\n[On Attack:] Each other friendly [{Jedi}] unit gains [Restore 1] for this phase.',
+    front: {
+      onAttack: (g, self) => {
+        for (const id of friendly(g, self, (u) => u.id !== self.id && g.traits(u).includes('Jedi'))) g.grant(id, { restore: 1 }, 'phase', self.id)
+      },
+    },
+  },
+  {
+    card: 'swu-IC27-042',
+    name: 'Obi-Wan Kenobi',
+    subtitle: 'I Sense a Trap',
+    text: '[When Played:] You may choose one:\n• Play a unit that was defeated this phase from your discard pile. It costs [5] less.\n• Choose a unit that entered play this phase. It gets -5/-5 for this phase.',
+    front: { whenPlayed: senseATrap },
+  },
+  {
+    card: 'swu-ASH-062',
+    name: 'The Mandalorian',
+    subtitle: 'Devoted Rescuer',
+    text: '[Shielded]\nIf damage would be dealt to another friendly unit, you may defeat a Shield token on this unit. If you do, prevent that damage.',
+    front: { sharesShield: () => true },
+  },
+  {
+    card: 'swu-IC27-037',
+    name: 'Finn',
+    subtitle: 'Stand and Fight',
+    text: '[Sentinel]\nWhile this unit is upgraded, he gains [Restore 2].',
+    front: { gives: (_g, self, unit) => (unit.id === self.id && unit.upgrades.length ? { keywords: { restore: 2 } } : undefined) },
+  },
+  // --- Lando7 (swudb.com/deck/ffrxjspp) ---
+  {
+    card: 'swu-LAW-018',
+    name: 'Lando Calrissian',
+    subtitle: 'Full Sabacc',
+    text: '[Action [[1], Arrow]:] Choose an aspect, then discard a card from a deck. If it has the chosen aspect, create a Credit token.',
+    backText: '[When Deployed:] You may defeat a friendly Credit token. If you do, create 3 Credit tokens.',
+    front: {
+      actions: [{ label: 'an aspect, a card discarded from a deck, a Credit token on a match', resources: 1, exhaust: true, run: landoSabacc }],
+    },
+    back: {
+      whenDeployed: (g, self) => {
+        const p = self.controller
+        if (!g.credits(p)) return
+        if (!g.may(p, 'Lando Calrissian: defeat a Credit token to create 3 Credit tokens?', { yes: 'Defeat it', no: 'Skip', source: self.def.id })) return
+        if (g.defeatCredit(p)) g.createCredit(p, 3)
+      },
+    },
+  },
+  {
+    card: 'swu-HMW-218',
+    name: 'New Tactics',
+    text: 'Choose a non-leader unit. Its owner puts it on the top or bottom of their deck.',
+    front: {
+      play: (g, self) => {
+        const ids = all(g, (u) => !g.isLeader(u))
+        const target = g.chooseOne(self.controller, 'New Tactics: choose a non-leader unit', ids, {
+          ai: mostThreat(g, enemy(g, self, (u) => !g.isLeader(u))) ?? 'harm',
+          source: self.def.id,
+        })
+        if (target) ownerToDeck(g, self, target)
+      },
+    },
+  },
+  {
+    card: 'swu-SOR-236',
+    name: 'R2-D2',
+    subtitle: 'Ignoring Protocol',
+    text: '[When Played/On Attack:] Look at the top card of your deck. You may put it on the bottom of your deck.',
+    front: { whenPlayed: topToBottom, onAttack: topToBottom },
+  },
+  {
+    card: 'swu-LAW-089',
+    name: 'Kanan Jarrus',
+    subtitle: 'Spectre One',
+    text: "[Restore 1]\n[When Played:] You may return a non-leader unit that costs 2 or less to its owner's hand. If you control a [Command] or [Aggression] unit, you may return a non-leader unit that costs 4 or less instead.",
+    front: { whenPlayed: kanan },
+  },
+  {
+    card: 'swu-IC27-157',
+    name: 'The Mandalorian',
+    subtitle: 'From the Shadows',
+    text: '[Shielded]\n[On Attack:] If the defending unit is exhausted, it gets -4/-0 for this attack.',
+    front: {
+      onAttack: (g, self) => {
+        const target = self.attack?.target
+        const defender = target && target !== 'base' ? g.unit(target) : undefined
+        if (defender?.exhausted) g.buff(defender.id, -4, 0, 'attack')
+      },
+    },
+  },
+  {
+    card: 'swu-IC27-035',
+    name: 'Yoda',
+    subtitle: 'A Disturbing Puzzle',
+    text: '[On Attack:] You may choose an enemy unit. Prevent all combat damage that would be dealt to and dealt by that unit for this phase.',
+    front: { onAttack: yodaPuzzle },
+  },
+  {
+    card: 'swu-IC27-151',
+    name: 'R2-D2',
+    subtitle: 'The First Protagonist',
+    text: '[On Attack:] Choose one:\n• Ready a resource.\n• Deal 1 damage to a ground unit.\n• Look at the top card of your deck. You may discard it.',
+    front: { onAttack: r2Protagonist },
+  },
+  {
+    card: 'swu-SEC-046',
+    name: 'Galen Erso',
+    subtitle: "You'll Never Win",
+    text: '[When Played:] Name a card. While this unit is in play, each non-leader card an opponent owns with that name, including those not in play, loses all abilities.\n[Plot]',
+    front: { whenPlayed: galenErso },
+  },
+  {
+    card: 'swu-IC27-043',
+    name: 'Raddus',
+    subtitle: 'Hope of the Resistance',
+    text: '[Restore 3]\nWhile this unit is exhausted, cards your opponents play cost [3] more.',
+    front: { taxesOpponents: (g, self) => (g.unit(self.id)?.exhausted ? 3 : 0) },
+  },
+  {
+    card: 'swu-LOF-200',
+    name: 'Qui-Gon Jinn',
+    subtitle: 'The Negotiations Will Be Short',
+    text: '[Ambush]\n[When Defeated:] You may choose a non-leader ground unit. Its owner puts it on the top or bottom of their deck.',
+    front: {
+      whenDefeated: (g, self) => {
+        const ids = all(g, (u) => !g.isLeader(u) && u.arena === 'ground')
+        const foes = enemy(g, self, (u) => !g.isLeader(u) && u.arena === 'ground')
+        const pick = g.chooseOne(self.controller, 'Qui-Gon Jinn: you may choose a non-leader ground unit; its owner puts it on the top or bottom of their deck', ids, {
+          optional: true,
+          ai: mostThreat(g, foes) ?? foes[0] ?? 'none',
+          source: self.def.id,
+        })
+        if (pick) ownerToDeck(g, self, pick)
+      },
+    },
+  },
+  {
+    card: 'swu-HMW-078',
+    name: 'Qui-Gon Jinn',
+    subtitle: "We'll Handle This",
+    text: "[Grit]\n[When Played:] You may defeat a unit that attacked your base this phase. If it's a leader unit, defeat this unit.",
+    front: {
+      whenPlayed: (g, self) => {
+        const ids = g.attackedBase(self.controller).filter((id) => g.unit(id) && g.controller(g.unit(id)!) !== self.controller)
+        if (!ids.length) return
+        const pick = g.chooseOne(self.controller, 'Qui-Gon Jinn: you may defeat a unit that attacked your base this phase', ids, {
+          optional: true,
+          ai: mostThreat(g, ids) ?? ids[0],
+          source: self.def.id,
+        })
+        if (!pick) return
+        const leader = g.isLeader(g.unit(pick)!)
+        g.defeat(pick, self)
+        if (leader) g.defeat(self.id, self)
+      },
+    },
+  },
+  {
+    card: 'swu-IC27-163',
+    name: 'Bo-Katan Kryze',
+    subtitle: 'Right Place, Right Time',
+    text: '[Shielded]\n[When Played:] Give each enemy unit -7/-0 for this phase.',
+    front: {
+      whenPlayed: (g, self) => {
+        for (const id of enemy(g, self)) g.buff(id, -7, 0, 'phase')
+      },
+    },
+  },
+  // --- Kylo10 green (2026-11-25) ---
+  {
+    card: 'swu-SEC-082',
+    name: 'Chancellor Palpatine',
+    subtitle: 'I Am The Senate',
+    text: '[When Played:] If you control a leader unit, create 2 Spy tokens and give those tokens [Sentinel] for this phase.\n[Plot]',
+    front: {
+      whenPlayed: (g, self) => {
+        if (!friendly(g, self, (u) => g.isLeader(u)).length) return
+        for (let i = 0; i < 2; i++) g.grant(g.createToken(self.controller, 'Spy'), { sentinel: true }, 'phase', self.def.id)
+      },
+    },
+  },
+  {
+    card: 'swu-IC27-003',
+    name: 'Kylo Ren',
+    subtitle: 'Supreme Leader',
+    text: '[Action [Arrow, discard a card from your hand]:] Give an Experience token to a unit.',
+    backText: '[When Deployed:] You may return a unit from your discard pile to your hand.',
+    front: {
+      actions: [
+        {
+          label: 'Discard a card: give an Experience token to a unit',
+          exhaust: true,
+          can: (g, self) => g.player(self.controller).hand.length > 0 && friendly(g, self).length > 0,
+          run: (g, self) => {
+            const p = self.controller
+            kyloDiscard(g, p, self.def.id)
+            // With Reforge in hand: the unit it will reforge, one with an Experience token that can
+            // still attack, its power up for the upgrade it finds (Craving Power: 5 damage)
+            const reforge = g.player(p).hand.some((c) => g.def(c).name === 'Reforge')
+            const holder = reforge
+              ? friendly(g, self, (u) => g.tokens(u.id, 'Experience') > 0 && g.canAttack(u.id)).sort((a, b) => g.power(g.unit(b)!) - g.power(g.unit(a)!))[0]
+              : undefined
+            const pick = g.chooseOne(p, 'Kylo Ren: give an Experience token to a unit', all(g), { ai: holder ?? 'help', ...(holder && { firm: true }), source: self.def.id })
+            if (pick) g.giveToken(pick, 'Experience')
+          },
+        },
+      ],
+    },
+    back: {
+      whenDeployed: (g, self) => {
+        const p = self.controller
+        const ids = g.player(p).discard.filter((c) => g.def(c).type === 'unit').map((c) => c.id)
+        if (!ids.length) return
+        const dearest = [...ids].sort((a, b) => g.def(g.card(b)!).cost - g.def(g.card(a)!).cost)[0]
+        const pick = g.chooseOne(p, 'Kylo Ren: you may return a unit from your discard pile to your hand', ids, { optional: true, ai: dearest, source: self.def.id })
+        if (pick) g.fromDiscard(p, pick)
+      },
+    },
+  },
+  {
+    card: 'swu-LAW-022',
+    name: 'Aldhani Garrison',
+    text: '[Epic Action:] Play a card from your hand, ignoring 1 of its [Vigilance], [Command], [Aggression], or [Cunning] aspect penalties.',
+    front: {
+      actions: [
+        {
+          label: 'Epic Action: play a card, ignoring 1 aspect penalty',
+          can: (g, self) => !g.usedOnce(self) && garrisonCards(g, self.controller).length > 0,
+          run: (g, self) => {
+            const p = self.controller
+            const ids = garrisonCards(g, p)
+            const wanted = [...ids].sort((a, b) => garrisonWorth(g, b) - garrisonWorth(g, a))[0]
+            const pick = g.chooseOne(p, 'Aldhani Garrison: play a card, ignoring 1 aspect penalty', ids, { ai: wanted, firm: true, source: self.def.id })
+            if (!pick) return
+            g.useOnce(self)
+            g.playCard(p, pick, { discount: 2 })
+          },
+        },
+      ],
+    },
+  },
+  {
+    card: 'swu-HMW-108',
+    name: 'The First Legion',
+    subtitle: "Vader's Fist",
+    text: '[On Attack:] Name a [{Trait}]. Enemy cards, including those not in play, lose that [{Trait}] for this phase.',
+    front: {
+      onAttack: (g, self) => {
+        const foe = g.other(self.controller)
+        const pl = g.player(foe)
+        const cards = [...pl.hand, ...pl.deck, ...pl.discard, ...pl.resources.map((r) => r.card), ...g.units((u) => u.owner === foe), pl.leader]
+        const traits = [...new Set(cards.flatMap((c) => g.def(c).traits))].sort()
+        if (!traits.length) return
+        // The AI: the trait the enemy cards in play ask for most ("each other friendly [Rebel]"),
+        // else the one most of their units have
+        const inPlay = g.units((u) => g.controller(u) === foe)
+        const texts = [...inPlay.flatMap((u) => [g.def(u), ...u.upgrades.map((x) => g.def(x))]), g.def(pl.leader), g.def(pl.base)].map((d) => `${d.text ?? ''}\n${d.backText ?? ''}`)
+        const score = (t: string) => 10 * texts.filter((x) => x.includes(`{${t}}`)).length + inPlay.filter((u) => g.def(u).traits.includes(t)).length
+        const wanted = [...traits].sort((a, b) => score(b) - score(a))[0]
+        const pick = g.option(self.controller, 'The First Legion: name a trait', traits, { ai: traits.indexOf(wanted), source: self.def.id })
+        g.loseTrait(foe, traits[pick])
+      },
+    },
+  },
+  {
+    card: 'swu-IC27-086',
+    name: 'Enfys Nest',
+    subtitle: 'No More!',
+    text: '[Ambush]\nWhile attacking a unit that costs 3 or less, this unit gets +2/+0 and gains [Overwhelm].',
+    front: {
+      gives: (g, self, unit) => {
+        if (unit.id !== self.id || g.attack?.attacker !== self.id || g.attack.target === 'base') return undefined
+        const target = g.unit(g.attack.target)
+        return target && g.cost(target) <= 3 ? { power: 2, keywords: { overwhelm: true } } : undefined
+      },
+    },
+  },
+  {
+    card: 'swu-IC27-056',
+    name: 'Allegiant General Pryde',
+    subtitle: 'Heartless Efficiency',
+    text: '[When Defeated:] Give an Experience token to the friendly unit with the most power.',
+    front: {
+      whenDefeated: (g, self) => {
+        const ids = friendly(g, self, (u) => u.id !== self.id)
+        if (!ids.length) return
+        const most = Math.max(...ids.map((id) => g.power(g.unit(id)!)))
+        const top = ids.filter((id) => g.power(g.unit(id)!) === most)
+        const pick =
+          top.length > 1
+            ? g.chooseOne(self.controller, 'Allegiant General Pryde: give an Experience token to the friendly unit with the most power', top, { ai: 'help', source: self.def.id })
+            : top[0]
+        if (pick) g.giveToken(pick, 'Experience')
+      },
+    },
+  },
+  {
+    card: 'swu-SEC-111',
+    name: 'Jar Jar Binks',
+    subtitle: 'Mesa Propose…',
+    text: '[When Played:] You may give another friendly unit [+2/+2] for this phase.\n[Plot]',
+    front: {
+      whenPlayed: (g, self) => {
+        const ids = friendly(g, self, (u) => u.id !== self.id)
+        if (!ids.length) return
+        // The AI: the unit about to attack, a leader unit just deployed first (Kylo Ren to 7/5,
+        // the user, 2026-11-25), else the strongest
+        const worth = (id: string) => {
+          const u = g.unit(id)!
+          return (g.canAttack(id) ? 20 : 0) + (g.isLeader(u) ? 10 : 0) + g.power(u)
+        }
+        const best = [...ids].sort((a, b) => worth(b) - worth(a))[0]
+        const pick = g.chooseOne(self.controller, 'Jar Jar Binks: you may give another friendly unit +2/+2 for this phase', ids, {
+          optional: true,
+          ai: best,
+          firm: true,
+          source: self.def.id,
+        })
+        if (pick) g.buff(pick, 2, 2, 'phase')
+      },
+    },
+  },
+  {
+    card: 'swu-HMW-134',
+    name: 'Zam Wesell',
+    subtitle: 'Not What She Seems',
+    text: "[Hidden]\nThis unit gains each friendly leader's [[{Traits}]] except [{Force}], even while she's not in play.",
+    front: {
+      gives: (g, self, unit) => {
+        if (unit.id !== self.id) return undefined
+        const traits = g.def(g.player(self.controller).leader).traits.filter((t) => t !== 'Force')
+        return traits.length ? { traits } : undefined
+      },
+    },
+  },
+  {
+    card: 'swu-ASH-135',
+    name: 'The Darksaber',
+    subtitle: 'Icon of Leadership',
+    text: 'Attach to a [{Unique}] non-[{Vehicle}] unit.\nAttached unit is a leader unit and gains the [{Mandalorian}] trait.\nAttached unit gains: "While you are paying costs, this unit provides its aspect icons."',
+    front: {
+      gives: (_g, self, unit) => (unit.id === self.attachedTo ? { traits: ['Mandalorian'] } : undefined),
+    },
+  },
+  {
+    card: 'swu-LOF-105',
+    name: 'Oppo Rancisis',
+    subtitle: 'Ancient Councilor',
+    text: 'This unit gains [Ambush] while another friendly unit has [Ambush]. The same is true for [Grit], [Hidden], [Overwhelm], [Saboteur], [Sentinel], and [Shielded].\nThis unit gains [Raid 2] while another friendly unit has [{Keyword}]Raid{/keyword}. The same is true for [{Keyword}]Restore{/keyword}.',
+    front: {
+      gives: (g, self, unit) => {
+        if (unit.id !== self.id || oppoLooking) return undefined
+        oppoLooking = true
+        try {
+          const others = friendly(g, self, (u) => u.id !== self.id).map((id) => g.keywords(g.unit(id)!))
+          const has = (k: keyof Keywords) => others.some((kw) => !!kw[k])
+          const keywords: Keywords = {}
+          for (const k of ['ambush', 'grit', 'hidden', 'overwhelm', 'saboteur', 'sentinel', 'shielded'] as const) if (has(k)) keywords[k] = true
+          if (has('raid')) keywords.raid = 2
+          if (has('restore')) keywords.restore = 2
+          return Object.keys(keywords).length ? { keywords } : undefined
+        } finally {
+          oppoLooking = false
+        }
+      },
+    },
+  },
+  {
+    card: 'swu-LOF-082',
+    name: 'Vaneé',
+    subtitle: 'I Live to Serve',
+    text: '[When Played/On Attack:] You may defeat an Experience token on a friendly unit. If you do, give an Experience token to a friendly unit.',
+    front: {
+      whenPlayed: (g, self) => vanee(g, self),
+      onAttack: (g, self) => vanee(g, self),
+    },
+  },
+  {
+    card: 'swu-ASH-097',
+    name: 'Moff Gideon',
+    subtitle: 'Remnant Commander',
+    text: '[Sentinel]\n[When Defeated:] You may return a non-[{Unique}] [{Imperial}] unit from your discard pile to your hand.',
+    front: {
+      whenDefeated: (g, self) => {
+        const p = self.controller
+        const ids = g.player(p).discard.filter((c) => g.def(c).type === 'unit' && !g.def(c).unique && g.hasTrait(c, 'Imperial')).map((c) => c.id)
+        if (!ids.length) return
+        const dearest = [...ids].sort((a, b) => g.def(g.card(b)!).cost - g.def(g.card(a)!).cost)[0]
+        const pick = g.chooseOne(p, 'Moff Gideon: you may return a non-unique Imperial unit from your discard pile to your hand', ids, { optional: true, ai: dearest, source: self.def.id })
+        if (pick) g.fromDiscard(p, pick)
+      },
+    },
+  },
+  {
+    card: 'swu-LOF-091',
+    name: 'Craving Power',
+    text: "Attach to a friendly unit.\n[When Played:] Deal damage to an enemy unit equal to attached unit's power.",
+    front: {
+      whenPlayed: (g, self) => {
+        const host = self.attachedTo ? g.unit(self.attachedTo) : undefined
+        const ids = enemy(g, self)
+        if (!host || !ids.length) return
+        const amount = g.power(host)
+        const pick = g.chooseOne(self.controller, `Craving Power: deal ${amount} damage to an enemy unit`, ids, { ai: bestHit(g, self, ids, amount) ?? 'harm', source: self.def.id })
+        if (pick) g.damage(pick, amount, self)
+      },
+    },
+  },
+  {
+    card: 'swu-HMW-114',
+    name: 'Breach',
+    text: 'A friendly unit deals damage equal to its power to an enemy unit in its arena. If the friendly unit has [Overwhelm], deal deal excess damage to an enemy base.',
+    front: {
+      play: (g, self) => {
+        const p = self.controller
+        const pairs = friendly(g, self, (u) => g.power(u) > 0).flatMap((f) => enemy(g, self, (e) => e.arena === g.unit(f)!.arena).map((e) => ({ f, e })))
+        if (!pairs.length) return
+        // The AI: the dearest unit it defeats, else the most threatening, by its strongest unit
+        const worth = ({ f, e }: { f: string; e: string }) => {
+          const from = g.unit(f)!
+          const to = g.unit(e)!
+          const kills = g.power(from) >= g.hp(to) - to.damage && !g.tokens(e, 'Shield')
+          return (kills ? 100 + 10 * g.cost(to) : readyThreat(g, e)) + (kills ? -0.1 : 0.1) * g.power(from)
+        }
+        const best = [...pairs].sort((a, b) => worth(b) - worth(a))[0]
+        const f = g.chooseOne(p, 'Breach: a friendly unit deals damage equal to its power', [...new Set(pairs.map((x) => x.f))], { ai: best.f, firm: true, source: self.def.id })
+        const from = f ? g.unit(f) : undefined
+        if (!from) return
+        const amount = g.power(from)
+        const targets = enemy(g, self, (u) => u.arena === from.arena)
+        const e = g.chooseOne(p, `Breach: ${g.name(from.id)} deals ${amount} damage to an enemy unit in its arena`, targets, {
+          ai: best.f === f ? best.e : (bestHit(g, self, targets, amount) ?? 'harm'),
+          source: self.def.id,
+        })
+        const to = e ? g.unit(e) : undefined
+        if (!to) return
+        const left = g.tokens(to.id, 'Shield') ? Infinity : g.hp(to) - to.damage
+        const source = { id: from.id, controller: p, def: g.def(from) }
+        const overwhelm = !!g.keywords(from).overwhelm
+        g.damage(to.id, amount, source)
+        if (overwhelm && amount > left) g.damage(baseOf(g.other(p)), amount - left, source)
+      },
+    },
+  },
+  {
+    card: 'swu-IC27-063',
+    name: "Kylo's TIE Silencer",
+    subtitle: 'Follow My Lead',
+    text: '[Restore 1]\n[When this unit is discarded from your hand:] For this phase, you may play it from your discard pile (paying its cost).',
+    front: {
+      discardPlay: (g, self) => g.discardedFromHandThisPhase(self.id),
+    },
+  },
+  {
+    card: 'swu-IC27-087',
+    name: 'Issue a Command',
+    text: "Reveal the top card of your deck. If it's a unit, draw it.\nGive an Experience token to a friendly unit.\nResource this event.",
+    front: {
+      toResources: true,
+      play: (g, self) => {
+        const p = self.controller
+        const [top] = g.top(p, 1)
+        if (top) {
+          g.log(`${g.player(p).name} reveals ${g.def(top).name}`, p)
+          if (g.def(top).type === 'unit') g.draw(p, 1)
+        }
+        const pick = g.chooseOne(p, 'Issue a Command: give an Experience token to a friendly unit', friendly(g, self), { ai: 'help', source: self.def.id })
+        if (pick) g.giveToken(pick, 'Experience')
+      },
+    },
+  },
+  // --- Kylo10 blue reforge (2026-11-25) ---
+  {
+    card: 'swu-ASH-115',
+    name: 'The Student Guides the Master',
+    text: 'Give a friendly unit +1/+0 for this phase for each other friendly unit with less power than it.',
+    front: {
+      play: (g, self) => {
+        const ids = friendly(g, self)
+        if (!ids.length) return
+        const bonus = (id: string) => friendly(g, self, (u) => u.id !== id && g.power(u) < g.power(g.unit(id)!)).length
+        // The AI: the unit about to attack that gains most, a leader unit first
+        const worth = (id: string) => bonus(id) + (g.canAttack(id) ? 10 : 0) + (g.isLeader(g.unit(id)!) ? 0.5 : 0)
+        const best = [...ids].sort((a, b) => worth(b) - worth(a))[0]
+        const pick = g.chooseOne(self.controller, 'The Student Guides the Master: give a friendly unit +1/+0 for each other friendly unit with less power', ids, { ai: best, firm: true, source: self.def.id })
+        if (pick && bonus(pick)) g.buff(pick, bonus(pick), 0, 'phase')
+      },
+    },
+  },
+  {
+    card: 'swu-LOF-062',
+    name: 'Axe Woves',
+    subtitle: 'Accomplished Warrior',
+    text: '[Shielded]\nThis unit gets [+1/+1] for each upgrade on him.',
+    front: {
+      gives: (_g, self, unit) => (unit.id === self.id && unit.upgrades.length ? { power: unit.upgrades.length, hp: unit.upgrades.length } : undefined),
+    },
+  },
+  {
+    card: 'swu-ASH-090',
+    name: 'Reforge',
+    text: 'Defeat an upgrade on a friendly unit. If you do, search the top 8 cards of your deck for an upgrade that can attach to that unit, reveal it, and play it on that unit. It costs [4] less.',
+    front: {
+      play: (g, self) => {
+        const p = self.controller
+        const upgrades = g.upgrades().filter((u) => u.unit && g.controller(u.unit) === p)
+        if (!upgrades.length) return
+        // The AI: the upgrade worth least (a token: the Experience given on turn 1), on a unit that
+        // can still attack, the strongest, which gets the new one (the user, 2026-11-25)
+        const worth = (u: (typeof upgrades)[number]) =>
+          (g.def(u).token ? (g.def(u).name === 'Shield' ? 1.5 : 1) : g.def(u).cost) - 0.1 * g.power(u.unit!) - (g.canAttack(u.unit!.id) ? 2 : 0)
+        const cheapest = [...upgrades].sort((a, b) => worth(a) - worth(b))[0]
+        // The unit first, then which of its upgrades (the user, 2026-11-26: clearer than every
+        // upgrade at once); one upgrade on it is that one
+        const holders = [...new Set(upgrades.map((u) => u.unit!.id))]
+        const holder = g.chooseOne(p, 'Reforge: choose a friendly unit with an upgrade', holders, { ai: cheapest.unit!.id, source: self.def.id })
+        const on = upgrades.filter((u) => u.unit!.id === holder)
+        if (!on.length) return
+        const best = [...on].sort((a, b) => worth(a) - worth(b))[0]
+        const pick =
+          on.length === 1 ? on[0].id : g.chooseOne(p, `Reforge: defeat an upgrade on ${g.name(holder!)}`, on.map((u) => u.id), { ai: best.id, source: self.def.id })
+        const chosen = upgrades.find((u) => u.id === pick)
+        if (!chosen?.unit) return
+        const unitId = chosen.unit.id
+        g.defeatUpgrade(chosen.id)
+        if (!g.unit(unitId)) return
+        const top = g.top(p, 8)
+        const found = top.filter((c) => g.def(c).type === 'upgrade' && g.attachable(p, g.def(c), [unitId]).length).map((c) => c.id)
+        // Craving Power while there is an enemy unit to hit (1 resource), else The Darksaber (a
+        // leader unit, out of reach of much removal), else the dearest
+        const rank = (id: string) => {
+          const d = g.def(g.card(id)!)
+          return (d.name === 'Craving Power' && enemy(g, self).length ? 100 : 0) + (d.name === 'The Darksaber' ? 50 : 0) + d.cost
+        }
+        const dearest = [...found].sort((a, b) => rank(b) - rank(a))[0]
+        const text = found.length ? 'Reforge: search the top 8 cards of your deck for an upgrade to play on that unit (it costs 4 less)' : 'Reforge: no upgrade for that unit in the top 8 cards of your deck'
+        const take = g.chooseOne(p, text, found, { ai: dearest, source: self.def.id, seen: top.map((c) => c.id) })
+        if (take) {
+          g.reveal(p, [take], self)
+          if (!g.playCard(p, take, { discount: 4, onto: [unitId], prefer: unitId })) g.drawCard(p, take)
+        } else g.log('Reforge finds nothing', p)
+        g.shuffleToBottom(p, g.top(p, 8).filter((c) => top.some((t) => t.id === c.id)).map((c) => c.id))
+      },
+    },
+  },
+  {
+    card: 'swu-LOF-070',
+    name: 'Anakin Skywalker',
+    subtitle: 'Champion of Mortis',
+    text: '[When Played:] If there is a [Heroism] card in your discard pile, you may give a unit -3/-3 for this phase.\n[When Played:] If there is a [Villainy] card in your discard pile, you may give a unit -3/-3 for this phase.',
+    front: {
+      whenPlayed: (g, self) => {
+        const discard = g.player(self.controller).discard
+        const aspects = (['Heroism', 'Villainy'] as Aspect[]).filter((a) => discard.some((c) => g.def(c).aspects.includes(a)))
+        const plan = anakinPlan(g, self, aspects.length)
+        aspects.forEach((aspect, i) => {
+          const target = [plan[i], ...plan].find((id) => id && g.unit(id))
+          shrinkOn(g, self, 3, `Anakin Skywalker (${aspect}): you may give a unit -3/-3 for this phase`, target)
+        })
+      },
+    },
+  },
+  {
+    card: 'swu-HMW-064',
+    name: 'Scorch',
+    subtitle: 'Imperial Commando',
+    text: '[On Attack:] You may deal 1 damage to an upgrade unit.',
+    front: {
+      onAttack: (g, self) => {
+        const ids = all(g, (u) => u.upgrades.length > 0)
+        if (!ids.length) return
+        const pick = g.chooseOne(self.controller, 'Scorch: you may deal 1 damage to an upgraded unit', ids, { optional: true, ai: bestHit(g, self, ids, 1) ?? undefined, source: self.def.id })
+        if (pick) g.damage(pick, 1, self)
+      },
+    },
+  },
+  {
+    card: 'swu-LAW-129',
+    name: 'Mastery',
+    text: 'This upgrade costs [1] less to play on a [{Unique}] unit.',
+    front: {
+      costsLessOnto: (g, _p, unit) => (g.def(unit).unique ? 1 : 0),
+    },
+  },
+  {
+    card: 'swu-JTL-088',
+    name: 'Captain Phasma',
+    subtitle: 'On My Command',
+    text: '[When Played/On Attack:] You may give another {first order} unit [+2/+2] for this phase.',
+    front: {
+      whenPlayed: (g, self) => phasma(g, self),
+      onAttack: (g, self) => phasma(g, self),
+    },
+  },
+  {
+    card: 'swu-LOF-059',
+    name: 'Nightsister Warrior',
+    text: '[When Defeated:] Draw a card.',
+    front: {
+      whenDefeated: (g, self) => g.draw(self.controller, 1),
+    },
+  },
+  {
+    card: 'swu-LOF-031',
+    name: 'Karis',
+    subtitle: "We Don't Like Strangers",
+    text: '[When Defeated:] You may use the Force. If you do, give a unit -2/-2 for this phase.',
+    front: {
+      whenDefeated: (g, self) => {
+        const p = self.controller
+        if (!g.hasForce(p)) return
+        const target = shrinkTarget(g, self, 2)
+        if (!g.may(p, 'Karis: use the Force to give a unit -2/-2 for this phase?', { yes: 'Use the Force', no: 'Keep it', ai: !!target, source: self.def.id })) return
+        if (g.useForce(p)) shrink(g, self, 2, 'Karis: give a unit -2/-2 for this phase', false)
+      },
+    },
+  },
+  {
+    card: 'swu-LOF-102',
+    name: "Yoda's Lightsaber",
+    text: 'Attach to a non-[{Vehicle}] unit.\n[When Played:] You may use the [{Force}]. If you do, heal 3 damage from a base.',
+    front: {
+      whenPlayed: (g, self) => {
+        const p = self.controller
+        if (!g.hasForce(p)) return
+        // The AI heals its own base when it has taken damage
+        // ... unless a card in hand wants the Force (Darth Tyranus, Talzin's Assassin)
+        const own = g.player(p).base.damage > 0 && !g.player(p).hand.some((c) => /the Force is with you, this unit gains|use the Force/i.test(g.def(c).text ?? ''))
+        if (!g.may(p, "Yoda's Lightsaber: use the Force to heal 3 damage from a base?", { yes: 'Use the Force', no: 'Keep it', ai: own, source: self.def.id })) return
+        if (!g.useForce(p)) return
+        const pick = g.chooseOne(p, "Yoda's Lightsaber: heal 3 damage from a base", [baseOf(p), baseOf(g.other(p))], { ai: baseOf(p), source: self.def.id })
+        if (pick) g.heal(pick, 3, self)
+      },
+    },
+  },
+  {
+    card: 'swu-SEC-052',
+    name: 'Diplomatic Immunity',
+    text: 'Attached unit gains: "[When this unit is attacked:] You may disclose [Vigilance][Vigilance][Heroism][Heroism] (reveal cards from your hand with these aspect icons among them). If you do, the attacker gets -2/-0 for this attack."',
+    front: {
+      attachedWhenDefending: (g, self) => {
+        if (!self.other || !g.unit(self.other)) return
+        if (!disclose(g, self, ['Vigilance', 'Vigilance', 'Heroism', 'Heroism'])) return
+        g.log(`${g.name(self.other)} gets -2/-0 for this attack`, self.controller)
+        g.buff(self.other, -2, 0, 'attack')
+      },
+    },
+  },
+  // --- 2026-11-26 ---
+  {
+    card: 'swu-LOF-020',
+    name: 'Nightsister Lair',
+    text: '[When a friendly [{Force}] unit attacks:] The Force is with you.',
+    front: {
+      triggersIf: {
+        whenFriendlyAttacks: (g, self) => {
+          const unit = self.other ? g.unit(self.other) : undefined
+          return !!unit && g.hasTrait(unit, 'Force') && !g.hasForce(self.controller)
+        },
+      },
+      whenFriendlyAttacks: (g, self) => g.forceIsWith(self.controller),
+    },
+  },
+  {
+    card: 'swu-LOF-231',
+    name: 'Darth Tyranus',
+    subtitle: 'Servant of Sidious',
+    text: '[Shielded]\nWhile the Force is with you, this unit gains [Ambush].',
+    front: {
+      gives: (g, self, unit) => (unit.id === self.id && g.hasForce(self.controller) ? { keywords: { ambush: true } } : undefined),
+    },
+  },
+  {
+    card: 'swu-LOF-035',
+    name: "Talzin's Assassin",
+    text: '[When Played:] You may use the Force. If you do, give a unit -3/-3 for this phase.',
+    front: {
+      whenPlayed: (g, self) => {
+        const p = self.controller
+        if (!g.hasForce(p)) return
+        // The AI: when the -3/-3 defeats an enemy unit, or takes 3 power off one with 4 or more
+        const target = shrinkTarget(g, self, 3) ?? enemy(g, self, (u) => g.power(u) >= 4).sort((a, b) => g.power(g.unit(b)!) - g.power(g.unit(a)!))[0]
+        if (!g.may(p, "Talzin's Assassin: use the Force to give a unit -3/-3 for this phase?", { yes: 'Use the Force', no: 'Keep it', ai: !!target, source: self.def.id })) return
+        if (!g.useForce(p)) return
+        shrinkOn(g, self, 3, "Talzin's Assassin: give a unit -3/-3 for this phase", target)
+      },
+    },
+  },
+  {
+    card: 'swu-LOF-229',
+    name: 'Kylo Ren',
+    subtitle: 'I Know Your Story',
+    text: '[Overwhelm]\n[When you play an upgrade on this unit:] You may use the Force. If you do, draw a card.',
+    front: {
+      whenUpgradePlayedOn: (g, self) => {
+        const p = self.controller
+        if (!g.hasForce(p)) return
+        // The AI draws, unless a card in hand wants the Force (Darth Tyranus, Talzin's Assassin)
+        const keep = g.player(p).hand.some((c) => /the Force is with you, this unit gains|use the Force/i.test(g.def(c).text ?? ''))
+        if (!g.may(p, 'Kylo Ren: use the Force to draw a card?', { yes: 'Use the Force', no: 'Keep it', ai: !keep, source: self.def.id })) return
+        if (g.useForce(p)) g.draw(p, 1)
+      },
+    },
+  },
+  // --- Thorrk's Lando data vault (swuforge.com/decks/cmwm1475n0kbw01k6pk7tz53d), 2026-11-26 ---
+  {
+    // Its deck size is checked as the deck is built, not in a game
+    card: 'swu-JTL-024',
+    name: 'Data Vault',
+    text: 'Your minimum deck size is increased by 10 cards.',
+    front: {},
+  },
+  {
+    card: 'swu-IC27-070',
+    name: 'C-3PO',
+    subtitle: 'Impulse Buy',
+    text: '[Action [Arrow]:] Give an Experience token to another unit. Then, if it has 6 or more power, draw a card.',
+    front: {
+      actions: [
+        {
+          label: 'Experience token to another unit, a card at 6 power',
+          exhaust: true,
+          can: (g, self) => all(g).some((id) => id !== self.id),
+          run: (g, self) => {
+            const ids = all(g).filter((id) => id !== self.id)
+            // The AI: a friendly unit it lifts to 6 power (a card too), else its strongest one
+            const mine = friendly(g, self, (u) => u.id !== self.id)
+            const draws = mine.filter((id) => g.power(g.unit(id)!) + 1 >= 6)
+            const best = [...(draws.length ? draws : mine)].sort((a, b) => g.power(g.unit(b)!) - g.power(g.unit(a)!))[0]
+            const pick = g.chooseOne(self.controller, 'C-3PO: give an Experience token to another unit', ids, { ai: best ?? 'help', ...(best && { firm: true }), source: self.def.id })
+            if (!pick) return
+            g.giveToken(pick, 'Experience')
+            const unit = g.unit(pick)
+            if (unit && g.power(unit) >= 6) g.draw(self.controller, 1)
+          },
+        },
+      ],
+    },
+  },
+  {
+    card: 'swu-JTL-201',
+    name: 'Ahsoka Tano',
+    subtitle: 'Chasing Whispers',
+    text: "[When Played:] An opponent discards a card from their hand. If it's a unit, you may exhaust a unit.",
+    front: {
+      whenPlayed: (g, self) => {
+        const foe = g.other(self.controller)
+        const hand = g.player(foe).hand.map((c) => c.id)
+        if (!hand.length) return
+        const [card] = g.choose(foe, 'Ahsoka Tano: discard a card from your hand', hand, { min: 1, max: 1, ai: 'discard', source: self.def.id })
+        if (!card) return
+        const unit = g.def(g.card(card)!).type === 'unit'
+        g.discard(foe, card)
+        if (!unit) return
+        // The AI exhausts the enemy unit that would hit hardest
+        const ready = enemy(g, self, (u) => !u.exhausted)
+        const pick = g.chooseOne(self.controller, 'Ahsoka Tano: you may exhaust a unit', all(g), { optional: true, ai: mostThreat(g, ready) ?? 'none', source: self.def.id })
+        if (pick) g.exhaust(pick)
+      },
+    },
+  },
+  {
+    card: 'swu-JTL-207',
+    name: 'Jam Communications',
+    text: "Look at an opponent's hand and discard an event from it.",
+    front: {
+      play: (g, self) => {
+        const p = self.controller
+        const foe = g.other(p)
+        const hand = g.player(foe).hand
+        g.log(`${g.player(p).name} looks at ${g.player(foe).name}'s hand`, p)
+        const events = hand.filter((c) => g.def(c).type === 'event').map((c) => c.id)
+        // The AI takes their dearest event
+        const dearest = [...events].sort((a, b) => g.def(g.card(b)!).cost - g.def(g.card(a)!).cost)[0]
+        const pick = g.chooseOne(p, events.length ? 'Jam Communications: discard an event from their hand' : 'Jam Communications: no event in their hand', events, {
+          ai: dearest ?? 'none',
+          source: self.def.id,
+          seen: hand.map((c) => c.id),
+        })
+        if (pick) g.discard(foe, pick)
+      },
+    },
+  },
+  {
+    // "Opponents can't take control of this unit": nothing in these decks takes control
+    card: 'swu-LAW-149',
+    name: 'Rey',
+    subtitle: 'Skywalker',
+    text: "Opponents can't take control of this unit.\nThis unit can't be defeated by enemy card abilities.",
+    front: {
+      cantBeDefeatedByEnemyAbilities: true,
+    },
+  },
+  {
+    card: 'swu-SEC-209',
+    name: 'The Mandalorian',
+    subtitle: 'Cleaning Up Nevarro',
+    text: '[Ambush]\n[When this unit attacks and defeats a unit:] You may choose an enemy non-leader unit. This unit captures it.',
+    front: {
+      whenAttackDefeats: (g, self) => {
+        if (!g.unit(self.id)) return
+        const ids = enemy(g, self, (u) => !g.isLeader(u))
+        if (!ids.length) return
+        const pick = g.chooseOne(self.controller, 'The Mandalorian: you may choose an enemy non-leader unit for him to capture', ids, { optional: true, ai: 'harm', source: self.def.id })
+        if (pick) g.capture(self.id, pick)
+      },
+    },
+  },
+  // --- Thorrk's Piett Red (swuforge.com/decks/cmwt6zc640jlc01o1qaldkkpx), 2026-11-26 ---
+  {
+    card: 'swu-JTL-005',
+    name: 'Admiral Piett',
+    subtitle: 'Commanding the Armada',
+    text: '[Action [Arrow]:] Play a {capital ship} unit from your hand. It costs [1] less.',
+    backText: 'Each {capital ship} unit you play costs [2] less.',
+    front: {
+      actions: [
+        {
+          label: 'play a Capital Ship unit for 1 less',
+          exhaust: true,
+          can: (g, self) => capitalShips(g, self.controller).some((id) => g.canPlay(self.controller, id, { discount: 1 })),
+          run: (g, self) => {
+            const p = self.controller
+            const ids = capitalShips(g, p).filter((id) => g.canPlay(p, id, { discount: 1 }))
+            const pick = g.chooseOne(p, 'Admiral Piett: play a Capital Ship unit from your hand for 1 less', ids, { ai: 'best', source: self.def.id })
+            if (pick) g.playCard(p, pick, { discount: 1 })
+          },
+        },
+      ],
+    },
+    back: {
+      costsLess: (_g, _self, card) => (card.type === 'unit' && card.traits.includes('Capital Ship') ? 2 : 0),
+    },
+  },
+  {
+    card: 'swu-ASH-118',
+    name: '8D8',
+    subtitle: "Daimyo's Majordomo",
+    text: '[Hidden]\n[Action [Arrow]:] Deal 1 damage to another friendly unit. If you do, search the top 5 cards of your deck for a unit, reveal it, and draw it.',
+    front: {
+      actions: [
+        {
+          label: '1 damage to another friendly unit, a unit from the top 5',
+          exhaust: true,
+          can: (g, self) => friendly(g, self, (u) => u.id !== self.id).length > 0,
+          run: (g, self) => {
+            const p = self.controller
+            // The AI: the friendly unit with the most HP to spare (no Shield token to lose)
+            const ids = friendly(g, self, (u) => u.id !== self.id)
+            const spare = (id: string) => {
+              const u = g.unit(id)!
+              return g.hp(u) - u.damage - (g.tokens(id, 'Shield') ? 3 : 0) - (g.isLeader(u) ? 2 : 0)
+            }
+            const best = [...ids].sort((a, b) => spare(b) - spare(a))[0]
+            const pick = g.chooseOne(p, '8D8: deal 1 damage to another friendly unit', ids, { ai: best, firm: true, source: self.def.id })
+            if (!pick || !g.damage(pick, 1, self)) return
+            // The AI fixes its curve: the dearest unit it can pay for next round, else the cheapest
+            const next = g.player(p).resources.length + 1
+            const offCurve = ((globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env.AI_OFF ?? '').includes('8d8')
+            searchDraw(g, self, 5, (c) => g.def(c).type === 'unit', 'a unit', offCurve ? undefined : (ids) => {
+              const costs = ids.map((id) => ({ id, cost: g.def(g.card(id)!).cost }))
+              return [...costs].filter((c) => c.cost <= next).sort((a, b) => b.cost - a.cost)[0]?.id ?? [...costs].sort((a, b) => a.cost - b.cost)[0]?.id
+            })
+          },
+        },
+      ],
+    },
+  },
+  {
+    card: 'swu-ASH-099',
+    name: 'Gozanti Assault Carrier',
+    text: '[Support]\n[On Attack:] This unit gains [Sentinel] for this phase.',
+    front: {
+      onAttack: (g, self) => {
+        if (g.unit(self.id)) g.grant(self.id, { sentinel: true }, 'phase')
+      },
+    },
+  },
+  {
+    card: 'swu-HMW-247',
+    name: 'Surveillance Cruiser',
+    text: '[When Played:] If an opponent controls an [{Endor}], [{Kashyyyk}], [{Naboo}], or [{Tatooine}] base, draw a card.',
+    front: {
+      whenPlayed: (g, self) => {
+        const base = g.def(g.player(g.other(self.controller)).base)
+        if (['Endor', 'Kashyyyk', 'Naboo', 'Tatooine'].some((t) => base.traits.includes(t))) g.draw(self.controller, 1)
+      },
+    },
+  },
+  {
+    card: 'swu-IC27-129',
+    name: 'DRK-1 Probe Droid',
+    text: '[When Played:] You may defeat a non-[{Unique}] upgrade.',
+    front: {
+      whenPlayed: (g, self) => {
+        const ups = g.upgrades().filter((u) => u.unit && !g.def(u).unique)
+        if (!ups.length) return
+        // The AI: an enemy upgrade, the dearest card first, then a Shield token, then Experience
+        const worth = (u: (typeof ups)[number]) => (g.def(u).token ? (g.def(u).name === 'Shield' ? 2.5 : 1) : 2 + g.def(u).cost)
+        const theirs = ups.filter((u) => u.controller !== self.controller).sort((a, b) => worth(b) - worth(a))
+        const pick = g.chooseOne(self.controller, 'DRK-1 Probe Droid: you may defeat a non-unique upgrade', ups.map((u) => u.id), { optional: true, ai: theirs[0]?.id ?? 'none', source: self.def.id })
+        if (pick) g.defeatUpgrade(pick)
+      },
+    },
+  },
+  {
+    card: 'swu-IC27-136',
+    name: 'Open Fire',
+    text: 'Deal 4 damage to a unit.',
+    front: {
+      play: (g, self) => {
+        const pick = g.chooseOne(self.controller, 'Open Fire: deal 4 damage to a unit', all(g), { ai: bestHit(g, self, enemy(g, self), 4) ?? 'harm', source: self.def.id })
+        if (pick) g.damage(pick, 4, self)
+      },
+    },
+  },
+  {
+    card: 'swu-IC27-068',
+    name: 'Devastator',
+    subtitle: "Lord Vader's Flagship",
+    text: '[Overwhelm]\n[When Played:] Search the top 5 cards of your deck for a [Villainy] unit that costs 12 or less and play it for free.',
+    front: {
+      whenPlayed: (g, self) => {
+        const p = self.controller
+        const top = g.top(p, 5)
+        const units = top.filter((c) => g.def(c).type === 'unit' && g.def(c).aspects.includes('Villainy') && g.def(c).cost <= 12 && g.canPlay(p, c.id, { free: true })).map((c) => c.id)
+        // The AI: the dearest, unless it is racing: then what holds off damage (the user,
+        // 2026-11-26): the other Devastator when its 4 indirect damage defeats an enemy unit, a
+        // Sentinel (Moff Gideon), Interrogation Droid's exhaust
+        const byCost = [...units].sort((a, b) => g.def(g.card(b)!).cost - g.def(g.card(a)!).cost)
+        const base = g.player(p).base
+        const left = g.def(base).hp - base.damage
+        const foes = enemy(g, self)
+        const racing = foes.reduce((sum, id) => sum + g.power(g.unit(id)!), 0) * 2 >= left
+        const text = (id: string) => g.def(g.card(id)!).text ?? ''
+        const kills = foes.some((id) => !g.isLeader(g.unit(id)!) && g.hp(g.unit(id)!) - g.unit(id)!.damage <= 4)
+        const defensive =
+          (kills ? byCost.find((id) => /Deal 4 indirect damage to each opponent/.test(text(id))) : undefined) ??
+          byCost.find((id) => g.def(g.card(id)!).keywords.sentinel) ??
+          byCost.find((id) => /^\[When Played:\] Exhaust an enemy unit/.test(text(id)))
+        const off = ((globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env.AI_OFF ?? '').includes('devpick')
+        const dearest = racing && defensive && !off ? defensive : byCost[0]
+        const pick = g.chooseOne(p, 'Devastator: a Villainy unit from the top 5 cards of your deck to play for free', units, { ai: dearest ?? 'none', source: self.def.id, seen: top.map((c) => c.id) })
+        if (pick) {
+          g.reveal(p, [pick], self)
+          g.playCard(p, pick, { free: true })
+        } else g.log('Devastator finds no Villainy unit to play', p)
+        g.shuffleToBottom(p, top.filter((c) => c.id !== pick && g.player(p).deck.some((d) => d.id === c.id)).map((c) => c.id))
+      },
+    },
+  },
+  {
+    card: 'swu-JTL-131',
+    name: 'Turbolaser Salvo',
+    text: 'Choose an arena. A friendly space unit deals damage equal to its power to each enemy unit in that arena.',
+    front: {
+      play: (g, self) => {
+        const p = self.controller
+        const ships = friendly(g, self, (u) => u.arena === 'space')
+        if (!ships.length) return
+        // The AI: the arena and ship that defeat the most enemy cost
+        const arenas = ['ground', 'space'] as const
+        const score = (arena: (typeof arenas)[number], power: number) =>
+          enemy(g, self, (u) => u.arena === arena).reduce((sum, id) => {
+            const u = g.unit(id)!
+            return sum + (g.hp(u) - u.damage <= power && !g.tokens(id, 'Shield') ? g.cost(u) + 1 : Math.min(power, g.hp(u) - u.damage) * 0.2)
+          }, 0)
+        const power = Math.max(...ships.map((id) => g.power(g.unit(id)!)))
+        const best = score('space', power) > score('ground', power) ? 1 : 0
+        const arena = arenas[g.option(p, 'Turbolaser Salvo: choose an arena', ['Ground', 'Space'], { ai: best, source: self.def.id })]
+        const strongest = [...ships].sort((a, b) => g.power(g.unit(b)!) - g.power(g.unit(a)!))[0]
+        const ship = g.chooseOne(p, 'Turbolaser Salvo: a friendly space unit to deal its power in damage', ships, { ai: strongest, firm: true, source: self.def.id })
+        if (!ship) return
+        const amount = g.power(g.unit(ship)!)
+        for (const id of enemy(g, self, (u) => u.arena === arena)) if (g.unit(id)) g.damage(id, amount, { ...self, id: ship })
+      },
+    },
+  },
+  {
+    card: 'swu-JTL-143',
+    name: 'Devastator',
+    subtitle: 'Hunting the Rebellion',
+    text: 'You assign all indirect damage you deal to opponents.\n[When Played:] Deal 4 indirect damage to each opponent.',
+    front: {
+      assignsIndirect: true,
+      whenPlayed: (g, self) => g.indirect(g.other(self.controller), 4, self),
+    },
+  },
+  {
+    card: 'swu-JTL-181',
+    name: 'Planetary Bombardment',
+    text: 'Deal 8 indirect damage to a player. If you control a {capital ship} unit, deal 12 indirect damage instead.',
+    front: {
+      play: (g, self) => {
+        const p = self.controller
+        const amount = friendly(g, self, (u) => g.hasTrait(u, 'Capital Ship')).length ? 12 : 8
+        const who = g.option(p, `Planetary Bombardment: deal ${amount} indirect damage to a player`, [g.player(g.other(p)).name, g.player(p).name], { ai: 0, source: self.def.id })
+        g.indirect(who === 0 ? g.other(p) : p, amount, self)
+      },
+    },
+  },
+  {
+    card: 'swu-JTL-089',
+    name: 'The Invisible Hand',
+    subtitle: 'Crawling with Vultures',
+    text: '[When Played/When this unit completes an attack:] You may search the top 8 cards of your deck for a [{Droid}] unit, reveal it, and draw it. If it costs 2 or less, you may play it for free.',
+    front: {
+      whenPlayed: (g, self) => invisibleHand(g, self),
+      afterAttack: (g, self) => invisibleHand(g, self),
+    },
+  },
+  {
+    card: 'swu-LAW-058',
+    name: 'Honor-Bound Partisan',
+    text: '[When Played:] Deal 1 damage to a base.\n[When Defeated:] The next unit you play this phase costs [1] less.',
+    front: {
+      whenPlayed: (g, self) => {
+        const p = self.controller
+        const pick = g.chooseOne(p, 'Honor-Bound Partisan: deal 1 damage to a base', [baseOf(g.other(p)), baseOf(p)], { ai: baseOf(g.other(p)), firm: true, source: self.def.id })
+        if (pick) g.damage(pick, 1, self)
+      },
+      whenDefeated: (g, self) => g.discountNext(self.controller, ':unit', 1),
+    },
+  },
+  {
+    card: 'swu-LAW-075',
+    name: 'Interrogation Droid',
+    text: '[When Played:] Exhaust an enemy unit. If you do, and that unit costs 3 or less, its controller discards a card from their hand.',
+    front: {
+      whenPlayed: (g, self) => {
+        const ids = enemy(g, self, (u) => !u.exhausted)
+        if (!ids.length) return
+        // The AI: a ready one that costs 3 or less (a card discarded too), else the one that hits hardest
+        const cheap = ids.filter((id) => g.cost(g.unit(id)!) <= 3)
+        const pick = g.chooseOne(self.controller, 'Interrogation Droid: exhaust an enemy unit', ids, { ai: mostThreat(g, cheap.length ? cheap : ids) ?? 'harm', source: self.def.id })
+        if (!pick) return
+        g.exhaust(pick)
+        const unit = g.unit(pick)
+        if (unit && g.cost(unit) <= 3) g.discardChosen(g.controller(unit), 1, 'Interrogation Droid: discard a card from your hand', self.def.id)
+      },
+    },
+  },
+  {
+    card: 'swu-SEC-110',
+    name: 'GNK Power Droid',
+    text: '[On Attack:] The next unit you play this phase costs [1] less.',
+    front: {
+      onAttack: (g, self) => g.discountNext(self.controller, ':unit', 1),
+    },
+  },
+  {
+    card: 'swu-SEC-180',
+    name: "Let's Call It War",
+    text: 'Deal 3 damage to a unit. Then, if you have the initiative, you may deal 2 damage to another unit in the same arena.',
+    front: {
+      play: (g, self) => {
+        const p = self.controller
+        const pick = g.chooseOne(p, "Let's Call It War: deal 3 damage to a unit", all(g), { ai: bestHit(g, self, enemy(g, self), 3) ?? 'harm', source: self.def.id })
+        if (!pick) return
+        const arena = g.unit(pick)!.arena
+        g.damage(pick, 3, self)
+        if (g.state.initiative !== p) return
+        const others = all(g, (u) => u.id !== pick && u.arena === arena)
+        if (!others.length) return
+        const target = bestHit(g, self, enemy(g, self, (u) => u.id !== pick && u.arena === arena), 2)
+        const second = g.chooseOne(p, "Let's Call It War: you may deal 2 damage to another unit in the same arena", others, { optional: true, ai: target ?? 'none', source: self.def.id })
+        if (second) g.damage(second, 2, self)
+      },
+    },
+  },
+  // --- Luke Thermal oscillator (swudb.com/deck/wkbIVTYIXD), 2026-11-26 ---
+  {
+    // Its deck size is checked as the deck is built, not in a game
+    card: 'swu-JTL-025',
+    name: 'Thermal Oscillator',
+    text: 'Your minimum deck size is decreased by 5 cards.',
+    front: {},
+  },
+  {
+    card: 'swu-IC27-123',
+    name: 'Jyn Erso',
+    subtitle: "Her Father's Revenge",
+    text: '[Saboteur]\n[When Played:] Ready up to 3 units with combined cost 7 or less. They each gain [Saboteur] for this phase.',
+    front: {
+      whenPlayed: (g, self) => {
+        const p = self.controller
+        const ids = all(g, (u) => u.exhausted && u.id !== self.id && g.cost(u) <= 7)
+        if (!ids.length) return
+        // The AI: its exhausted units with the most power for 7 cost, up to 3
+        const mine = friendly(g, self, (u) => u.exhausted && u.id !== self.id && g.cost(u) <= 7)
+        let best: string[] = []
+        let bestPower = 0
+        const walk = (from: number, picked: string[], cost: number, power: number) => {
+          if (power > bestPower) [best, bestPower] = [picked, power]
+          if (picked.length === 3) return
+          for (let i = from; i < mine.length; i++) {
+            const u = g.unit(mine[i])!
+            if (cost + g.cost(u) <= 7) walk(i + 1, [...picked, mine[i]], cost + g.cost(u), power + g.power(u))
+          }
+        }
+        walk(0, [], 0, 0)
+        const picks = g.choose(p, 'Jyn Erso: ready up to 3 units with combined cost 7 or less', ids, { min: 0, max: 3, ai: best.length ? `ids:${best.join(',')}` : 'none', source: self.def.id })
+        let spent = 0
+        for (const id of picks) {
+          const u = g.unit(id)
+          if (!u || spent + g.cost(u) > 7) continue
+          spent += g.cost(u)
+          g.ready(id)
+          g.grant(id, { saboteur: true }, 'phase')
+        }
+      },
+    },
+  },
+  {
+    card: 'swu-LAW-183',
+    name: 'B-Wing Skirmisher',
+    text: '[When Played:] Deal 1 damage to each of up to 2 space units.',
+    front: {
+      whenPlayed: (g, self) => {
+        const ids = all(g, (u) => u.arena === 'space' && u.id !== self.id)
+        if (!ids.length) return
+        // The AI: enemy space units 1 damage defeats, the dearest first, then the most threatening
+        const foes = enemy(g, self, (u) => u.arena === 'space')
+        const left = (id: string) => g.hp(g.unit(id)!) - g.unit(id)!.damage
+        const dies = (id: string) => Number(left(id) <= 1 && !g.tokens(id, 'Shield'))
+        const order = [...foes].sort((a, b) => dies(b) - dies(a) || threat(g, b) - threat(g, a))
+        const picks = g.choose(self.controller, 'B-Wing Skirmisher: deal 1 damage to each of up to 2 space units', ids, { min: 0, max: 2, ai: order.length ? `ids:${order.slice(0, 2).join(',')}` : 'none', source: self.def.id })
+        for (const id of picks) if (g.unit(id)) g.damage(id, 1, self)
+      },
+    },
+  },
+  {
+    card: 'swu-LOF-153',
+    name: 'Paz Vizsla',
+    subtitle: 'Unyielding Warrior',
+    text: 'This unit gets [+2/+0] for each damage on him.',
+    front: {
+      gives: (_g, self, unit) => (unit.id === self.id && unit.damage ? { power: 2 * unit.damage } : undefined),
+    },
+  },
+  {
+    card: 'swu-HMW-166',
+    name: 'Gungi',
+    subtitle: 'Fighting for Kashyyyk',
+    text: '[Grit]\n[When this unit is dealt damage and survives:] You may discard a card from your hand. If you do, ready this unit.',
+    front: {
+      whenDealtDamage: (g, self) => {
+        const unit = g.unit(self.id)
+        const p = self.controller
+        if (!unit || !unit.exhausted || !g.player(p).hand.length) return
+        // The AI: while the action phase goes on, to attack again: during its own attack (Sith
+        // Holocron's 2 damage on itself, the deck's turn-3 combo) whatever the card, else
+        // keeping a card besides
+        const own = g.state.attack?.attacker === self.id
+        const yes = g.state.phase === 'action' && (own || g.player(p).hand.length >= 2)
+        if (!g.may(p, 'Gungi: discard a card from your hand to ready him?', { yes: 'Discard', no: 'Skip', ai: yes, source: self.def.id })) return
+        g.discardChosen(p, 1, 'Gungi: discard a card from your hand', self.def.id)
+        g.ready(self.id)
+      },
+    },
+  },
+  {
+    card: 'swu-IC27-120',
+    name: 'Rey',
+    subtitle: 'Embracing Destiny',
+    text: '[Action [[1], discard a card from your hand]:] Attack with a unit. It gets +2/+0 for this attack.',
+    front: {
+      actions: [
+        {
+          label: 'discard a card: attack with a unit, +2/+0',
+          resources: 1,
+          can: (g, self) => g.player(self.controller).hand.length > 0 && friendly(g, self).some((id) => g.canAttack(id)),
+          run: (g, self) => {
+            const p = self.controller
+            g.discardChosen(p, 1, 'Rey: discard a card from your hand', self.def.id)
+            const ids = friendly(g, self).filter((id) => g.canAttack(id))
+            const strongest = [...ids].sort((a, b) => g.power(g.unit(b)!) - g.power(g.unit(a)!))[0]
+            const pick = g.chooseOne(p, 'Rey: attack with a unit (+2/+0)', ids, { ai: strongest, source: self.def.id })
+            if (pick) g.attackWith(pick, { power: 2 })
+          },
+        },
+      ],
+    },
+  },
+  {
+    card: 'swu-TWI-174',
+    name: 'Open Fire',
+    text: 'Deal 4 damage to a unit.',
+    front: {
+      play: (g, self) => {
+        const pick = g.chooseOne(self.controller, 'Open Fire: deal 4 damage to a unit', all(g), { ai: feedsOnDamage(g, self, 4) ?? bestHit(g, self, enemy(g, self), 4) ?? 'harm', source: self.def.id })
+        if (pick) g.damage(pick, 4, self)
+      },
+    },
+  },
+  {
+    card: 'swu-IC27-127',
+    name: 'Act of Aggression',
+    text: 'Draw a card.\nYou may deal 3 damage to a unit.\nGive a friendly unit +3/+0 and [Overwhelm] for this phase.',
+    front: {
+      play: (g, self) => {
+        const p = self.controller
+        g.draw(p, 1)
+        // The AI: the 3 damage on its own Paz Vizsla when he can attack after (+6/+0, then +3/+0
+        // and Overwhelm), else on the enemy unit it hurts most
+        const paz = feedsOnDamage(g, self, 3)
+        const hit = paz ?? bestHit(g, self, enemy(g, self), 3)
+        const pick = g.chooseOne(p, 'Act of Aggression: you may deal 3 damage to a unit', all(g), { optional: true, ai: hit ?? 'none', source: self.def.id })
+        if (pick) g.damage(pick, 3, self)
+        const mine = friendly(g, self)
+        if (!mine.length) return
+        // The AI: a ready unit that can still attack, the strongest
+        const ready = mine.filter((id) => g.canAttack(id))
+        const best = paz && g.unit(paz) ? paz : [...(ready.length ? ready : mine)].sort((a, b) => g.power(g.unit(b)!) - g.power(g.unit(a)!))[0]
+        const buffed = g.chooseOne(p, 'Act of Aggression: give a friendly unit +3/+0 and Overwhelm for this phase', mine, { ai: best, source: self.def.id })
+        if (!buffed) return
+        g.buff(buffed, 3, 0, 'phase')
+        g.grant(buffed, { overwhelm: true }, 'phase')
+      },
+    },
+  },
+  {
+    card: 'swu-JTL-155',
+    name: 'They Hate That Ship',
+    text: 'An opponent creates 2 TIE Fighter tokens and readies them. Then, play a [{Vehicle}] unit from your hand. It costs [3] less.',
+    front: {
+      play: (g, self) => {
+        const p = self.controller
+        const foe = g.other(p)
+        g.createToken(foe, 'TIE Fighter', { ready: true })
+        g.createToken(foe, 'TIE Fighter', { ready: true })
+        const ids = g.player(p).hand.filter((c) => g.def(c).type === 'unit' && g.def(c).traits.includes('Vehicle') && g.canPlay(p, c.id, { discount: 3 })).map((c) => c.id)
+        const pick = g.chooseOne(p, 'They Hate That Ship: play a Vehicle unit from your hand for 3 less', ids, { ai: 'best', source: self.def.id })
+        if (pick) g.playCard(p, pick, { discount: 3 })
+      },
+    },
+  },
+  {
+    card: 'swu-LOF-138',
+    name: 'Sith Holocron',
+    text: 'Attach to a [{Force}] unit.\nAttached unit gains: "[On Attack:] You may deal 2 damage to a friendly unit. If you do, this unit gets [+2/+0] for this attack."',
+    front: {
+      attachedOnAttack: (g, self) => {
+        const host = self.attachedTo ? g.unit(self.attachedTo) : undefined
+        if (!host) return
+        const ids = friendly(g, { ...self, controller: g.controller(host) })
+        const left = (u: UnitState) => g.hp(u) - u.damage
+        // The AI: on itself when the damage pays (Paz Vizsla's +2/+0 a damage, Grit, Gungi readied)
+        // and it survives the attack; else on a sturdy unit when the +2/+0 defeats the defender
+        const target = g.state.attack?.target
+        const defender = target && target !== 'base' ? g.unit(target) : undefined
+        const takes = defender ? g.power(defender) : 0
+        const feeds = /for each damage on|\[Grit\]|When this unit is dealt damage and survives/.test(g.def(host).text ?? '') || g.keywords(host).grit
+        let pick: string | undefined
+        if (feeds && left(host) > 2 + takes) pick = host.id
+        // At the base: 2 more damage there for 2 on a sturdy unit that doesn't attack this round
+        else if (!defender)
+          pick = [...ids].filter((id) => id !== host.id && left(g.unit(id)!) >= 5 && g.unit(id)!.exhausted).sort((a, b) => left(g.unit(b)!) - left(g.unit(a)!))[0]
+        else if (defender) {
+          const need = g.hp(defender) - defender.damage
+          if (g.power(host) < need && g.power(host) + 2 >= need)
+            pick = [...ids].filter((id) => id !== host.id && left(g.unit(id)!) > 2).sort((a, b) => left(g.unit(b)!) - left(g.unit(a)!))[0]
+        }
+        const chosen = g.chooseOne(g.controller(host), 'Sith Holocron: you may deal 2 damage to a friendly unit for +2/+0', ids, { optional: true, ai: pick ?? 'none', source: self.def.id })
+        if (!chosen || !g.damage(chosen, 2, self)) return
+        if (g.unit(host.id)) g.buff(host.id, 2, 0, 'attack')
+      },
+    },
+  },
+  // --- Mother Talzin Yellow Force (swu-competitivehub.com/decklist/39228), 2026-11-26 ---
+  {
+    card: 'swu-LOF-002',
+    name: 'Mother Talzin',
+    subtitle: 'Power Through Magick',
+    text: '[Action [Arrow, use the Force]:] Give a unit -1/-1 for this phase.',
+    backText: '[On Attack:] You may give a unit -1/-1 for this phase.',
+    front: {
+      actions: [
+        {
+          label: 'use the Force: a unit -1/-1',
+          exhaust: true,
+          can: (g, self) => g.hasForce(self.controller) && g.units(() => true).length > 0,
+          run: (g, self) => {
+            if (!g.useForce(self.controller)) return
+            shrinkOn(g, self, 1, 'Mother Talzin: give a unit -1/-1 for this phase', shrinkTarget(g, self, 1) ?? tradeTarget(g, self, 1) ?? mostThreat(g, enemy(g, self)))
+          },
+        },
+      ],
+    },
+    back: {
+      // The AI: a unit -1/-1 defeats, else the unit she attacks (it hits back for 1 less)
+      onAttack: (g, self) => {
+        const target = self.attack?.target
+        const defender = target && target !== 'base' && g.unit(target) ? target : undefined
+        shrinkOn(g, self, 1, 'Mother Talzin: you may give a unit -1/-1 for this phase', shrinkTarget(g, self, 1) ?? defender ?? tradeTarget(g, self, 1))
+      },
+    },
+  },
+  {
+    card: 'swu-SEC-186',
+    name: 'Garindan',
+    subtitle: 'Information Broker',
+    text: "[When Played:] Name a card. Look at an opponent's hand and discard a card with that name from it.\n[Plot]",
+    front: { whenPlayed: (g, self) => garindan(g, self) },
+  },
+  {
+    card: 'swu-ASH-219',
+    name: 'Jod Na Nawood',
+    subtitle: 'Keeping Secrets',
+    text: '[Sentinel]\n[When Played:] You may pay [4]. If you do, choose an arena. Exhaust each unit in that arena.',
+    front: {
+      whenPlayed: (g, self) => {
+        const p = self.controller
+        if (!g.canPay(p, 4)) return
+        // The AI: the arena where the enemy's ready power most outweighs its own, by JOD_EDGE
+        const edge = (arena: string) =>
+          enemy(g, self, (u) => u.arena === arena && !u.exhausted).reduce((s, id) => s + g.power(g.unit(id)!), 0) -
+          friendly(g, self, (u) => u.arena === arena && !u.exhausted).reduce((s, id) => s + g.power(g.unit(id)!), 0)
+        const arenas = ['ground', 'space'] as const
+        const best = edge('ground') >= edge('space') ? 0 : 1
+        if (!g.may(p, 'Jod Na Nawood: pay 4 to exhaust each unit in an arena?', { yes: 'Pay 4', no: 'Skip', ai: edge(arenas[best]) >= JOD_EDGE, source: self.def.id })) return
+        if (!g.pay(p, 4)) return
+        const arena = arenas[g.option(p, 'Jod Na Nawood: exhaust each unit in an arena', ['Ground', 'Space'], { ai: best, source: self.def.id })]
+        g.log(`Each unit in the ${arena} arena is exhausted`, p)
+        for (const id of all(g, (u) => u.arena === arena)) g.exhaust(id)
+      },
+    },
+  },
+  {
+    card: 'swu-LAW-086',
+    name: 'The Stranger',
+    subtitle: 'No Survivors',
+    text: '[Ambush]\n[Grit]\nWhile Attacking, you may have the defending unit deal combat damage before this unit.',
+    front: {
+      // When he survives the defender's damage: Grit makes his own hit harder
+      strikesSecond: (g, self, defender) => {
+        const unit = g.unit(self.id)
+        return !!unit && g.hp(unit) - unit.damage > g.power(defender)
+      },
+    },
+  },
+  {
+    card: 'swu-ASH-224',
+    name: 'Elzar Mann',
+    subtitle: 'Haunted by a Vision',
+    text: 'While you control a [{Force}] leader, this unit enters play ready.\n[When Played:] Distribute up to 5 Advantage tokens among other friendly units. Then, an opponent searches twice that many cards from the top of their deck for an event, reveals it, and draws it.',
+    front: {
+      whenPlayed: (g, self) => {
+        const p = self.controller
+        if (g.def(g.player(p).leader).traits.includes('Force')) g.ready(self.id)
+        const ids = friendly(g, self, (u) => u.id !== self.id)
+        if (!ids.length) return
+        // The AI: one on each other unit that can attack this phase, up to 3 (each token is 2
+        // cards the opponent searches for an event)
+        const ready = ids.filter((id) => g.canAttack(id)).sort((a, b) => g.power(g.unit(b)!) - g.power(g.unit(a)!))
+        const count = g.option(p, 'Elzar Mann: how many Advantage tokens to distribute?', ['0', '1', '2', '3', '4', '5'], { ai: Math.min(3, ready.length), firm: true, source: self.def.id })
+        for (let i = 0; i < count; i++) {
+          const pick = g.chooseOne(p, `Elzar Mann: give an Advantage token to another friendly unit (${i + 1} of ${count})`, ids, { ai: ready[i % Math.max(1, ready.length)] ?? ids[0], source: self.def.id })
+          if (pick) g.giveToken(pick, 'Advantage')
+        }
+        if (count) searchDraw(g, { ...self, controller: g.other(p) }, 2 * count, (c) => g.def(c).type === 'event', 'an event')
+      },
+    },
+  },
+  {
+    card: 'swu-ASH-053',
+    name: 'Pre Vizsla',
+    subtitle: 'Strong-Willed Ruler',
+    text: '[When Played:] Defeat any number of non-leader units with a total of 6 or less remaining HP. Create a Mandalorian token for each unit defeated this way.',
+    front: {
+      whenPlayed: (g, self) => {
+        const p = self.controller
+        const ids = all(g, (u) => !g.isLeader(u) && g.hp(u) - u.damage <= 6)
+        if (!ids.length) return
+        // The AI: the enemy units worth most (cost, then power) whose HP left adds up to 6 or less
+        const foes = enemy(g, self, (u) => !g.isLeader(u) && g.hp(u) - u.damage <= 6).slice(0, 12)
+        const worth = (id: string) => g.cost(g.unit(id)!) + 0.3 * g.power(g.unit(id)!) + 1
+        let best: string[] = []
+        let bestWorth = 0
+        for (let mask = 1; mask < 1 << foes.length; mask++) {
+          const set = foes.filter((_, i) => mask & (1 << i))
+          if (set.reduce((s, id) => s + left(g, id), 0) > 6) continue
+          const w = set.reduce((s, id) => s + worth(id), 0)
+          if (w > bestWorth) [best, bestWorth] = [set, w]
+        }
+        const picks = g.choose(p, 'Pre Vizsla: defeat any number of non-leader units with 6 or less remaining HP in total', ids, {
+          min: 0,
+          max: ids.length,
+          ai: best.length ? `ids:${best.join(',')}` : 'none',
+          source: self.def.id,
+        })
+        let total = 0
+        const doomed: string[] = []
+        for (const id of picks) {
+          if (!g.unit(id) || total + left(g, id) > 6) continue
+          total += left(g, id)
+          doomed.push(id)
+        }
+        let count = 0
+        for (const id of doomed) {
+          g.defeat(id, self)
+          if (!g.unit(id)) count++
+        }
+        for (let i = 0; i < count; i++) g.createToken(p, 'Mandalorian')
+      },
+    },
+  },
+  {
+    card: 'swu-ASH-194',
+    name: 'Snub Fighter Squadron',
+    text: '[Ambush]\n[When Played:] Deal 1 damage to a space unit.',
+    front: {
+      whenPlayed: (g, self) => {
+        const ids = all(g, (u) => u.arena === 'space')
+        if (!ids.length) return
+        // The AI: an enemy space unit (the best hit), else its own sturdiest space unit
+        const own = friendly(g, self, (u) => u.arena === 'space').sort((a, b) => left(g, b) - left(g, a))[0]
+        const pick = g.chooseOne(self.controller, 'Snub Fighter Squadron: deal 1 damage to a space unit', ids, { ai: bestHit(g, self, ids, 1) ?? own, source: self.def.id })
+        if (pick) g.damage(pick, 1, self)
+      },
+    },
+  },
+  {
+    card: 'swu-HMW-203',
+    name: 'Victor Squadron',
+    subtitle: 'In Attack Formation',
+    text: 'This unit enters play ready.',
+    front: { whenPlayed: (g, self) => g.ready(self.id) },
+  },
+  {
+    card: 'swu-HMW-204',
+    name: 'Nightbrother',
+    subtitle: "Maul's Gauntlet",
+    text: '[When Played:] You may play a unit from your discard pile. It costs [3] less and enters play ready. At the start of the next regroup phase, defeat it.',
+    front: {
+      whenPlayed: (g, self) => {
+        const p = self.controller
+        const ids = g.player(p).discard.filter((c) => g.def(c).type === 'unit' && g.canPlay(p, c.id, { discount: 3 })).map((c) => c.id)
+        if (!ids.length) return
+        // The AI: the dearest
+        const dearest = [...ids].sort((a, b) => g.def(g.card(b)!).cost - g.def(g.card(a)!).cost)[0]
+        const pick = g.chooseOne(p, 'Nightbrother: you may play a unit from your discard pile for 3 less (it enters ready, and is defeated when the next regroup phase starts)', ids, {
+          optional: true,
+          ai: dearest,
+          source: self.def.id,
+        })
+        if (!pick || !g.playCard(p, pick, { discount: 3 }) || !g.unit(pick)) return
+        g.ready(pick)
+        g.doom(pick)
+      },
+    },
+  },
+  {
+    card: 'swu-LAW-217',
+    name: 'Hold For Questioning',
+    text: "Exhaust an enemy unit. If you do, look at its controller's hand and discard a card form it that shares an aspect with that unit.",
+    front: {
+      play: (g, self) => {
+        const p = self.controller
+        const ids = enemy(g, self)
+        // The AI: the ready enemy unit that threatens most
+        const ready = ids.filter((id) => !g.unit(id)!.exhausted)
+        const pick = g.chooseOne(p, 'Hold For Questioning: exhaust an enemy unit', ids, { ai: mostThreat(g, ready) ?? ids[0] ?? 'none', source: self.def.id })
+        const unit = pick ? g.unit(pick) : undefined
+        if (!unit || unit.exhausted) return
+        g.exhaust(unit.id)
+        const foe = g.controller(unit)
+        const aspects = g.def(unit).aspects
+        const hand = g.player(foe).hand
+        g.log(`${g.player(p).name} looks at ${g.player(foe).name}'s hand`, p)
+        const fits = hand.filter((c) => g.def(c).aspects.some((a) => aspects.includes(a))).map((c) => c.id)
+        if (!fits.length) return
+        const gone = g.chooseOne(p, `Hold For Questioning: discard a card that shares an aspect with ${g.name(unit.id)}`, fits, { ai: 'strip', source: self.def.id, seen: hand.map((c) => c.id) })
+        if (gone) g.discard(foe, gone)
+      },
+    },
+  },
+  {
+    card: 'swu-JTL-043',
+    name: 'No Glory, Only Results',
+    text: 'Take control of a non-leader unit, then defeat it.',
+    front: {
+      play: (g, self) => {
+        const p = self.controller
+        const ids = all(g, (u) => !g.isLeader(u))
+        // The AI: the enemy unit worth most
+        const worth = (id: string) => g.cost(g.unit(id)!) + threat(g, id)
+        const foes = enemy(g, self, (u) => !g.isLeader(u)).sort((a, b) => worth(b) - worth(a))
+        const pick = g.chooseOne(p, 'No Glory, Only Results: take control of a non-leader unit, then defeat it', ids, { ai: foes[0] ?? 'none', source: self.def.id })
+        if (!pick) return
+        g.takeControl(pick, p)
+        g.defeat(pick, self)
+      },
+    },
+  },
+  {
+    card: 'swu-SEC-038',
+    name: 'Condemn',
+    text: 'While attached unit is attacking, it gains: "[On Attack:] The defending player may disclose [Vigilance][Villainy]. If they do, this unit gets -6/-0 for this attack" and loses all other abilities.',
+    front: {
+      attachedOnAttack: (g, self) => {
+        const host = self.attachedTo ? g.unit(self.attachedTo) : undefined
+        if (!host) return
+        // Its keywords gone for the attack (its other abilities that already fired stay done)
+        const keywords = Object.keys(g.keywords(host)) as (keyof Keywords)[]
+        if (keywords.length) g.strip(host.id, keywords, 'attack')
+        const defending = g.other(g.controller(host))
+        if (!disclose(g, { ...self, controller: defending }, ['Vigilance', 'Villainy'])) return
+        g.log(`${g.name(host.id)} gets -6/-0 for this attack`, defending)
+        g.buff(host.id, -6, 0, 'attack')
+      },
+    },
+  },
+  {
+    card: 'swu-LOF-261',
+    name: 'Constructed Lightsaber',
+    text: 'Attach to a [{Force}] unit.\nIf attached unit is a [Heroism] unit, it gains [Restore 2].\nIf attached unit is a [Villainy] unit, it gains [Raid 2].\nIf attached unit is a non-[Heroism], non-[Villainy] unit, it gains [Sentinel].',
+    front: {
+      gives: (g, self, unit) => {
+        if (unit.id !== self.attachedTo) return undefined
+        const aspects = g.def(unit).aspects
+        if (aspects.includes('Heroism')) return { keywords: { restore: 2 } }
+        if (aspects.includes('Villainy')) return { keywords: { raid: 2 } }
+        return { keywords: { sentinel: true } }
+      },
+    },
+  },
+  // --- Wicket Data Vault (swu-competitivehub.com/decklist/39226), 2026-11-26 ---
+  {
+    card: 'swu-ASH-116',
+    name: 'Ant Droid',
+    text: '[When Defeated:] Draw a card.',
+    front: { whenDefeated: (g, self) => g.draw(self.controller, 1) },
+  },
+  {
+    card: 'swu-LAW-191',
+    name: 'Arvel Skeen',
+    subtitle: 'Win and Walk Away',
+    text: '[When Played/On Attack:] You may defeat a Credit token. If you do, deal 1 damage to a unit or base.',
+    front: { whenPlayed: (g, self) => arvel(g, self), onAttack: (g, self) => arvel(g, self) },
+  },
+  {
+    card: 'swu-ASH-112',
+    name: 'Luke Skywalker',
+    subtitle: 'Answering the Call',
+    text: '[Restore 1]\n[When Played:] If you control at least 4 units, deal 3 damage to each enemy unit.',
+    front: {
+      whenPlayed: (g, self) => {
+        if (friendly(g, self).length < 4) return
+        for (const id of enemy(g, self)) if (g.unit(id)) g.damage(id, 3, self)
+      },
+    },
+  },
+  {
+    card: 'swu-LOF-147',
+    name: "Kit Fisto's Aethersprite",
+    subtitle: 'Good Hunting',
+    text: '[Saboteur]\n[When Played:] You may defeat any number of upgrades on a unit.',
+    front: {
+      whenPlayed: (g, self) => {
+        const p = self.controller
+        const ids = all(g, (u) => u.upgrades.length > 0)
+        if (!ids.length) return
+        // The AI: the enemy unit whose upgrades are worth most (cost, a Shield 2, other tokens 1)
+        const upWorth = (u: UnitState) => u.upgrades.reduce((s, up) => s + (g.def(up).token ? (g.def(up).name === 'Shield' ? 2 : 1) : Math.max(1, g.def(up).cost)), 0)
+        const foes = enemy(g, self, (u) => u.upgrades.length > 0).sort((a, b) => upWorth(g.unit(b)!) - upWorth(g.unit(a)!))
+        const pick = g.chooseOne(p, "Kit Fisto's Aethersprite: you may defeat any number of upgrades on a unit", ids, { optional: true, ai: foes[0] ?? 'none', source: self.def.id })
+        const unit = pick ? g.unit(pick) : undefined
+        if (!unit) return
+        const ups = unit.upgrades.map((u) => u.id)
+        const mine = g.controller(unit) === p
+        const gone = g.choose(p, `Kit Fisto's Aethersprite: defeat any number of upgrades on ${g.name(unit.id)}`, ups, { min: 0, max: ups.length, ai: mine ? 'none' : `ids:${ups.join(',')}`, source: self.def.id })
+        for (const id of gone) g.defeatUpgrade(id)
+      },
+    },
+  },
+  {
+    card: 'swu-ASH-183',
+    name: 'Whistling Birds',
+    text: 'Attach to a non-[{Vehicle}] unit.\nAttached unit gains: "[When Attack Ends:] If this unit dealt combat damage to an opponent\'s base, deal 2 damage to each unit that opponent controls in this unit\'s arena."',
+    front: {
+      whenFriendlyAttackEnds: (g, self) => {
+        if (!self.attachedTo || self.other !== self.attachedTo || !self.baseDamage) return
+        const host = g.unit(self.attachedTo)
+        if (!host) return
+        const foe = g.other(g.controller(host))
+        for (const id of all(g, (u) => g.controller(u) === foe && u.arena === host.arena)) if (g.unit(id)) g.damage(id, 2, self)
+      },
+    },
+  },
 ]
+
+// --- Thorrk's Piett Red's helpers ---
+
+// The Capital Ship units in a player's hand
+function capitalShips(g: Game, p: PlayerId) {
+  return g.player(p).hand.filter((c) => g.def(c).type === 'unit' && g.def(c).traits.includes('Capital Ship')).map((c) => c.id)
+}
+
+// "Search the top N cards of your deck for a … , reveal it, and draw it." The AI: the dearest.
+// The others go to the bottom in a random order. The card drawn, if any.
+function searchDraw(g: Game, self: Self, count: number, fits: (c: { id: string; def: string }) => boolean, what: string, choose?: (ids: string[]) => string | undefined) {
+  const p = self.controller
+  const top = g.top(p, count)
+  const ids = top.filter(fits).map((c) => c.id)
+  const dearest = choose ? choose(ids) : [...ids].sort((a, b) => g.def(g.card(b)!).cost - g.def(g.card(a)!).cost)[0]
+  const pick = g.chooseOne(p, `${self.def.name}: search the top ${count} cards of your deck for ${what} to draw`, ids, { optional: true, ai: dearest ?? 'none', source: self.def.id, seen: top.map((c) => c.id) })
+  if (pick) {
+    g.reveal(p, [pick], self)
+    g.drawCard(p, pick)
+  } else g.log(`${self.def.name} finds nothing to draw`, p)
+  g.shuffleToBottom(p, top.filter((c) => c.id !== pick && g.player(p).deck.some((d) => d.id === c.id)).map((c) => c.id))
+  return pick
+}
+
+// The Invisible Hand: a Droid unit from the top 8 drawn; costing 2 or less, played for free if
+// the player wants (the AI does)
+function invisibleHand(g: Game, self: Self) {
+  const p = self.controller
+  const pick = searchDraw(g, self, 8, (c) => g.def(c).type === 'unit' && g.def(c).traits.includes('Droid'), 'a Droid unit')
+  if (!pick || g.def(g.card(pick)!).cost > 2 || !g.canPlay(p, pick, { free: true })) return
+  if (g.may(p, `The Invisible Hand: play ${g.name(pick)} for free?`, { yes: 'Play it', no: 'Keep it', source: self.def.id })) g.playCard(p, pick, { free: true })
+}
+
+// A friendly unit that gets power from its damage (Paz Vizsla's +2/+0 a damage) to deal `amount`
+// damage to before it attacks (Act of Aggression, Open Fire): ready to attack, surviving it, and
+// no enemy ground unit ready to finish it after (the deck's combo, "15 damage in one attack")
+function feedsOnDamage(g: Game, self: Self, amount: number) {
+  const foesReady = enemy(g, self, (u) => !u.exhausted && u.arena === 'ground').length
+  return friendly(g, self, (u) => /for each damage on/.test(g.def(u).text ?? '') && g.canAttack(u.id) && g.hp(u) - u.damage > amount && (u.arena !== 'ground' || !foesReady))[0]
+}
+
+// --- Mother Talzin's and Wicket Data Vault's helpers ---
+
+const JOD_EDGE = 4
+const left = (g: Game, id: string) => g.hp(g.unit(id)!) - g.unit(id)!.damage
+
+// Garindan: a card named, then a card of that name discarded from the opponent's hand. The AI
+// names the card most likely there and worth most: each copy it hasn't seen (hand and deck alike,
+// so it doesn't peek), by its cost
+function garindan(g: Game, self: Self) {
+  const p = self.controller
+  const foe = g.other(p)
+  const pl = g.player(foe)
+  const unseen = [...pl.hand, ...pl.deck]
+  const known = [...unseen, ...pl.discard, ...pl.resources.map((r) => r.card), ...g.units((u) => u.owner === foe && !u.leader)]
+  const names = [...new Set(known.filter((c) => g.def(c).type !== 'leader' && !g.def(c).token).map((c) => g.def(c).name))].sort()
+  if (!names.length) return
+  const score: Record<string, number> = {}
+  for (const c of unseen) {
+    const d = g.def(c)
+    if (d.type !== 'leader' && !d.token) score[d.name] = (score[d.name] ?? 0) + 1 + 0.3 * d.cost
+  }
+  const wanted = [...names].sort((a, b) => (score[b] ?? 0) - (score[a] ?? 0))[0]
+  const name = names[g.option(p, 'Garindan: name a card', names, { ai: Math.max(0, names.indexOf(wanted)), firm: true, source: self.def.id })]
+  g.log(`${g.player(p).name} names ${name} and looks at ${pl.name}'s hand`, p)
+  const fits = pl.hand.filter((c) => g.def(c).name === name).map((c) => c.id)
+  if (!fits.length) return g.log(`${pl.name} has no ${name} in hand`, p)
+  const gone = g.chooseOne(p, `Garindan: discard ${name} from your opponent's hand`, fits, { ai: fits[0], source: self.def.id, seen: pl.hand.map((c) => c.id) })
+  if (gone) g.discard(foe, gone)
+}
+
+// Arvel Skeen: a Credit token defeated for 1 damage to a unit or base. The AI: when the damage
+// defeats an enemy unit (the dearest) or finishes the enemy base
+function arvel(g: Game, self: Self) {
+  const p = self.controller
+  if (!g.credits(p)) return
+  const foe = g.other(p)
+  const kill = enemy(g, self, (u) => g.hp(u) - u.damage <= 1 && !g.tokens(u.id, 'Shield')).sort((a, b) => g.cost(g.unit(b)!) - g.cost(g.unit(a)!))[0]
+  const base = g.player(foe).base
+  const finish = (g.def(base).hp ?? 30) - base.damage <= 1 ? baseOf(foe) : undefined
+  const target = finish ?? kill
+  if (!g.may(p, 'Arvel Skeen: defeat a Credit token to deal 1 damage to a unit or base?', { yes: 'Defeat a Credit', no: 'Skip', ai: !!target, source: self.def.id })) return
+  if (!g.defeatCredit(p)) return
+  const pick = g.chooseOne(p, 'Arvel Skeen: deal 1 damage to a unit or base', [...all(g), baseOf(0), baseOf(1)], { ai: target ?? baseOf(foe), source: self.def.id })
+  if (pick) g.damage(pick, 1, self)
+}
+
+// The enemy unit a -X/-X turns into a good trade for one of p's ready units (Mother Talzin, the
+// user 2026-11-26: "do good trades against Sentinel with the -1, or prevent good trades"): its
+// attack then defeats it, or defeats it and survives where it wouldn't have. A Sentinel first,
+// then the dearest. undefined: none
+function tradeTarget(g: Game, self: Self, amount: number) {
+  const shielded = (id: string) => g.tokens(id, 'Shield') > 0
+  let best: string | undefined
+  let bestWorth = 0
+  for (const a of friendly(g, self, (u) => g.canAttack(u.id))) {
+    const au = g.unit(a)!
+    for (const e of g.attackable(a).filter((t) => t !== 'base')) {
+      const eu = g.unit(e)
+      if (!eu || g.controller(eu) === self.controller || shielded(e)) continue
+      const kills = (cut: number) => g.power(au) >= left(g, e) - cut
+      const survives = (cut: number) => left(g, a) > g.power(eu) - cut
+      if (!(kills(amount) && (!kills(0) || (survives(amount) && !survives(0))))) continue
+      const worth = g.cost(eu) + (g.keywords(eu).sentinel ? 5 : 0)
+      if (worth > bestWorth) [best, bestWorth] = [e, worth]
+    }
+  }
+  return best
+}

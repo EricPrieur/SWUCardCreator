@@ -39,6 +39,8 @@ import './Simulator.css'
 // The engine runs here in the browser for now; online games will run it on the server, and
 // this screen only ever draws a player's view and sends their actions.
 
+// Options past this many are typed in, not a button each
+const TYPE_IN_OVER = 6
 const SET = 'DUNE'
 const YOU: PlayerId = 0
 const AI: PlayerId = 1
@@ -1519,6 +1521,9 @@ function Table(props: {
   // A pile opened to see each card in it: your resources, face up, to play one using Smuggle,
   // or either discard pile
   const [pileOpen, setPileOpen] = useState<'resources' | 'discard-me' | 'discard-opp' | null>(null)
+  // How your Credit tokens pay: by default only for what your ready resources can't; clicked
+  // on their coin, before your resources (keeping those ready). Not asked at each play.
+  const [creditsFirst, setCreditsFirst] = useState(false)
   // An open pile closes with a click anywhere outside it, or Escape
   const pileWindow = useRef<HTMLDivElement>(null)
   useEffect(() => {
@@ -1537,6 +1542,8 @@ function Table(props: {
   const [menu, setMenu] = useState<{ card: string; landscape?: boolean; options: { label: string; run: () => void }[] } | null>(null)
   // A number asked for, picked from a list; the window of cards apart moves, and hides
   const [number, setNumber] = useState<{ key: string; id: string } | null>(null)
+  // A long list of options (Garindan: name a card): the name typed, with its suggestions
+  const [typed, setTyped] = useState<{ key: string; text: string }>({ key: '', text: '' })
   const [choiceAt, setChoiceAt] = useState({ x: 0, y: 0 })
   const [choiceHidden, setChoiceHidden] = useState<string | null>(null)
   // Where each unit sits in its half of an arena, by id: it keeps its place as others come and
@@ -1637,6 +1644,8 @@ function Table(props: {
   const setup = !view.prompt && (view.phase === 'first' || view.phase === 'mulligan')
 
   const act = (p: PlayerId, action: Action, why?: Weighed[]) => {
+    // Your Credit tokens spent before your resources, when you chose that on their coin
+    if (p === ME && creditsFirst && (action.type === 'play' || action.type === 'ability') && me.credits) action = { ...action, creditsFirst: true }
     if (action.type === 'play' && game) {
       const card = game.players[p].hand.find((c) => c.id === action.card)
       if (card) setLast((now) => (p === 0 ? [card.def, now[1]] : [now[0], card.def]))
@@ -1772,6 +1781,7 @@ function Table(props: {
   let prompt = ''
   let buttons: { label: string; kind?: string; onClick?: () => void; disabled?: boolean }[] = []
   let numbers: { value: string; options: { id: string; label: string }[]; onChange: (id: string) => void } | null = null
+  let typeIn: { text: string; options: string[]; onChange: (text: string) => void; onEnter: () => void } | null = null
   const askedKey = asked ? `${asked.source ?? ''}|${asked.text}|${asked.options.map((o) => o.id).join(',')}` : ''
   // Watching, each player waited for is named
   const waited = watching ? view.waitingFor.map((p) => view.players[p].name).join(' and ') : opp.name
@@ -1800,6 +1810,15 @@ function Table(props: {
       onChange: (id) => setNumber({ key: askedKey, id }),
     }
     buttons = [{ label: 'Confirm', kind: 'go', onClick: () => answer([chosen]) }]
+  } else if (asked?.kind === 'option' && asked.options.length > TYPE_IN_OVER) {
+    // Too many for a button each: the name typed, the list suggesting as it goes, and Confirm
+    // once it matches one (the user, 2026-11-26: "let the user type something and it auto complete")
+    prompt = askText(asked)
+    const text = typed.key === askedKey ? typed.text : ''
+    const match = asked.options.find((o) => (o.label ?? o.id).toLowerCase() === text.trim().toLowerCase())
+    const confirm = () => match && answer([match.id])
+    typeIn = { text, options: asked.options.map((o) => o.label ?? o.id), onChange: (t) => setTyped({ key: askedKey, text: t }), onEnter: confirm }
+    buttons = [{ label: 'Confirm', kind: 'go', disabled: !match, onClick: confirm }]
   } else if (asked?.kind === 'option') {
     prompt = askText(asked)
     buttons = asked.options.map((o, i) => ({
@@ -1888,6 +1907,24 @@ function Table(props: {
   }
   // A question the action may be taken back from
   if (asked?.cancel) buttons = [{ label: 'Cancel', onClick: () => act(ME, { type: 'cancel' }) }, ...buttons]
+  const typeInBox = typeIn && (
+    <>
+      <input
+        className="sim-number sim-type-in"
+        list="sim-type-in-list"
+        autoFocus
+        placeholder="Type a card name…"
+        value={typeIn.text}
+        onChange={(e) => typeIn?.onChange(e.target.value)}
+        onKeyDown={(e) => e.key === 'Enter' && typeIn?.onEnter()}
+      />
+      <datalist id="sim-type-in-list">
+        {typeIn.options.map((o) => (
+          <option key={o} value={o} />
+        ))}
+      </datalist>
+    </>
+  )
   const numberList = numbers && (
     <select className="sim-number" value={numbers.value} onChange={(e) => numbers?.onChange(e.target.value)}>
       {numbers.options.map((o) => (
@@ -2044,6 +2081,15 @@ function Table(props: {
           onClick={() => clickUnit(u.id)}
         >
           <img src={img(image ?? '')} alt={d.name} />
+          {/* Choosing a unit for an upgrade whose cost depends on it (Mastery): its cost onto this one */}
+          {target && mode?.kind === 'attach' && !mode.smuggle && !mode.discard && !mode.pilot && me.attachPrices?.[mode.card]?.[u.id] !== undefined && (
+            <span
+              className={`sim-price onto ${me.attachPrices[mode.card][u.id] <= Math.min(...Object.values(me.attachPrices[mode.card])) ? 'less' : 'more'}`}
+              title={`Costs ${me.attachPrices[mode.card][u.id]} on this unit`}
+            >
+              {me.attachPrices[mode.card][u.id]}
+            </span>
+          )}
           {u.hidden && (
             <span className="sim-smoke" aria-hidden="true" title="Hidden: it can't be attacked this phase">
               {SMOKE.map((puff, i) => (
@@ -2187,6 +2233,27 @@ function Table(props: {
             {ready}/{side.resources.length}
           </span>
         </div>
+        {/* Credit tokens (SWU): a coin beside the resources, their count on it */}
+        {!!side.credits && (
+          <button
+            type="button"
+            className={`sim-credits${who === 'me' && creditsFirst ? ' first' : ''}`}
+            disabled={who !== 'me'}
+            title={
+              `${side.credits} Credit token${side.credits > 1 ? 's' : ''}: each pays 1` +
+              (who === 'me'
+                ? creditsFirst
+                  ? '. Spent before your resources. Click to spend them only when your resources fall short.'
+                  : '. Spent only when your resources fall short. Click to spend them before your resources.'
+                : '')
+            }
+            onClick={who === 'me' ? () => setCreditsFirst((on) => !on) : undefined}
+          >
+            <span className="sim-credit-coin">$</span>
+            <b>{side.credits}</b>
+            {who === 'me' && <small>{creditsFirst ? 'first' : 'auto'}</small>}
+          </button>
+        )}
         <div className="sim-hand">
           {side.hand
             ? side.hand.map((c, i) => (
@@ -2231,6 +2298,7 @@ function Table(props: {
               </button>
             )}
             {numberList}
+            {typeInBox}
             {buttons.map((b, i) => (
               <button key={i} type="button" className={`sim-button ${b.kind ?? ''}`} disabled={b.disabled} onClick={b.onClick}>
                 {b.label}
@@ -2792,6 +2860,7 @@ function Table(props: {
               Hide
             </button>
             {numberList}
+            {typeInBox}
             {buttons.map((b, i) => (
               <button key={i} type="button" className={`sim-button ${b.kind ?? ''}`} disabled={b.disabled} onClick={b.onClick}>
                 {b.label}

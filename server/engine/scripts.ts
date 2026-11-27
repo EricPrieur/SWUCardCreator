@@ -29,6 +29,8 @@ export type Self = {
   spice?: { owner: PlayerId; by: PlayerId }
   // When Attack Ends, When Defense Ends: whether this unit is still in play
   survived?: boolean
+  // When a friendly unit's attack ends: the combat damage it dealt to a base
+  baseDamage?: number
 }
 
 // What a card gives a unit for as long as it is in play: "Other friendly [{Sardaukar}] units gain
@@ -54,6 +56,10 @@ export type Abilities = {
   // When the AI, ordering its triggered abilities, resolves this one after the others (Greef
   // Karga's Advantage token after the unit's Ambush): asked as it orders them
   aiLater?: { [K in keyof Abilities]?: (g: Game, self: Self) => boolean }
+  // A triggered ability with nothing to choose (Crystal Caves: "The Force is with you"): resolved
+  // before the others it triggers with, without asking its player for an order (the user,
+  // 2026-11-26)
+  automatic?: { [K in keyof Abilities]?: true }
   // An event's text
   play?: Ability
   whenPlayed?: Ability
@@ -63,6 +69,14 @@ export type Abilities = {
   actions?: ActionAbility[]
   // When another friendly unit attacks; self.other is the attacker
   whenFriendlyAttacks?: Ability
+  // "When a friendly unit's attack ends:" (self.other the attacker, self.baseDamage its combat damage to a base)
+  whenFriendlyAttackEnds?: Ability
+  // "When this unit is dealt damage and survives:" (Tech): it resolves once damage is done, the unit still in play
+  whenDealtDamage?: Ability
+  // "When an opponent plays a card:" (Adi Gallia: an event), self.other / self.otherDef the card
+  whenOpponentPlays?: Ability
+  // How many Pilots this unit may have (Millennium Falcon, Get Out And Push: 2); 1 when not said
+  pilots?: number
   // When this unit is attacked
   whenDefending?: Ability
   // When you play another card; self.other and self.otherDef are that card
@@ -120,6 +134,21 @@ export type Abilities = {
   whenAttachedExhausted?: Ability
   attachedWhenDefeated?: Ability
   attachedOnAttack?: Ability
+  // "When this unit attacks and defeats a unit:" (The Mandalorian, Cleaning Up Nevarro): other is
+  // the unit defeated
+  whenAttackDefeats?: Ability
+  // "You assign all indirect damage you deal to opponents." (Devastator, Hunting the Rebellion)
+  assignsIndirect?: boolean
+  // "While attacking, you may have the defending unit deal combat damage before this unit." (The
+  // Stranger, No Survivors): whether it does, for this attack (the defender's damage first, then
+  // its own, with the power it has after, Grit's included)
+  strikesSecond?: (g: Game, self: Self, defender: UnitState) => boolean
+  // "This unit can't be defeated by enemy card abilities." (Rey, Skywalker), on the unit itself
+  cantBeDefeatedByEnemyAbilities?: boolean
+  // A unit's: "When you play an upgrade on this unit:" (Kylo Ren, I Know Your Story)
+  whenUpgradePlayedOn?: Ability
+  // "Attached unit gains: "[When this unit is attacked:] …"": the unit's, as it is attacked
+  attachedWhenDefending?: Ability
   // What it gives a unit (every unit in play is asked, so a script says whom it gives to)
   gives?: (g: Game, self: Self, unit: UnitState) => Grant | undefined
   // Whether the additional costs of a card being played may be ignored
@@ -158,6 +187,8 @@ export type Abilities = {
   toResources?: boolean
   // A leader's "Draw N more cards in your starting hand."
   startingHand?: number
+  // "Cards your opponents play cost [3] more." (Raddus, while exhausted): how much more this one
+  taxesOpponents?: (g: Game, self: Self, card: CardDef) => number
 }
 
 export type CardScript = {

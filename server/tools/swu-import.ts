@@ -5,6 +5,9 @@
 // Featured Decks (public/showcase/SWU/featured-decks.json).
 //
 //   node tools/swu-import.ts <swudb deck id or URL> [more decks…]
+//   node tools/swu-import.ts https://swuforge.com/decks/<id> [more decks…]   (SWU Forge, id forge-<id>)
+//   node tools/swu-import.ts https://www.swu-competitivehub.com/decklist/<id>/   (id hub-<id>)
+//   node tools/swu-import.ts https://swudb.com/card/LAW/222 [more cards…]   (single cards, in no deck)
 //
 // Cached: each printing's data in public/showcase/SWU/raw, each image once. The card text is
 // put in the Creator's markup ([When Played:], [Sentinel], [{Trait}]), so the engine reads its
@@ -126,6 +129,9 @@ export function markup(text = '') {
 const frameOf = (p: Printing) => {
   // A token unit (Beast, Clone Trooper): the frame the set's own tokens use, which cardDef reads
   if (p.isToken && p.cardType === 2) return 'unit-token-text-neutral'
+  // A token upgrade (Experience, Shield, Advantage): the engine's token frame, so it takes the
+  // place of the built-in token of that name and never goes in a deck
+  if (p.isToken && TYPES[p.cardType] === 'Upgrade') return 'token-upgrade'
   const type = TYPES[p.cardType]?.toLowerCase() ?? 'unit'
   const aspects = p.aspects.map((a) => ASPECTS[a].toLowerCase())
   const colors = aspects.filter((a) => !['heroism', 'villainy'].includes(a))
@@ -228,7 +234,117 @@ async function token(name: string) {
   console.log(`Token: ${name} (${t.expansionAbbreviation} ${t.cardNumber})`)
 }
 
+// The tokens a card creates or gives (Experience and Shield are the engine's own)
+async function tokensOf(id: string) {
+  const entry = showcase.cards.find((c) => c.id === id) as unknown as { image: string }
+  const text = JSON.parse(readFileSync(`${dir}${entry.image}.json`, 'utf8'))
+  for (const [, name] of `${text.text ?? ''}
+${text.backText ?? ''}`.matchAll(/(?:[Cc]reate|[Gg]ive) (?:a|an|\d+) ([A-Z][\w-]*(?: [A-Z][\w-]*)*) tokens?/g)) await token(name)
+}
+
 for (const arg of process.argv.slice(2)) {
+  // A single card: swudb.com/card/<set>/<number>[/name], added to the Showcase, in no deck
+  const single = arg.match(/\/card\/([A-Za-z0-9]+)\/([A-Za-z0-9]+)/)
+  if (single) {
+    const id = await add(single[1].toUpperCase(), single[2])
+    await tokensOf(id)
+    console.log(`Card: ${id}`)
+    continue
+  }
+  // A deck on SWU Forge: swuforge.com/decks/<id>, read from the page's data (SvelteKit's
+  // __data.json, its values flattened into one array, each object's fields pointing into it)
+  const forge = arg.match(/swuforge\.com\/decks\/([A-Za-z0-9]+)/)
+  if (forge) {
+    const forgeId = forge[1]
+    const response = await fetch(`https://swuforge.com/decks/${forgeId}/__data.json`)
+    if (!response.ok) throw new Error(`SWU Forge deck ${forgeId}: ${response.status}`)
+    const doc: { nodes: ({ type: string; data: unknown[] } | null)[] } = await response.json()
+    writeFileSync(`${raw}forge-${forgeId}.json`, JSON.stringify(doc))
+    type ForgeCard = { cardNumber: number; title: string; type: { name: string }; expansion: { code: string } }
+    type ForgeDeck = { name: string; mainDeck: { card: ForgeCard; count: number }[] }
+    let deck: ForgeDeck | undefined
+    for (const node of doc.nodes) {
+      if (node?.type !== 'data') continue
+      const data = node.data
+      const memo = new Map<number, unknown>()
+      const at = (i: unknown): unknown => {
+        if (typeof i !== 'number' || i < 0) return undefined
+        if (memo.has(i)) return memo.get(i)
+        const v = data[i]
+        if (Array.isArray(v)) {
+          const out: unknown[] = []
+          memo.set(i, out)
+          for (const x of v) out.push(at(x))
+          return out
+        }
+        if (v && typeof v === 'object') {
+          const out: Record<string, unknown> = {}
+          memo.set(i, out)
+          for (const [k, x] of Object.entries(v)) out[k] = at(x)
+          return out
+        }
+        return v
+      }
+      const root = at(0) as { deck?: ForgeDeck } | undefined
+      if (root?.deck?.mainDeck) deck = root.deck
+    }
+    if (!deck) throw new Error(`SWU Forge deck ${forgeId}: no deck in its data`)
+    const card = (c: ForgeCard) => add(c.expansion.code, String(c.cardNumber).padStart(3, '0'))
+    // Its leader and base are in its main deck, one copy each; the sideboard stays out
+    const leaderCard = deck.mainDeck.find((e) => e.card.type?.name === 'Leader')?.card
+    const baseCard = deck.mainDeck.find((e) => e.card.type?.name === 'Base')?.card
+    if (!leaderCard || !baseCard) throw new Error(`SWU Forge deck ${forgeId}: no leader or base`)
+    const leader = await card(leaderCard)
+    const base = await card(baseCard)
+    const cards: { id: string; count: number }[] = []
+    for (const { count, card: c } of deck.mainDeck) if (c !== leaderCard && c !== baseCard && count > 0) cards.push({ id: await card(c), count })
+    for (const id of [leader, base, ...cards.map((c) => c.id)]) await tokensOf(id)
+    const name = deck.name
+    const id = `forge-${forgeId}`
+    featured.splice(0, featured.length, ...featured.filter((d) => d.id !== id && d.name !== name), { id, name, leader, base, cards })
+    console.log(`${name}: ${cards.reduce((s, c) => s + c.count, 0)} cards, ${cards.length + 2} distinct`)
+    continue
+  }
+  // A decklist on SWU Competitive Hub: swu-competitivehub.com/decklist/<id>/, its "Copy JSON"
+  // (the SWU deck format: metadata, leader, base, deck, sideboard; ids like LOF_002) read from
+  // the page, where it sits escaped twice inside the page's data
+  const hub = arg.match(/swu-competitivehub\.com\/decklist\/(\d+)/)
+  if (hub) {
+    const hubId = hub[1]
+    const response = await fetch(`https://www.swu-competitivehub.com/decklist/${hubId}/`, { headers: { 'User-Agent': 'Mozilla/5.0' } })
+    if (!response.ok) throw new Error(`SWU Competitive Hub decklist ${hubId}: ${response.status}`)
+    const page = await response.text()
+    const start = page.indexOf('metadata')
+    if (start < 0) throw new Error(`SWU Competitive Hub decklist ${hubId}: no deck JSON in the page`)
+    // Its escaping undone (\\\" to "), then the object read to its closing brace
+    const tail = page.slice(page.lastIndexOf('{', start)).replaceAll('\\\\\\"', '"').replaceAll('\\\\"', '"').replaceAll('\\"', '"')
+    let depth = 0
+    let end = 0
+    for (let i = 0; i < tail.length; i++) {
+      if (tail[i] === '{') depth++
+      else if (tail[i] === '}' && --depth === 0) {
+        end = i + 1
+        break
+      }
+    }
+    type HubDeck = { metadata: { name: string }; leader: { id: string }; base: { id: string }; deck: { id: string; count: number }[] }
+    const deck: HubDeck = JSON.parse(tail.slice(0, end))
+    writeFileSync(`${raw}hub-${hubId}.json`, JSON.stringify(deck))
+    const card = (code: string) => {
+      const [set, number] = code.split('_')
+      return add(set, number)
+    }
+    const leader = await card(deck.leader.id)
+    const base = await card(deck.base.id)
+    const cards: { id: string; count: number }[] = []
+    for (const { id: code, count } of deck.deck) if (count > 0) cards.push({ id: await card(code), count })
+    for (const id of [leader, base, ...cards.map((c) => c.id)]) await tokensOf(id)
+    const name = deck.metadata.name
+    const id = `hub-${hubId}`
+    featured.splice(0, featured.length, ...featured.filter((d) => d.id !== id && d.name !== name), { id, name, leader, base, cards })
+    console.log(`${name}: ${cards.reduce((s, c) => s + c.count, 0)} cards, ${cards.length + 2} distinct`)
+    continue
+  }
   const deckId = arg.replace(/^.*\/deck\//, '').replace(/[/?#].*$/, '')
   const response = await fetch(`https://swudb.com/api/deck/${deckId}`)
   if (!response.ok) throw new Error(`swudb deck ${deckId}: ${response.status}`)
@@ -240,13 +356,7 @@ for (const arg of process.argv.slice(2)) {
   const cards: { id: string; count: number }[] = []
   // Sideboard cards are listed with no copies in the deck
   for (const { count, card: c } of deck.shuffledDeck) if (count > 0) cards.push({ id: await at(c), count })
-  // The tokens its cards create or give (Experience and Shield are the engine's own)
-  for (const id of [leader, base, ...cards.map((c) => c.id)]) {
-    const entry = showcase.cards.find((c) => c.id === id) as unknown as { image: string }
-    const text = JSON.parse(readFileSync(`${dir}${entry.image}.json`, 'utf8'))
-    for (const [, name] of `${text.text ?? ''}
-${text.backText ?? ''}`.matchAll(/(?:[Cc]reate|[Gg]ive) (?:a|an|\d+) ([A-Z][\w-]*(?: [A-Z][\w-]*)*) tokens?/g)) await token(name)
-  }
+  for (const id of [leader, base, ...cards.map((c) => c.id)]) await tokensOf(id)
   const name = deck.deckName
   // Its id is swudb's: importing it again replaces it, and the SWU Deck Builder knows it
   const id = `swudb-${deckId}`

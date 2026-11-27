@@ -54,7 +54,7 @@ export type CardDef = {
   // A base's or leader's "You start the game with a [Spice Token]."
   startSpice?: number
   // An upgrade's "Attach to a friendly unit." or "Attach to a non-[{Vehicle}], non-leader unit."
-  attach?: { friendly?: boolean; enemy?: boolean; not?: string[]; nonLeader?: boolean; maxPower?: number; unique?: boolean }
+  attach?: { friendly?: boolean; enemy?: boolean; not?: string[]; only?: string[]; nonLeader?: boolean; maxPower?: number; unique?: boolean }
   // An upgrade's "Attached unit gains [Sentinel]."; a unit's, as it is attached as an upgrade
   attachedKeywords?: Keywords
   // A unit attached as an upgrade (a pilot frame's second box): its modifiers then
@@ -94,6 +94,8 @@ export type UnitState = Inst & {
   entered?: number
   // Each goes to its owner's discard pile, whoever controls the unit
   upgrades: (Inst & { owner: PlayerId })[]
+  // The cards it captured (rule 33), face down under it, rescued as it leaves play
+  captured?: (Inst & { owner: PlayerId })[]
 }
 
 export type PlayerState = {
@@ -109,6 +111,9 @@ export type PlayerState = {
   units: UnitState[]
   // Spice tokens, beside the base
   spice: Inst[]
+  // Credit tokens (SWU), in the resource zone but not resources (4.5.4): each may be defeated
+  // to pay 1 less while paying resources (3.13). None in a game saved before them.
+  credits?: Inst[]
   // Setup: has decided on a mulligan, has chosen 2 resources
   mulliganDone: boolean
   setupResourced: boolean
@@ -124,7 +129,8 @@ export type PlayerState = {
 // 'first': the player chosen at random decides who starts with the initiative (5.2.1c)
 export type Phase = 'first' | 'mulligan' | 'resource' | 'action' | 'regroup' | 'over'
 
-export type LogEntry = { player?: PlayerId; text: string }
+// card: the card played or attached, on that line (cards that share a name told apart)
+export type LogEntry = { player?: PlayerId; text: string; card?: string }
 
 // A question an ability asks a player in the middle of an action. 'pick' chooses among
 // things in the game (units, bases as base0/base1, cards by their id); 'option' among labels.
@@ -149,6 +155,9 @@ export type Prompt = {
   // How the AI answers: a pick that 'harm's or 'help's, the option it takes ('strip': the
   // opponent's card in hand whose play would help them most)
   ai?: 'harm' | 'help' | 'cheap' | 'strip' | string
+  // The AI answers as `ai` says, without weighing the answers played out (a plan the board
+  // score doesn't see: Luke Skywalker racing to the base)
+  firm?: boolean
   // The action's first question, which it may be taken back from: the game as it was before it
   cancel?: boolean
 }
@@ -191,7 +200,19 @@ export type GameState = {
   phaseCount: number
   // The units that attacked this phase (phase: the phaseCount), in order ("if no other units have
   // attacked this phase")
-  attackers?: { phase: number; units: string[] }
+  attackers?: { phase: number; units: string[]; bases?: { unit: string; base: PlayerId }[] }
+  // Cards named by a unit while it is in play (Galen Erso): each non-leader card its controller's
+  // opponent owns with that name loses all abilities
+  named?: { unit: string; name: string }[]
+  // Units whose combat damage, dealt and taken, is prevented for a phase (Yoda, A Disturbing Puzzle)
+  noCombat?: { unit: string; phase: number }[]
+  // Once a game (an Epic Action on a base: Aldhani Garrison): what has been used
+  usedEver?: string[]
+  // The cards discarded from a hand this phase (Kylo's TIE Silencer may then be played from the
+  // discard pile)
+  handDiscards?: { phase: number; ids: string[] }
+  // Traits enemy cards lose for a phase (The First Legion): owner, the player whose cards lose it
+  lostTraits?: { owner: PlayerId; trait: string; phase: number }[]
   active: PlayerId
   initiative: PlayerId
   initiativeTaken: boolean
@@ -251,12 +272,14 @@ export type Action =
   // From the hand; from the resources using Smuggle; from the discard pile when the card says
   // so; for a Spice token instead of its cost when the card says so
   // pilot: as an upgrade, using Piloting (attachTo the Vehicle)
-  | { type: 'play'; card: string; attachTo?: string; smuggle?: boolean; discard?: boolean; spice?: boolean; awakened?: boolean; pilot?: boolean }
+  | { type: 'play'; card: string; attachTo?: string; smuggle?: boolean; discard?: boolean; spice?: boolean; awakened?: boolean; pilot?: boolean; creditsFirst?: boolean }
   | { type: 'attack'; attacker: string; target: string | 'base' }
   // attachTo: a pilot leader deployed as an upgrade on that Vehicle
   | { type: 'deploy'; attachTo?: string }
   // A leader's or unit's Action ability, by its number on the card
-  | { type: 'ability'; source: string; index: number }
+  // creditsFirst: its cost paid with Credit tokens before resources (by default, resources
+  // first, Credit tokens only for what they can't pay). Not listed among the legal actions.
+  | { type: 'ability'; source: string; index: number; creditsFirst?: boolean }
   | { type: 'answer'; picks: string[] }
   // Taking back the action a question that allows it interrupted
   | { type: 'cancel' }
