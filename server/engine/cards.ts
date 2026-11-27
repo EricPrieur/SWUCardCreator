@@ -247,7 +247,7 @@ export const builtInTokens: CardDef[] = [
   // DUNE's Spy token is a Spy (SWU's is an Official)
   { name: 'Spy', type: 'unit', power: 0, hp: 2, arena: 'ground', traits: ['Spy'], text: '[Raid 2]', keywords: { raid: 2 } },
   // SWU's TIE Fighter token (They Hate That Ship)
-  { name: 'TIE Fighter', type: 'unit', power: 1, hp: 1, arena: 'space', traits: ['Imperial', 'Vehicle', 'Fighter'], text: '' },
+  { name: 'TIE Fighter', type: 'unit', power: 1, hp: 1, arena: 'space', traits: ['Vehicle', 'Fighter'], text: '' },
 ].map((token) => ({
   id: `token-${token.name.toLowerCase()}`,
   cost: 0,

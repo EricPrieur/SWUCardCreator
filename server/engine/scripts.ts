@@ -3183,7 +3183,7 @@ const dune: CardScript[] = [
     subtitle: 'Fist of the Beast',
     text: '[When you play a [{Harkonnen}] unit (including this one):] You may deal 1 damage to a friendly unit. If you do, deal 2 damage to a ground unit or base.',
     front: {
-      whenPlayed: (g, self) => gunship(g, self),
+      // Itself too as it is played: a "When you play" triggers on its own play
       whenYouPlay: (g, self) => {
         if (self.otherDef?.type === 'unit' && self.otherDef.traits.includes('Harkonnen')) gunship(g, self)
       },

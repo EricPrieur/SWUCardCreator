@@ -27,7 +27,12 @@ export function chooseAction(state: GameState, p: PlayerId, why?: Weighed[]): Ac
     case 'mulligan': {
       // Every deck wants a unit for turn 1, a slow one too, and mulligans a hand without one (the
       // user, 2026-11-26). Lando Calrissian too: a 1-cost unit and his Credit token, or a 2-cost unit.
-      const turnOne = (c: { def: string }) => state.defs[c.def].type === 'unit' && playCost(state, p, state.defs[c.def]) <= 2
+      // A unit whose When Played wants another friendly unit (Jar Jar Binks' +2/+2) isn't one: on turn
+      // 1 it is a 2/1 alone (the user, 2026-11-27: Kylo kept Jar Jar as his only turn 1 play)
+      const turnOne = (c: { def: string }) => {
+        const d = state.defs[c.def]
+        return d.type === 'unit' && playCost(state, p, d) <= 2 && !NEEDS_ANOTHER.test(d.text ?? '')
+      }
       // An aggro deck with many 1-cost units (Wicket's 14) wants two on turn 1: one alone, it
       // mulligans (the user, 2026-11-26)
       if (deckPlan(state, p).ones >= DOUBLE_ONE) {
@@ -104,7 +109,10 @@ export function chooseAction(state: GameState, p: PlayerId, why?: Weighed[]): Ac
     if (!card) return false
     const d = state.defs[card.def]
     const text = d.text ?? ''
-    if (/\[Support\]|\[Ambush\]|attack with/i.test(text) || d.keywords.ambush) return false
+    // An attack as it is played (Ambush, Support, a When Played or "When you play" that attacks):
+    // not an Action ability's, which waits a round as the unit enters exhausted (T-6 Shuttle 1974,
+    // played before Rebellious Hammerhead's attack that never came: the user's game, 2026-11-27)
+    if (/\[Support\]|\[Ambush\]/i.test(text) || ATTACKS_AS_PLAYED.test(text) || d.keywords.ambush) return false
     if (stripsBigPlay(state, p, d)) return false
     if (feedWorth(state, p, d)) return false
     // A When Played that weakens every enemy unit this phase (Bo-Katan Kryze's -3/-3, -7/-0) makes
@@ -138,6 +146,14 @@ export function chooseAction(state: GameState, p: PlayerId, why?: Weighed[]): Ac
   const deployWaits = (move: Action) =>
     move.type === 'deploy' && ((plotAttack && othersAttack) || leaderAbility || ((fragile || plotsWaiting) && othersAttack))
   const holds = (move: Action) => move.type === 'attack' && move.target === 'base' && holdsForDeploy(state, p, move.attacker)
+  // The enemy base within two rounds of the attacks it can make now: the damage is banked first,
+  // a unit that waits may be removed before it hits (No Glory took the Hammerhead; the user, at
+  // 22 of 30, would have gone to 27)
+  const foeLeft = state.defs[state.players[p === 0 ? 1 : 0].base.def].hp - state.players[p === 0 ? 1 : 0].base.damage
+  const readyPower = player.units
+    .filter((u) => actions.some((a) => a.type === 'attack' && a.attacker === u.id && a.target === 'base'))
+    .reduce((sum, u) => sum + powerOf(state, u), 0)
+  const bankFirst = readyPower > 0 && foeLeft <= 2 * readyPower
   // With Plot cards for the deploy, a card from hand waits until after it: the resources pay
   // for the Plot cards first (Kylo Ren planned Unveiled Might, then had spent them, 2026-11-25)
   const canDeploy = actions.some((a) => a.type === 'deploy')
@@ -146,9 +162,11 @@ export function chooseAction(state: GameState, p: PlayerId, why?: Weighed[]): Ac
     move.type !== 'attack'
       ? forPlots(move)
         ? -2 * AFTER_ATTACKS
-        : waits(move) || deployWaits(move)
-          ? -AFTER_ATTACKS
-          : 0
+        : waits(move)
+          ? -(bankFirst ? 2 : 1) * AFTER_ATTACKS
+          : deployWaits(move)
+            ? -AFTER_ATTACKS
+            : 0
       : ATTACK_FIRST -
         (holds(move) ? HOLD_FOR_DEPLOY : 0) +
         (r < 0 && move.target !== 'base' ? CONTROL_FIRST : 0) +
@@ -591,8 +609,42 @@ function upgradesForLeader(state: GameState, p: PlayerId, move: Action) {
 // it on Finn, Captain Typho, Hunter, half its uses)
 const HARD_REMOVAL = /^Take control of a non-leader unit, then defeat it\.|^Defeat a non-leader unit\./
 const HOLD_REMOVAL = 3
-const DEFEATED_STORED = 3
 const STEAL_DEFEATED = /When Defeated:\] (?:Deal \d+ damage divided|You may defeat an enemy unit)/
+// A leader that uses each When Defeated twice (Grand Admiral Thrawn): its units' are worth double
+// (the user, 2026-11-27: "Thrawn needs to count the When Defeated as double by default, so Legacy
+// Run is 12 damage + a 3/3 body")
+const REPEATS_DEFEATED = /When you use a "When Defeated" ability:\][^\n]*use that ability again/
+function defeatedTimes(state: GameState, p: PlayerId) {
+  const leader = state.defs[state.players[p].leader.def]
+  return REPEATS_DEFEATED.test(`${leader.text ?? ''}\n${leader.backText ?? ''}`) ? 2 : 1
+}
+// What a unit's When Defeated still to come would do to the other side now: the enemy units its
+// divided damage defeats (the smallest first, as much as it reaches), the rest of it as damage;
+// an enemy unit defeated, the best. (It was a flat 3: The Legacy Run played as a 3/3 for 5 and
+// kept in hand to the end in most of Thrawn's losses.)
+function storedDefeatedWorth(state: GameState, unit: UnitState) {
+  const text = state.defs[unit.def].text ?? ''
+  if (!STEAL_DEFEATED.test(text)) return 0
+  const p = controllerOf(state, unit)
+  const times = defeatedTimes(state, p)
+  const foes = state.players[p === 0 ? 1 : 0].units.filter((u) => !u.leader)
+  const body = (u: UnitState) => 1 + 0.7 * powerOf(state, u) + 0.5 * Math.max(0, hpOf(state, u) - u.damage)
+  const divided = text.match(/When Defeated:\] Deal (\d+) damage divided/)
+  if (!divided) return times * Math.max(0, ...foes.map(body))
+  let budget = Number(divided[1]) * times
+  let worth = 0
+  for (const u of [...foes].sort((a, b) => hpOf(state, a) - a.damage - (hpOf(state, b) - b.damage))) {
+    const left = Math.max(1, hpOf(state, u) - u.damage)
+    if (left > budget) break
+    budget -= left
+    worth += body(u)
+  }
+  return worth + STORED_LEFTOVER * budget
+}
+const STORED_LEFTOVER = 0.3
+function controllerOf(state: GameState, unit: UnitState): PlayerId {
+  return state.players[0].units.includes(unit) ? 0 : 1
+}
 function holdsRemoval(state: GameState, p: PlayerId, move: Action) {
   if (move.type !== 'play') return 0
   const card = state.players[p].hand.find((c) => c.id === move.card)
@@ -1109,6 +1161,17 @@ function plotWanted(state: GameState, p: PlayerId, card: CardDef) {
   return !leader.deployed || PLOT_FROM_RESOURCES.test(state.defs[leader.def].backText ?? '')
 }
 
+const SETS_OFF_DEFEATED = /You may use a "\[When Defeated\] " ability on another friendly unit|^Defeat a friendly non-leader unit/
+function keepsDefeatedCombo(state: GameState, p: PlayerId, d: CardDef, id: string) {
+  const player = state.players[p]
+  const big = (c: { def: string }) => STEAL_DEFEATED.test(state.defs[c.def].text ?? '')
+  const bigLeft = [...player.hand, ...player.deck, ...player.units].some(big)
+  if (!bigLeft) return false
+  if (SETS_OFF_DEFEATED.test(d.text ?? '')) return true
+  // one copy of the payload kept, the others may go
+  return big({ def: d.id }) && player.hand.find(big)?.id === id
+}
+
 // The cards it resources: first those it can't play before the plan's target, then those it
 // can't play soon unless they are its dearest (kept for later), then its cheapest, which matter
 // least once the game goes on
@@ -1145,6 +1208,10 @@ export function resourcePicks(state: GameState, p: PlayerId, count: number) {
     // wants resources: played, it's a resource and its effect besides (the user's game,
     // 2026-11-26: Mace-bleu resourced it on round 1, then had no turn 2)
     if (!OFF.has('res') && RESOURCES_ITSELF.test(d.text ?? '') && player.resources.length < plan.target) return -1
+    // The Legacy Run and what sets its When Defeated off (One Must Destroy to Create, Chimaera)
+    // stay in hand while the deck still has it: the user lost to the AI's Thrawn on the combo it
+    // couldn't make, its One Must Destroy resourced (2026-11-27)
+    if (!OFF.has('combo') && keepsDefeatedCombo(state, p, d, id)) return -1
     // Big cards past the two it keeps (no second copy of one): one a turn is all it plays, so
     // the rest go first (the same game: two Trask Walkers, Home One and Bo-Katan Kryze held to
     // the end while its mid-curve went to the resources)
@@ -1429,6 +1496,7 @@ function raceRate(state: GameState, p: PlayerId) {
 // A plain unit, or removal with no Sentinel to clear, ranks this much lower while a base attack
 // is open (the user, 2026-11-23: cards come after the attacks nearly always)
 const AFTER_ATTACKS = 10
+const ATTACKS_AS_PLAYED = /\[When (?:Played|you play)[^\]]*:\][^\n]*attack with/i
 // Defeating an enemy unit that can still attack this round saves the damage it would deal: worth
 // this much for each point of it (power and Raid). An exhausted one deals no more this round (the
 // user's game 121, 2026-11-24: Mace Windu defeated Sabine Wren, who had attacked, while Karis
@@ -1510,7 +1578,11 @@ const SENTINEL_CONTROL = 2
 // One AI for DUNE and SWU: the same game. On DUNE the new AI won 345 of 720 against the one before
 // (2026-11-23), even within noise.
 export function role(state: GameState, p: PlayerId) {
-  return Math.min(0, Math.sign(deckPlan(state, p === 0 ? 1 : 0).leader - deckPlan(state, p).leader))
+  const by = Math.sign(deckPlan(state, p === 0 ? 1 : 0).leader - deckPlan(state, p).leader)
+  // Leaders that cost the same: a deck that doubles its When Defeated (Thrawn) is the control
+  // one, its units' worth in dying (it raced Mace and Lando, both 6s, and lost: 2026-11-27)
+  if (by === 0 && defeatedTimes(state, p) > defeatedTimes(state, p === 0 ? 1 : 0)) return -1
+  return Math.min(0, by)
 }
 export function evaluate(state: GameState, p: PlayerId) {
   const r = role(state, p)
@@ -1611,6 +1683,7 @@ const ATTACK_FIRST = 0.5
 // Cards in hand that make it resource one past its plan's target, up to this many resources
 const FULL_HAND = 4
 const MAX_RESOURCES = 10
+const NEEDS_ANOTHER = /\[When Played:\][^\n]*another friendly unit/i
 // A deck with this many 1-cost units mulligans a hand without two of them
 const DOUBLE_ONE = 12
 const RACE_BASE = 4
@@ -1761,7 +1834,7 @@ function unitWorth(state: GameState, unit: UnitState, isBlocked = false) {
     // A When Defeated still to come that hits the other side hard (The Legacy Run's 6 damage,
     // Annihilator's unit defeated): the AI played it like a vanilla 3/3 for 5 (the user,
     // 2026-11-27: "super important card to deal with aggro")
-    (STEAL_DEFEATED.test(card.text ?? '') ? DEFEATED_STORED : 0)
+    storedDefeatedWorth(state, unit)
   // Ready, it may still attack this phase
   if (unit.exhausted) worth -= 0.2
   if (state.doomed.includes(unit.id)) worth *= 0.2

@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { query, SCHEMA } from './db.js'
 import { verifyToken, requireAdmin, enforcePermanentAdmins, userPublic, PERMANENT_ADMINS } from './auth.js'
 import { playCardsFor, storageFor } from './tiers.ts'
+import { gamePoolOf } from './sets.js'
 
 const router = Router()
 router.use(verifyToken, requireAdmin)
@@ -100,8 +101,8 @@ function gameFilter(req, alias = '') {
   const a = alias ? `${alias}.` : ''
   const where = []
   if (req.query.dev !== '1') where.push(`NOT ${a}is_dev`)
-  // DUNE's games, or the community's: their stats kept apart
-  where.push(`${a}pool = '${req.query.pool === 'community' ? 'community' : 'DUNE'}'`)
+  // DUNE's games, the community's, or the SWU tab's: their stats kept apart
+  where.push(`${a}pool = '${gamePoolOf(req.query.pool)}'`)
   const days = Number(req.query.days)
   if (Number.isFinite(days) && days > 0) where.push(`${a}started_at > NOW() - INTERVAL '1 day' * ${Math.min(3650, Math.floor(days))}`)
   return where.length ? `WHERE ${where.join(' AND ')}` : ''

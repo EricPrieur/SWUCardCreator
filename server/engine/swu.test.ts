@@ -191,7 +191,7 @@ const defs: CardDef[] = [
   swu('swu-JTL-041', { cost: 11, power: 12, hp: 12, arena: 'space', traits: ['Imperial', 'Vehicle', 'Capital Ship'] }),
   swu('swu-JTL-033', { cost: 2, power: 2, hp: 3, arena: 'space', unique: false, traits: ['Imperial', 'Vehicle', 'Fighter'] }),
   swu('swu-SEC-078', { type: 'event', cost: 7, arena: undefined, unique: false, traits: ['Disaster'] }),
-  card('tie', { name: 'TIE Fighter', token: true, power: 1, hp: 1, arena: 'space', traits: ['Imperial', 'Vehicle', 'Fighter'] }),
+  card('tie', { name: 'TIE Fighter', token: true, power: 1, hp: 1, arena: 'space', traits: ['Vehicle', 'Fighter'] }),
   card('swu-TASH-T01', { name: 'Mandalorian', token: true, power: 2, hp: 2, traits: ['Mandalorian'] }),
   swu('swu-JTL-181', { type: 'event', cost: 6, arena: undefined, aspects: ['Aggression'] }),
   swu('swu-JTL-143', { cost: 8, power: 9, hp: 6, arena: 'space', unique: true, traits: ['Imperial', 'Vehicle', 'Capital Ship'], aspects: [] }),
@@ -1488,4 +1488,12 @@ test("The Legacy Run's 6 damage is dealt at once: a shielded unit gets 1 (its Sh
   assert.deepEqual(state.players[1].units.map((u) => u.id), ['u10'], 'both 2/2s defeated')
   assert.equal(big.damage, 0, "the Shield prevented that unit's whole share")
   assert.equal(big.upgrades.length, 0, 'its Shield gone')
+})
+
+test('Luminara Unduli: her own play gives an attack, +2/+0, and the AI plays her before attacking', () => {
+  let state = table({ units0: ['cheap'], hand0: ['swu-HMW-124'] })
+  const move = chooseAction(state, 0)
+  assert.ok(move?.type === 'play' && move.card === 'h0', 'played first: ' + JSON.stringify(move))
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  assert.ok(state.prompt?.options.some((o) => o.id === 'u00'), 'her attack offered as she is played')
 })

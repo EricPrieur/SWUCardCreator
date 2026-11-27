@@ -681,13 +681,20 @@ const hookNames: Record<Hook, string> = {
 // An event on a player's side, which the abilities there that wait for it resolve after
 function trigger(state: GameState, p: PlayerId, hook: Hook, extra: Partial<Self> = {}, except?: string) {
   for (const { self, abilities } of holders(state, p)) {
-    if (self.id === except) continue
+    if (self.id === except && !triggersOnOwnPlay(hook, self.def)) continue
     const triggered = { ...self, ...extra }
     if (abilities.triggersIf?.[hook]?.(new Game(state, p), triggered) === false) continue
     const what = triggerText(self.def, !!findUnit(state, self.id)?.leader) ?? hookNames[hook]
     const by = self.id === 'leader' ? ' (leader)' : ''
     queue(state, p, self.def.name + by, what, abilities[hook], triggered, abilities.aiLater?.[hook], !!abilities.automatic?.[hook])
   }
+}
+
+// A card's "When you play a unit" triggers on its own play too (7.6.3: it is in play once played,
+// step 5 of playing it), unless it says "another": Luminara Unduli attacks as she is played,
+// +2/+0. DUNE's cards the same as SWU's (the user, 2026-11-27).
+function triggersOnOwnPlay(hook: Hook, d: CardDef) {
+  return hook === 'whenYouPlay' && !/When you play another/i.test(d.text ?? '')
 }
 
 // "Use this ability only once each round"

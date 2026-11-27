@@ -741,8 +741,7 @@ export const swuScripts: (CardScript & { card: string })[] = [
     subtitle: 'Protective Padawan',
     text: '[When you play a [{Force}] unit:] This unit gains [Sentinel] for this phase.',
     front: {
-      // "(including this one)": his own When Played, and the other Force units played after him
-      whenPlayed: (g, self) => g.grant(self.id, { sentinel: true }, 'phase'),
+      // Himself too as he is played (an SWU card's "When you play" triggers on its own play)
       triggersIf: { whenYouPlay: (_g, self) => !!self.otherDef && self.otherDef.type === 'unit' && self.otherDef.traits.includes('Force') },
       whenYouPlay: (g, self) => {
         if (g.unit(self.id)) g.grant(self.id, { sentinel: true }, 'phase')
@@ -3684,11 +3683,13 @@ export const swuScripts: (CardScript & { card: string })[] = [
       play: (g, self) => {
         const p = self.controller
         const ids = friendly(g, self, (u) => !g.isLeader(u))
-        // The AI: a unit of its own with a When Defeated ability (both abilities, the When Played
-        // again), the dearest, the most damaged
+        // The AI: a unit of its own whose When Defeated does the most now (The Legacy Run's divided
+        // damage above all: the user's combo, 2026-11-27), played again for free, its When Played
+        // too; then the dearest, the most damaged
         const worth = (id: string) => {
           const unit = g.unit(id)!
-          return g.cost(unit) + (g.hasWhenDefeated(id) ? 3 : 0) + unit.damage - (g.def(unit).token || unit.owner !== p ? 20 : 0)
+          const defeated = g.hasWhenDefeated(id) ? 2 * whenDefeatedWorth(g, self, id) : 0
+          return g.cost(unit) + defeated + unit.damage - (g.def(unit).token || unit.owner !== p ? 20 : 0)
         }
         const best = [...ids].sort((a, b) => worth(b) - worth(a))[0]
         const pick = g.chooseOne(p, 'One Must Destroy to Create: defeat a friendly non-leader unit', ids, { ai: best ?? 'none', source: self.def.id })

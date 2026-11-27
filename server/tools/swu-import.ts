@@ -127,8 +127,9 @@ export function markup(text = '') {
 }
 
 const frameOf = (p: Printing) => {
-  // A token unit (Beast, Clone Trooper): the frame the set's own tokens use, which cardDef reads
-  if (p.isToken && p.cardType === 2) return 'unit-token-text-neutral'
+  // A token unit (Beast, Clone Trooper): the frame the set's own tokens use, which cardDef reads;
+  // a space one's (TIE Fighter, X-Wing: they came onto the ground, 2026-11-27)
+  if (p.isToken && p.cardType === 2) return `unit-token-text-neutral${p.arenaDescription === 'Space' ? '-space' : ''}`
   // A token upgrade (Experience, Shield, Advantage): the engine's token frame, so it takes the
   // place of the built-in token of that name and never goes in a deck
   if (p.isToken && TYPES[p.cardType] === 'Upgrade') return 'token-upgrade'

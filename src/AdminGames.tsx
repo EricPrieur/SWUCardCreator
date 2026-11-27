@@ -8,8 +8,8 @@ import { replay, type GameRecord, type Step } from '../server/engine/record.ts'
 
 // Which games are counted: those of the last days (0: all of them), and those played on a
 // developer's computer too or not (on this computer they are the only ones there are)
-// pool: DUNE's games, or the community's, counted apart.
-export type GameFilter = { days: number; dev: boolean; pool: 'DUNE' | 'community' }
+// pool: DUNE's games, the community's, or the SWU tab's, counted apart.
+export type GameFilter = { days: number; dev: boolean; pool: 'DUNE' | 'community' | 'SWU' }
 export const defaultFilter: GameFilter = { days: 0, dev: import.meta.env.DEV, pool: 'DUNE' }
 const queryOf = (filter: GameFilter, more = '') => `?days=${filter.days}&dev=${filter.dev ? 1 : 0}&pool=${filter.pool}${more}`
 
@@ -26,7 +26,7 @@ type GameRow = {
   names: Record<string, string>
   bytes: number
   is_dev: boolean
-  pool?: 'DUNE' | 'community'
+  pool?: 'DUNE' | 'community' | 'SWU'
   started_at: string
   updated_at: string
   finished_at: string | null
@@ -60,11 +60,12 @@ export function FilterBar(props: { filter: GameFilter; onChange: (filter: GameFi
   const { filter, onChange } = props
   return (
     <div className="admin-filter">
-      <label title="DUNE's Simulator, or the Community's">
+      <label title="DUNE's Simulator, the Community's, or the SWU tab's">
         Games{' '}
         <select value={filter.pool} onChange={(event) => onChange({ ...filter, pool: event.target.value as GameFilter['pool'] })}>
           <option value="DUNE">DUNE</option>
           <option value="community">Community</option>
+          <option value="SWU">SWU</option>
         </select>
       </label>
       <label>
@@ -254,8 +255,8 @@ function GameView(props: { session: Session; id: number; onBack: () => void }) {
     if (!game) return
     let gone = false
     import('./Simulator').then(async ({ loadSet, loadCommunitySet }) => {
-      // Played with the community's cards: replayed with them
-      const set = await (game.pool === 'community' ? loadCommunitySet() : loadSet())
+      // Played with the community's cards, or the SWU tab's: replayed with them
+      const set = await (game.pool === 'community' ? loadCommunitySet() : loadSet(game.pool === 'SWU' ? 'SWU' : undefined))
       const list: Move[] = []
       let logged = 0
       let broke: string | undefined
