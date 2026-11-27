@@ -439,7 +439,7 @@ const HOLD_EXHAUSTER = 4
 
 // A unit played rather than a leader ability that would leave no resources for it
 const UNIT_OVER_ABILITY = 3
-const UPGRADE_ON_LEADER = 1
+const UPGRADE_ON_LEADER = 2.5
 const PROTECT_PER_COST = 0.2
 const UPGRADE_PER_HP = 0.1
 const UPGRADE_AT_RISK = 1.5
@@ -487,7 +487,83 @@ const RAMP_SOON = 8
 const READIES_RESOURCE = /\[On Attack:\][^]*Ready a resource/
 const HOLD_FOR_READY = 3
 function timing(state: GameState, p: PlayerId, move: Action, actions: Action[]) {
-  return baseTiming(state, p, move, actions) + leaderSafety(state, p, move) + pingSetsUpTrade(state, p, move, actions) - intoSweeper(state, p, move) - holdsRemoval(state, p, move)
+  return (
+    baseTiming(state, p, move, actions) +
+    leaderSafety(state, p, move) +
+    pingSetsUpTrade(state, p, move, actions) -
+    intoSweeper(state, p, move) -
+    holdsRemoval(state, p, move) +
+    upgradesForLeader(state, p, move) -
+    upgradeIntoCostRemoval(state, p, move)
+  )
+}
+// An upgrade on a cheap unit the foe can defeat by its cost alone (Ahsoka Tano, Not on My Death
+// Watch: a unit that costs 3 or less) loses both cards to one: the user, 2026-11-27, "a lightsaber
+// on a 3 cost unit against Mace: Ahsoka kills the unit + lightsaber, a blowout; super risky against
+// decks with answers". Weighed by the odds the foe holds such a card it can pay for (not peeking:
+// its hand and deck alike), and by what the upgrade costs.
+const BY_COST = /defeat (?:a|an enemy|a non-leader) ?(?:non-leader )?unit that costs (\d+) or less/i
+const COST_REMOVAL_RISK = 1.5
+function upgradeIntoCostRemoval(state: GameState, p: PlayerId, move: Action) {
+  if (move.type !== 'play' || !move.attachTo || OFF.has('bycost')) return 0
+  const player = state.players[p]
+  const card = player.hand.find((c) => c.id === move.card) ?? player.resources.find((r) => r.card.id === move.card)?.card
+  const d = card && state.defs[card.def]
+  const unit = player.units.find((u) => u.id === move.attachTo)
+  if (!d || d.type !== 'upgrade' || !unit || unit.leader) return 0
+  const cost = state.defs[unit.def].cost ?? 0
+  const foe = state.players[p === 0 ? 1 : 0]
+  const unseen = [...foe.hand, ...foe.deck]
+  if (!unseen.length || !foe.hand.length) return 0
+  // Once the foe can pay for it next round: earlier, the upgrade pays off first (counted always,
+  // Talzin fell from 39 to 30 wins in 100 vs Mace, upgrades held too long)
+  const affords = foe.resources.length + 2 + (foe.credits?.length ?? 0)
+  const copies = unseen.filter((c) => {
+    const x = state.defs[c.def]
+    const m = (x.text ?? '').match(BY_COST)
+    return !!m && cost <= Number(m[1]) && x.cost <= affords
+  }).length
+  if (!copies) return 0
+  const odds = 1 - Math.pow(1 - copies / unseen.length, foe.hand.length)
+  return COST_REMOVAL_RISK * odds * (1 + (d.cost ?? 0))
+}
+// Upgrades kept for the leader (the user, 2026-11-27: "leaders in general should receive some kind
+// of bonus to get upgrades": hard to kill, and on the deploy turn all the resources are there for
+// them; Mother Talzin's Constructed Lightsaber above all). An upgrade that goes on the leader unit
+// (its attach rule allows it, and it helps its unit) is held from the other units while the leader
+// can still deploy; on the deploy turn, with one in hand it can pay for, the leader
+// deploys first, so the upgrade goes on it and what's left still plays a cheap card. Units are
+// never held for it: a turn 2, 3 or 4 play comes first.
+const HOLD_FOR_LEADER = 5
+const DEPLOY_FOR_UPGRADE = 2
+const ATTACH_ONLY = /Attach to a (non-)?\[\{(\w[\w ]*)\}\] unit/i
+function fitsLeader(state: GameState, p: PlayerId, d: CardDef) {
+  if (d.type !== 'upgrade' || CONDEMNS.test(d.text ?? '')) return false
+  if (!((d.power ?? 0) > 0 || (d.hp ?? 0) > 0 || /gains|gets \+/i.test(d.text ?? ''))) return false
+  const leader = state.defs[state.players[p].leader.def]
+  if (!leader.unit) return false
+  const rule = (d.text ?? '').match(ATTACH_ONLY)
+  if (!rule) return true
+  const has = leader.traits.includes(rule[2])
+  return rule[1] ? !has : has
+}
+function upgradesForLeader(state: GameState, p: PlayerId, move: Action) {
+  const player = state.players[p]
+  // Deployed, or defeated (it can't deploy again): the upgrades go where they fit best
+  if (player.leader.deployed || player.leader.epicUsed) return 0
+  if (move.type === 'deploy' && !move.attachTo) {
+    // What's ready after deploying (it costs nothing): an upgrade for the leader paid from it
+    const ready = player.resources.filter((r) => !r.exhausted).length + (player.credits?.length ?? 0)
+    const fits = player.hand.some((c) => fitsLeader(state, p, state.defs[c.def]) && playCost(state, p, state.defs[c.def]) <= ready)
+    return fits ? DEPLOY_FOR_UPGRADE : 0
+  }
+  if (move.type !== 'play' || !move.attachTo) return 0
+  const card = player.hand.find((c) => c.id === move.card)
+  const d = card && state.defs[card.def]
+  if (!d || !fitsLeader(state, p, d) || player.units.find((u) => u.id === move.attachTo)?.leader) return 0
+  // Held for as long as the leader can still deploy (the user, 2026-11-27: a Lightsaber on Mae
+  // isn't a priority while Talzin is to come; late, with her gone, it's fine)
+  return -HOLD_FOR_LEADER
 }
 // Hard removal (No Glory, Only Results: take control of a unit, then defeat it) waits for a target
 // as dear as itself while the foe still has big cards unseen (Bo-Katan Kryze, Home One), unless

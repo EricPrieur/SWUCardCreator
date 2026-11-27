@@ -3743,6 +3743,7 @@ function feedsOnDamage(g: Game, self: Self, amount: number) {
 // --- Mother Talzin's and Wicket Data Vault's helpers ---
 
 const JOD_EDGE = 4
+const GARINDAN_KILLER = 2.5
 const left = (g: Game, id: string) => g.hp(g.unit(id)!) - g.unit(id)!.damage
 
 // Garindan: a card named, then a card of that name discarded from the opponent's hand. The AI
@@ -3756,10 +3757,21 @@ function garindan(g: Game, self: Self) {
   const known = [...unseen, ...pl.discard, ...pl.resources.map((r) => r.card), ...g.units((u) => u.owner === foe && !u.leader)]
   const names = [...new Set(known.filter((c) => g.def(c).type !== 'leader' && !g.def(c).token).map((c) => g.def(c).name))].sort()
   if (!names.length) return
+  // With its leader deployed, a card that defeats that leader at once counts most: an Ambush unit,
+  // one that attacks with a unit even exhausted (Hunter, Everyone Get to Cover!), damage enough
+  // (the user, 2026-11-27: "Talzin deploys against Mace and plays Garindan: she could often go for
+  // Hunter, one of the top cards that deal with Talzin right away, x3 in Mace decks")
+  const leader = g.units((u) => !!u.leader && g.controller(u) === p)[0]
+  const kills = (d: { type: string; text?: string; keywords?: { ambush?: boolean } }) => {
+    if (!leader) return false
+    const text = d.text ?? ''
+    const hit = text.match(/deal (\d+) damage to a unit/i)
+    return (d.type === 'unit' && (!!d.keywords?.ambush || /Attack with a unit, even if it's exhausted/i.test(text))) || (!!hit && Number(hit[1]) >= left(g, leader.id))
+  }
   const score: Record<string, number> = {}
   for (const c of unseen) {
     const d = g.def(c)
-    if (d.type !== 'leader' && !d.token) score[d.name] = (score[d.name] ?? 0) + 1 + 0.3 * d.cost
+    if (d.type !== 'leader' && !d.token) score[d.name] = (score[d.name] ?? 0) + (1 + 0.3 * d.cost) * (kills(d) ? GARINDAN_KILLER : 1)
   }
   const wanted = [...names].sort((a, b) => (score[b] ?? 0) - (score[a] ?? 0))[0]
   const name = names[g.option(p, 'Garindan: name a card', names, { ai: Math.max(0, names.indexOf(wanted)), firm: true, source: self.def.id })]

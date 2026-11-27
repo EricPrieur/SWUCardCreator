@@ -861,6 +861,8 @@ input.picker-button::placeholder {
 .pilot-box p {
   margin: 0;
   white-space: pre-wrap;
+  /* A word longer than the box breaks rather than run off the card (a user's report, 2026-11-27) */
+  overflow-wrap: break-word;
 }
 
 .pilot-box p > span {
@@ -1522,6 +1524,8 @@ input.picker-button::placeholder {
 .card-rules p {
   margin: 0;
   white-space: pre-wrap;
+  /* A word longer than the box breaks rather than run off the card (a user's report, 2026-11-27) */
+  overflow-wrap: break-word;
 }
 
 /* Each line typed is a line of its own */
@@ -1831,6 +1835,10 @@ input.picker-button::placeholder {
 /* An Action's cost, printed in its square brackets */
 .action-cost {
   white-space: nowrap;
+}
+
+.action-cost-worded {
+  white-space: normal;
 }
 
 /* A change to power and HP: +1/+0, in the red-edged and blue-edged numbers */

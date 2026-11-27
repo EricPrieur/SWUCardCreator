@@ -1610,8 +1610,10 @@ test('The AI puts Litany Against Fear on its leader unit rather than a cheap uni
 test('The AI keeps an upgrade off a unit an enemy unit can defeat, putting it on a sturdy one', () => {
   let state = table({ hand0: ['litany'], units0: ['trooper', 'guard'], units1: ['big'] })
   for (const u of state.players[0].units) u.exhausted = true
-  // Its leader can't deploy yet: 3 resources
+  // Its leader can't deploy yet: 3 resources; and it was defeated before, so the upgrade isn't
+  // held for it (upgradesForLeader)
   state.players[0].resources = state.players[0].resources.slice(0, 3)
+  state.players[0].leader.epicUsed = true
   state.players[0].spice = []
   // The trooper (2/2) would be a 4/4 the enemy 5/5 defeats; the guard (1/4) a 3/6 it doesn't
   const move = chooseAction(state, 0)!

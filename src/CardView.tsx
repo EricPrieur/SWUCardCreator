@@ -212,8 +212,11 @@ function Bracketed(props: { text: string }) {
   const inner = splitBrackets(text)
   if (inner.length === 1 && inner[0].bracketed) {
     const parts = inner[0].text.trim().split(/(\s*,\s*|\s+)/)
+    // A cost of icons stays on one line; one with words in it (Arrow, defeat a friendly token)
+    // wraps between them like any text (a user's report, 2026-11-27: it ran off the card)
+    const worded = parts.some((part, index) => index % 2 === 0 && /[a-z]{2}/i.test(part) && !isArrow(part) && !aspects.some((name) => name.toLowerCase() === part.toLowerCase()))
     return (
-      <strong className="action-cost">
+      <strong className={worded ? 'action-cost action-cost-worded' : 'action-cost'}>
         [
         {parts.map((part, index) => {
           if (index % 2 === 1) return part.includes(',') ? ', ' : ' '
