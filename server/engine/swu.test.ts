@@ -1244,6 +1244,35 @@ test('Galen Erso: the named card the opponent owns loses all abilities', () => {
   assert.ok(!keywordsOf(state, unit(state, 'u10')!).sentinel)
 })
 
+test('Galen Erso: a named event played does nothing, and is discarded, not resourced', () => {
+  // Overgrowth named, played anyway: it dealt its damage and went to the resources (2026-11-27)
+  let state = table({ base0: 'kashyyyk', units0: ['big'], units1: ['swu-SEC-046', 'cheap'], hand0: ['swu-HMW-151'] })
+  state.named = [{ unit: 'u10', name: 'Overgrowth' }]
+  const resources = state.players[0].resources.length
+  state = act(state, 0, { type: 'play', card: 'h0' })
+  assert.ok(!state.prompt, 'nothing to choose')
+  assert.equal(unit(state, 'u11')!.damage, 0)
+  assert.equal(state.players[0].resources.length, resources)
+  assert.ok(state.players[0].discard.some((c) => c.id === 'h0'))
+})
+
+test('Galen Erso: the AI holds a named event it would otherwise play', () => {
+  // its unit exhausted, Overgrowth the only thing to do
+  const setup = () => {
+    const state = table({ base0: 'kashyyyk', units0: ['big'], units1: ['swu-SEC-046', 'cheap'], hand0: ['swu-HMW-151'] })
+    state.players[0].units[0].exhausted = true
+    return state
+  }
+  const free = setup()
+  free.players[1].units = free.players[1].units.filter((u) => u.id !== 'u10')
+  const move = chooseAction(free, 0)
+  assert.ok(move?.type === 'play' && move.card === 'h0', 'played while not named: ' + JSON.stringify(move))
+  const named = setup()
+  named.named = [{ unit: 'u10', name: 'Overgrowth' }]
+  const held = chooseAction(named, 0)
+  assert.ok(!(held?.type === 'play' && held.card === 'h0'), 'held once named')
+})
+
 test('New Tactics: its owner puts the unit on top of their deck', () => {
   let state = table({ hand0: ['swu-HMW-218'], units1: ['huge'] })
   state = act(state, 0, { type: 'play', card: 'h0' })

@@ -583,8 +583,9 @@ function usedWhenDefeated(state: GameState, p: PlayerId, ability: Ability, self:
 
 // The abilities a card has where it is: a unit's, a leader's unit side's once deployed, a
 // leader side's
-function scriptOf(state: GameState, inst: { def: string; id?: string }, side: 'front' | 'back' | 'pilot' = 'front'): Abilities {
-  if (inst.id && blanked(state, inst as Inst)) return {}
+// owner: for a card in no zone, whose it is (an event as it resolves, out of the hand)
+function scriptOf(state: GameState, inst: { def: string; id?: string }, side: 'front' | 'back' | 'pilot' = 'front', owner?: PlayerId): Abilities {
+  if (inst.id && blanked(state, inst as Inst, owner)) return {}
   return abilitiesOf(def(state, inst), side)
 }
 
@@ -601,8 +602,10 @@ function ownerOfId(state: GameState, id: string): PlayerId | undefined {
   }
   return undefined
 }
-// A card named by an enemy Galen Erso while he is in play: it loses all abilities (not a leader)
-export function blanked(state: GameState, inst: Inst) {
+// A card named by an enemy Galen Erso while he is in play: it loses all abilities (not a leader).
+// known: its owner, for a card in no zone (an event resolving: Overgrowth named, still played
+// with all its text, 2026-11-27)
+export function blanked(state: GameState, inst: Inst, known?: PlayerId) {
   if (!state.named?.length) return false
   const d = def(state, inst)
   if (d.type === 'leader' || (inst as UnitState).leader) return false
@@ -610,7 +613,7 @@ export function blanked(state: GameState, inst: Inst) {
     if (n.name !== d.name) continue
     const by = findUnit(state, n.unit)
     if (!by) continue
-    const owner = (inst as UnitState).owner ?? ownerOfId(state, inst.id)
+    const owner = (inst as UnitState).owner ?? ownerOfId(state, inst.id) ?? known
     if (owner !== undefined && owner !== controllerOf(state, by)) return true
   }
   return false
@@ -1554,8 +1557,9 @@ function playCard(state: GameState, p: PlayerId, id: string, attachTo?: string, 
   } else {
     // An event resolves its text, then goes to the discard pile
     log(state, `${player.name} plays ${d.name}${using}`, p, d.id)
-    const abilities = scriptOf(state, card)
+    const abilities = scriptOf(state, card, 'front', p)
     if (abilities.play) abilities.play(new Game(state, p), self)
+    else if (blanked(state, card, p)) log(state, `${d.name} has no abilities: an enemy Galen Erso named it`, p, d.id)
     else log(state, `(${d.name}'s text doesn't do anything yet)`)
     // "Put this event into play as a resource." (exhausted, 2.4.1b)
     if (abilities.toResources) {

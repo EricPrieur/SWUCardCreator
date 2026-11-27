@@ -1,4 +1,4 @@
-import { applyAction, hpOf, keywordsOf, legalActions, playCost, powerOf, raceTarget, racesBase, traitsOf, waitingFor } from './game.ts'
+import { applyAction, blanked, hpOf, keywordsOf, legalActions, playCost, powerOf, raceTarget, racesBase, traitsOf, waitingFor } from './game.ts'
 import type { Action, CardDef, GameState, PlayerId, Prompt, UnitState } from './types.ts'
 
 // The opponent to play against. Before the action phase it follows a few rules of thumb. In it,
@@ -496,8 +496,26 @@ function timing(state: GameState, p: PlayerId, move: Action, actions: Action[]) 
     intoSweeper(state, p, move) -
     holdsRemoval(state, p, move) +
     upgradesForLeader(state, p, move) -
-    upgradeIntoCostRemoval(state, p, move)
+    upgradeIntoCostRemoval(state, p, move) -
+    playsBlanked(state, p, move)
   )
+}
+// A card an enemy Galen Erso named has no abilities (the user, 2026-11-27: "make sure the AI doesn't
+// play blank cards most of the time; a blank unit could work but would be inferior usually"). An
+// event does nothing: a card and its cost for nothing, played only with nothing else at all. A
+// unit or an upgrade keeps its body (power and HP, an upgrade's modifiers): played when nothing
+// better is, short of what its text was worth.
+const BLANK_EVENT = 8
+const BLANK_TEXT = 1
+const BLANK_PER_COST = 0.3
+function playsBlanked(state: GameState, p: PlayerId, move: Action) {
+  if (move.type !== 'play' || !state.named?.length) return 0
+  const player = state.players[p]
+  const card = player.hand.find((c) => c.id === move.card) ?? player.resources.find((r) => r.card.id === move.card)?.card ?? player.discard.find((c) => c.id === move.card)
+  if (!card || !blanked(state, card, p)) return 0
+  const d = state.defs[card.def]
+  if (d.type === 'event') return BLANK_EVENT
+  return (d.text ?? '').trim() ? BLANK_TEXT + BLANK_PER_COST * (d.cost ?? 0) : 0
 }
 // An upgrade on a cheap unit the foe can defeat by its cost alone (Ahsoka Tano, Not on My Death
 // Watch: a unit that costs 3 or less) loses both cards to one: the user, 2026-11-27, "a lightsaber
