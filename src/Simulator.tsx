@@ -48,8 +48,11 @@ const AI: PlayerId = 1
 const AI_DELAY = 700
 
 // A card's image by its name in the Showcase; a Prescient card's, drawn here, and a community
-// card's, from the server, are URLs already
-const img = (image: string) => (/^(blob:|data:|https?:|\/)/.test(image) ? image : asset(`/showcase/${SET}/${image}.jpg`))
+// card's, from the server, are URLs already, and an SWU card's a path made by asset(), which on
+// the site starts "./" (its base is relative: taken for a name, every SWU image broke on the site
+// and none on the dev server, whose base is "/"; 2026-11-27)
+const img = (image: string) =>
+  /^(blob:|data:|https?:|\.?\/)/.test(image) ? image : asset(`/showcase/${SET}/${image}.jpg`)
 const isPrescient = (printing?: Printing) => printing === 'prescient' || printing === 'prescient-foil'
 const isFoil = (printing?: Printing) => printing === 'foil' || printing === 'prescient-foil'
 // A banner's colour: its card's first aspect, Vigilance to Command before Heroism or Villainy
