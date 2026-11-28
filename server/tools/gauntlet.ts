@@ -5,7 +5,7 @@
 //
 //   node tools/gauntlet.ts [games=50] [seed=1]
 //
-// JOBS: how many matchups run at once (3). RESUME=1: keep the pairings already played in full. DECKS: only these Featured Decks, comma separated
+// JOBS: how many matchups run at once (4; 3 until 2026-11-27). RESUME=1: keep the pairings already played in full. DECKS: only these Featured Decks, comma separated
 // (any part of each name). VARIANT and FEATURED are passed on to matchup.ts.
 import { spawn } from 'node:child_process'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
@@ -14,7 +14,7 @@ import { featured } from './dune.ts'
 
 const [gamesArg = '50', seedArg = '1'] = process.argv.slice(2)
 const games = Number(gamesArg)
-const jobs = Number(process.env.JOBS ?? 3)
+const jobs = Number(process.env.JOBS ?? 4)
 const wanted = process.env.DECKS?.split(',').map((d) => d.trim().toLowerCase())
 const decks = featured.map((d) => d.name).filter((name) => !wanted || wanted.some((w) => name.toLowerCase().includes(w)))
 const slug = (name: string) => name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')

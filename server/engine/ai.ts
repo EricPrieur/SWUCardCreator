@@ -172,10 +172,13 @@ export function chooseAction(state: GameState, p: PlayerId, why?: Weighed[]): Ac
         (r < 0 && move.target !== 'base' ? CONTROL_FIRST : 0) +
         (racingDeck && move.target === 'base' ? RACE_BASE : 0) +
         (racing && move.target === 'base' ? LETHAL_RACE + 0.1 * powerOf(state, state.players[p].units.find((u) => u.id === move.attacker)!) : 0)
-  // Past its time budget, it judges the moves left without trying its later answers
+  // Each move at a first look (its own questions answered by rule of thumb), then the most
+  // promising again in full (each answer tried), the best first, while its time budget lasts. It
+  // went down the list in full until out of time: the moves listed last were judged at a glance,
+  // and on a busy board (Thrawn's rounds 5 and 6) the time was gone before the opponent's replies
+  // were looked at, half its turns (the user, 2026-11-27: "increase the accuracy")
   const start = performance.now()
-  const tried = moves.map((move) => {
-    const deep = performance.now() - start < BUDGET
+  const look = (move: Action, deep: boolean) => {
     const after = outcome(state, p, move, p, deep)
     const single = after ? evaluate(after, p) : -Infinity
     const saved = readyKill(state, p, move, after)
@@ -188,7 +191,13 @@ export function chooseAction(state: GameState, p: PlayerId, why?: Weighed[]): Ac
       // Kept apart, so a reason to wait (a negative) isn't lost below
       extra: timing(state, p, move, actions) + saved + readyTokenOnDeath(state, p, move, after),
     }
-  })
+  }
+  const tried = moves.map((move) => look(move, false))
+  const order = tried.map((t, i) => ({ i, score: t.best + t.extra })).sort((a, b) => b.score - a.score)
+  for (const { i } of order.slice(0, DEEPEN)) {
+    if (performance.now() - start >= BUDGET) break
+    tried[i] = look(tried[i].move, true)
+  }
   // A move that wins is made at once: playing on first may look better, a win still in reach
   // next action, but the opponent acts in between, with the cards in their hand it doesn't see
   const win = tried.find((t) => t.after?.phase === 'over' && t.after.winner === p)
@@ -212,9 +221,13 @@ export function chooseAction(state: GameState, p: PlayerId, why?: Weighed[]): Ac
   if (promising.length && performance.now() - start < BUDGET) {
     // Doing nothing gives the opponent their turn as it is now. (Passing may end the phase,
     // but what they could do then, such as deploying their leader, they still will.)
-    const stay = afterReply({ ...state, active: p === 0 ? 1 : 0 }, p)
+    // ON follow (on trial, 2026-11-27): each move judged by what its next move can do after the
+    // opponent's reply too, not only in the order the moves go: a move that sets up a strong next
+    // one gains by it (passing by the opponent's turn as it stands)
+    const judge = ON.has('follow') ? (s: GameState) => Math.max(evaluate(s, p), followUp(s, p, needed)) : undefined
+    const stay = afterReply({ ...state, active: p === 0 ? 1 : 0 }, p, judge)
     const weighed: Weighed[] = promising.map((t) => {
-      const gain = afterReply(t.after!, p) + Math.max(0, t.best - t.single) + t.extra - stay
+      const gain = afterReply(t.after!, p, judge) + Math.max(0, t.best - t.single) + t.extra - stay
       // A card that waits is still worth making: it only comes after
       return { action: t.move, gain: gain > MIN_GAIN ? Math.max(MIN_GAIN + 0.01, gain + bias(t.move)) : gain }
     })
@@ -351,6 +364,8 @@ const CAPITAL_ACTION = /Play a \{capital ship\} unit from your hand\. It costs \
 const ENABLER = 3
 // OFF (env, tests only): AI changes switched off one at a time, to measure each
 const OFF = new Set(((globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env.AI_OFF ?? '').split(',').filter(Boolean))
+// What is on trial, not yet the AI's own (AI_ON=follow)
+const ON = new Set(((globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env.AI_ON ?? '').split(',').filter(Boolean))
 function enablerWorth(state: GameState, p: PlayerId, move: Action) {
   if (move.type !== 'attack' || OFF.has('enabler')) return 0
   const player = state.players[p]
@@ -969,6 +984,8 @@ const GAIN_LEAD = 3
 
 // How many of its moves it tries against the opponent's replies
 const REPLY_WIDTH = 8
+// How many of its moves, the most promising at first look, it plays out in full
+const DEEPEN = 10
 
 // The score for `me` once the opponent has made the reply that is worst for it, among what
 // they can do without the cards in their hand, which the AI doesn't see: attack, use their
@@ -1003,8 +1020,8 @@ function followUp(state: GameState, me: PlayerId, keepSpice: number) {
 }
 
 // How long a move may take to choose (ms) before it thinks less of the rest, so the page never
-// stalls
-const BUDGET = 250
+// stalls (250 until 2026-11-27: more time for the busy turns, the user wanting accuracy)
+const BUDGET = 400
 
 // The deck analysis the AI makes once a game: how many of its cards cost what (what it pays,
 // aspects it lacks counted), their average, and the resources it aims for: enough to deploy its

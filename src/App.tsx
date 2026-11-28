@@ -7983,7 +7983,9 @@ function App() {
           <h1>{showcase === 'DUNE' ? 'Dune SWU' : showcase}</h1>
           {mainTabs}
         </header>
-        <Showcase folder={showcase} promos={cards.filter((card) => cardFacts(card).set.trim().toUpperCase() === 'PROMO')} />
+        {/* One per folder: DUNE SWU's and SWU's never share a Simulator or a Deck Builder, whose
+            decks and cards loaded once stayed the other tab's (the user, 2026-11-27) */}
+        <Showcase key={showcase} folder={showcase} promos={cards.filter((card) => cardFacts(card).set.trim().toUpperCase() === 'PROMO')} />
         {leaveModal}
       </main>
     )

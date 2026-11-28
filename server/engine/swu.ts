@@ -4046,11 +4046,13 @@ function divideAmongEnemies(g: Game, self: Self, total: number, source: string) 
     const open = foes.filter((id) => !shares.has(id))
     if (!open.length) break
     const next = aiPlan.find(([id]) => !shares.has(id))
-    const target = g.chooseOne(p, `${source}: choose an enemy unit to deal damage to (${rest} left)`, open, { ai: next?.[0] ?? open[0], source: self.def.id })
+    // Its plan taken as it is (firm): each split tried in full, a share at a time, took the AI's
+    // time on its busiest turns (The Legacy Run's 6, 12 with Thrawn: 2026-11-27)
+    const target = g.chooseOne(p, `${source}: choose an enemy unit to deal damage to (${rest} left)`, open, { ai: next?.[0] ?? open[0], firm: true, source: self.def.id })
     if (!target) break
     const amounts = Array.from({ length: rest }, (_, i) => String(i + 1))
     const aim = Math.min(rest, plan.get(target) ?? rest)
-    const amount = amounts.length > 1 ? Number(amounts[g.option(p, `${source}: how much damage to ${g.name(target)}?`, amounts, { ai: aim - 1, source: self.def.id })]) : 1
+    const amount = amounts.length > 1 ? Number(amounts[g.option(p, `${source}: how much damage to ${g.name(target)}?`, amounts, { ai: aim - 1, firm: true, source: self.def.id })]) : 1
     shares.set(target, amount)
     rest -= amount
   }
